@@ -52,7 +52,7 @@ def main():
     if path_to_images[-1] != "/":
         path += "/"
 
-    image_mapper = ImageMapper(path_to_images, map_width_px, map_height_px, blending, optimize, gimbal_variance)
+    image_mapper = ImageMapper(path_to_images, map_width_px, map_height_px, blending, optimize, gimbal_variance, with_odm)
     image_mapper.create_flight_report()
         
     print("-Creating GPX file...")

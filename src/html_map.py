@@ -433,7 +433,7 @@ class HTMLMap():
                              "\n")
 
         if(self.with_odm):
-            file_desciptor.write("\r\nvar ODM = L.imageOverlay(\'map_odm_platzhalter.png\', imageBounds, {interactive: true});\r\nvar odmOverlay = L.layerGroup([ODM]);\r\n\r\nfunction setODMLayerImage(path){\r\n   ODM.setUrl(path);\r\n}\r\n\r\nfunction checkImage(imageSrc, good, bad) {\r\n    var img = new Image();\r\n    img.onload = good; \r\n    img.onerror = bad;\r\n    img.src = imageSrc;\r\n}\r\n\r\ncheckImage(\'map_odm_orthophoto.png\', function(){setODMLayerImage(\'map_odm_orthophoto.png\')}, function(){setODMLayerImage(\'map_odm_platzhalter.png\')});\r\n\r\nODM.on(\'click\', function(e) {\r\n   checkImage(\'map_odm_orthophoto.png\', function(){setODMLayerImage(\'map_odm_orthophoto.png\')}, function(){setODMLayerImage(\'map_odm_platzhalter.png\')});\r\n\r\n});")
+            file_desciptor.write("\r\nvar ODM = L.imageOverlay(\'placeholder_map.png\', imageBounds, {interactive: true});\r\nvar odmOverlay = L.layerGroup([ODM]);\r\n\r\nfunction setODMLayerImage(path){\r\n   ODM.setUrl(path);\r\n}\r\n\r\nfunction checkImage(imageSrc, good, bad) {\r\n    var img = new Image();\r\n    img.onload = good; \r\n    img.onerror = bad;\r\n    img.src = imageSrc;\r\n}\r\n\r\ncheckImage(\'map_odm_orthophoto.png\', function(){setODMLayerImage(\'map_odm_orthophoto.png\')}, function(){setODMLayerImage(\'placeholder_map.png\')});\r\n\r\nODM.on(\'click\', function(e) {\r\n   checkImage(\'map_odm_orthophoto.png\', function(){setODMLayerImage(\'map_odm_orthophoto.png\')}, function(){setODMLayerImage(\'placeholder_map.png\')});\r\n\r\n});")
 
         file_desciptor.write("function highlightFeature(e) {\n"\
                              "	if(!inMeasureMode) {\n"\
@@ -546,10 +546,10 @@ class HTMLMap():
                              "<!-- home button functionality -->\n"\
                              "var layerswitcher = {\n"\
                              "RGB: mapOverlay,\n"\
-                             "IR : irOverlay\n")
+                             "IR : irOverlay")
 
         if(self.with_odm):
-            file_desciptor.write("ODM: odmOverlay\n")
+            file_desciptor.write(",\nODM: odmOverlay\n")
 
         file_desciptor.write("};\n"\
                              "L.control.layers(layerswitcher,{}, {collapsed: false}).addTo(map);\n"\
@@ -632,7 +632,7 @@ class HTMLMap():
 
         if (self.with_odm):
             file_desciptor.write(
-                "\r\nvar ODM = L.imageOverlay(\'map_odm_platzhalter.png\', imageBounds, {interactive: true});\r\nvar odmOverlay = L.layerGroup([ODM]);\r\n\r\nfunction setODMLayerImage(path){\r\n   ODM.setUrl(path);\r\n}\r\n\r\nfunction checkImage(imageSrc, good, bad) {\r\n    var img = new Image();\r\n    img.onload = good; \r\n    img.onerror = bad;\r\n    img.src = imageSrc;\r\n}\r\n\r\ncheckImage(\'map_odm_orthophoto.png\', function(){setODMLayerImage(\'map_odm_orthophoto.png\')}, function(){setODMLayerImage(\'map_odm_platzhalter.png\')});\r\n\r\nODM.on(\'click\', function(e) {\r\n   checkImage(\'map_odm_orthophoto.png\', function(){setODMLayerImage(\'map_odm_orthophoto.png\')}, function(){setODMLayerImage(\'map_odm_platzhalter.png\')});\r\n\r\n});")
+                "\r\nvar ODM = L.imageOverlay(\'placeholder_map.png\', imageBounds, {interactive: true});\r\nvar odmOverlay = L.layerGroup([ODM]);\r\n\r\nfunction setODMLayerImage(path){\r\n   ODM.setUrl(path);\r\n}\r\n\r\nfunction checkImage(imageSrc, good, bad) {\r\n    var img = new Image();\r\n    img.onload = good; \r\n    img.onerror = bad;\r\n    img.src = imageSrc;\r\n}\r\n\r\ncheckImage(\'map_odm_orthophoto.png\', function(){setODMLayerImage(\'map_odm_orthophoto.png\')}, function(){setODMLayerImage(\'placeholder_map.png\')});\r\n\r\nODM.on(\'click\', function(e) {\r\n   checkImage(\'map_odm_orthophoto.png\', function(){setODMLayerImage(\'map_odm_orthophoto.png\')}, function(){setODMLayerImage(\'placeholder_map.png\')});\r\n\r\n});")
 
         file_desciptor.write("function highlightFeature(e) {\n" \
                              "	if(!inMeasureMode) {\n" \
@@ -742,10 +742,10 @@ class HTMLMap():
                              "zoomHome.addTo(map);\n" \
                              "<!-- home button functionality -->\n" \
                              "var layerswitcher = {\n" \
-                             "RGB: mapOverlay,\n" )
+                             "RGB: mapOverlay" )
 
         if (self.with_odm):
-            file_desciptor.write("ODM: odmOverlay\n")
+            file_desciptor.write(",\nODM: odmOverlay\n")
 
         file_desciptor.write("};\n" \
                              "L.control.layers(layerswitcher,{}, {collapsed: false}).addTo(map);\n" \

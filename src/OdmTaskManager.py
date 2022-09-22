@@ -11,11 +11,15 @@ from pyodm.types import TaskStatus
 from pathlib import Path
 import re
 import time
+import docker
+import cv2
 
 
 class OdmTaskManager:
 
-    def __init__(self, image_paths=None, inputfolder='./data'):
+    _image_sice = 1024
+
+    def __init__(self, path_to_images, image_paths=None, inputfolder='./data'):
         """
         :param image_paths: List of Strings of Paths to input_images
         :param inputfolder: If image_paths are not provided search images in folder
@@ -26,19 +30,47 @@ class OdmTaskManager:
         else:
             self.image_paths = image_paths
 
-        #TODO start ODM in docker
+        if not os.path.exists(path_to_images+'proxy/'):
+            os.mkdir(path_to_images+'proxy/')
+
+        scaled_image_paths = []
+        #scale down every image in the list image_paths tp a width of 1024px and save it in a new folder called proxy
+        for path in self.image_paths:
+            img = cv2.imread(path)
+            scale_percent = self._image_sice / img.shape[1]
+            dim = (int(img.shape[1] * scale_percent), int(img.shape[0] * scale_percent))
+            resized = cv2.resize(img, dim, interpolation = cv2.INTER_NEAREST)
+            cv2.imwrite(path_to_images+'proxy/' + os.path.basename(path), resized)
+            scaled_image_paths += [path_to_images+'proxy/' + os.path.basename(path)]
+            os.system('exiftool -TagsFromFile ' + path +' ' + path_to_images + 'proxy/' + os.path.basename(path))
+
+        self.image_paths = scaled_image_paths
+
+        print("Establish client from environment variables")
+        self.client = docker.from_env()
+        print("Create container")
+        self.container = self.client.containers.run("opendronemap/nodeodm", stdin_open=True, tty=True,
+                                                    ports={"3000": 3000}, detach=True)
+        # professional way to wait for container to be ready
+        time.sleep(5)
+
         self.node = Node('localhost', 3000)
         self.task = None
         self.task_complete = False
         self.console_output = []
 
-    def run_task(self, options={'dsm': True, 'fast-orthophoto': True, 'feature-quality': 'lowest'}):
+    def run_task(self, options={'feature-quality': 'medium', 'fast-orthophoto': True, 'auto-boundary': True, 'pc-ept': True,'cog': True}):
         """
         :param options: Dictionary with ODM flags
         """
         self.task = self.node.create_task(self.image_paths, options)
+        print(self.task.info())
         # self.task.wait_for_completion(status_callback=self.console_out, interval=5)
         # self.task.download_assets('results')
+        #feature-quality medium --fast-orthophoto --auto-boundary --pc-ept --cog --project-path /var/www/data 6349880b-4228-4218-87a7-ff63b4ec2fef
+        #--feature-quality medium --fast-orthophoto --auto-boundary --pc-ept --cog --project-path /var/www/data 94708928-3b8f-48c0-8336-68f97f951f14
+        #options={'auto-boundary': True, 'dsm': False, 'fast-orthophoto': True,'feature-quality': 'lowest'}
+
 
     def get_image_paths(self, path):
         """
@@ -63,20 +95,27 @@ class OdmTaskManager:
     def task_running(self):
         case = self.task.info().status
         if case == TaskStatus.RUNNING:
-            self.console_out(None)
+            #self.console_out(None)
             return True
         elif case == TaskStatus.FAILED:
             print("Task has failed for some reason. Check console output for information")
             self.task.remove()
+            self.container.stop()
+            self.container.remove()
             return False
         elif case == TaskStatus.CANCELED:
             print("Task was cancelled by user. What are you doing?!")
             self.task.remove()
+            self.container.stop()
+            self.container.remove()
             return False
         elif case == TaskStatus.COMPLETED:
+            print("Task completed")
             self.task.download_assets('results')
             self.task_complete = True
             self.task.remove()
+            self.container.stop()
+            self.container.remove()
             return False
         else:
             print("not defined case in OdmTaskManager.check_task()")

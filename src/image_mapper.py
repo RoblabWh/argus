@@ -36,7 +36,7 @@ from infrared_rgb_sorter import InfraredRGBSorter
 from OdmTaskManager import OdmTaskManager
 
 class ImageMapper:
-    def __init__(self, path_to_images, map_width_px, map_height_px, blending, optimize, max_gimbal_pitch_deviation):
+    def __init__(self, path_to_images, map_width_px, map_height_px, blending, optimize, max_gimbal_pitch_deviation, with_ODM):
         if path_to_images[-1] != "/":
             path_to_images += "/"
         self.path_to_images = path_to_images
@@ -47,6 +47,7 @@ class ImageMapper:
         self.final_map = None
         self.optimize = optimize
         self.max_gimbal_pitch_deviation = max_gimbal_pitch_deviation
+        self.with_ODM = with_ODM
         self.html_file_name = None
         self.corner_gps_right_top = None
         self.corner_gps_left_bottom = None
@@ -121,7 +122,7 @@ class ImageMapper:
         #print(map_offset, "map offset")
         #self.__optimize_map_DEPRECATED()
             
-        map_obj = Map(self.map_elements, 
+        map_obj = Map(self.map_elements,
                       self.map_width_px  + map_offset,
                       self.map_height_px + map_offset,
                       self.blending, 
@@ -132,6 +133,8 @@ class ImageMapper:
         self.final_map = map_obj.create_map()
         self.cropped_map = map_obj.get_cropped_map()
         self.__calculate_gps_for_mapbox_plugin(map_obj)
+        if self.with_ODM:
+            map_obj.generate_ODM_placeholder_map(self.path_to_images)
     
     def __check_for_dji_infrared_images(self, filtered_images):
         (width_0, height_0) = filtered_images[0].get_exif_header().get_image_size()
@@ -251,19 +254,19 @@ class ImageMapper:
 
     def generate_odm_orthophoto(self):
 
-        # image_paths = []
-        # for map_element in self.map_elements:
-        #     image_paths += [map_element.get_image().get_image_path()]
-        #
-        # taskmanager = OdmTaskManager(image_paths)
-        # taskmanager.run_task()
-        #
-        # while True:
-        #     if not taskmanager.task_running():
-        #         break
-        #     time.sleep(1)
+        image_paths = []
+        for map_element in self.map_elements:
+            image_paths += [map_element.get_image().get_image_path()]
 
-        # if taskmanager.task_complete:
+        taskmanager = OdmTaskManager(self.path_to_images, image_paths)
+        taskmanager.run_task()
+
+        while True:
+            if not taskmanager.task_running():
+                break
+            time.sleep(3)
+
+        if taskmanager.task_complete:
 
             with open('results/odm_georeferencing/odm_georeferenced_model.info.json','r') as j:
                 contents = json.loads(j.read())

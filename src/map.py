@@ -225,5 +225,25 @@ class Map:
         #print(min_x, max_x, min_y, max_y)
         return min_x, max_x, min_y, max_y
 
+    def generate_ODM_placeholder_map(self, path_to_images):
+        text_img = cv2.imread('waiting_for_ODM_Text.png')
+
+        width, height = self.cropped_map.shape[1], self.cropped_map.shape[0]
+        #create a black image with the same size as the cropped map
+        image = np.zeros((height, width, 3), np.uint8)
+        image_bg = np.zeros((height, width, 3), np.uint8)
+        image_bg[:, :] = (106, 96, 36)
+
+        #scale text_image to fit image
+        scale = min(width / text_img.shape[1], height / text_img.shape[0])
+        new_size = (int(text_img.shape[1] * scale), int(text_img.shape[0] * scale))
+        text_img = cv2.resize(text_img, new_size)
+        #place text_image in the center of the black image and use text_image alpha cannel as a mask
+        x_offset = int((width - text_img.shape[1]) / 2)
+        y_offset = int((height - text_img.shape[0]) / 2)
+        image[y_offset:y_offset+text_img.shape[0], x_offset:x_offset+text_img.shape[1], :] = text_img
+        image = np.maximum(image_bg, image, image)
+        cv2.imwrite(path_to_images+"placeholder_map.png", image)
+
 
 
