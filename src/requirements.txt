@@ -1,0 +1,16 @@
+matplotlib
+numpy
+vincenty
+utm
+geopy
+Shapely
+descartes
+pyexifinfo
+imutils
+Pillow
+weathercom
+requests
+opencv_python
+scipy
+scikit_image
+ipython

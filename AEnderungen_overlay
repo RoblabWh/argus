@@ -1,0 +1,88 @@
+*******************
+****Fürs Style:****
+*******************
+
+
+   .overlay-img {
+      position: absolute;
+      top: -10%;
+      left: -10%;
+      opacity: 50%;
+   }
+
+
+
+*******************************
+***Beim oberen script Block:***
+*******************************
+
+Die Methode hinzufügen:
+
+	function update_opcity(imgID, opacity) {
+		   var img, glass, w, h, bw, divh, divw, slide;
+		   //slide = document.getElementById("slide"+imgID).lastChild;//children[children.length-1];
+		   slide = document.getElementById(""+imgID);//children[children.length-1];
+		   console.log("change opacity to:" + (opacity/22.1));
+		   slide.style.opacity = ""+(opacity/22.1);//style="opacity: "+opacity+"%";
+		 }
+         
+
+ .nextSibling am Ende hinzufügen:
+	 glass.setAttribute("id", "830283");
+		   /*insert magnifier glass:*/
+		   img.parentElement.insertBefore(glass, img.nextSibling);
+
+
+
+**********************
+***Bei den Bildern:***
+**********************
+
+	<div class="mySlides">
+	<div class="numbertext">1 / 91</div>
+	<div id="slide1" style="display: inline-block; display: flex; justify-content: center;">
+	<div class="img-magnifier-container">
+	<img class="overlay-img" src="../DJI_0518.JPG" width="120%">
+	<img class="center-mit" id="1" src="DJI_0519.JPG" style="display: block; max-width: 100%; max-height: 1400px; min-width: 800px; width: auto; height: auto; opacity: 80%;">
+	</div>
+
+overlayimg ist neu und opacity im style des ir Fotos
+
+
+
+
+
+
+****************************
+**Script Block ganz unten:**
+****************************
+
+
+der unterste script block muss wiefolgt geändert werden:
+wenn normales rgb alles wie gehabt, sonst:
+
+	listener vom slider so:
+	slider_zoom.addEventListener('change', function () {
+		    update_opcity(slideIndex, slider_zoom.value)
+		    //demagnify();magnify(slideIndex,slider_zoom.value);
+		     
+		 })
+		 
+Da vor den lstener auf load anpassen
+	window.addEventListener('load', function () {
+            magnify(slideIndex, 2)
+           //magnify(slideIndex, slider_zoom.value)
+         })
+         
+         
+bei IR magnify auf 2 fest setzen und den slider an eine andere Methode binden
+Also der unterste script block, den über code anpassen
+
+
+
+
+********************
+*******TODOS********
+********************
+
+Reports mit nur RGB acuh ohne farbskala etc machen

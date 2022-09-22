@@ -1,0 +1,1146 @@
+{
+    "odmVersion": "2.8.4",
+    "memory": {
+        "total": 32014,
+        "available": 19835
+    },
+    "cpus": 16,
+    "images": 190,
+    "options": {
+        "auto_boundary": false,
+        "boundary": {},
+        "build_overviews": false,
+        "camera_lens": "auto",
+        "cameras": {},
+        "cog": true,
+        "copy_to": null,
+        "crop": 3,
+        "debug": false,
+        "dem_decimation": 1,
+        "dem_euclidean_map": false,
+        "dem_gapfill_steps": 3,
+        "dem_resolution": 5,
+        "depthmap_resolution": 640,
+        "dsm": true,
+        "dtm": false,
+        "end_with": "odm_postprocess",
+        "fast_orthophoto": true,
+        "feature_quality": "lowest",
+        "feature_type": "sift",
+        "force_gps": false,
+        "gcp": null,
+        "geo": null,
+        "gps_accuracy": 10,
+        "ignore_gsd": false,
+        "matcher_neighbors": 0,
+        "matcher_type": "flann",
+        "max_concurrency": 16,
+        "merge": "all",
+        "mesh_octree_depth": 11,
+        "mesh_size": 200000,
+        "min_num_features": 10000,
+        "name": "876c8cfb-edbc-4bc1-a135-c6f18eec0494",
+        "optimize_disk_space": false,
+        "orthophoto_compression": "DEFLATE",
+        "orthophoto_cutline": false,
+        "orthophoto_kmz": false,
+        "orthophoto_no_tiled": false,
+        "orthophoto_png": false,
+        "orthophoto_resolution": 5,
+        "pc_classify": false,
+        "pc_copc": false,
+        "pc_csv": false,
+        "pc_ept": true,
+        "pc_filter": 2.5,
+        "pc_geometric": false,
+        "pc_las": false,
+        "pc_quality": "medium",
+        "pc_rectify": false,
+        "pc_sample": 0,
+        "pc_tile": false,
+        "primary_band": "auto",
+        "project_path": "/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494",
+        "radiometric_calibration": "none",
+        "rerun": null,
+        "rerun_all": false,
+        "rerun_from": null,
+        "resize_to": 2048,
+        "sfm_algorithm": "incremental",
+        "skip_3dmodel": true,
+        "skip_band_alignment": false,
+        "skip_orthophoto": false,
+        "skip_report": false,
+        "sm_cluster": null,
+        "smrf_scalar": 1.25,
+        "smrf_slope": 0.15,
+        "smrf_threshold": 0.5,
+        "smrf_window": 18.0,
+        "split": 999999,
+        "split_image_groups": null,
+        "split_overlap": 150,
+        "texturing_data_term": "gmi",
+        "texturing_keep_unseen_faces": false,
+        "texturing_outlier_removal_type": "gauss_clamping",
+        "texturing_skip_global_seam_leveling": false,
+        "texturing_skip_local_seam_leveling": false,
+        "texturing_tone_mapping": "none",
+        "tiles": false,
+        "time": false,
+        "use_3dmesh": false,
+        "use_exif": false,
+        "use_fixed_camera_params": false,
+        "use_hybrid_bundle_adjustment": false,
+        "verbose": false
+    },
+    "startTime": "2022-09-16T13:02:59.740161",
+    "stages": [
+        {
+            "name": "dataset",
+            "startTime": "2022-09-16T13:03:00.464434",
+            "messages": [
+                {
+                    "message": "Running dataset stage",
+                    "type": "info"
+                },
+                {
+                    "message": "Loading dataset from: /var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/images",
+                    "type": "info"
+                },
+                {
+                    "message": "Loading 190 images",
+                    "type": "info"
+                },
+                {
+                    "message": "Wrote images database: /var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/images.json",
+                    "type": "info"
+                },
+                {
+                    "message": "Found 190 usable images",
+                    "type": "info"
+                },
+                {
+                    "message": "Parsing SRS header: WGS84 UTM 32N",
+                    "type": "info"
+                },
+                {
+                    "message": "Finished dataset stage",
+                    "type": "info"
+                }
+            ]
+        },
+        {
+            "name": "split",
+            "startTime": "2022-09-16T13:03:01.047118",
+            "messages": [
+                {
+                    "message": "Running split stage",
+                    "type": "info"
+                },
+                {
+                    "message": "Normal dataset, will process all at once.",
+                    "type": "info"
+                },
+                {
+                    "message": "Finished split stage",
+                    "type": "info"
+                }
+            ]
+        },
+        {
+            "name": "merge",
+            "startTime": "2022-09-16T13:03:01.047151",
+            "messages": [
+                {
+                    "message": "Running merge stage",
+                    "type": "info"
+                },
+                {
+                    "message": "Normal dataset, nothing to merge.",
+                    "type": "info"
+                },
+                {
+                    "message": "Finished merge stage",
+                    "type": "info"
+                }
+            ]
+        },
+        {
+            "name": "opensfm",
+            "startTime": "2022-09-16T13:03:01.047175",
+            "messages": [
+                {
+                    "message": "Running opensfm stage",
+                    "type": "info"
+                },
+                {
+                    "message": "Maximum photo dimensions: 4056px",
+                    "type": "info"
+                },
+                {
+                    "message": "Photo dimensions for feature extraction: 273px",
+                    "type": "info"
+                },
+                {
+                    "message": "nvidia-smi not found in PATH, using CPU",
+                    "type": "info"
+                },
+                {
+                    "message": "Altitude data detected, enabling it for GPS alignment",
+                    "type": "info"
+                },
+                {
+                    "message": [
+                        "use_exif_size: no",
+                        "flann_algorithm: KDTREE",
+                        "feature_process_size: 273",
+                        "feature_min_frames: 10000",
+                        "processes: 16",
+                        "matching_gps_neighbors: 0",
+                        "matching_gps_distance: 0",
+                        "matching_graph_rounds: 50",
+                        "optimize_camera_parameters: yes",
+                        "reconstruction_algorithm: incremental",
+                        "undistorted_image_format: tif",
+                        "bundle_outlier_filtering_type: AUTO",
+                        "sift_peak_threshold: 0.066",
+                        "align_orientation_prior: vertical",
+                        "triangulation_type: ROBUST",
+                        "retriangulation_ratio: 2",
+                        "bundle_compensate_gps_bias: yes",
+                        "matcher_type: FLANN",
+                        "feature_type: SIFT",
+                        "use_altitude_tag: yes",
+                        "align_method: auto",
+                        "local_bundle_radius: 0"
+                    ],
+                    "type": "info"
+                },
+                {
+                    "message": "Wrote reference_lla.json",
+                    "type": "info"
+                },
+                {
+                    "message": "running \"/code/SuperBuild/install/bin/opensfm/bin/opensfm\" detect_features \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/opensfm\"",
+                    "type": "info"
+                },
+                {
+                    "message": "running \"/code/SuperBuild/install/bin/opensfm/bin/opensfm\" match_features \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/opensfm\"",
+                    "type": "info"
+                },
+                {
+                    "message": "running \"/code/SuperBuild/install/bin/opensfm/bin/opensfm\" create_tracks \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/opensfm\"",
+                    "type": "info"
+                },
+                {
+                    "message": "running \"/code/SuperBuild/install/bin/opensfm/bin/opensfm\" reconstruct \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/opensfm\"",
+                    "type": "info"
+                },
+                {
+                    "message": "Export reconstruction stats",
+                    "type": "info"
+                },
+                {
+                    "message": "running \"/code/SuperBuild/install/bin/opensfm/bin/opensfm\" compute_statistics --diagram_max_points 100000 \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/opensfm\"",
+                    "type": "info"
+                },
+                {
+                    "message": "running \"/code/SuperBuild/install/bin/opensfm/bin/opensfm\" export_geocoords --reconstruction --proj \"+proj=utm +zone=32 +datum=WGS84 +units=m +no_defs +type=crs\" --offset-x 363001.0 --offset-y 5715494.0 \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/opensfm\"",
+                    "type": "info"
+                },
+                {
+                    "message": "Updating /var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/opensfm/config.yaml",
+                    "type": "info"
+                },
+                {
+                    "message": "undistorted_image_max_size: 2253",
+                    "type": "info"
+                },
+                {
+                    "message": "Undistorting /var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/opensfm ...",
+                    "type": "info"
+                },
+                {
+                    "message": "running \"/code/SuperBuild/install/bin/opensfm/bin/opensfm\" export_visualsfm --points \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/opensfm\"",
+                    "type": "info"
+                },
+                {
+                    "message": "running \"/code/SuperBuild/install/bin/opensfm/bin/opensfm\" export_ply --no-cameras --point-num-views \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/opensfm\"",
+                    "type": "info"
+                },
+                {
+                    "message": "Finished opensfm stage",
+                    "type": "info"
+                }
+            ]
+        },
+        {
+            "name": "odm_filterpoints",
+            "startTime": "2022-09-16T13:05:15.741202",
+            "messages": [
+                {
+                    "message": "Running odm_filterpoints stage",
+                    "type": "info"
+                },
+                {
+                    "message": "Filtering /var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/opensfm/reconstruction.ply (statistical, meanK 16, standard deviation 2.5)",
+                    "type": "info"
+                },
+                {
+                    "message": "running \"/code/SuperBuild/install/bin/FPCFilter\" --input \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/opensfm/reconstruction.ply\" --output \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_filterpoints/point_cloud.ply\" --concurrency 16  --meank 16 --std 2.5",
+                    "type": "info"
+                },
+                {
+                    "message": "Finished odm_filterpoints stage",
+                    "type": "info"
+                }
+            ]
+        },
+        {
+            "name": "odm_meshing",
+            "startTime": "2022-09-16T13:05:15.801477",
+            "messages": [
+                {
+                    "message": "Running odm_meshing stage",
+                    "type": "info"
+                },
+                {
+                    "message": "Writing ODM 2.5D Mesh file in: /var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_meshing/odm_25dmesh.ply",
+                    "type": "info"
+                },
+                {
+                    "message": "ODM 2.5D DSM resolution: 0.7404000000000001",
+                    "type": "info"
+                },
+                {
+                    "message": "Created temporary directory: /var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_meshing/tmp",
+                    "type": "info"
+                },
+                {
+                    "message": "Creating DSM for 2.5D mesh",
+                    "type": "info"
+                },
+                {
+                    "message": "running pdal info \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_filterpoints/point_cloud.ply\" > \"/tmp/tmp1zejyoml.json\"",
+                    "type": "info"
+                },
+                {
+                    "message": "Point cloud bounds are [minx: -170.1693878, maxx: 166.8646851] [miny: -110.7289276, maxy: 121.7792892]",
+                    "type": "info"
+                },
+                {
+                    "message": "DEM resolution is (315, 456), max tile size is 4096, will split DEM generation into 1 tiles",
+                    "type": "info"
+                },
+                {
+                    "message": "Generating /var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_meshing/tmp/mesh_dsm_r1.0470837215810398_x0_y0.tif (max, radius: 1.0470837215810398, resolution: 0.7404000000000001)",
+                    "type": "info"
+                },
+                {
+                    "message": "Generating /var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_meshing/tmp/mesh_dsm_r0.5235418607905199_x0_y0.tif (max, radius: 0.5235418607905199, resolution: 0.7404000000000001)",
+                    "type": "info"
+                },
+                {
+                    "message": "Generating /var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_meshing/tmp/mesh_dsm_r0.26177093039525995_x0_y0.tif (max, radius: 0.26177093039525995, resolution: 0.7404000000000001)",
+                    "type": "info"
+                },
+                {
+                    "message": "running pdal pipeline -i /tmp/tmpn6556ezk.json > /dev/null 2>&1",
+                    "type": "info"
+                },
+                {
+                    "message": "running pdal pipeline -i /tmp/tmpjx8c5u0w.json > /dev/null 2>&1",
+                    "type": "info"
+                },
+                {
+                    "message": "running pdal pipeline -i /tmp/tmp_crg44oj.json > /dev/null 2>&1",
+                    "type": "info"
+                },
+                {
+                    "message": "running gdalbuildvrt -input_file_list \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_meshing/tmp/tiles_list.txt\" \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_meshing/tmp/tiles.vrt\" ",
+                    "type": "info"
+                },
+                {
+                    "message": "running gdal_translate -co NUM_THREADS=16 -co BIGTIFF=IF_SAFER --config GDAL_CACHEMAX 29.5% \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_meshing/tmp/tiles.vrt\" \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_meshing/tmp/tiles.tmp.tif\"",
+                    "type": "info"
+                },
+                {
+                    "message": "running gdal_translate -co NUM_THREADS=16 -co BIGTIFF=IF_SAFER --config GDAL_CACHEMAX 29.5% -outsize 10% 0 \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_meshing/tmp/tiles.tmp.tif\" \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_meshing/tmp/tiles.small.tif\"",
+                    "type": "info"
+                },
+                {
+                    "message": "running gdalbuildvrt -resolution highest -r bilinear \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_meshing/tmp/merged.vrt\" \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_meshing/tmp/tiles.small_filled.tif\" \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_meshing/tmp/tiles.tmp.tif\"",
+                    "type": "info"
+                },
+                {
+                    "message": "running gdal_translate -co NUM_THREADS=16 -co TILED=YES -co BIGTIFF=IF_SAFER -co COMPRESS=DEFLATE --config GDAL_CACHEMAX 29.5% \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_meshing/tmp/merged.vrt\" \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_meshing/tmp/tiles.tif\"",
+                    "type": "info"
+                },
+                {
+                    "message": "Starting smoothing...",
+                    "type": "info"
+                },
+                {
+                    "message": "Smoothing iteration 1",
+                    "type": "info"
+                },
+                {
+                    "message": "Completed smoothing to create /var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_meshing/tmp/mesh_dsm.tif in 0:00:00.136192",
+                    "type": "info"
+                },
+                {
+                    "message": "Completed mesh_dsm.tif in 0:00:00.939598",
+                    "type": "info"
+                },
+                {
+                    "message": "Sampling points from DSM: /var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_meshing/tmp/mesh_dsm.tif",
+                    "type": "info"
+                },
+                {
+                    "message": "running \"/code/SuperBuild/install/bin/dem2points\" -inputFile \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_meshing/tmp/mesh_dsm.tif\" -outputFile \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_meshing/tmp/dsm_points.ply\" -skirtHeightThreshold 1.5 -skirtIncrements 0.2 -skirtHeightCap 100   ",
+                    "type": "info"
+                },
+                {
+                    "message": "running \"/code/SuperBuild/install/bin/PoissonRecon\" --in \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_meshing/tmp/dsm_points.ply\" --out \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_meshing/odm_25dmesh.dirty.ply\" --depth 11 --pointWeight 4 --samplesPerNode 1.0 --threads 15 --bType 2 --linearFit ",
+                    "type": "info"
+                },
+                {
+                    "message": "running \"/code/SuperBuild/install/bin/OpenMVS/ReconstructMesh\" -i \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_meshing/odm_25dmesh.dirty.ply\" -o \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_meshing/odm_25dmesh.ply\" --remove-spikes 0 --remove-spurious 20 --smooth 0 --target-face-num 400000 -v 0",
+                    "type": "info"
+                },
+                {
+                    "message": "Finished odm_meshing stage",
+                    "type": "info"
+                }
+            ]
+        },
+        {
+            "name": "mvs_texturing",
+            "startTime": "2022-09-16T13:05:25.485065",
+            "messages": [
+                {
+                    "message": "Running mvs_texturing stage",
+                    "type": "info"
+                },
+                {
+                    "message": "Writing MVS Textured file in: /var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_texturing_25d/odm_textured_model_geo.obj",
+                    "type": "info"
+                },
+                {
+                    "message": "running \"/code/SuperBuild/install/bin/texrecon\" \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/opensfm/undistorted/reconstruction.nvm\" \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_meshing/odm_25dmesh.ply\" \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_texturing_25d/odm_textured_model_geo\" -d gmi -o gauss_clamping -t none --no_intermediate_results    --nadir_mode  --max_texture_size=8192 ",
+                    "type": "info"
+                },
+                {
+                    "message": "Finished mvs_texturing stage",
+                    "type": "info"
+                }
+            ]
+        },
+        {
+            "name": "odm_georeferencing",
+            "startTime": "2022-09-16T13:06:06.714118",
+            "messages": [
+                {
+                    "message": "Running odm_georeferencing stage",
+                    "type": "info"
+                },
+                {
+                    "message": "Georeferencing point cloud",
+                    "type": "info"
+                },
+                {
+                    "message": "running pdal translate -i \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_filterpoints/point_cloud.ply\" -o \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_georeferencing/odm_georeferenced_model.laz\" ferry transformation --filters.ferry.dimensions=\"views => UserData\" --writers.las.compression=\"lazip\" --filters.transformation.matrix=\"1 0 0 363001.0 0 1 0 5715494.0 0 0 1 0 0 0 0 1\" --writers.las.offset_x=363001.0 --writers.las.offset_y=5715494.0 --writers.las.scale_x=0.001 --writers.las.scale_y=0.001 --writers.las.scale_z=0.001 --writers.las.offset_z=0 --writers.las.a_srs=\"+proj=utm +zone=32 +datum=WGS84 +units=m +no_defs +type=crs\"",
+                    "type": "info"
+                },
+                {
+                    "message": "Calculating cropping area and generating bounds shapefile from point cloud",
+                    "type": "info"
+                },
+                {
+                    "message": "running pdal translate -i \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_georeferencing/odm_georeferenced_model.laz\" -o \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_georeferencing/odm_georeferenced_model.decimated.las\" decimation --filters.decimation.step=4 ",
+                    "type": "info"
+                },
+                {
+                    "message": "running pdal info --boundary --filters.hexbin.edge_size=1 --filters.hexbin.threshold=0 \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_georeferencing/odm_georeferenced_model.decimated.las\" > \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_georeferencing/odm_georeferenced_model.boundary.json\"",
+                    "type": "info"
+                },
+                {
+                    "message": "running pdal info --summary \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_georeferencing/odm_georeferenced_model.laz\" > \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_georeferencing/odm_georeferenced_model.summary.json\"",
+                    "type": "info"
+                },
+                {
+                    "message": "running ogr2ogr -overwrite -f GPKG -a_srs \"+proj=utm +zone=32 +datum=WGS84 +units=m +no_defs\" /var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_georeferencing/odm_georeferenced_model.bounds.gpkg /var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_georeferencing/odm_georeferenced_model.bounds.geojson",
+                    "type": "info"
+                },
+                {
+                    "message": "Creating Entwine Point Tile output",
+                    "type": "info"
+                },
+                {
+                    "message": "running entwine build --threads 16 --tmp \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/entwine_pointcloud-tmp\" -i /var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_georeferencing/odm_georeferenced_model.laz -o \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/entwine_pointcloud\"",
+                    "type": "info"
+                },
+                {
+                    "message": "Finished odm_georeferencing stage",
+                    "type": "info"
+                }
+            ]
+        },
+        {
+            "name": "odm_dem",
+            "startTime": "2022-09-16T13:06:08.254864",
+            "messages": [
+                {
+                    "message": "Running odm_dem stage",
+                    "type": "info"
+                },
+                {
+                    "message": "Classify: False",
+                    "type": "info"
+                },
+                {
+                    "message": "Create DSM: True",
+                    "type": "info"
+                },
+                {
+                    "message": "Create DTM: False",
+                    "type": "info"
+                },
+                {
+                    "message": "DEM input file /var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_georeferencing/odm_georeferenced_model.laz found: True",
+                    "type": "info"
+                },
+                {
+                    "message": "running pdal info --summary \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_georeferencing/odm_georeferenced_model.laz\" > \"/tmp/tmpgwy32c9h.json\"",
+                    "type": "info"
+                },
+                {
+                    "message": "Point cloud bounds are [minx: 362830.8306, maxx: 363167.8647] [miny: 5715383.271, maxy: 5715615.779]",
+                    "type": "info"
+                },
+                {
+                    "message": "DEM resolution is (4651, 6741), max tile size is 4096, will split DEM generation into 1 tiles",
+                    "type": "info"
+                },
+                {
+                    "message": "Generating /var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_dem/dsm_r0.1_x0_y0.tif (max, radius: 0.1, resolution: 0.05)",
+                    "type": "info"
+                },
+                {
+                    "message": "Generating /var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_dem/dsm_r0.05_x0_y0.tif (max, radius: 0.05, resolution: 0.05)",
+                    "type": "info"
+                },
+                {
+                    "message": "Generating /var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_dem/dsm_r0.025_x0_y0.tif (max, radius: 0.025, resolution: 0.05)",
+                    "type": "info"
+                },
+                {
+                    "message": "running pdal pipeline -i /tmp/tmpo6n_426g.json > /dev/null 2>&1",
+                    "type": "info"
+                },
+                {
+                    "message": "running pdal pipeline -i /tmp/tmprluo13bs.json > /dev/null 2>&1",
+                    "type": "info"
+                },
+                {
+                    "message": "running pdal pipeline -i /tmp/tmp8506fkhj.json > /dev/null 2>&1",
+                    "type": "info"
+                },
+                {
+                    "message": "running gdalbuildvrt -input_file_list \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_dem/tiles_list.txt\" \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_dem/tiles.vrt\" ",
+                    "type": "info"
+                },
+                {
+                    "message": "running gdal_translate -co NUM_THREADS=16 -co BIGTIFF=IF_SAFER --config GDAL_CACHEMAX 29.55% \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_dem/tiles.vrt\" \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_dem/tiles.tmp.tif\"",
+                    "type": "info"
+                },
+                {
+                    "message": "running gdal_translate -co NUM_THREADS=16 -co BIGTIFF=IF_SAFER --config GDAL_CACHEMAX 29.55% -outsize 10% 0 \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_dem/tiles.tmp.tif\" \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_dem/tiles.small.tif\"",
+                    "type": "info"
+                },
+                {
+                    "message": "running gdalbuildvrt -resolution highest -r bilinear \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_dem/merged.vrt\" \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_dem/tiles.small_filled.tif\" \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_dem/tiles.tmp.tif\"",
+                    "type": "info"
+                },
+                {
+                    "message": "running gdal_translate -co NUM_THREADS=16 -co TILED=YES -co BIGTIFF=IF_SAFER -co COMPRESS=DEFLATE --config GDAL_CACHEMAX 29.55% \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_dem/merged.vrt\" \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_dem/tiles.tif\"",
+                    "type": "info"
+                },
+                {
+                    "message": "Starting smoothing...",
+                    "type": "info"
+                },
+                {
+                    "message": "Smoothing iteration 1",
+                    "type": "info"
+                },
+                {
+                    "message": "Completed smoothing to create /var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_dem/dsm.tif in 0:00:28.312141",
+                    "type": "info"
+                },
+                {
+                    "message": "Completed dsm.tif in 0:00:30.668591",
+                    "type": "info"
+                },
+                {
+                    "message": "Cropping /var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_dem/dsm.tif",
+                    "type": "info"
+                },
+                {
+                    "message": "running gdalwarp -cutline /var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_georeferencing/odm_georeferenced_model.bounds.gpkg -crop_to_cutline -co TILED=YES -co COMPRESS=DEFLATE -co BLOCKXSIZE=512 -co BLOCKYSIZE=512 -co BIGTIFF=IF_SAFER -co NUM_THREADS=16  /var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_dem/dsm.original.tif /var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_dem/dsm.tif --config GDAL_CACHEMAX 29.5%",
+                    "type": "info"
+                },
+                {
+                    "message": "Optimizing /var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_dem/dsm.tif as Cloud Optimized GeoTIFF",
+                    "type": "info"
+                },
+                {
+                    "message": "running gdal_translate -of COG -co NUM_THREADS=16 -co BLOCKSIZE=256 -co COMPRESS=DEFLATE -co PREDICTOR=2 -co BIGTIFF=IF_SAFER -co RESAMPLING=NEAREST --config GDAL_CACHEMAX 29.5% --config GDAL_NUM_THREADS 16 \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_dem/dsm.tif\" \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_dem/dsm_cogeo.tif\" ",
+                    "type": "info"
+                },
+                {
+                    "message": "Finished odm_dem stage",
+                    "type": "info"
+                }
+            ]
+        },
+        {
+            "name": "odm_orthophoto",
+            "startTime": "2022-09-16T13:06:40.969817",
+            "messages": [
+                {
+                    "message": "Running odm_orthophoto stage",
+                    "type": "info"
+                },
+                {
+                    "message": "running \"/code/SuperBuild/install/bin/odm_orthophoto\" -inputFiles /var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_texturing_25d/odm_textured_model_geo.obj -logFile \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_orthophoto/odm_orthophoto_log.txt\" -outputFile \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_orthophoto/odm_orthophoto_render.tif\" -resolution 20.0  -outputCornerFile \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_orthophoto/odm_orthophoto_corners.txt\" ",
+                    "type": "info"
+                },
+                {
+                    "message": "Creating GeoTIFF",
+                    "type": "info"
+                },
+                {
+                    "message": "running gdal_translate -a_ullr 362829.984085083 5715624.540542603 363168.26834106445 5715379.762466431 -co TILED=YES -co COMPRESS=DEFLATE -co PREDICTOR=2 -co BIGTIFF=IF_SAFER -co BLOCKXSIZE=512 -co BLOCKYSIZE=512 -co NUM_THREADS=16 -a_srs \"+proj=utm +zone=32 +datum=WGS84 +units=m +no_defs +type=crs\" --config GDAL_CACHEMAX 29.5% --config GDAL_TIFF_INTERNAL_MASK YES \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_orthophoto/odm_orthophoto_render.tif\" \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_orthophoto/odm_orthophoto.tif\" > \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_orthophoto/gdal_translate_log.txt\"",
+                    "type": "info"
+                },
+                {
+                    "message": "Cropping /var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_orthophoto/odm_orthophoto.tif",
+                    "type": "info"
+                },
+                {
+                    "message": "running gdalwarp -cutline /var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_georeferencing/odm_georeferenced_model.bounds.gpkg -crop_to_cutline -co TILED=YES -co COMPRESS=DEFLATE -co PREDICTOR=2 -co BIGTIFF=IF_SAFER -co BLOCKXSIZE=512 -co BLOCKYSIZE=512 -co NUM_THREADS=16 -dstalpha /var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_orthophoto/odm_orthophoto.original.tif /var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_orthophoto/odm_orthophoto.tif --config GDAL_CACHEMAX 29.45%",
+                    "type": "info"
+                },
+                {
+                    "message": "Optimizing /var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_orthophoto/odm_orthophoto.tif as Cloud Optimized GeoTIFF",
+                    "type": "info"
+                },
+                {
+                    "message": "running gdal_translate -of COG -co NUM_THREADS=16 -co BLOCKSIZE=256 -co COMPRESS=DEFLATE -co PREDICTOR=2 -co BIGTIFF=IF_SAFER -co RESAMPLING=NEAREST --config GDAL_CACHEMAX 29.4% --config GDAL_NUM_THREADS 16 \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_orthophoto/odm_orthophoto.tif\" \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_orthophoto/odm_orthophoto_cogeo.tif\" ",
+                    "type": "info"
+                },
+                {
+                    "message": "Finished odm_orthophoto stage",
+                    "type": "info"
+                }
+            ]
+        },
+        {
+            "name": "odm_report",
+            "startTime": "2022-09-16T13:07:04.187492",
+            "messages": [
+                {
+                    "message": "Running odm_report stage",
+                    "type": "info"
+                },
+                {
+                    "message": "Exporting shots.geojson",
+                    "type": "info"
+                },
+                {
+                    "message": "Wrote /var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_report/shots.geojson",
+                    "type": "info"
+                },
+                {
+                    "message": "running pdal info --dimensions \"X,Y,Z\" \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_georeferencing/odm_georeferenced_model.laz\" > \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_georeferencing/odm_georeferenced_model.info.json\"",
+                    "type": "info"
+                },
+                {
+                    "message": "running pdal translate -i \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_georeferencing/odm_georeferenced_model.laz\" -o \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/opensfm/stats/overlap.tif\" --writer gdal --writers.gdal.resolution=0.24073857142856078 --writers.gdal.data_type=uint8_t --writers.gdal.dimension=UserData --writers.gdal.output_type=max --writers.gdal.radius=3.4045575270059474 ",
+                    "type": "info"
+                },
+                {
+                    "message": "Cropping /var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/opensfm/stats/overlap.tif",
+                    "type": "info"
+                },
+                {
+                    "message": "running gdalwarp -cutline /var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_georeferencing/odm_georeferenced_model.bounds.gpkg -crop_to_cutline -co TILED=YES -co COMPRESS=DEFLATE -co PREDICTOR=2 -co BIGTIFF=IF_SAFER -co BLOCKXSIZE=512 -co BLOCKYSIZE=512 -co NUM_THREADS=16  /var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/opensfm/stats/overlap.original.tif /var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/opensfm/stats/overlap.tif --config GDAL_CACHEMAX 29.45%",
+                    "type": "info"
+                },
+                {
+                    "message": "running gdaldem color-relief \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/opensfm/stats/overlap.tif\" \"/code/opendm/report/overlap_color_map.txt\" \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/opensfm/stats/overlap.png\" -of PNG -alpha",
+                    "type": "info"
+                },
+                {
+                    "message": "running gdal_translate -of png \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_orthophoto/odm_orthophoto.tif\" \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/opensfm/stats/ortho.png\" -outsize 1400 0  --config GDAL_CACHEMAX 29.45% ",
+                    "type": "info"
+                },
+                {
+                    "message": "running gdal_translate -outsize 1400 0 \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_dem/dsm.tif\" \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_dem/dsm.preview.tif\" --config GDAL_CACHEMAX 29.45%",
+                    "type": "info"
+                },
+                {
+                    "message": "Computing raster stats for /var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_dem/dsm.preview.tif",
+                    "type": "info"
+                },
+                {
+                    "message": "running gdaldem color-relief \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_dem/dsm.preview.tif\" \"/code/opendm/tiles/color_relief.txt\" \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_dem/dsm.previewcolor.tif\" -alpha -co ALPHA=YES",
+                    "type": "info"
+                },
+                {
+                    "message": "running gdaldem hillshade \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_dem/dsm.preview.tif\" \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_dem/dsm.previewhillshade.tif\" -z 1.0 -s 1.0 -az 315.0 -alt 45.0",
+                    "type": "info"
+                },
+                {
+                    "message": "running /usr/bin/python3 \"/code/opendm/tiles/hsv_merge.py\" \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_dem/dsm.previewcolor.tif\" \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_dem/dsm.previewhillshade.tif\" \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_dem/dsm.previewcolored_hillshade.tif\"",
+                    "type": "info"
+                },
+                {
+                    "message": "running gdal_translate -outsize 1400 0 -of png \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_dem/dsm.previewcolored_hillshade.tif\" \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/opensfm/stats/dsm.png\" --config GDAL_CACHEMAX 29.45%",
+                    "type": "info"
+                },
+                {
+                    "message": "Exporting report to /var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_report/report.pdf",
+                    "type": "info"
+                },
+                {
+                    "message": "Finished odm_report stage",
+                    "type": "info"
+                }
+            ]
+        },
+        {
+            "name": "odm_postprocess",
+            "startTime": "2022-09-16T13:07:09.905237",
+            "messages": [
+                {
+                    "message": "Running odm_postprocess stage",
+                    "type": "info"
+                },
+                {
+                    "message": "Post Processing",
+                    "type": "info"
+                },
+                {
+                    "message": "Finished odm_postprocess stage",
+                    "type": "info"
+                },
+                {
+                    "message": "No more stages to run",
+                    "type": "info"
+                }
+            ],
+            "endTime": "2022-09-16T13:07:09.905301",
+            "totalTime": 0.0
+        }
+    ],
+    "processes": [
+        {
+            "command": "\"/code/SuperBuild/install/bin/opensfm/bin/opensfm\" detect_features \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/opensfm\"",
+            "exitCode": 0,
+            "output": [
+                "2022-09-16 13:03:14,277 DEBUG: Computing sift with threshold 0.00015072144519439704",
+                "2022-09-16 13:03:14,289 DEBUG: Found 1229 points in 0.012624025344848633s",
+                "2022-09-16 13:03:14,289 DEBUG: reducing threshold",
+                "2022-09-16 13:03:14,289 DEBUG: Computing sift with threshold 0.00010048096346293136",
+                "2022-09-16 13:03:14,302 DEBUG: Found 1229 points in 0.01267862319946289s",
+                "2022-09-16 13:03:14,302 DEBUG: reducing threshold",
+                "2022-09-16 13:03:14,302 DEBUG: Computing sift with threshold 6.698730897528758e-05",
+                "2022-09-16 13:03:14,315 DEBUG: Found 1229 points in 0.012709379196166992s",
+                "2022-09-16 13:03:14,315 DEBUG: done",
+                "2022-09-16 13:03:14,351 DEBUG: No segmentation for DJI_0972.JPG, no features masked."
+            ]
+        },
+        {
+            "command": "\"/code/SuperBuild/install/bin/opensfm/bin/opensfm\" match_features \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/opensfm\"",
+            "exitCode": 0,
+            "output": [
+                "2022-09-16 13:03:17,347 DEBUG: Matching DJI_0978.JPG and DJI_0988.JPG.  Matcher: FLANN (symmetric) T-desc: 0.016 T-robust: 0.001 T-total: 0.017 Matches: 68 Robust: 62 Success: True",
+                "2022-09-16 13:03:17,348 DEBUG: Matching DJI_0766.JPG and DJI_0772.JPG.  Matcher: FLANN (symmetric) T-desc: 0.020 T-robust: 0.001 T-total: 0.022 Matches: 248 Robust: 243 Success: True",
+                "2022-09-16 13:03:17,348 DEBUG: Matching DJI_0834.JPG and DJI_0918.JPG.  Matcher: FLANN (symmetric) T-desc: 0.007 T-robust: 0.001 T-total: 0.009 Matches: 29 Robust: 29 Success: True",
+                "2022-09-16 13:03:17,350 DEBUG: Matching DJI_0764.JPG and DJI_0768.JPG.  Matcher: FLANN (symmetric) T-desc: 0.016 T-robust: 0.001 T-total: 0.017 Matches: 296 Robust: 291 Success: True",
+                "2022-09-16 13:03:17,350 DEBUG: Matching DJI_0684.JPG and DJI_0686.JPG.  Matcher: FLANN (symmetric) T-desc: 0.014 T-robust: 0.003 T-total: 0.017 Matches: 228 Robust: 206 Success: True",
+                "2022-09-16 13:03:17,352 DEBUG: Matching DJI_0776.JPG and DJI_0762.JPG.  Matcher: FLANN (symmetric) T-desc: 0.015 T-robust: 0.000 T-total: 0.016 Matches: 160 Robust: 144 Success: True",
+                "2022-09-16 13:03:17,352 DEBUG: Matching DJI_0970.JPG and DJI_0888.JPG.  Matcher: FLANN (symmetric) T-desc: 0.021 T-robust: 0.000 T-total: 0.021 Matches: 23 Robust: 18 Success: False",
+                "2022-09-16 13:03:17,352 DEBUG: Matching DJI_0998.JPG and DJI_0960.JPG.  Matcher: FLANN (symmetric) T-desc: 0.014 Matches: FAILED",
+                "2022-09-16 13:03:17,356 DEBUG: Matching DJI_0854.JPG and DJI_0784.JPG.  Matcher: FLANN (symmetric) T-desc: 0.016 T-robust: 0.000 T-total: 0.017 Matches: 36 Robust: 28 Success: True",
+                "2022-09-16 13:03:17,359 INFO: Matched 2007 pairs (brown-brown: 2007) in 2.345962576997408 seconds (0.0011688903672145742 seconds/pair)."
+            ]
+        },
+        {
+            "command": "\"/code/SuperBuild/install/bin/opensfm/bin/opensfm\" create_tracks \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/opensfm\"",
+            "exitCode": 0,
+            "output": [
+                "2022-09-16 13:03:18,760 INFO: reading features",
+                "2022-09-16 13:03:19,362 DEBUG: Merging features onto tracks",
+                "2022-09-16 13:03:19,841 DEBUG: Good tracks: 22371"
+            ]
+        },
+        {
+            "command": "\"/code/SuperBuild/install/bin/opensfm/bin/opensfm\" reconstruct \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/opensfm\"",
+            "exitCode": 0,
+            "output": [
+                "2022-09-16 13:04:18,837 INFO: Adding DJI_0752.JPG to the reconstruction",
+                "2022-09-16 13:04:18,847 INFO: -------------------------------------------------------",
+                "2022-09-16 13:04:18,855 INFO: DJI_0754.JPG resection inliers: 39 / 56",
+                "2022-09-16 13:04:18,855 INFO: Adding DJI_0754.JPG to the reconstruction",
+                "2022-09-16 13:04:18,866 INFO: -------------------------------------------------------",
+                "2022-09-16 13:04:18,866 WARNING: Cannot align on GCPs only, GPS bias won't be compensated.",
+                "2022-09-16 13:04:22,963 DEBUG: Ceres Solver Report: Iterations: 55, Initial cost: 8.211791e+03, Final cost: 2.518725e+02, Termination: CONVERGENCE",
+                "2022-09-16 13:04:23,149 INFO: Removed outliers: 38",
+                "2022-09-16 13:04:23,253 INFO: Reconstruction 0: 190 images, 22029 points",
+                "2022-09-16 13:04:23,253 INFO: 1 partial reconstructions in total."
+            ]
+        },
+        {
+            "command": "\"/code/SuperBuild/install/bin/opensfm/bin/opensfm\" compute_statistics --diagram_max_points 100000 \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/opensfm\"",
+            "exitCode": 0,
+            "output": [
+                "2022-09-16 13:04:27,150 DEBUG: locator: <matplotlib.colorbar._ColorbarAutoLocator object at 0x7f728fc2cdc0>",
+                "2022-09-16 13:04:27,150 DEBUG: Using auto colorbar locator <matplotlib.colorbar._ColorbarAutoLocator object at 0x7f728fc2cdc0> on colorbar",
+                "2022-09-16 13:04:27,150 DEBUG: Setting pcolormesh",
+                "2022-09-16 13:04:28,472 DEBUG: locator: <matplotlib.colorbar._ColorbarAutoLocator object at 0x7f729134f6d0>",
+                "2022-09-16 13:04:28,472 DEBUG: Using auto colorbar locator <matplotlib.colorbar._ColorbarAutoLocator object at 0x7f729134f6d0> on colorbar",
+                "2022-09-16 13:04:28,472 DEBUG: Setting pcolormesh"
+            ]
+        },
+        {
+            "command": "\"/code/SuperBuild/install/bin/opensfm/bin/opensfm\" export_geocoords --reconstruction --proj \"+proj=utm +zone=32 +datum=WGS84 +units=m +no_defs +type=crs\" --offset-x 363001.0 --offset-y 5715494.0 \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/opensfm\"",
+            "exitCode": 0
+        },
+        {
+            "command": "\"/code/SuperBuild/install/bin/opensfm/bin/opensfm\" export_visualsfm --points \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/opensfm\"",
+            "exitCode": 0
+        },
+        {
+            "command": "\"/code/SuperBuild/install/bin/opensfm/bin/opensfm\" export_ply --no-cameras --point-num-views \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/opensfm\"",
+            "exitCode": 0
+        },
+        {
+            "command": "\"/code/SuperBuild/install/bin/FPCFilter\" --input \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/opensfm/reconstruction.ply\" --output \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_filterpoints/point_cloud.ply\" --concurrency 16  --meank 16 --std 2.5",
+            "exitCode": 0,
+            "output": [
+                "-> Statistical filtering",
+                "",
+                "?> Done in 0.03461s",
+                "",
+                "-> Writing output",
+                "",
+                "?> Done in 0.002353s",
+                "",
+                "?> Pipeline done in 0.03704s",
+                ""
+            ]
+        },
+        {
+            "command": "pdal info \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_filterpoints/point_cloud.ply\" > \"/tmp/tmp1zejyoml.json\"",
+            "exitCode": 0
+        },
+        {
+            "command": "pdal pipeline -i /tmp/tmpn6556ezk.json > /dev/null 2>&1",
+            "exitCode": 0
+        },
+        {
+            "command": "pdal pipeline -i /tmp/tmpjx8c5u0w.json > /dev/null 2>&1",
+            "exitCode": 0
+        },
+        {
+            "command": "pdal pipeline -i /tmp/tmp_crg44oj.json > /dev/null 2>&1",
+            "exitCode": 0
+        },
+        {
+            "command": "gdalbuildvrt -input_file_list \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_meshing/tmp/tiles_list.txt\" \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_meshing/tmp/tiles.vrt\" ",
+            "exitCode": 0,
+            "output": [
+                "0...10...20...30...40...50...60...70...80...90...100 - done."
+            ]
+        },
+        {
+            "command": "gdal_translate -co NUM_THREADS=16 -co BIGTIFF=IF_SAFER --config GDAL_CACHEMAX 29.5% \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_meshing/tmp/tiles.vrt\" \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_meshing/tmp/tiles.tmp.tif\"",
+            "exitCode": 0,
+            "output": [
+                "Input file size is 456, 315",
+                "0...10...20...30...40...50...60...70...80...90...100 - done."
+            ]
+        },
+        {
+            "command": "gdal_translate -co NUM_THREADS=16 -co BIGTIFF=IF_SAFER --config GDAL_CACHEMAX 29.5% -outsize 10% 0 \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_meshing/tmp/tiles.tmp.tif\" \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_meshing/tmp/tiles.small.tif\"",
+            "exitCode": 0,
+            "output": [
+                "Input file size is 456, 315",
+                "0...10...20...30...40...50...60...70...80...90...100 - done."
+            ]
+        },
+        {
+            "command": "gdalbuildvrt -resolution highest -r bilinear \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_meshing/tmp/merged.vrt\" \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_meshing/tmp/tiles.small_filled.tif\" \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_meshing/tmp/tiles.tmp.tif\"",
+            "exitCode": 0,
+            "output": [
+                "0...10...20...30...40...50...60...70...80...90...100 - done."
+            ]
+        },
+        {
+            "command": "gdal_translate -co NUM_THREADS=16 -co TILED=YES -co BIGTIFF=IF_SAFER -co COMPRESS=DEFLATE --config GDAL_CACHEMAX 29.5% \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_meshing/tmp/merged.vrt\" \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_meshing/tmp/tiles.tif\"",
+            "exitCode": 0,
+            "output": [
+                "Input file size is 456, 315",
+                "0...10...20...30...40...50...60...70...80...90...100 - done."
+            ]
+        },
+        {
+            "command": "\"/code/SuperBuild/install/bin/dem2points\" -inputFile \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_meshing/tmp/mesh_dsm.tif\" -outputFile \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_meshing/tmp/dsm_points.ply\" -skirtHeightThreshold 1.5 -skirtIncrements 0.2 -skirtHeightCap 100   ",
+            "exitCode": 0
+        },
+        {
+            "command": "\"/code/SuperBuild/install/bin/PoissonRecon\" --in \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_meshing/tmp/dsm_points.ply\" --out \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_meshing/odm_25dmesh.dirty.ply\" --depth 11 --pointWeight 4 --samplesPerNode 1.0 --threads 15 --bType 2 --linearFit ",
+            "exitCode": 0
+        },
+        {
+            "command": "\"/code/SuperBuild/install/bin/OpenMVS/ReconstructMesh\" -i \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_meshing/odm_25dmesh.dirty.ply\" -o \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_meshing/odm_25dmesh.ply\" --remove-spikes 0 --remove-spurious 20 --smooth 0 --target-face-num 400000 -v 0",
+            "exitCode": 0,
+            "output": [
+                "Decimated faces 425386 (82.93%, 1s, ETA 394ms)...",
+                "Decimated faces 447652 (87.27%, 2s, ETA 294ms)...",
+                "Decimated faces 469096 (91.45%, 2s, ETA 197ms)...",
+                "Decimated faces 490314 (95.59%, 2s, ETA 102ms)...",
+                "Decimated faces 510808 (99.58%, 2s, ETA 9ms)...",
+                "Decimated faces 512956 (100%, 2s327ms)",
+                "13:05:25 [App     ] MEMORYINFO: {",
+                "13:05:25 [App     ] \tVmPeak:\t  342440 kB",
+                "13:05:25 [App     ] \tVmSize:\t  152672 kB",
+                "13:05:25 [App     ] } ENDINFO"
+            ]
+        },
+        {
+            "command": "\"/code/SuperBuild/install/bin/texrecon\" \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/opensfm/undistorted/reconstruction.nvm\" \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_meshing/odm_25dmesh.ply\" \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_texturing_25d/odm_textured_model_geo\" -d gmi -o gauss_clamping -t none --no_intermediate_results    --nadir_mode  --max_texture_size=8192 ",
+            "exitCode": 0,
+            "output": [
+                "",
+                "Blending texture patches 100%... done. (Took 6.585s)",
+                "Generating texture atlases:",
+                "Sorting texture patches... done.",
+                "",
+                "Working on atlas 9 100%... done.",
+                "Finalizing texture atlases... done. (Took: 0s)",
+                "Building objmodel:",
+                "Saving model... done.",
+                "Whole texturing procedure took: 41.076s"
+            ]
+        },
+        {
+            "command": "pdal translate -i \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_filterpoints/point_cloud.ply\" -o \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_georeferencing/odm_georeferenced_model.laz\" ferry transformation --filters.ferry.dimensions=\"views => UserData\" --writers.las.compression=\"lazip\" --filters.transformation.matrix=\"1 0 0 363001.0 0 1 0 5715494.0 0 0 1 0 0 0 0 1\" --writers.las.offset_x=363001.0 --writers.las.offset_y=5715494.0 --writers.las.scale_x=0.001 --writers.las.scale_y=0.001 --writers.las.scale_z=0.001 --writers.las.offset_z=0 --writers.las.a_srs=\"+proj=utm +zone=32 +datum=WGS84 +units=m +no_defs +type=crs\"",
+            "exitCode": 0
+        },
+        {
+            "command": "pdal translate -i \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_georeferencing/odm_georeferenced_model.laz\" -o \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_georeferencing/odm_georeferenced_model.decimated.las\" decimation --filters.decimation.step=4 ",
+            "exitCode": 0
+        },
+        {
+            "command": "pdal info --boundary --filters.hexbin.edge_size=1 --filters.hexbin.threshold=0 \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_georeferencing/odm_georeferenced_model.decimated.las\" > \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_georeferencing/odm_georeferenced_model.boundary.json\"",
+            "exitCode": 0
+        },
+        {
+            "command": "pdal info --summary \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_georeferencing/odm_georeferenced_model.laz\" > \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_georeferencing/odm_georeferenced_model.summary.json\"",
+            "exitCode": 0
+        },
+        {
+            "command": "ogr2ogr -overwrite -f GPKG -a_srs \"+proj=utm +zone=32 +datum=WGS84 +units=m +no_defs\" /var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_georeferencing/odm_georeferenced_model.bounds.gpkg /var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_georeferencing/odm_georeferenced_model.bounds.geojson",
+            "exitCode": 0
+        },
+        {
+            "command": "entwine build --threads 16 --tmp \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/entwine_pointcloud-tmp\" -i /var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_georeferencing/odm_georeferenced_model.laz -o \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/entwine_pointcloud\"",
+            "exitCode": 0,
+            "output": [
+                "Points: 21,476",
+                "Bounds: [(362830, 5715383, 58), (363168, 5715616, 84)]",
+                "Scale: 0.001",
+                "SRS: EPSG:32632",
+                "",
+                "Adding 0 - /var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_georeferencing/odm_georeferenced_model.laz",
+                "Joining",
+                "Done 0",
+                "Saving",
+                "Wrote 21,476 points."
+            ]
+        },
+        {
+            "command": "pdal info --summary \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_georeferencing/odm_georeferenced_model.laz\" > \"/tmp/tmpgwy32c9h.json\"",
+            "exitCode": 0
+        },
+        {
+            "command": "pdal pipeline -i /tmp/tmpo6n_426g.json > /dev/null 2>&1",
+            "exitCode": 0
+        },
+        {
+            "command": "pdal pipeline -i /tmp/tmprluo13bs.json > /dev/null 2>&1",
+            "exitCode": 0
+        },
+        {
+            "command": "pdal pipeline -i /tmp/tmp8506fkhj.json > /dev/null 2>&1",
+            "exitCode": 0
+        },
+        {
+            "command": "gdalbuildvrt -input_file_list \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_dem/tiles_list.txt\" \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_dem/tiles.vrt\" ",
+            "exitCode": 0,
+            "output": [
+                "0...10...20...30...40...50...60...70...80...90...100 - done."
+            ]
+        },
+        {
+            "command": "gdal_translate -co NUM_THREADS=16 -co BIGTIFF=IF_SAFER --config GDAL_CACHEMAX 29.55% \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_dem/tiles.vrt\" \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_dem/tiles.tmp.tif\"",
+            "exitCode": 0,
+            "output": [
+                "Input file size is 6741, 4651",
+                "0...10...20...30...40...50...60...70...80...90...100 - done."
+            ]
+        },
+        {
+            "command": "gdal_translate -co NUM_THREADS=16 -co BIGTIFF=IF_SAFER --config GDAL_CACHEMAX 29.55% -outsize 10% 0 \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_dem/tiles.tmp.tif\" \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_dem/tiles.small.tif\"",
+            "exitCode": 0,
+            "output": [
+                "Input file size is 6741, 4651",
+                "0...10...20...30...40...50...60...70...80...90...100 - done."
+            ]
+        },
+        {
+            "command": "gdalbuildvrt -resolution highest -r bilinear \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_dem/merged.vrt\" \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_dem/tiles.small_filled.tif\" \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_dem/tiles.tmp.tif\"",
+            "exitCode": 0,
+            "output": [
+                "0...10...20...30...40...50...60...70...80...90...100 - done."
+            ]
+        },
+        {
+            "command": "gdal_translate -co NUM_THREADS=16 -co TILED=YES -co BIGTIFF=IF_SAFER -co COMPRESS=DEFLATE --config GDAL_CACHEMAX 29.55% \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_dem/merged.vrt\" \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_dem/tiles.tif\"",
+            "exitCode": 0,
+            "output": [
+                "Input file size is 6741, 4651",
+                "0...10...20...30...40...50...60...70...80...90...100 - done."
+            ]
+        },
+        {
+            "command": "gdalwarp -cutline /var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_georeferencing/odm_georeferenced_model.bounds.gpkg -crop_to_cutline -co TILED=YES -co COMPRESS=DEFLATE -co BLOCKXSIZE=512 -co BLOCKYSIZE=512 -co BIGTIFF=IF_SAFER -co NUM_THREADS=16  /var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_dem/dsm.original.tif /var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_dem/dsm.tif --config GDAL_CACHEMAX 29.5%",
+            "exitCode": 0,
+            "output": [
+                "Creating output file that is 6188P x 4434L.",
+                "Processing /var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_dem/dsm.original.tif [1/1] : 0Using internal nodata values (e.g. -9999) for image /var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_dem/dsm.original.tif.",
+                "Copying nodata values from source /var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_dem/dsm.original.tif to destination /var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_dem/dsm.tif.",
+                "...10...20...30...40...50...60...70...80...90...100 - done."
+            ]
+        },
+        {
+            "command": "gdal_translate -of COG -co NUM_THREADS=16 -co BLOCKSIZE=256 -co COMPRESS=DEFLATE -co PREDICTOR=2 -co BIGTIFF=IF_SAFER -co RESAMPLING=NEAREST --config GDAL_CACHEMAX 29.5% --config GDAL_NUM_THREADS 16 \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_dem/dsm.tif\" \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_dem/dsm_cogeo.tif\" ",
+            "exitCode": 0,
+            "output": [
+                "Input file size is 6188, 4434",
+                "0...10...20...30...40...50...60...70...80...90...100 - done."
+            ]
+        },
+        {
+            "command": "\"/code/SuperBuild/install/bin/odm_orthophoto\" -inputFiles /var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_texturing_25d/odm_textured_model_geo.obj -logFile \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_orthophoto/odm_orthophoto_log.txt\" -outputFile \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_orthophoto/odm_orthophoto_render.tif\" -resolution 20.0  -outputCornerFile \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_orthophoto/odm_orthophoto_corners.txt\" ",
+            "exitCode": 0
+        },
+        {
+            "command": "gdal_translate -a_ullr 362829.984085083 5715624.540542603 363168.26834106445 5715379.762466431 -co TILED=YES -co COMPRESS=DEFLATE -co PREDICTOR=2 -co BIGTIFF=IF_SAFER -co BLOCKXSIZE=512 -co BLOCKYSIZE=512 -co NUM_THREADS=16 -a_srs \"+proj=utm +zone=32 +datum=WGS84 +units=m +no_defs +type=crs\" --config GDAL_CACHEMAX 29.5% --config GDAL_TIFF_INTERNAL_MASK YES \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_orthophoto/odm_orthophoto_render.tif\" \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_orthophoto/odm_orthophoto.tif\" > \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_orthophoto/gdal_translate_log.txt\"",
+            "exitCode": 0
+        },
+        {
+            "command": "gdalwarp -cutline /var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_georeferencing/odm_georeferenced_model.bounds.gpkg -crop_to_cutline -co TILED=YES -co COMPRESS=DEFLATE -co PREDICTOR=2 -co BIGTIFF=IF_SAFER -co BLOCKXSIZE=512 -co BLOCKYSIZE=512 -co NUM_THREADS=16 -dstalpha /var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_orthophoto/odm_orthophoto.original.tif /var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_orthophoto/odm_orthophoto.tif --config GDAL_CACHEMAX 29.45%",
+            "exitCode": 0,
+            "output": [
+                "Using band 4 of source image as alpha.",
+                "Creating output file that is 6188P x 4435L.",
+                "Processing /var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_orthophoto/odm_orthophoto.original.tif [1/1] : 0...10...20...30...40...50...60...70...80...90...100 - done."
+            ]
+        },
+        {
+            "command": "gdal_translate -of COG -co NUM_THREADS=16 -co BLOCKSIZE=256 -co COMPRESS=DEFLATE -co PREDICTOR=2 -co BIGTIFF=IF_SAFER -co RESAMPLING=NEAREST --config GDAL_CACHEMAX 29.4% --config GDAL_NUM_THREADS 16 \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_orthophoto/odm_orthophoto.tif\" \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_orthophoto/odm_orthophoto_cogeo.tif\" ",
+            "exitCode": 0,
+            "output": [
+                "Input file size is 6188, 4435",
+                "0...10...20...30...40...50...60...70...80...90...100 - done."
+            ]
+        },
+        {
+            "command": "pdal info --dimensions \"X,Y,Z\" \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_georeferencing/odm_georeferenced_model.laz\" > \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_georeferencing/odm_georeferenced_model.info.json\"",
+            "exitCode": 0
+        },
+        {
+            "command": "pdal translate -i \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_georeferencing/odm_georeferenced_model.laz\" -o \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/opensfm/stats/overlap.tif\" --writer gdal --writers.gdal.resolution=0.24073857142856078 --writers.gdal.data_type=uint8_t --writers.gdal.dimension=UserData --writers.gdal.output_type=max --writers.gdal.radius=3.4045575270059474 ",
+            "exitCode": 0
+        },
+        {
+            "command": "gdalwarp -cutline /var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_georeferencing/odm_georeferenced_model.bounds.gpkg -crop_to_cutline -co TILED=YES -co COMPRESS=DEFLATE -co PREDICTOR=2 -co BIGTIFF=IF_SAFER -co BLOCKXSIZE=512 -co BLOCKYSIZE=512 -co NUM_THREADS=16  /var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/opensfm/stats/overlap.original.tif /var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/opensfm/stats/overlap.tif --config GDAL_CACHEMAX 29.45%",
+            "exitCode": 0,
+            "output": [
+                "Creating output file that is 1285P x 920L.",
+                "Processing /var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/opensfm/stats/overlap.original.tif [1/1] : 0Using internal nodata values (e.g. 255) for image /var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/opensfm/stats/overlap.original.tif.",
+                "Copying nodata values from source /var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/opensfm/stats/overlap.original.tif to destination /var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/opensfm/stats/overlap.tif.",
+                "...10...20...30...40...50...60...70...80...90...100 - done."
+            ]
+        },
+        {
+            "command": "gdaldem color-relief \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/opensfm/stats/overlap.tif\" \"/code/opendm/report/overlap_color_map.txt\" \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/opensfm/stats/overlap.png\" -of PNG -alpha",
+            "exitCode": 0,
+            "output": [
+                "0...10...20...30...40...50...60...70...80...90...100 - done."
+            ]
+        },
+        {
+            "command": "gdal_translate -of png \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_orthophoto/odm_orthophoto.tif\" \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/opensfm/stats/ortho.png\" -outsize 1400 0  --config GDAL_CACHEMAX 29.45% ",
+            "exitCode": 0,
+            "output": [
+                "Input file size is 6188, 4435",
+                "0...10...20...30...40...50...60...70...80...90...100 - done."
+            ]
+        },
+        {
+            "command": "gdal_translate -outsize 1400 0 \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_dem/dsm.tif\" \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_dem/dsm.preview.tif\" --config GDAL_CACHEMAX 29.45%",
+            "exitCode": 0,
+            "output": [
+                "Input file size is 6188, 4434",
+                "0...10...20...30...40...50...60...70...80...90...100 - done."
+            ]
+        },
+        {
+            "command": "gdaldem color-relief \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_dem/dsm.preview.tif\" \"/code/opendm/tiles/color_relief.txt\" \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_dem/dsm.previewcolor.tif\" -alpha -co ALPHA=YES",
+            "exitCode": 0,
+            "output": [
+                "0...10...20...30...40...50...60...70...80...90...100 - done."
+            ]
+        },
+        {
+            "command": "gdaldem hillshade \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_dem/dsm.preview.tif\" \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_dem/dsm.previewhillshade.tif\" -z 1.0 -s 1.0 -az 315.0 -alt 45.0",
+            "exitCode": 0,
+            "output": [
+                "0...10...20...30...40...50...60...70...80...90...100 - done."
+            ]
+        },
+        {
+            "command": "/usr/bin/python3 \"/code/opendm/tiles/hsv_merge.py\" \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_dem/dsm.previewcolor.tif\" \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_dem/dsm.previewhillshade.tif\" \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_dem/dsm.previewcolored_hillshade.tif\"",
+            "exitCode": 0,
+            "output": [
+                "0...10...20...30...40...50...60...70...80...90...100 - done."
+            ]
+        },
+        {
+            "command": "gdal_translate -outsize 1400 0 -of png \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/odm_dem/dsm.previewcolored_hillshade.tif\" \"/var/www/data/876c8cfb-edbc-4bc1-a135-c6f18eec0494/opensfm/stats/dsm.png\" --config GDAL_CACHEMAX 29.45%",
+            "exitCode": 0,
+            "output": [
+                "Input file size is 1400, 1003",
+                "0...10...20...30...40...50...60...70...80...90...100 - done."
+            ]
+        }
+    ],
+    "success": true,
+    "endTime": "2022-09-16T13:07:09.905301",
+    "totalTime": 250.17
+}

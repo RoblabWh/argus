@@ -1,0 +1,15 @@
+vincenty==0.1.4
+opencv_python==3.4.14.53
+utm==0.7.0
+geopy==2.1.0
+scipy==1.7.1
+shapely==1.8.1.post1
+descartes==1.1.0
+pyexifinfo==0.4.0
+imutils==0.5.3
+numpy==1.22.3
+scikit_image==0.17.2
+weathercom
+requests
+pysimplegui
+pyQT5
