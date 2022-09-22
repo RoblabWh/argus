@@ -12,6 +12,7 @@ __status__ = "Production"
 import os    
 import sys
 import datetime
+import argparse
 
 from image_mapper import ImageMapper
 
@@ -33,20 +34,32 @@ def main():
           "  ╚═╝╚═╝     ╚═╝╚═╝  ╚═╝ ╚═════╝ ╚══════╝    ╚═╝     ╚═╝╚═╝  ╚═╝╚═╝     ╚═╝     ╚══════╝╚═╝  ╚═╝\n"+
           "  by Artur Leinweber, Hartmut Surmann, Max Schulte, Julian Klasen & DRZ-Team, 2020-2022, University of Applied Science Gelsenkirchen\n")
 
-    if len(sys.argv) < NUMBER_ARGS:
-        print("python3 main.py path_to_images")
-        print("Need at least" + str(NUMBER_ARGS-1) + " arguments but got " + str(len(sys.argv)-1))
-        exit()
-    
-    path_to_images = str(sys.argv[1])
-    gimbal_variance = 0.0
-    if len(sys.argv) == NUMBER_ARGS + NUMBER_ARGS_OPTIONAL:
-        gimbal_variance = float(sys.argv[2])
-    map_width_px= 2500
-    map_height_px= 2500 
+    # if len(sys.argv) < NUMBER_ARGS:
+    #     print("python3 main.py path_to_images")
+    #     print("Need at least" + str(NUMBER_ARGS-1) + " arguments but got " + str(len(sys.argv)-1))
+    #     exit()
+
+    parser = argparse.ArgumentParser(description='Image Mapper')
+
+    parser.add_argument('Path', metavar='path', type=str, help='the path to the images')
+    parser.add_argument('-o', '--with_odm', action='store_true', help='Use ODM to generate a seamless orthophoto')
+    parser.add_argument('--gimbal_deviation_tolerance', type=int, default=1, help='how many degrees the gimbal pitch is allowed to deviate from 90 degrees')
+    parser.add_argument('--map_size', type=int, default=2500, help='size of the map in pixels')
+
+
+
+    args = parser.parse_args()
+
+    print('running with args:', args)
+
+    path_to_images = args.Path
+    gimbal_variance = args.gimbal_deviation_tolerance
+
+    map_width_px= args.map_size
+    map_height_px= args.map_size
     blending = 0.7   
     optimize = True
-    with_odm = True
+    with_odm = args.with_odm
 
     path = path_to_images
     if path_to_images[-1] != "/":
@@ -63,6 +76,7 @@ def main():
     image_mapper.show_flight_report()
     if(with_odm):
         image_mapper.generate_odm_orthophoto()
+
     print("-Processing time: "+ str(datetime.datetime.now().replace(microsecond=0)-start) +" [hh:mm:ss]")
 
 if __name__ == "__main__":

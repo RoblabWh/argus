@@ -17,32 +17,34 @@ import cv2
 
 class OdmTaskManager:
 
-    _image_sice = 1024
+    _image_size = 960
 
-    def __init__(self, path_to_images, image_paths=None, inputfolder='./data'):
+    def __init__(self, path_to_image_folder, image_paths=None, inputfolder='./data'):
         """
         :param image_paths: List of Strings of Paths to input_images
         :param inputfolder: If image_paths are not provided search images in folder
         """
+        self.path_to_image_folder = path_to_image_folder
+
         if image_paths == None:
             paths = list(self.get_image_paths(inputfolder))
             self.image_paths = [str(e) for e in paths]
         else:
             self.image_paths = image_paths
 
-        if not os.path.exists(path_to_images+'proxy/'):
-            os.mkdir(path_to_images+'proxy/')
+        if not os.path.exists(self.path_to_image_folder+'proxy/'):
+            os.mkdir(self.path_to_image_folder+'proxy/')
 
         scaled_image_paths = []
         #scale down every image in the list image_paths tp a width of 1024px and save it in a new folder called proxy
         for path in self.image_paths:
             img = cv2.imread(path)
-            scale_percent = self._image_sice / img.shape[1]
+            scale_percent = self._image_size / img.shape[1]
             dim = (int(img.shape[1] * scale_percent), int(img.shape[0] * scale_percent))
             resized = cv2.resize(img, dim, interpolation = cv2.INTER_NEAREST)
-            cv2.imwrite(path_to_images+'proxy/' + os.path.basename(path), resized)
-            scaled_image_paths += [path_to_images+'proxy/' + os.path.basename(path)]
-            os.system('exiftool -TagsFromFile ' + path +' ' + path_to_images + 'proxy/' + os.path.basename(path))
+            cv2.imwrite(self.path_to_image_folder+'proxy/' + os.path.basename(path), resized)
+            scaled_image_paths += [self.path_to_image_folder+'proxy/' + os.path.basename(path)]
+            os.system('exiftool -TagsFromFile ' + path +' ' + self.path_to_image_folder + 'proxy/' + os.path.basename(path))
 
         self.image_paths = scaled_image_paths
 
@@ -99,28 +101,38 @@ class OdmTaskManager:
             return True
         elif case == TaskStatus.FAILED:
             print("Task has failed for some reason. Check console output for information")
-            self.task.remove()
-            self.container.stop()
-            self.container.remove()
+            self.clean_up()
             return False
         elif case == TaskStatus.CANCELED:
             print("Task was cancelled by user. What are you doing?!")
-            self.task.remove()
-            self.container.stop()
-            self.container.remove()
+            self.clean_up()
             return False
         elif case == TaskStatus.COMPLETED:
             print("Task completed")
             self.task.download_assets('results')
             self.task_complete = True
-            self.task.remove()
-            self.container.stop()
-            self.container.remove()
+            self.clean_up()
             return False
         else:
             print("not defined case in OdmTaskManager.check_task()")
             return False
 
+    def clean_up(self):
+        self.task.remove()
+        self.container.stop()
+        self.container.remove()
+
+        folder = self.path_to_image_folder + 'proxy'
+
+        for filename in os.listdir(folder):
+            file_path = os.path.join(folder, filename)
+            try:
+                if os.path.isfile(file_path) or os.path.islink(file_path):
+                    os.unlink(file_path)
+                elif os.path.isdir(file_path):
+                    print("Directory found", file_path)
+            except Exception as e:
+                print('Failed to delete %s. Reason: %s' % (file_path, e))
 
 
 

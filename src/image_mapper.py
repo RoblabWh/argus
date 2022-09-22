@@ -243,7 +243,8 @@ class ImageMapper:
                            ir_path,
                            ir_html_file_name,
                            ir_map_name,
-                           is_ir)
+                           is_ir,
+                           self.with_ODM)
         print("-Creating HTML file...          ")                   
         html_map.create_html_file()
 

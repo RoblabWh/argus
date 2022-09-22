@@ -14,7 +14,7 @@ from datetime import datetime, date, time
 import re
 
 class HTMLMap():
-    def __init__(self, map_elements, map_height, map_width , html_file_name, map_name, area_m, altitude, processing_time, corner_gps_left_bottom, corner_gps_right_top, middle_gps, ir_path = None, ir_html_file_name=None, ir_map_name=None, is_ir=False):
+    def __init__(self, map_elements, map_height, map_width , html_file_name, map_name, area_m, altitude, processing_time, corner_gps_left_bottom, corner_gps_right_top, middle_gps, ir_path = None, ir_html_file_name=None, ir_map_name=None, is_ir=False, with_odm=False):
         self.map_elements = map_elements
         self.map_height = map_height
         self.map_width = map_width
@@ -27,7 +27,7 @@ class HTMLMap():
         self.ir_map_name = ir_map_name
         self.ir_path = ir_path
         self.is_only_ir = is_ir
-        self.with_odm = True
+        self.with_odm = with_odm
 
         self.date = None
         self.location = None
@@ -433,7 +433,7 @@ class HTMLMap():
                              "\n")
 
         if(self.with_odm):
-            file_desciptor.write("\r\nvar ODM = L.imageOverlay(\'placeholder_map.png\', imageBounds, {interactive: true});\r\nvar odmOverlay = L.layerGroup([ODM]);\r\n\r\nfunction setODMLayerImage(path){\r\n   ODM.setUrl(path);\r\n}\r\n\r\nfunction checkImage(imageSrc, good, bad) {\r\n    var img = new Image();\r\n    img.onload = good; \r\n    img.onerror = bad;\r\n    img.src = imageSrc;\r\n}\r\n\r\ncheckImage(\'map_odm_orthophoto.png\', function(){setODMLayerImage(\'map_odm_orthophoto.png\')}, function(){setODMLayerImage(\'placeholder_map.png\')});\r\n\r\nODM.on(\'click\', function(e) {\r\n   checkImage(\'map_odm_orthophoto.png\', function(){setODMLayerImage(\'map_odm_orthophoto.png\')}, function(){setODMLayerImage(\'placeholder_map.png\')});\r\n\r\n});")
+            file_desciptor.write("\r\nvar ODM = L.imageOverlay(\'placeholder_map.png\', imageBounds, {interactive: true});\r\nvar odmOverlay = L.layerGroup([ODM]);\r\n\r\nfunction setODMLayerImage(path){\r\n   ODM.setUrl(path);\r\n}\r\n\r\nfunction checkImage(imageSrc, good, bad) {\r\n    var img = new Image();\r\n    img.onload = good; \r\n    img.onerror = bad;\r\n    img.src = imageSrc;\r\n}\r\n\r\ncheckImage(\'map_odm_orthophoto.png\', function(){setODMLayerImage(\'map_odm_orthophoto.png\')}, function(){setODMLayerImage(\'placeholder_map.png\')});\r\n\r\nODM.on(\'click\', function(e) {\r\n   checkImage(\'map_odm_orthophoto.png\', function(){setODMLayerImage(\'map_odm_orthophoto.png\')}, function(){setODMLayerImage(\'placeholder_map.png\'); alert(\'Die Berechnung des Bildes läuft aktuell noch. Bitte versuchen Sie es in 30s erneut\')});\r\n\r\n});")
 
         file_desciptor.write("function highlightFeature(e) {\n"\
                              "	if(!inMeasureMode) {\n"\
@@ -632,7 +632,7 @@ class HTMLMap():
 
         if (self.with_odm):
             file_desciptor.write(
-                "\r\nvar ODM = L.imageOverlay(\'placeholder_map.png\', imageBounds, {interactive: true});\r\nvar odmOverlay = L.layerGroup([ODM]);\r\n\r\nfunction setODMLayerImage(path){\r\n   ODM.setUrl(path);\r\n}\r\n\r\nfunction checkImage(imageSrc, good, bad) {\r\n    var img = new Image();\r\n    img.onload = good; \r\n    img.onerror = bad;\r\n    img.src = imageSrc;\r\n}\r\n\r\ncheckImage(\'map_odm_orthophoto.png\', function(){setODMLayerImage(\'map_odm_orthophoto.png\')}, function(){setODMLayerImage(\'placeholder_map.png\')});\r\n\r\nODM.on(\'click\', function(e) {\r\n   checkImage(\'map_odm_orthophoto.png\', function(){setODMLayerImage(\'map_odm_orthophoto.png\')}, function(){setODMLayerImage(\'placeholder_map.png\')});\r\n\r\n});")
+                "\r\nvar ODM = L.imageOverlay(\'placeholder_map.png\', imageBounds, {interactive: true});\r\nvar odmOverlay = L.layerGroup([ODM]);\r\n\r\nfunction setODMLayerImage(path){\r\n   ODM.setUrl(path);\r\n}\r\n\r\nfunction checkImage(imageSrc, good, bad) {\r\n    var img = new Image();\r\n    img.onload = good; \r\n    img.onerror = bad;\r\n    img.src = imageSrc;\r\n}\r\n\r\ncheckImage(\'map_odm_orthophoto.png\', function(){setODMLayerImage(\'map_odm_orthophoto.png\')}, function(){setODMLayerImage(\'placeholder_map.png\')});\r\n\r\nODM.on(\'click\', function(e) {\r\n   checkImage(\'map_odm_orthophoto.png\', function(){setODMLayerImage(\'map_odm_orthophoto.png\')}, function(){setODMLayerImage(\'placeholder_map.png\'); alert(\'Die Berechnung des Bildes läuft aktuell noch. Bitte versuchen Sie es in 30s erneut\')});\r\n\r\n});")
 
         file_desciptor.write("function highlightFeature(e) {\n" \
                              "	if(!inMeasureMode) {\n" \
