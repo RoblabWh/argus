@@ -52,7 +52,8 @@ class ImageMapper:
         self.corner_gps_right_top = None
         self.corner_gps_left_bottom = None
         self.middle_gps = None
-        self.CONTAINED_DJI_INFRARED_IMAGES = False 
+        self.CONTAINED_DJI_INFRARED_IMAGES = False
+        self.placeholder_map = None
    
     @staticmethod
     def generate_images(image_paths):
@@ -93,6 +94,7 @@ class ImageMapper:
             (infrared_images, rgb_images) = InfraredRGBSorter().sort(filtered_images)
             self.__move_images_to_folder("ir/", infrared_images)
             self.__calculate_map(infrared_images)
+            self.map_elements_ir = self.map_elements.copy()
             infrared_map_file_name = self.__create_file_name_string()
             self.save_map("ir/", infrared_map_file_name)
             middle_time = datetime.datetime.now().replace(microsecond=0)
@@ -133,8 +135,8 @@ class ImageMapper:
         self.final_map = map_obj.create_map()
         self.cropped_map = map_obj.get_cropped_map()
         self.__calculate_gps_for_mapbox_plugin(map_obj)
-        if self.with_ODM:
-            map_obj.generate_ODM_placeholder_map(self.path_to_images)
+        if self.with_ODM and self.placeholder_map is None:
+            self.placeholder_map = map_obj.generate_ODM_placeholder_map(self.path_to_images)
     
     def __check_for_dji_infrared_images(self, filtered_images):
         (width_0, height_0) = filtered_images[0].get_exif_header().get_image_size()
@@ -215,10 +217,11 @@ class ImageMapper:
         msg_str = relative_path + file_name
                   
         path = self.path_to_images
-        # if self.path_to_images[-1] != "/":
-        #     path += "/"
 
         cv2.imwrite(path + msg_str,self.cropped_map)
+        if self.with_ODM:
+            cv2.imwrite(path+relative_path+"placeholder_map.png", self.placeholder_map)
+
         print("-Saved map under ", path + msg_str)
     
     def __create_html(self, folder, file_name, processing_time, ir_path=None, ir_html_file_name=None, ir_map_name=None, is_ir=False):
@@ -253,33 +256,47 @@ class ImageMapper:
         # webbrowser.open(os.path.abspath(str(self.path_to_images) + str(self.html_file_name)+ ".html"))
         webbrowser.open(os.path.abspath(self.report_path+ ".html"))
 
-    def generate_odm_orthophoto(self):
+    def generate_odm_orthophoto(self, container_port, image_size):
 
+        image_lists = []
+        image_lists.append(self.extract_image_paths_from_map_elements(self.map_elements))
+        if self.CONTAINED_DJI_INFRARED_IMAGES:
+            image_lists.append(self.extract_image_paths_from_map_elements(self.map_elements_ir))
+
+        taskmanager = OdmTaskManager(self.path_to_images, container_port)
+
+        #  run in loop over image_lists
+        for i, list in enumerate(image_lists):
+            if(i == 0):
+                taskmanager.set_images_scaled(list, image_size)
+            else:
+                taskmanager.set_images(list)
+
+            taskmanager.run_task()
+
+            while True:
+                if not taskmanager.task_running():
+                    break
+                time.sleep(2)
+
+            if taskmanager.task_complete:
+                with open('results/odm_georeferencing/odm_georeferenced_model.info.json','r') as j:
+                    contents = json.loads(j.read())
+                    bbox = contents['stats']['bbox']['EPSG:4326']['bbox']
+                    corner_gps_left_bottom = (bbox['minx'],bbox['miny'])
+                    corner_gps_right_top = (bbox['maxx'],bbox['maxy'])
+                #Todo, bounds irgendwie nutzen
+                print(corner_gps_left_bottom, corner_gps_right_top)
+
+                im = cv2.imread("results/odm_orthophoto/odm_orthophoto.tif", cv2.IMREAD_UNCHANGED)
+                target_path = self.path_to_images if(i == 0) else self.path_to_images + "ir/"
+                cv2.imwrite(target_path+ "map_odm_orthophoto.png", im)
+
+        taskmanager.close()
+
+
+    def extract_image_paths_from_map_elements(self, map_elements):
         image_paths = []
-        for map_element in self.map_elements:
+        for map_element in map_elements:
             image_paths += [map_element.get_image().get_image_path()]
-
-        taskmanager = OdmTaskManager(self.path_to_images, image_paths)
-        taskmanager.run_task()
-
-        while True:
-            if not taskmanager.task_running():
-                break
-            time.sleep(3)
-
-        if taskmanager.task_complete:
-
-            with open('results/odm_georeferencing/odm_georeferenced_model.info.json','r') as j:
-                contents = json.loads(j.read())
-                bbox = contents['stats']['bbox']['EPSG:4326']['bbox']
-                corner_gps_left_bottom = (bbox['minx'],bbox['miny'])
-                corner_gps_right_top = (bbox['maxx'],bbox['maxy'])
-
-            #evtl unten die variablen in das html file rein schreiben
-            #Todo, bounds irgendwie nutzen
-            print(corner_gps_left_bottom, corner_gps_right_top)
-
-            im = cv2.imread("results/odm_orthophoto/odm_orthophoto.tif", cv2.IMREAD_UNCHANGED)
-            cv2.imwrite(self.path_to_images + "map_odm_orthophoto.png", im)
-
-
+        return image_paths

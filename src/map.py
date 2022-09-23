@@ -243,7 +243,7 @@ class Map:
         y_offset = int((height - text_img.shape[0]) / 2)
         image[y_offset:y_offset+text_img.shape[0], x_offset:x_offset+text_img.shape[1], :] = text_img
         image = np.maximum(image_bg, image, image)
-        cv2.imwrite(path_to_images+"placeholder_map.png", image)
+        return image
 
 
 

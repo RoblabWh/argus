@@ -43,6 +43,8 @@ def main():
 
     parser.add_argument('Path', metavar='path', type=str, help='the path to the images')
     parser.add_argument('-o', '--with_odm', action='store_true', help='Use ODM to generate a seamless orthophoto')
+    parser.add_argument('-p', '--odm_docker_port', type=int, default=3001 , help='the localhost port of the ODM docker container')
+    parser.add_argument('-s', '--odm_resize_to', type=int, default=960 , help='the preferred size of the input images for ODM')
     parser.add_argument('--gimbal_deviation_tolerance', type=int, default=1, help='how many degrees the gimbal pitch is allowed to deviate from 90 degrees')
     parser.add_argument('--map_size', type=int, default=2500, help='size of the map in pixels')
 
@@ -75,7 +77,7 @@ def main():
     print("-Done!")
     image_mapper.show_flight_report()
     if(with_odm):
-        image_mapper.generate_odm_orthophoto()
+        image_mapper.generate_odm_orthophoto(args.odm_docker_port, args.odm_resize_to)
 
     print("-Processing time: "+ str(datetime.datetime.now().replace(microsecond=0)-start) +" [hh:mm:ss]")
 

@@ -19,47 +19,51 @@ class OdmTaskManager:
 
     _image_size = 960
 
-    def __init__(self, path_to_image_folder, image_paths=None, inputfolder='./data'):
+    def __init__(self, path_to_image_folder, port=3000):
         """
         :param image_paths: List of Strings of Paths to input_images
         :param inputfolder: If image_paths are not provided search images in folder
         """
         self.path_to_image_folder = path_to_image_folder
 
-        if image_paths == None:
-            paths = list(self.get_image_paths(inputfolder))
-            self.image_paths = [str(e) for e in paths]
-        else:
-            self.image_paths = image_paths
-
-        if not os.path.exists(self.path_to_image_folder+'proxy/'):
-            os.mkdir(self.path_to_image_folder+'proxy/')
-
-        scaled_image_paths = []
-        #scale down every image in the list image_paths tp a width of 1024px and save it in a new folder called proxy
-        for path in self.image_paths:
-            img = cv2.imread(path)
-            scale_percent = self._image_size / img.shape[1]
-            dim = (int(img.shape[1] * scale_percent), int(img.shape[0] * scale_percent))
-            resized = cv2.resize(img, dim, interpolation = cv2.INTER_NEAREST)
-            cv2.imwrite(self.path_to_image_folder+'proxy/' + os.path.basename(path), resized)
-            scaled_image_paths += [self.path_to_image_folder+'proxy/' + os.path.basename(path)]
-            os.system('exiftool -TagsFromFile ' + path +' ' + self.path_to_image_folder + 'proxy/' + os.path.basename(path))
-
-        self.image_paths = scaled_image_paths
-
         print("Establish client from environment variables")
         self.client = docker.from_env()
         print("Create container")
         self.container = self.client.containers.run("opendronemap/nodeodm", stdin_open=True, tty=True,
-                                                    ports={"3000": 3000}, detach=True)
-        # professional way to wait for container to be ready
+                                                    ports={"3000": port}, detach=True)
+        # professional (and now very cool) way to wait for container to be ready
         time.sleep(5)
 
-        self.node = Node('localhost', 3000)
+        self.node = Node('localhost', port)
         self.task = None
         self.task_complete = False
         self.console_output = []
+
+    def set_images_scaled(self, image_paths, scaled_image_size=960):
+        self._image_size = scaled_image_size
+        self.set_images(self.scale_images(image_paths))
+
+    def set_images(self, image_paths):
+        self.image_paths = image_paths
+
+    def scale_images(self, image_paths):
+        self.image_paths = image_paths
+
+        if not os.path.exists(self.path_to_image_folder + 'proxy/'):
+            os.mkdir(self.path_to_image_folder + 'proxy/')
+
+        scaled_image_paths = []
+        # scale down every image in the list image_paths tp a width of 1024px and save it in a new folder called proxy
+        for path in self.image_paths:
+            img = cv2.imread(path)
+            scale_percent = self._image_size / img.shape[1]
+            dim = (int(img.shape[1] * scale_percent), int(img.shape[0] * scale_percent))
+            resized = cv2.resize(img, dim, interpolation=cv2.INTER_NEAREST)
+            cv2.imwrite(self.path_to_image_folder + 'proxy/' + os.path.basename(path), resized)
+            scaled_image_paths += [self.path_to_image_folder + 'proxy/' + os.path.basename(path)]
+            os.system('exiftool -TagsFromFile ' + path + ' ' + self.path_to_image_folder + 'proxy/' + os.path.basename(path))
+
+        return scaled_image_paths
 
     def run_task(self, options={'feature-quality': 'medium', 'fast-orthophoto': True, 'auto-boundary': True, 'pc-ept': True,'cog': True}):
         """
@@ -119,20 +123,26 @@ class OdmTaskManager:
 
     def clean_up(self):
         self.task.remove()
-        self.container.stop()
-        self.container.remove()
 
         folder = self.path_to_image_folder + 'proxy'
 
-        for filename in os.listdir(folder):
-            file_path = os.path.join(folder, filename)
-            try:
-                if os.path.isfile(file_path) or os.path.islink(file_path):
-                    os.unlink(file_path)
-                elif os.path.isdir(file_path):
-                    print("Directory found", file_path)
-            except Exception as e:
-                print('Failed to delete %s. Reason: %s' % (file_path, e))
+        if os.path.exists(folder):
+            for filename in os.listdir(folder):
+                file_path = os.path.join(folder, filename)
+                try:
+                    if os.path.isfile(file_path) or os.path.islink(file_path):
+                        os.unlink(file_path)
+                    elif os.path.isdir(file_path):
+                        print("Directory found", file_path)
+                except Exception as e:
+                    print('Failed to delete %s. Reason: %s' % (file_path, e))
+
+    def close(self):
+        self.container.stop()
+        self.container.remove()
+
+
+
 
 
 
