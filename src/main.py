@@ -69,11 +69,11 @@ def main():
         path += "/"
 
     image_mapper = ImageMapper(path_to_images, map_width_px, map_height_px, blending, optimize, gimbal_variance, with_odm)
-    panoviewer = Panorma_viewer(path, "");#image_mapper.get_date())
+    panoviewer = Panorma_viewer(path)
     pano_files = panoviewer.generate_reports()
     # TODO Report muss dann die Seiten in die html einbinden
     # zusätzlich panellum in verzeichnis kopieren
-    image_mapper.create_flight_report()
+    image_mapper.create_flight_report(pano_files)
         
     print("-Creating GPX file...")
     #TODO das shell script komplett durch os.system Befehle ersetzen

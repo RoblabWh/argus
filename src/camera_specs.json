@@ -3,6 +3,7 @@
     "FC2403_IR": {"Composite:FOV":54.6, "EXIF:FocalLength":4.5},
     "FC2204": {"Composite:FOV":42.7, "EXIF:FocalLength":8.226},
     "FC2204_zoomed_out": {"Composite:FOV":70.0, "EXIF:FocalLength":4.5},
-    "L1D-20c": {"Composite:FOV":65.5, "EXIF:FocalLength":10.3}
+    "L1D-20c": {"Composite:FOV":65.5, "EXIF:FocalLength":10.3},
+    "L2D-20c" : {"Composite:FOV":65.5, "EXIF:FocalLength":10.3}
 }
 

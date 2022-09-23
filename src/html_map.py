@@ -14,7 +14,7 @@ from datetime import datetime, date, time
 import re
 
 class HTMLMap():
-    def __init__(self, map_elements, map_height, map_width , html_file_name, map_name, area_m, altitude, processing_time, corner_gps_left_bottom, corner_gps_right_top, middle_gps, ir_path = None, ir_html_file_name=None, ir_map_name=None, is_ir=False, with_odm=False):
+    def __init__(self, map_elements, map_height, map_width , html_file_name, map_name, area_m, altitude, processing_time, corner_gps_left_bottom, corner_gps_right_top, middle_gps, ir_path = None, ir_html_file_name=None, ir_map_name=None, is_ir=False, with_odm=False, pano_files=None):
         self.map_elements = map_elements
         self.map_height = map_height
         self.map_width = map_width
@@ -28,6 +28,8 @@ class HTMLMap():
         self.ir_path = ir_path
         self.is_only_ir = is_ir
         self.with_odm = with_odm
+        self.pano_files = pano_files
+        print(pano_files)
 
         self.date = None
         self.location = None
@@ -184,188 +186,7 @@ class HTMLMap():
             "alt=\""+str((self.map_elements[i].get_image().get_image_path().split("/"))[-1])+"\">\n"\
             "</div>")
         file_desciptor.write("</div>")
-        
 
-    def write_map_old(self, file_desciptor):
-        file_desciptor.write(
-            "<h2 style=\"text-align: center;margin-top:5%; color: white; font-size: 300%;padding-bottom:30px;\">Map</h2>\n" \
-            "<div id=\"secondMap\">\n" \
-            "<svg version=\"1.1\" id=\"Layer_1\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" width=\"100%\" height=\"100%\"\n" \
-            "viewBox=\"0 0 " + str(self.map_width) + " " + str(
-                self.map_height) + "\" style=\"enable-background:new 0 0 " + str(self.map_width) + " " + str(
-                self.map_height) + ";\" xml:space=\"preserve\">\n" \
-                                   "<svg id=\"gMap\" class=\"center-fit\" width=\"100%\" height=\"100%\" viewBox=\"0 0 658 423\">\n" \
-                                   "<image xlink:href=\"googleMapsMapPlaceholder.png\"/>\n" \
-                                   "</svg>\n" \
-                                   "<svg id=\"overviewMap\" class=\"center-fit\" width=\"100%\" height=\"100%\" viewBox=\"0 0 " + str(
-                self.map_width) + " " + str(self.map_height) + "\">\n")
-
-        file_desciptor.write("<image xlink:href=\"" + str(self.map_name) + "\"/>\n")
-
-        for i in range(len(self.map_elements)):
-            file_desciptor.write("<a onclick=\"currentSlide(" + str(i + 1) + ")\">\n")
-            file_desciptor.write("<polyline points=\"" + str(
-                self.new_coordinates[i]) + "\" fill=\"hsla(0,0%,100%,0.0)\"/>" + "\n" + "</a>")
-        file_desciptor.write("</svg>\n</svg>\n</div>")
-
-        file_desciptor.write("<div id=\"map\"></div>\n" \
-                             "<div style=\"margin: auto;\" ><a><a/>\n" \
-                             "<div class=\"slidecontainer\">\n" \
-                             "<a class=\"slidetext\">&#8722; </a><div style=\"padding-top:5px;\"><input type=\"range\" min=\"0\" max=\"100\" value=\"100\" class=\"slider\" id=\"imageAlpha\" oninput=\"changeAlpha(this.value)\"></div><a class=\"slidetext\"> &#43;</a>\n" \
-                             "</div></div>\n" \
-                             "\n" \
-                             "<script>\n" \
-                             "var defaultZoom = 18;\n" \
-                             "var map = L.map(\'map\').setView([" + str(self.latc) + "," + str(
-            self.longc) + "], defaultZoom);\n" \
-                          "var center = [" + str(self.latc) + "," + str(self.longc) + "];\n" \
-                                                                                      "L.tileLayer(\'https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token={accessToken}\',\n" \
-                                                                                      "{\n" \
-                                                                                      "attribution: \'\',\n" \
-                                                                                      "maxZoom: 25,\n" \
-                                                                                      "id: \'mapbox/satellite-v9\',\n" \
-                                                                                      "tileSize: 512,\n" \
-                                                                                      "zoomOffset: -1,\n" \
-                                                                                      "accessToken: \'pk.eyJ1Ijoicm9ibGFidXNlcndocyIsImEiOiJja3VjaXF3d2MxMTN5Mm9tdmQzaGphdGU3In0.BhKF_054bVOPcviIq2yIKg\'\n" \
-                                                                                      "}\n" \
-                                                                                      ").addTo(map);\n" \
-                                                                                      "\n" \
-                                                                                      "var mapSize=[" + str(
-            self.map_width) + "," + str(self.map_height) + "];\n" \
-                                                           "//guessed values\n" \
-                                                           "var lat1 = " + str(self.lat1) + "; // adjustable\n" \
-                                                                                            "var long1 = " + str(
-            self.long1) + ";\n" \
-                          "var lat2 = " + str(self.lat2) + ";\n" \
-                                                           "var long2 = " + str(self.long2) + ";\n" \
-                                                                                              "var	imageBounds = [[lat1,long1], [lat2,long2]];//update with gps data\n" \
-                                                                                              "var svg = document.getElementById(\'mymap\');\n" \
-                                                                                              "var mapOverlay = L.imageOverlay(\'" + str(
-            self.map_name) + "\', imageBounds);\n" \
-                             "mapOverlay.addTo(map);\n" \
-                             "loadPolygons();\n" \
-                             "var mapOverlayOpacity = 1;\n" \
-                             "\n" \
-                             "function style(feature) {\n" \
-                             "	return {\n" \
-                             "		opacity: 0,\n" \
-                             "		fillOpacity: 0,\n" \
-                             "		fill: blue\n" \
-                             "	}\n" \
-                             "}\n" \
-                             "\n" \
-                             "var threshhold = 0.55;\n" \
-                             "\n" \
-                             "function highlightFeature(e) {\n" \
-                             "	var layer = e.target;\n" \
-                             "	\n" \
-                             "	if(mapOverlayOpacity > threshhold) {\n" \
-                             "		layer.setStyle({\n" \
-                             "			fillOpacity: 0.7\n" \
-                             "		});\n" \
-                             "	}\n" \
-                             "}\n" \
-                             "\n" \
-                             "function resetHighlight(e) {\n" \
-                             "	var layer = e.target;\n" \
-                             "	\n" \
-                             "	layer.setStyle({\n" \
-                             "		fillOpacity: 0\n" \
-                             "	});\n" \
-                             "}\n" \
-                             "\n" \
-                             "var polygons;\n" \
-                             "function loadPolygons() {\n" \
-                             "	polygons = new Array();\n" \
-                             "  var centers = new Array();\n" \
-                             "	var svg = document.getElementById(\'overviewMap\').getElementsByTagName(\'polyline\');\n" \
-                             "	for (var i = 0; i < svg.length; i++) {\n" \
-                             "		for (var j = 0; j < svg[i][\'points\'].length; j++) {			\n" \
-                             "		}\n" \
-                             "		//var names really bad, myb adjust\n" \
-                             "		var p1=[svg[i][\'points\'][0][\'x\']/mapSize[0],svg[i][\'points\'][0][\'y\']/mapSize[1]];\n" \
-                             "		var p2=[svg[i][\'points\'][1][\'x\']/mapSize[0],svg[i][\'points\'][1][\'y\']/mapSize[1]];\n" \
-                             "		var p3=[svg[i][\'points\'][2][\'x\']/mapSize[0],svg[i][\'points\'][2][\'y\']/mapSize[1]];\n" \
-                             "		var p4=[svg[i][\'points\'][3][\'x\']/mapSize[0],svg[i][\'points\'][3][\'y\']/mapSize[1]];\n" \
-                             "		var pL1 = [p1[1] * lat1 + ((1 - p1[1]) * lat2),p1[0] * long2 + ((1 - p1[0]) * long1)];\n" \
-                             "		var pL2 = [p2[1] * lat1 + ((1 - p2[1]) * lat2),p2[0] * long2 + ((1 - p2[0]) * long1)];\n" \
-                             "		var pL3 = [p3[1] * lat1 + ((1 - p3[1]) * lat2),p3[0] * long2 + ((1 - p3[0]) * long1)];\n" \
-                             "		var pL4 = [p4[1] * lat1 + ((1 - p4[1]) * lat2),p4[0] * long2 + ((1 - p4[0]) * long1)];\n" \
-                             "		var latlngs = [pL1,pL2,pL3,pL4];\n" \
-                             "      var center = [((pL1[0] + pL3[0]) / 2.0), ((pL1[1] + pL3[1]) / 2.0)];\n" \
-                             "      centers.push(center);\n" \
-                             "		var polygon = L.polygon(latlngs ,{ opacity: 0, fillOpacity: 0 }).addTo(map);\n" \
-                             "		polygon.on(\'mouseover\', highlightFeature);\n" \
-                             "		polygon.on(\'mouseout\', resetHighlight);\n" \
-                             "		polygon.on(\'click\',	slide);\n" \
-                             "		polygons.push(polygon);\n" \
-                             "	}\n" \
-                             "  trajectory = L.polyline(centers);\n" \
-                             "  var overlay = {\n" \
-                             "  'Gpx': trajectory\n" \
-                             "  };\n" \
-                             "  var gpxLayer = L.control.layers(null, overlay, {\n" \
-                             "  collapsed: false,\n" \
-                             "  position: 'topleft'\n" \
-                             "  });\n" \
-                             "  gpxLayer.addTo(map);\n" \
-                             "	document.getElementById(\'secondMap\').remove();\n" \
-                             "}\n" \
-                             "\n" \
-                             "function slide(e) {\n" \
-                             "	var i = polygons.indexOf(e.target);\n" \
-                             "	currentSlide(i+1);\n" \
-                             "}\n" \
-                             "\n" \
-                             "function changeAlpha(value) {\n" \
-                             "	mapOverlay.setOpacity(value/100);\n" \
-                             "	mapOverlayOpacity = value/100;\n" \
-                             "}\n" \
-                             "<!-- home button functionality -->\n" \
-                             "L.Control.zoomHome = L.Control.extend({\n" \
-                             "options: {\n" \
-                             "position: \'topleft\',\n" \
-                             "zoomHomeText: \'&#9873;\',\n" \
-                             "zoomHomeTitle: \'Zoom home\'\n" \
-                             "},\n" \
-                             "onAdd: function (map) {\n" \
-                             "var controlName = \'gin-control-zoom\',\n" \
-                             "container = L.DomUtil.create(\'div\', controlName + \' leaflet-bar\'),\n" \
-                             "options = this.options;\n" \
-                             "//container.innerHTML\n" \
-                             "this._zoomHomeButton = this._createButton(options.zoomHomeText, options.zoomHomeTitle,\n" \
-                             "controlName + \'-home\', container, this._zoomHome);\n" \
-                             "return container;\n" \
-                             "},\n" \
-                             "onRemove: function (map) {\n" \
-                             "},\n" \
-                             "_zoomHome: function (e) {\n" \
-                             "map.flyTo(center, defaultZoom);\n" \
-                             "},\n" \
-                             "_createButton: function (html, title, className, container, fn) {\n" \
-                             "var link = L.DomUtil.create(\'a\', className, container);\n" \
-                             "link.innerHTML = html;\n" \
-                             "link.href = \'#\';\n" \
-                             "link.title = title;\n" \
-                             "link.role = \"button\";\n" \
-                             "L.DomEvent\n" \
-                             ".on(link, \'click\', fn, this)\n" \
-                             ".on(link, \'click\', L.DomEvent.stop)\n" \
-                             ".on(link, \'click\', this._refocusOnMap, this);;\n" \
-                             "return link;\n" \
-                             "},\n" \
-                             "});\n" \
-                             "var zoomHome = new L.Control.zoomHome();\n" \
-                             "zoomHome.addTo(map);\n" \
-                             "<!-- home button functionality -->\n" \
-                             "</script>\n" \
-                             "\n" \
-                             "<script>\n" \
-                             "function changeAlpha2(value) {\n" \
-                             "	var map = document.getElementById(\"overviewMap\");\n" \
-                             "	map.setAttribute(\"opacity\", value/100);\n" \
-                             "}\n" \
-                             "</script>")
 
     def write_ir_map(self, file_desciptor):
         file_desciptor.write("<h2 style=\"text-align: center;margin-top:5%; color: white; font-size: 300%;padding-bottom:30px;\">Map</h2>\n"\
@@ -553,8 +374,13 @@ class HTMLMap():
 
         file_desciptor.write("};\n"\
                              "L.control.layers(layerswitcher,{}, {collapsed: false}).addTo(map);\n"\
-                             "layerswitcher.RGB.addTo(map);\n"\
-                             "</script>\n"\
+                             "layerswitcher.RGB.addTo(map);\n")
+        for i, pano_marker in enumerate(self.pano_files):
+            name = 'marker' + str(i)
+            file_desciptor.write(name + " = L.marker([" + str(pano_marker[0]) + "," + str(pano_marker[1]) + "], {clickable: true});\n"\
+                                 "" + name + ".on(\"click\", function(e) {window.open(\"" + pano_marker[2] + "\", '_blank').focus();});\n"\
+                                 "" + name + ".addTo(map);\n")
+        file_desciptor.write("</script>\n"\
                              "\n"\
                              "<script>\n"\
                              "function changeAlpha2(value) {\n"\
@@ -749,8 +575,13 @@ class HTMLMap():
 
         file_desciptor.write("};\n" \
                              "L.control.layers(layerswitcher,{}, {collapsed: false}).addTo(map);\n" \
-                             "layerswitcher.RGB.addTo(map);\n" \
-                             "</script>\n" \
+                             "layerswitcher.RGB.addTo(map);\n" )
+        for i, pano_marker in enumerate(self.pano_files):
+            name = 'marker' + str(i)
+            file_desciptor.write(name + " = L.marker([" + str(pano_marker[0]) + "," + str(pano_marker[1]) + "], {clickable: true});\n"\
+                                 "" + name + ".on(\"click\", function(e) {window.open(\"" + pano_marker[2] + "\", '_blank').focus()});\n"\
+                                 "" + name + ".addTo(map);\n")
+        file_desciptor.write("</script>\n" \
                              "\n" \
                              "<script>\n" \
                              "function changeAlpha2(value) {\n" \

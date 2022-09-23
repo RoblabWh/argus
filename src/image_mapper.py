@@ -63,7 +63,7 @@ class ImageMapper:
             images.append(Image(path))
         return images
         
-    def create_flight_report(self):
+    def create_flight_report(self, pano_files):
         before_filter_time = datetime.datetime.now().replace(microsecond=0)
           
         self.map_scaler = None
@@ -98,7 +98,7 @@ class ImageMapper:
             infrared_map_file_name = self.__create_file_name_string()
             self.save_map("ir/", infrared_map_file_name)
             middle_time = datetime.datetime.now().replace(microsecond=0)
-            self.__create_html("ir/", infrared_map_file_name, str(middle_time-start_time+filter_time/2), is_ir = True)
+            self.__create_html("ir/", infrared_map_file_name, str(middle_time-start_time+filter_time/2), pano_files, is_ir = True)
             
             self.__calculate_map(rgb_images)
             rgb_map_file_name = self.__create_file_name_string()
@@ -106,6 +106,7 @@ class ImageMapper:
             end_time = datetime.datetime.now().replace(microsecond=0)
             self.__create_html("",rgb_map_file_name, 
                                str(end_time-middle_time+filter_time/2),
+                               pano_files,
                                "ir/", 
                                "flight_report_" + str(infrared_map_file_name.split(".")[0])+".html", 
                                infrared_map_file_name)
@@ -115,7 +116,7 @@ class ImageMapper:
             map_file_name = self.__create_file_name_string()
             self.save_map("", map_file_name)
             end_time = datetime.datetime.now().replace(microsecond=0)
-            self.__create_html("",map_file_name, end_time-start_time+filter_time)
+            self.__create_html("",map_file_name, end_time-start_time+filter_time, pano_files)
 
     def __calculate_map(self, filtered_images):        
         self.map_scaler = MapScaler(filtered_images, self.map_width_px, self.map_height_px)
@@ -224,7 +225,7 @@ class ImageMapper:
 
         print("-Saved map under ", path + msg_str)
     
-    def __create_html(self, folder, file_name, processing_time, ir_path=None, ir_html_file_name=None, ir_map_name=None, is_ir=False):
+    def __create_html(self, folder, file_name, processing_time, pano_files, ir_path=None, ir_html_file_name=None, ir_map_name=None, is_ir=False ):
         path = self.path_to_images
         # if self.path_to_images[-1] != "/":
         #     path += "/"
@@ -247,7 +248,8 @@ class ImageMapper:
                            ir_html_file_name,
                            ir_map_name,
                            is_ir,
-                           self.with_ODM)
+                           self.with_ODM,
+                           pano_files)
         print("-Creating HTML file...          ")                   
         html_map.create_html_file()
 
