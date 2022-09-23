@@ -257,7 +257,8 @@ class ImageMapper:
         webbrowser.open(os.path.abspath(self.report_path+ ".html"))
 
     def generate_odm_orthophoto(self, container_port, image_size):
-
+        options = [{'feature-quality': 'medium', 'fast-orthophoto': True, 'auto-boundary': True, 'pc-ept': True,'cog': True},
+                   {'feature-quality': 'high', 'fast-orthophoto': True, 'auto-boundary': True, 'pc-ept': True,'cog': True}]
         image_lists = []
         image_lists.append(self.extract_image_paths_from_map_elements(self.map_elements))
         if self.CONTAINED_DJI_INFRARED_IMAGES:
@@ -272,7 +273,7 @@ class ImageMapper:
             else:
                 taskmanager.set_images(list)
 
-            taskmanager.run_task()
+            taskmanager.run_task(options[i])
 
             while True:
                 if not taskmanager.task_running():
@@ -300,3 +301,6 @@ class ImageMapper:
         for map_element in map_elements:
             image_paths += [map_element.get_image().get_image_path()]
         return image_paths
+
+    def get_date(self):
+        return self.map_elements[0].get_image().get_exif_header().get_creation_time_str()

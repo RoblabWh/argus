@@ -15,6 +15,7 @@ import datetime
 import argparse
 
 from image_mapper import ImageMapper
+from PanoramaViewer import Panorma_viewer
 
 NUMBER_ARGS = 2
 NUMBER_ARGS_OPTIONAL = 1
@@ -44,7 +45,7 @@ def main():
     parser.add_argument('Path', metavar='path', type=str, help='the path to the images')
     parser.add_argument('-o', '--with_odm', action='store_true', help='Use ODM to generate a seamless orthophoto')
     parser.add_argument('-p', '--odm_docker_port', type=int, default=3001 , help='the localhost port of the ODM docker container')
-    parser.add_argument('-s', '--odm_resize_to', type=int, default=960 , help='the preferred size of the input images for ODM')
+    parser.add_argument('-s', '--odm_resize_to', type=int, default=800 , help='the preferred size of the input images for ODM')
     parser.add_argument('--gimbal_deviation_tolerance', type=int, default=1, help='how many degrees the gimbal pitch is allowed to deviate from 90 degrees')
     parser.add_argument('--map_size', type=int, default=2500, help='size of the map in pixels')
 
@@ -68,6 +69,10 @@ def main():
         path += "/"
 
     image_mapper = ImageMapper(path_to_images, map_width_px, map_height_px, blending, optimize, gimbal_variance, with_odm)
+    panoviewer = Panorma_viewer(path, "");#image_mapper.get_date())
+    pano_files = panoviewer.generate_reports()
+    # TODO Report muss dann die Seiten in die html einbinden
+    # zusätzlich panellum in verzeichnis kopieren
     image_mapper.create_flight_report()
         
     print("-Creating GPX file...")

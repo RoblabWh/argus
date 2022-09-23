@@ -2,6 +2,9 @@
 # Use:
 # docker run -ti -p 3000:3000 opendronemap/nodeodm
 # to start the node
+# kill with
+# docker kill $(docker ps -q)
+# docker rm $(docker ps -a -q)
 
 # Installation: pip install pyodm
 
@@ -10,9 +13,15 @@ from pyodm import Node
 from pyodm.types import TaskStatus
 from pathlib import Path
 import re
+import multiprocessing
+from functools import partial
 import time
 import docker
 import cv2
+from itertools import repeat
+
+
+
 
 
 class OdmTaskManager:
@@ -39,6 +48,17 @@ class OdmTaskManager:
         self.task_complete = False
         self.console_output = []
 
+    @staticmethod
+    def scale_image(size, path):
+        img = cv2.imread(path)
+        scale_percent = size / img.shape[1]
+        dim = (int(img.shape[1] * scale_percent), int(img.shape[0] * scale_percent))
+        resized = cv2.resize(img, dim, interpolation=cv2.INTER_NEAREST)
+        scaled_image_path = os.path.dirname(path) + '/proxy/' + os.path.basename(path)
+        cv2.imwrite(scaled_image_path, resized)
+        os.system('exiftool -TagsFromFile ' + path + ' ' + scaled_image_path)
+        return scaled_image_path
+
     def set_images_scaled(self, image_paths, scaled_image_size=960):
         self._image_size = scaled_image_size
         self.set_images(self.scale_images(image_paths))
@@ -54,15 +74,22 @@ class OdmTaskManager:
 
         scaled_image_paths = []
         # scale down every image in the list image_paths tp a width of 1024px and save it in a new folder called proxy
-        for path in self.image_paths:
-            img = cv2.imread(path)
-            scale_percent = self._image_size / img.shape[1]
-            dim = (int(img.shape[1] * scale_percent), int(img.shape[0] * scale_percent))
-            resized = cv2.resize(img, dim, interpolation=cv2.INTER_NEAREST)
-            cv2.imwrite(self.path_to_image_folder + 'proxy/' + os.path.basename(path), resized)
-            scaled_image_paths += [self.path_to_image_folder + 'proxy/' + os.path.basename(path)]
-            os.system('exiftool -TagsFromFile ' + path + ' ' + self.path_to_image_folder + 'proxy/' + os.path.basename(path))
+        # for path in self.image_paths:
+        #     img = cv2.imread(path)
+        #     scale_percent = self._image_size / img.shape[1]
+        #     dim = (int(img.shape[1] * scale_percent), int(img.shape[0] * scale_percent))
+        #     resized = cv2.resize(img, dim, interpolation=cv2.INTER_NEAREST)
+        #     cv2.imwrite(self.path_to_image_folder + 'proxy/' + os.path.basename(path), resized)
+        #     scaled_image_paths += [self.path_to_image_folder + 'proxy/' + os.path.basename(path)]
+        #     os.system('exiftool -TagsFromFile ' + path + ' ' + self.path_to_image_folder + 'proxy/' + os.path.basename(path))
 
+        #using multiprocessing to parallel scale down all images found in the list image_paths using openCV
+        pool = multiprocessing.Pool(processes=10)
+        func = partial(OdmTaskManager.scale_image, self._image_size)
+        scaled_image_paths = pool.map(func, self.image_paths)
+        #scaled_image_paths = pool.map(OdmTaskManager.scale_image, zip(self.image_paths, len(self.image_paths) * [self._image_size]))
+        pool.close()
+        pool.join()
         return scaled_image_paths
 
     def run_task(self, options={'feature-quality': 'medium', 'fast-orthophoto': True, 'auto-boundary': True, 'pc-ept': True,'cog': True}):
