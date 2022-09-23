@@ -377,8 +377,10 @@ class HTMLMap():
                              "layerswitcher.RGB.addTo(map);\n")
         for i, pano_marker in enumerate(self.pano_files):
             name = 'marker' + str(i)
+            path_offset = ""
+            if self.is_only_ir: path_offset = "../"
             file_desciptor.write(name + " = L.marker([" + str(pano_marker[0]) + "," + str(pano_marker[1]) + "], {clickable: true});\n"\
-                                 "" + name + ".on(\"click\", function(e) {window.open(\"" + pano_marker[2] + "\", '_blank').focus();});\n"\
+                                 "" + name + ".on(\"click\", function(e) {window.open(\"" + path_offset + pano_marker[2] + "\", '_blank').focus();});\n"\
                                  "" + name + ".addTo(map);\n")
         file_desciptor.write("</script>\n"\
                              "\n"\
@@ -578,8 +580,10 @@ class HTMLMap():
                              "layerswitcher.RGB.addTo(map);\n" )
         for i, pano_marker in enumerate(self.pano_files):
             name = 'marker' + str(i)
+            path_offset = ""
+            if self.is_only_ir: path_offset = "../"
             file_desciptor.write(name + " = L.marker([" + str(pano_marker[0]) + "," + str(pano_marker[1]) + "], {clickable: true});\n"\
-                                 "" + name + ".on(\"click\", function(e) {window.open(\"" + pano_marker[2] + "\", '_blank').focus()});\n"\
+                                 "" + name + ".on(\"click\", function(e) {window.open(\"" + path_offset + pano_marker[2] + "\", '_blank').focus()});\n"\
                                  "" + name + ".addTo(map);\n")
         file_desciptor.write("</script>\n" \
                              "\n" \
