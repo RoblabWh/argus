@@ -140,14 +140,25 @@ class ImageMapper:
             self.placeholder_map = map_obj.generate_ODM_placeholder_map(self.path_to_images)
     
     def __check_for_dji_infrared_images(self, filtered_images):
+        # (width_0, height_0) = filtered_images[0].get_exif_header().get_image_size()
+        # (width_1, height_1) = filtered_images[1].get_exif_header().get_image_size()
+        # if(width_0 != width_1 and height_0 != height_1):
+        #     self.CONTAINED_DJI_INFRARED_IMAGES = True
+        #     print("-Dataset contains infrared images...")
+        # else:
+        #     print("-Dataset does not contain infrared images...")
+
         (width_0, height_0) = filtered_images[0].get_exif_header().get_image_size()
-        (width_1, height_1) = filtered_images[1].get_exif_header().get_image_size()
-        if(width_0 != width_1 and height_0 != height_1):
-            self.CONTAINED_DJI_INFRARED_IMAGES = True
-            print("-Dataset contains infrared images...")
-        else:
-            print("-Dataset does not contain infrared images...")
-       
+        for image in filtered_images:
+            (width_1, height_1) = image.get_exif_header().get_image_size()
+            if(width_0 != width_1 and height_0 != height_1):
+                self.CONTAINED_DJI_INFRARED_IMAGES = True
+                print("-Dataset contains infrared images...")
+                return
+        print("-Dataset does not contain infrared images...")
+
+
+
     def __calculate_gps_for_mapbox_plugin(self, map_obj):
         origin_gps = self.map_elements[0].get_image().get_exif_header().get_gps()
         origin_location = self.map_elements[0].get_rotated_rectangle().get_center()

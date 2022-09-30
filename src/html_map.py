@@ -136,12 +136,9 @@ class HTMLMap():
             "<div id=\"slide"+str(i+1)+"\" style=\"display: inline-block; display: flex; justify-content: center;\">\n"\
             "<div class=\"img-magnifier-container\">\n")
             if self.is_only_ir:
-                name_ir = str((self.map_elements[i].get_image().get_image_path().split("/"))[-1])
-                name_ir = name_ir[:name_ir.rfind(".")]
-                img_numbr = re.search(r'\d{0,4}$', name_ir)
-                nmbr = int(img_numbr.group()) if img_numbr else None
 
-                name_rgb = "../DJI_" + "{:>04}".format(str((nmbr-1))) + ".JPG"
+                name_rgb = self.map_elements[i].get_image().get_rgb_counterpart_path()
+                name_rgb = "../" + str((name_rgb.split("/"))[-1])
 
                 file_desciptor.write("<img class=\"overlay-img\" src=\""+ name_rgb + "\" width=\"120%\">\n")
             file_desciptor.write("<img class=\"center-mit\" id=\""+str(i+1)+"\" src=\""+str((self.map_elements[i].get_image().get_image_path().split("/"))[-1])+"\" "\

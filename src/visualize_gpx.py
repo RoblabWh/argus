@@ -41,6 +41,8 @@ def distance(x1,y1,x2,y2):
 def speed_f(x0,y0,x1,y1,t0,t1):
     d=math.sqrt((x0-x1)**2+(y0-y1)**2)
     delta_t=t1-t0
+    if(delta_t==0):
+        delta_t = 0.1
     s=float(d/delta_t)
     return s
     

@@ -98,7 +98,7 @@ class ExifHeader:
         try:
             fl = float(((self._get_if_exist(self.python_dict, 'EXIF:FocalLength').split())[0]))
         except:
-            if camera_model_name == "FC2403":
+            if camera_model_name == "FC2403" or camera_model_name == "MAVIC2-ENTERPRISE-ADVANCED":
                 camera_model_name += "_IR"
             fl = self.get_data_from_camera_specs(camera_model_name, 'EXIF:FocalLength')
 

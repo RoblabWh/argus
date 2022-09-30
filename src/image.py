@@ -23,9 +23,20 @@ class Image:
         self.exif_header = ExifHeader(image_path)
         (self.width, self.height) = self.exif_header.get_image_size()
         self.matrix = None
+        self.rgb_counterpart_path = None
         
     def update_path(self, path):
         self.image_path = path
+
+    def set_rgb_counterpart_path(self, path):
+        self.rgb_counterpart_path = path
+
+    def get_rgb_counterpart_path(self):
+        """
+        Return path of RGB counterpart if image is infrared
+        :return: string
+        """
+        return self.rgb_counterpart_path
 
     def get_image_path(self):
         """
