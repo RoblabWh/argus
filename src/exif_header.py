@@ -29,18 +29,21 @@ class ExifHeader:
         self.string = json.dumps(self.json_data, sort_keys=True, indent=4, separators=(',', ': '))
         self.python_dict = json.loads(self.string)[0]
 
+
         self.gps_coordinate = None
         self.xmp_metadata = None
         self.camera_properties = None
         self.image_size = None 
         self.creation_time = None
         self.creation_time_str = None       
+        self.ir = False
 
         self.read_gps_coordinate()
         self.read_xmp_metadata()
         self.read_camera_properties()
         self.read_image_size()
         self.read_creation_time()
+
 
         #print(self.python_dict)   
 
@@ -96,23 +99,37 @@ class ExifHeader:
         camera_model_name = str(self._get_if_exist(self.python_dict, 'EXIF:Model'))
 
         try:
-            fl = float(((self._get_if_exist(self.python_dict, 'EXIF:FocalLength').split())[0]))
-        except:
-            if camera_model_name == "FC2403" or camera_model_name == "MAVIC2-ENTERPRISE-ADVANCED":
-                camera_model_name += "_IR"
             fl = self.get_data_from_camera_specs(camera_model_name, 'EXIF:FocalLength')
+        except:
+            fl = float(((self._get_if_exist(self.python_dict, 'EXIF:FocalLength').split())[0]))
 
         try:
             fov = self.get_data_from_camera_specs(camera_model_name,'Composite:FOV')
         except:
             fov = float(((self._get_if_exist(self.python_dict, 'Composite:FOV').split())[0]))
-            # print(self.python_dict['Composite:FOV'])
 
         #print('fov: ' + str(fov), 'fl: ' + str(fl), 'camera_model_name: ' + camera_model_name)
 
-        
-        self.camera_properties = CameraProperties(camera_model_name, fov, fl)       
-  
+        self.camera_properties = CameraProperties(camera_model_name, fov, fl)
+
+
+    def enable_ir(self):
+        self.ir = True
+        self.camera_properties.model += "_IR"
+        fl = None
+        fov = None
+        try:
+            fl = self.get_data_from_camera_specs(self.camera_properties.camera_model_name,
+                                                                        'EXIF:FocalLength')
+            fov = self.get_data_from_camera_specs(self.camera_properties.camera_model_name,
+                                                                         'Composite:FOV')
+        except:
+            #print(f"no specific ir camera properties found in camera_specs.json for model: { self.camera_properties.model }")
+            return
+
+        self.camera_properties.fl = fl
+        self.camera_properties.fov = fov
+
     def get_data_from_camera_specs(self,camera_model_name, key):
         with open('camera_specs.json') as f:
                 data = json.load(f)
@@ -120,10 +137,12 @@ class ExifHeader:
                     val = float(data[camera_model_name][key])
                     msg = "Using camera_specs.json..."
                     print(msg, end='\r', flush=True)
+                    f.close()
                 else:
-                    print("Unsuported configuration for camera model:\""+str(camera_model_name)+"\", please add Horizontal FOV and Focal Length to camera_specs.json!")
-                    exit()
-                f.close()
+                    msg = "Untested configuration for camera model:\""+str(camera_model_name)+"\", please add Horizontal FOV and Focal Length to camera_specs.json!"
+                    # exit()
+                    f.close()
+                    raise Exception(msg)
                 return val
 
     def get_gps(self):

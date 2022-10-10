@@ -38,6 +38,9 @@ class Image:
         """
         return self.rgb_counterpart_path
 
+    def set_to_ir(self):
+        self.exif_header.enable_ir()
+
     def get_image_path(self):
         """
         Return image path

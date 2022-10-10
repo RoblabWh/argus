@@ -6,6 +6,8 @@
     "L1D-20c": {"Composite:FOV":65.5, "EXIF:FocalLength":10.3},
     "L2D-20c" : {"Composite:FOV":65.5, "EXIF:FocalLength":10.3},
     "MAVIC2-ENTERPRISE-ADVANCED": {"Composite:FOV":62.0, "EXIF:FocalLength":4.5},
-    "MAVIC2-ENTERPRISE-ADVANCED_IR": {"Composite:FOV":42.0, "EXIF:FocalLength":4.5}
+    "MAVIC2-ENTERPRISE-ADVANCED_IR": {"Composite:FOV":42.0, "EXIF:FocalLength":4.5},
+    "M30T": {"Composite:FOV":70.7, "EXIF:FocalLength":4.4},
+    "M30T_IR": {"Composite:FOV":44.5, "EXIF:FocalLength":9.1}
 }
 

@@ -43,6 +43,7 @@ class InfraredRGBSorter(Sorter):
             (infrared_images, rgb_images) = (images_2, images_1)
 
         for i, infrared_image in enumerate(infrared_images):
+            infrared_image.set_to_ir()
             infrared_image.set_rgb_counterpart_path(rgb_images[i].get_image_path())
             
         return (infrared_images, rgb_images)
