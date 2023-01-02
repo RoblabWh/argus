@@ -12,13 +12,16 @@ from image import Image
 from rectangle import RotatedRect
 
 class MapElement:
-    def __init__(self, image, rotated_rectangle):
+    def __init__(self, image, rotated_rectangle, length_w_in_meters=0, length_h_in_meters=0):
         """
         Constructor
         :param image: Image 
         """
         self.image = image
         self.rectangle = rotated_rectangle
+        self.length_w_in_meters = length_w_in_meters
+        self.length_h_in_meters = length_h_in_meters
+
 
     def get_image(self):
         """

@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
-__author__      = "Artur Leinweber"
+__author__      = "Artur Leinweber, Max Schulte"
 __copyright__ = "Copyright 2020"
-__credits__ = ["None"]
 __license__ = "GPL"
-__version__ = "1.0.1"
-__maintainer__ = "Artur Leinweber"
+__maintainer__ = "Max Schulte"
 __email__ = "arturleinweber@live.de"
 __status__ = "Production"
 
@@ -19,6 +17,9 @@ import datetime
 import webbrowser
 import multiprocessing
 import time
+import sys
+from weather import Weather
+from datetime import datetime, date, time
 
 from path_reader import PathReader
 from image import Image
@@ -54,6 +55,7 @@ class ImageMapper:
         self.middle_gps = None
         self.CONTAINED_DJI_INFRARED_IMAGES = False
         self.placeholder_map = None
+
    
     @staticmethod
     def generate_images(image_paths):
@@ -72,7 +74,7 @@ class ImageMapper:
         image_paths = PathReader.read_path(self.path_to_images,("DJI") ,(".JPG",".jpg"), sort=False)
 
         print("-Loading " + str(len(image_paths)) + " images...")
-        pool = multiprocessing.Pool(4)
+        pool = multiprocessing.Pool(6)
         images = pool.map(ImageMapper.generate_images, [image_paths])[0]
 
         print("-Sorting " + str(len(images)) +  " images by creation time...")
@@ -317,3 +319,151 @@ class ImageMapper:
 
     def get_date(self):
         return self.map_elements[0].get_image().get_exif_header().get_creation_time_str()
+
+    def calculate_metadata(self):
+        self.pre_process_images()
+        # self.mapping_images()
+
+        date = str(self.map_elements[0].get_image().get_exif_header().get_creation_time_str())
+        try:
+            self.location = str(self.map_elements[0].get_image().get_exif_header().get_gps().get_address())
+        except:
+            self.location = str("N/A")
+            print("-Ignoring reverse adress search....")
+            print("--", sys.exc_info()[0])
+
+        flight_time_last = self.map_elements[-1].get_image().get_exif_header().get_creation_time()
+        flight_time_first = self.map_elements[0].get_image().get_exif_header().get_creation_time()
+        last = time(int(flight_time_last / 10000), int(flight_time_last % 10000 / 100), int(flight_time_last % 100))
+        first = time(int(flight_time_first / 10000), int(flight_time_first % 10000 / 100), int(flight_time_first % 100))
+        # flight_time = datetime.combine(datetime.date.min, last) - datetime.combine(datetime.date.min, first)
+
+        flight_time_str = "long"#str(flight_time).split(":")
+        # flight_time_str = flight_time_str[-3] + " h : " + flight_time_str[-2] + " m : " + \
+        #                        flight_time_str[-1] + " s"
+        x_res = self.map_elements[0].get_image().get_width()
+        y_res = self.map_elements[0].get_image().get_height()
+
+        camera_properties = self.map_elements[0].get_image().get_exif_header().get_camera_properties()
+        camera_model = camera_properties.get_model()
+        camera_focal_length = camera_properties.get_focal_length()
+        camera_fov = camera_properties.get_fov()
+        camera_vertical_fov = camera_properties.get_vertical_fov()
+        sensor_width, sensor_height = camera_properties.get_sensor_size()
+
+        # print(self.area_k, self.avg_altitude, self.date, self.location, self.flight_time_str, self.camera_model, self.camera_fov)
+        try:
+            actual_weather = Weather(self.map_elements[0].get_image().get_exif_header().get_gps().get_latitude(), self.map_elements[0].get_image().get_exif_header().get_gps().get_longitude(), "e9d56399575efd5b03354fa77ef54abb")
+            # print(weather_info_lst)
+            temperature = actual_weather.get_temperature()
+            humidity = actual_weather.get_humidity()
+            altimeter = actual_weather.get_altimeter()
+            wind_speed = actual_weather.get_wind_speed()
+            visibility = actual_weather.get_visibility()
+            wind_dir_degrees = actual_weather.get_wind_dir_degrees()
+        except:
+            print("-Ignoring weather details...")
+            print("--", sys.exc_info())
+            pass
+
+
+
+        flight_data_entrys = ['Date', 'Time', 'Location', 'Area Covered', 'Flight Time', 'Processing Time', 'Images',
+                              'Image Resolution', 'Avg. Flight Height']
+        flight_data = []
+        # for entry in flight_data_entrys:
+        #     flight_data.append({"description": entry, "value": "yyy"})
+        flight_data.append({"description": 'Date', "value": date})
+        flight_data.append({"description": 'Time', "value": "time"})
+        flight_data.append({"description": 'Location', "value": self.location})
+        flight_data.append({"description": 'Area Covered', "value": "yyy"})
+        flight_data.append({"description": 'Flight Time', "value": flight_time_str})
+        flight_data.append({"description": 'Processing Time', "value": "yyy"})
+        flight_data.append({"description": 'Images', "value": len(self.map_elements)})
+        flight_data.append({"description": 'Image Resolution', "value": str(x_res) + " x " + str(y_res)})
+        flight_data.append({"description": 'Avg. Flight Height', "value": "yyy"})
+
+
+        camera_specification_entrys = ['Camera Model', 'Focal Length', 'Horizontal FOV', 'Vertical FOV', 'Sensor Size']
+        camera_specs = []
+        # for entry in camera_specification_entrys:
+        #     camera_specs.append({"description": entry, "value": "aaa"})
+        camera_specs.append({"description": 'Camera Model', "value": camera_model})
+        camera_specs.append({"description": 'Focal Length', "value": camera_focal_length})
+        camera_specs.append({"description": 'Horizontal FOV', "value": camera_fov})
+        camera_specs.append({"description": 'Vertical FOV', "value": camera_vertical_fov})
+        camera_specs.append({"description": 'Sensor Size', "value": str(sensor_width) + " x " + str(sensor_height)})
+
+
+        weather_entrys = ['Temperature', 'Humidity', 'Air Preasure', 'Wind Speed', 'Wind Direction', 'Visibility']
+        weather = []
+        # for entry in weather_entrys:
+        #     weather.append({"description": entry, "value": "www"})
+        weather.append({"description": 'Temperature', "value": temperature})
+        weather.append({"description": 'Humidity', "value": humidity})
+        weather.append({"description": 'Air Preasure', "value": altimeter})
+        weather.append({"description": 'Wind Speed', "value": wind_speed})
+        weather.append({"description": 'Wind Direction', "value": wind_dir_degrees})
+        weather.append({"description": 'Visibility', "value": visibility})
+
+        return flight_data, camera_specs, weather
+
+    def pre_process_images(self):
+        before_filter_time = datetime.now().replace(microsecond=0)
+
+        self.map_scaler = None
+        image_paths = list()
+        images = list()
+        image_paths = PathReader.read_path(self.path_to_images, ("DJI"), (".JPG", ".jpg"), sort=False)
+
+        print("-Loading " + str(len(image_paths)) + " images...")
+        pool = multiprocessing.Pool(6)
+        images = pool.map(ImageMapper.generate_images, [image_paths])[0]
+
+        print("-Sorting " + str(len(images)) + " images by creation time...")
+        images.sort(key=lambda x: x.get_exif_header().get_creation_time())
+
+        if len(images) < 4:
+            print("-Number of loaded image paths: ", len(images))
+            exit()
+
+        self.filtered_images = GimbalPitchFilter(89 - self.max_gimbal_pitch_deviation).filter(images)
+        self.filtered_images = PanoFilter("pano").filter(self.filtered_images)
+        print("-Number of used images after filtering:", len(self.filtered_images))
+        after_filter_time = datetime.now().replace(microsecond=0)
+        filter_time = after_filter_time - before_filter_time
+        start_time = datetime.now().replace(microsecond=0)
+        self.__check_for_dji_infrared_images(self.filtered_images)
+
+        self.map_scaler = MapScaler(self.filtered_images, self.map_width_px, self.map_height_px)
+        self.map_elements = self.map_scaler.get_map_elements()
+
+    def mapping_images(self):
+        if self.CONTAINED_DJI_INFRARED_IMAGES:
+            (infrared_images, rgb_images) = InfraredRGBSorter().sort(self.iltered_images)
+            self.__move_images_to_folder("ir/", infrared_images)
+            self.__calculate_map(infrared_images)
+            self.map_elements_ir = self.map_elements.copy()
+            infrared_map_file_name = self.__create_file_name_string()
+            self.save_map("ir/", infrared_map_file_name)
+            middle_time = datetime.now().replace(microsecond=0)
+            self.__create_html("ir/", infrared_map_file_name, str(middle_time - start_time + filter_time / 2),
+                               pano_files, is_ir=True)
+
+            self.__calculate_map(rgb_images)
+            rgb_map_file_name = self.__create_file_name_string()
+            self.save_map("", rgb_map_file_name)
+            end_time = datetime.datetime.now().replace(microsecond=0)
+            self.__create_html("", rgb_map_file_name,
+                               str(end_time - middle_time + filter_time / 2),
+                               pano_files,
+                               "ir/",
+                               "flight_report_" + str(infrared_map_file_name.split(".")[0]) + ".html",
+                               infrared_map_file_name)
+
+        else:
+            self.__calculate_map(filtered_images)
+            map_file_name = self.__create_file_name_string()
+            self.save_map("", map_file_name)
+            end_time = datetime.datetime.now().replace(microsecond=0)
+            self.__create_html("", map_file_name, end_time - start_time + filter_time, pano_files)

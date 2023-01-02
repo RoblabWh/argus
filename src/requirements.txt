@@ -16,3 +16,4 @@ scikit_image
 ipython
 docker
 pyodm
+flask == 2.2.2

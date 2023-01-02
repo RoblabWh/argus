@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Map</title>
+    <!-- adds leaflet -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"
+          integrity="sha512-xodZBNTC5n17Xt2atTPuE1HxjVMSvLVW9ocqUKLsCC5CXdbqCmblAshOMAS6/keqq/sMZMZ19scR4PsZChSR7A=="
+          crossorigin=""/>
+    <!-- Make sure you put this AFTER Leaflet's CSS -->
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"
+            integrity="sha512-XQoYMqMTK8LvdxXYG3nZ448hOEQiglfqkJs1NOQV44cWnUrBc8PkAOcXy20w0vlaXaVUearIOBhiXZ5V3ynxwA=="
+            crossorigin=""></script>
+    <!-- adds leaflet -->
+    <style>
+	     #map {
+             height: 900px;
+             max-height: 1000px;
+             width: 100%;
+             padding-top:30px;
+             display: flex;
+             justify-content: center;
+             margin: 0 auto;
+	     }
+    </style>
+</head>
+<body>
+{% if map %}
+<div id="map"></div>
+<script>
+
+var defaultZoom = {{map.zoom}};
+var center = {{map.center}}; //[51.57443888888889,7.028625]
+var map = L.map('map').setView(center, defaultZoom);
+
+L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token={accessToken}',
+    {
+        attribution: '',
+        maxZoom: 25,
+        id: 'mapbox/satellite-v9',
+        tileSize: 512,
+        zoomOffset: -1,
+        accessToken: 'pk.eyJ1Ijoicm9ibGFidXNlcndocyIsImEiOiJja3VjaXF3d2MxMTN5Mm9tdmQzaGphdGU3In0.BhKF_054bVOPcviIq2yIKg'
+    }).addTo(map);
+
+var mapSize=[2945,3849];
+
+var	imageBounds = {{map.rgbMapBounds}};
+var mapImage = L.imageOverlay('{{ url_for('static', filename=map.rgbMapFile) }}', imageBounds);
+var mapOverlay = L.layerGroup([mapImage]);
+
+var	imageBounds = {{map.irMapBounds}};
+var IR = L.imageOverlay('{{ url_for('static', filename=map.irMapFile) }}', imageBounds);
+var irOverlay = L.layerGroup([IR]);
+
+
+var mapOverlayOpacity = 1;
+//var inMeasureMode = false;
+//IR.on('click', function(e) {
+//    if(!inMeasureMode) {
+//        var loc = window.location.pathname;
+//        var url = loc.substring(0, loc.lastIndexOf('/')) + '/ir/flight_report_map_2500x2500_2022-08-31_23_22_51_optimize_True.html';
+//        window.open(url,'_blank');
+//    }});
+var threshold = 0.55;
+
+//var svg = document.getElementById('mymap');
+//loadPolygons();
+
+
+function highlightFeature(e) {
+	if(!inMeasureMode) {
+	if(mapOverlayOpacity > threshold) {
+		var layer = e.target;
+		layer.setStyle({
+			fillOpacity: 0.7
+		});
+	}
+	}
+}
+
+function resetHighlight(e) {
+	var layer = e.target;
+
+	layer.setStyle({
+		fillOpacity: 0
+	});
+}
+
+var polygons;
+function loadPolygons() {
+	polygons = new Array();
+  var centers = new Array();
+	var svg = document.getElementById('overviewMap').getElementsByTagName('polyline');
+	for (var i = 0; i < svg.length; i++) {
+		for (var j = 0; j < svg[i]['points'].length; j++) {
+		}
+		//var names really bad, myb adjust
+		var p1=[svg[i]['points'][0]['x']/mapSize[0],svg[i]['points'][0]['y']/mapSize[1]];
+		var p2=[svg[i]['points'][1]['x']/mapSize[0],svg[i]['points'][1]['y']/mapSize[1]];
+		var p3=[svg[i]['points'][2]['x']/mapSize[0],svg[i]['points'][2]['y']/mapSize[1]];
+		var p4=[svg[i]['points'][3]['x']/mapSize[0],svg[i]['points'][3]['y']/mapSize[1]];
+		var pL1 = [p1[1] * lat1 + ((1 - p1[1]) * lat2),p1[0] * long2 + ((1 - p1[0]) * long1)];
+		var pL2 = [p2[1] * lat1 + ((1 - p2[1]) * lat2),p2[0] * long2 + ((1 - p2[0]) * long1)];
+		var pL3 = [p3[1] * lat1 + ((1 - p3[1]) * lat2),p3[0] * long2 + ((1 - p3[0]) * long1)];
+		var pL4 = [p4[1] * lat1 + ((1 - p4[1]) * lat2),p4[0] * long2 + ((1 - p4[0]) * long1)];
+		var latlngs = [pL1,pL2,pL3,pL4];
+      var center = [((pL1[0] + pL3[0]) / 2.0), ((pL1[1] + pL3[1]) / 2.0)];
+      centers.push(center);
+		var polygon = L.polygon(latlngs ,{ opacity: 0, fillOpacity: 0, fillColor: '#0000FF' });
+		polygon.on('mouseover', highlightFeature);
+		polygon.on('mouseout', resetHighlight);
+		polygon.on('click',	slide);
+           mapOverlay.addLayer(polygon);
+		polygons.push(polygon);
+	}
+  trajectory = L.polyline(centers);
+  var overlay = {
+  'Gpx': trajectory
+  };
+  var gpxLayer = L.control.layers(null, overlay, {
+  collapsed: false,
+  position: 'topleft'
+  });
+  gpxLayer.addTo(map);
+  document.getElementById('secondMap').remove();
+}
+
+function slide(e) {
+	var i = polygons.indexOf(e.target);
+	currentSlide(i+1);
+}
+
+function changeAlpha(value) {
+    mapImage.setOpacity(value/100);
+    IR.setOpacity(value/100);
+    mapOverlayOpacity = value/100;
+}
+<!-- home button functionality -->
+L.Control.zoomHome = L.Control.extend({
+options: {
+position: 'topleft',
+zoomHomeText: '&#9873;',
+zoomHomeTitle: 'Zoom home'
+},
+onAdd: function (map) {
+var controlName = 'gin-control-zoom',
+container = L.DomUtil.create('div', controlName + ' leaflet-bar'),
+options = this.options;
+//container.innerHTML
+this._zoomHomeButton = this._createButton(options.zoomHomeText, options.zoomHomeTitle,
+controlName + '-home', container, this._zoomHome);
+return container;
+},
+onRemove: function (map) {
+},
+_zoomHome: function (e) {
+map.flyTo(center, defaultZoom);
+},
+_createButton: function (html, title, className, container, fn) {
+var link = L.DomUtil.create('a', className, container);
+link.innerHTML = html;
+link.href = '#';
+link.title = title;
+link.role = "button";
+L.DomEvent
+.on(link, 'click', fn, this)
+.on(link, 'click', L.DomEvent.stop)
+.on(link, 'click', this._refocusOnMap, this);;
+return link;
+},
+});
+var zoomHome = new L.Control.zoomHome();
+zoomHome.addTo(map);
+<!-- home button functionality -->
+var layerswitcher = {
+RGB: mapOverlay,
+IR : irOverlay
+};
+L.control.layers(layerswitcher,{}, {collapsed: false}).addTo(map);
+layerswitcher.RGB.addTo(map);
+console.log("map loaded");
+
+</script>
+{% endif %}
+</body>
+</html>

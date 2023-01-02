@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        .bodyDiv {
+            width: 94%;
+            max-width: 1600px;
+            margin: 0 auto !important;
+            float: none !important;
+            font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+        }
+
+        .header{
+            width: 100%;
+            height: 50px;
+            position: fixed;
+            background-color: #f1f1f1;
+            top: 0;
+        }
+
+        .big_upload{
+          float:left;
+          width: 63%;
+          position: relative;
+          padding: 10px 0px 10px 10px;
+          border-radius: 3px;
+          border-color: rgb(204, 204, 204);
+          border-style: solid;
+          border-width: 1px;
+        }
+
+        .big_button{
+          float:right;
+          position: relative;
+          width: 35%;
+          padding: 11px 0px;
+          background-color: rgb(56, 152, 236);
+          color: white;
+          border-radius: 4px;
+          cursor: pointer;
+        }
+
+        .big_button:disabled{
+          background-color: white;
+          color: grey;
+        }
+
+        #big_button_a{
+          width: 35%;
+          padding: 11px 0px;
+        }
+
+        .map_container {
+          padding: 18 px;
+          background-color: white;
+          overflow: hidden;
+        }
+
+        p {
+            text-align: justify;
+            font-size: 16px;
+        }
+
+        summary {
+          background-color: grey;
+          color: white;
+          font-weight: bold;
+          padding: 1rem;
+          margin-bottom: 1rem;
+          outline: none;
+          border-radius: 4px;
+          cursor: pointer;
+          position: relative;
+        }
+
+        details[open]>summary{
+          background-color: black;
+          color: white;
+        }
+        details[open]>summary:hover, summary:hover {
+          background-color: rgb(56, 152, 236);
+          color: black;
+        }
+
+        details > summary::after {
+          position: absolute;
+          content: "+";
+          right: 20px;
+        }
+        details[open] > summary::after {
+          position: absolute;
+          content: "-";
+          right: 20px;
+        }
+        details > summary::-webkit-details-marker {
+          display: none;
+        }
+
+        .tab-content{
+          margin: 20px;
+        }
+
+        #wrapper {
+          display: flex;
+          flex-direction: row;
+          flex-wrap: wrap;
+          justify-content: space-between;
+          padding:15px;
+        }
+
+        {% include 'tableStyle.css' %}
+
+
+    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+
+<body>
+    <div class="header">
+        <h3 style="float: right;">Report ID: {{ id }}</h3>
+        <a href="/" style="float: left;">Back to overview</a>
+    </div>
+
+    <div class="bodyDiv">
+        <br>
+        <br>
+        <h1>Flight Report</h1>
+        <h3>Report ID: {{ id }}</h3>
+
+        <div id="wrapper">
+            <form method="post" action="/{{ id }}/upload" enctype="multipart/form-data" style="width: 100%; ">
+                <input class="big_upload" type="file" name="files[]" multiple="true" autocomplete="off" required>
+                <input class="big_button" type="submit" value="Upload">
+            </form>
+            <form method="post" action="/{{ id }}/process" style="width: 100%; ">
+                <div class="big_upload">
+                    <input type="checkbox" id="with_odm" name="option1" value="odm">
+                    <label for="vehicle1"> Calc ODM orthophoto | </label>
+                    <input type="checkbox" id="ai_detection" name="option2" value="ai">
+                    <label for="vehicle2"> Use AI object detection</label>
+                </div>
+                {% if not file_names %}
+                <input class="big_button" type="submit" value="Evaluate" disabled>
+                {% else %}
+                <input class="big_button" type="submit" value="Evaluate">
+                {% endif %}
+            </form>
+            <form method="post" action="/{{ id }}/buildMap"><input class="big_button" value="makemap" type="submit"></form>
+
+            <p>
+                {% with messages = get_flashed_messages() %}
+                {% if messages %}
+            <ul class=flashes>
+                {% for message in messages %}
+                <li>{{ message }}</li>
+                {% endfor %}
+            </ul>
+            {% endif %}
+            {% endwith %}
+            </p>
+        </div>
+
+        <details>
+            <summary>Flight Data</summary>
+            <div class="tab-content">
+                {% include 'flightData.html' %}
+                <br>
+                <details>
+                    <summary>Flight Profiles</summary>
+                    <div class="tab-content">
+                        <p>your text goes here</p>
+                    </div>
+                </details>
+            </div>
+        </details>
+        <details>
+            <summary>UAV/ Camera Specs</summary>
+            <div class="tab-content">
+                <p>your text goes here</p>
+                {% include 'cameraSpecs.html' %}
+            </div>
+        </details>
+        <details>
+            <summary>Weather</summary>
+            <div class="tab-content">
+                <p>your text goes here</p>
+                {% include 'weather.html' %}
+            </div>
+        </details>
+        <details>
+            <summary>AI Detection</summary>
+            <div class="tab-content">
+                <p>your text goes here</p>
+            </div>
+        </details>
+
+
+        <div class="map_container">
+            <h2> Map </h2>
+            {% include 'mapViewer.html' %}
+        </div>
+
+        <div>
+            <p> Photo slideshow with magnifier </p>
+        </div>
+
+        <div>
+            <h2> Photos </h2>
+            {% include 'photoViewer.html' %}
+        </div>
+
+
+        <script>
+
+        </script>
+    </div>
+</body>
+</html>

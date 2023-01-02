@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>flightdata</title>
+    <style>
+    </style>
+</head>
+<body>
+<table>
+    {% for item in flight_data %}
+    <tr>
+        <td class="rowTitle">{{ item.description }}</td>
+        <td>{{ item.value }}</td>
+    </tr>
+    {% endfor %}
+
+</table>
+</body>
+</html>

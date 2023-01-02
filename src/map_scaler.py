@@ -1,11 +1,9 @@
 #!/usr/bin/env python3
-__author__      = "Artur Leinweber"
+__author__      = "Artur Leinweber, Max Schulte"
 __copyright__ = "Copyright 2020"
 __credits__ = ["None"]
 __license__ = "GPL"
-__version__ = "1.0.1"
-__maintainer__ = "Artur Leinweber"
-__email__ = "arturleinweber@live.de"
+__maintainer__ = "Max Schulte"
 __status__ = "Production"
 
 import numpy as np
@@ -32,7 +30,6 @@ class MapScaler:
         
         self.distances_m = list()
         self.distances_px = list()
-        
 
         self.map_width = map_width_px
         self.map_height = map_height_px
@@ -40,18 +37,9 @@ class MapScaler:
 
         self.length_w_in_m, self.length_h_in_m = MapScaler.calc_length_via_fov(images)
 
-        #print("length_w_in_m:", self.length_w_in_m)
-        #print("length_h_in_m:", self.length_h_in_m)
-
-        #print(images[0].get_width()/self.length_w_in_m[0])
-        #print(images[0].get_height()/self.length_h_in_m[0])
-        #exit()
-        #print("\n")
-
         self.calc_scale_px_per_m(*(self.get_min_and_max_scales()))
         self.create_map_elements()
         #self.plot_trajectory()
-        #exit()        
 
     def plot_polygons(self):
         self.plot_polygons()
@@ -208,41 +196,20 @@ class MapScaler:
         #print("\n")
 
     def create_map_elements(self):
-        #new
-        #for i in range(len(self.images)):
-        #    self.scale_px_per_m_image = self.scale_px_per_m_image + (self.images[i].get_width() / self.length_w_in_m[i])
-        #    self.scale_px_per_m_image = self.scale_px_per_m_image + (self.images[i].get_height() / self.length_h_in_m[i])
-        #
-        #self.scale_px_per_m_image = self.scale_px_per_m_image/(len(self.images) * 2)
-        #----     
-
-
         image_width_px = list()
         image_height_px = list()
         for i in range(len(self.images)):
             image_width_px.append(int(self.length_w_in_m[i] * self.scale_px_per_m))
             image_height_px.append(int(self.length_h_in_m[i] * self.scale_px_per_m))
-            #image_width_px.append(int(self.images[i].get_width() / self.scale_px_per_m_image * self.scale_px_per_m))
-            #image_height_px.append(int(self.images[i].get_height() / self.scale_px_per_m_image * self.scale_px_per_m))
-   
-        #print("image_width_px:", image_width_px, "\n")
-        #print("image_height_px:", image_height_px, "\n")
+
         self.map_offset = int(math.sqrt(((max(image_width_px))*(max(image_width_px)))+((max(image_height_px))*(max(image_height_px)))) * 2)
-        
-        #print("self.map_offset:", self.map_offset)
-        #print("\n")
-        #yaw = 0
-        #for i in range(len(self.images)):
-        #    dif = abs(self.images[i].get_exif_header().get_xmp().get_flight_yaw_degree() - self.images[i].get_exif_header().get_xmp().get_gimbal_yaw_degree())
-        #    yaw = yaw + dif
-        #ref = yaw/len(self.images)
+
         ref = self.images[1].get_exif_header().get_xmp().get_flight_yaw_degree() - self.images[1].get_exif_header().get_xmp().get_gimbal_yaw_degree()
-        #print(ref) 
-        for i in range(len(self.images)):
-            image = self.images[i]
+        for i, image in enumerate(self.images):
             cx, cy = self.scaled_points[i]
             gimbal_yaw_degree = -(image.get_exif_header().get_xmp().get_gimbal_yaw_degree() + ref)
-            self.map_elements.append(MapElement(image, RotatedRect(int(self.map_offset/2) + cx, int(self.map_offset/2) + cy , image_width_px[i], image_height_px[i], gimbal_yaw_degree)))
+            rect = RotatedRect(int(self.map_offset/2) + cx, int(self.map_offset/2) + cy , image_width_px[i], image_height_px[i], gimbal_yaw_degree)
+            self.map_elements.append(MapElement(image, rect))
     
     def plot_polygons(self):
         fig = plt.figure("Projection", figsize=(10, 10))

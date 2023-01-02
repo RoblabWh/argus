@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>photo viewer</title>
+    <style>
+    .mySlides {
+      display: none;
+      width:100%;
+    }
+
+    .slideshow-container {
+      width: 100%;
+      position: relative;
+      margin: auto;
+    }
+
+    .prev, .next {
+      cursor: pointer;
+      position: absolute;
+      top: 50%;
+      width: auto;
+      padding: 16px;
+      margin-top: -22px;
+      color: white;
+      font-weight: bold;
+      font-size: 32px;
+      transition: 0.3s ease;
+      user-select: none;
+      background-color: rgba(1,1,1,0.4);
+      border-radius: 4px;
+    }
+    .next {
+      right: 0;
+    }
+
+    .prev:hover, .next:hover {
+      color: white;
+      background-color: rgb(56, 152, 236);
+    }
+
+
+    .img-magnifier-glass {
+      position: absolute;
+      z-index: 3;
+      border: 3px solid #000;
+      border-radius: 4px;
+      cursor: none;
+      /*Set the size of the magnifier glass:*/
+      width: 250px;
+      height: 250px;
+      opacity:0;
+      pointer-events:none;
+    }
+
+    a:hover .img-magnifier-glass{
+      opacity:1;
+      pointer-events:initial;
+    }
+
+    .settings{
+      width: 66%;
+      display: inline-flex;
+    }
+
+    .slidecontainer {
+      width: 50%;
+    }
+
+    .slider {
+      -webkit-appearance: none;
+      width: 100%;
+      height: 25px;
+      background: #d3d3d3;
+      outline: none;
+      opacity: 0.7;
+      -webkit-transition: .2s;
+      transition: opacity .2s;
+    }
+
+    .slider:hover {
+      opacity: 1;
+    }
+
+    .slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 25px;
+      height: 25px;
+      background: #04AA6D;
+      cursor: pointer;
+    }
+
+    .slider::-moz-range-thumb {
+      width: 25px;
+      height: 25px;
+      background: #04AA6D;
+      cursor: pointer;
+    }
+
+    </style>
+
+
+<script>
+
+    function plusSlides(n) {
+      slideIndex += n;
+      showCurrentSlide();
+    }
+
+    function showSlideByID(id) {
+        console.log(id);
+        var i;
+        var slides = document.getElementsByClassName("mySlides");
+        console.log(slides.findIndex(x => x.id === id));
+        for (i = 0; i < slides.length; i++) {
+            console.log(slides[i].id +id);
+            if (slides[i].id === id) {
+                showSlide(i);
+                break;
+            }
+        }
+    }
+
+    function showSlide(n) {
+      console.log(n);
+      slideIndex = n
+      showCurrentSlide();
+    }
+
+    function showCurrentSlide() {
+      checkbox = document.getElementById("magnifierCheckbox");
+      demagnify();
+      console.log(slideIndex);
+      var i;
+      var x = document.getElementsByClassName("mySlides");
+      console.log(x);
+      if (slideIndex >= x.length) {slideIndex = 0}
+      if (slideIndex < 0) {slideIndex = x.length-1}
+      for (i = 0; i < x.length; i++) {
+        x[i].style.display = "none";
+      }
+      x[slideIndex].style.display = "block";
+      zoomValue = document.getElementById("zoomRange").value/10;
+      if(checkbox.checked){
+        magnify(slideIndex, zoomValue);
+      }
+    }
+
+
+
+    // magnify hover
+    function magnify(imgNbr, zoom) {
+      var img, glass, w, h, bw;
+      demagnify();
+      //img = document.getElementById(imgID);
+      img = document.getElementsByClassName("mySlides")[imgNbr].getElementsByTagName('a')[1].getElementsByTagName('img')[0];
+      /*create magnifier glass:*/
+      glass = document.createElement("DIV");
+      glass.setAttribute("class", "img-magnifier-glass");
+      glass.setAttribute("id", "magnifying-glass-id-for-deleting");
+      /*insert magnifier glass:*/
+      img.parentElement.insertBefore(glass, img);
+      /*set background properties for the magnifier glass:*/
+      glass.style.backgroundImage = "url('" + img.src + "')";
+      glass.style.backgroundRepeat = "no-repeat";
+      console.log(img.width + " " + img.height);
+      glass.style.backgroundSize = (img.width * zoom) + "px " + (img.height * zoom) + "px";
+      bw = 3;
+      w = glass.offsetWidth / 2;
+      h = glass.offsetHeight / 2;
+      /*execute a function when someone moves the magnifier glass over the image:*/
+      glass.addEventListener("mousemove", moveMagnifier);
+      img.addEventListener("mousemove", moveMagnifier);
+      /*and also for touch screens:*/
+      glass.addEventListener("touchmove", moveMagnifier);
+      img.addEventListener("touchmove", moveMagnifier);
+      function moveMagnifier(e) {
+        var pos, x, y;
+        /*prevent any other actions that may occur when moving over the image*/
+        e.preventDefault();
+        /*get the cursor's x and y positions:*/
+        pos = getCursorPos(e);
+        x = pos.x;
+        y = pos.y;
+        /*prevent the magnifier glass from being positioned outside the image:*/
+        if (x > img.width - (w / zoom)) {x = img.width - (w / zoom);}
+        if (x < w / zoom) {x = w / zoom;}
+        if (y > img.height - (h / zoom)) {y = img.height - (h / zoom);}
+        if (y < h / zoom) {y = h / zoom;}
+        /*set the position of the magnifier glass:*/
+        glass.style.left = (x - w) + "px";
+        glass.style.top = (y - h) + "px";
+        /*display what the magnifier glass "sees":*/
+        glass.style.backgroundPosition = "-" + ((x * zoom) - w + bw) + "px -" + ((y * zoom) - h + bw) + "px";
+      }
+      function getCursorPos(e) {
+        var a, x = 0, y = 0;
+        e = e || window.event;
+        /*get the x and y positions of the image:*/
+        a = img.getBoundingClientRect();
+        /*calculate the cursor's x and y coordinates, relative to the image:*/
+        x = e.pageX - a.left;
+        y = e.pageY - a.top;
+        /*consider any page scrolling:*/
+        x = x - window.pageXOffset;
+        y = y - window.pageYOffset;
+        return {x : x, y : y};
+      }
+      }
+
+      function demagnify() {
+        glass = document.getElementById("magnifying-glass-id-for-deleting");
+        if(glass){
+            glass.parentNode.removeChild(glass);
+            }
+      }
+</script>
+</head>
+<body>
+<div class="settings">
+    <input type="checkbox" id="magnifierCheckbox" checked="checked">
+    <label for="magnifierCheckbox" style="margin: auto 20px auto 5px;">Enable Magnifier</label>
+    <div class="slidecontainer">
+        <input type="range" min="1" max="100" value="50" class="slider" id="zoomRange">
+    </div>
+    <p style="margin: auto 10px auto 10px;">Zoom: <span id="zoomValue"></span></p>
+</div>
+<div class="slideshow-container">
+    <a class="prev" onclick="plusSlides(-1)">❮</a>
+    <a class="next" onclick="plusSlides(1)">❯</a>
+    {% if file_names %}
+    {% for filename in file_names %}
+    <div class="mySlides">
+        <a>{{filename.split('/')[-1]}}</a>
+        <a><img src="{{ url_for('static', filename=filename) }}" style="width:100%; height: 100%;"></a>
+    </div>
+    {% endfor %}
+    {% endif %}
+
+</div>
+
+<div>
+    {% if file_names %}
+    {% for filename in file_names %}
+    <div style="float:left;width:20%; min-width:240px;">
+        <img src="{{ url_for('static', filename=filename) }}" style="padding: 5px;width:95%;" onclick="showSlide({{loop.index0}})">
+    </div>
+    {% endfor %}
+    {% endif %}
+</div>
+<script>
+
+    var slideIndex = 0;
+    showCurrentSlide(slideIndex);
+
+    var checkbox = document.getElementById("magnifierCheckbox");
+    var slider = document.getElementById("zoomRange");
+    var output = document.getElementById("zoomValue");
+    output.innerHTML = slider.value;
+
+    document.getElementsByClassName("mySlides")[0].getElementsByTagName('a')[1].getElementsByTagName('img')[0].onload = function(){
+        magnify(0,slider.value/10);
+    }
+
+    slider.oninput = function() {
+      output.innerHTML = this.value/10;
+      demagnify();
+      if(checkbox.checked){
+        magnify(slideIndex, this.value/10);
+      }
+    }
+
+
+    checkbox.onchange = function() {
+        if(this.checked){
+            magnify(slideIndex, slider.value/10);
+        }else{
+            demagnify();
+        }
+    }
+
+    output.innerHTML = this.value/10;
+
+
+</script>
+</body>
+</html>
