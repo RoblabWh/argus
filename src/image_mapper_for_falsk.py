@@ -1,12 +1,5 @@
 
-import json
 import cv2
-import numpy as np
-import imutils
-import os
-import shutil
-import datetime
-import webbrowser
 import multiprocessing
 import time
 import sys
@@ -15,13 +8,7 @@ from datetime import datetime, date, time
 from path_reader import PathReader
 from image import Image
 from map_scaler import MapScaler
-from randomizer import Randomizer
-from comparator import Comparator
 from map import Map
-from transformer import Transformer
-from feature_matcher import FeatureMatcher
-from html_map import HTMLMap
-from filter import Filter
 from pano_filter import PanoFilter
 from gimbal_pitch_filter import GimbalPitchFilter
 from infrared_rgb_sorter import InfraredRGBSorter
@@ -59,7 +46,13 @@ class ImageMapper:
             images.append(Image(path))
         return images
 
-    def set_processing_parameters(self, map_width_px, map_height_px, blending, optimize, max_gimbal_pitch_deviation, with_ODM):
+    def set_processing_parameters(self, path_to_images=None, map_width_px=2048, map_height_px=2048, blending=0.7, optimize=True, max_gimbal_pitch_deviation=10, with_ODM=True):
+        if path_to_images is not None:
+            print("old Path to images: ", self.path_to_images)
+            print("new Path to images: ", path_to_images)
+            if path_to_images[-1] != "/":
+                path_to_images += "/"
+            self.path_to_images = path_to_images
         self.map_width_px = map_width_px
         self.map_height_px = map_height_px
         self.blending = blending
@@ -67,10 +60,50 @@ class ImageMapper:
         self.max_gimbal_pitch_deviation = max_gimbal_pitch_deviation
         self.with_ODM = with_ODM
 
-    def calculate_metadata(self, report_id, file_names):
+    def preprocess_start(self, report_id):
         self.current_report_id = report_id
-        if not self.pre_process_images(file_names): return None
 
+    def preprocess_read_selection(self, selection):
+        if selection is None:
+            image_paths = PathReader.read_path(self.path_to_images, ("DJI"), (".JPG", ".jpg"), sort=False)
+        else:
+            image_paths = PathReader.read_selection('./static', selection, ("DJI"), (".JPG", ".jpg"), sort=False)
+
+            # Read all images and generate image objects using multiprocessing
+        pool = multiprocessing.Pool(6)
+        images = pool.map(ImageMapper.generate_images, [image_paths])[0]
+        return images
+
+    def preprocess_sort_images(self, images):
+        images.sort(key=lambda x: x.get_exif_header().get_creation_time())
+        return images
+
+    def preprocess_filter_images(self, images):
+        # Check if the minimum number of images is reached
+        if len(images) < self.minimum_number_of_images:
+            print("-Number of loaded image paths: ", len(images))
+            return False
+
+        # Filter images
+        self.filtered_images = GimbalPitchFilter(89 - self.max_gimbal_pitch_deviation).filter(images)
+        self.filtered_images = PanoFilter("pano").filter(self.filtered_images)
+
+        # check wether infrared images are present
+        self.__check_for_dji_infrared_images(self.filtered_images)
+
+        # Generate map elements using a MapScaler object
+        self.map_scaler = MapScaler(self.filtered_images, self.map_width_px, self.map_height_px)
+        self.map_elements = self.map_scaler.get_map_elements()
+        self.__calculate_gps_for_mapbox_plugin()
+        return True
+
+
+    # def preprocess_calculate_metadata(self):
+
+    def preprocess_calculate_metadata(self):#, report_id, file_names):
+        # self.current_report_id = report_id
+        # if not self.pre_process_images(file_names): return None
+        #
 
         date = str(self.map_elements[0].get_image().get_exif_header().get_creation_time_str())
         try:
@@ -152,11 +185,16 @@ class ImageMapper:
         weather.append({"description": 'Wind Direction', "value": wind_dir_degrees})
         weather.append({"description": 'Visibility', "value": visibility})
 
-        bounds = [[51.57308106910327, 7.0276777785803155],[51.574752500176835, 7.029735211637599]]
-        center = [51.57443888888889,7.028625]
+        lat1 = self.corner_gps_left_bottom.get_latitude()
+        long1 = self.corner_gps_left_bottom.get_longitude()
+        lat2 = self.corner_gps_right_top.get_latitude()
+        long2 = self.corner_gps_right_top.get_longitude()
+        latc = self.middle_gps.get_latitude()
+        longc = self.middle_gps.get_longitude()
+        bounds = [[lat1, long1], [lat2, long2]]
 
         map = {
-            "center": center,
+            "center": [latc, longc],
             "zoom": 18,
             "rgbMapFile": "default/MapRGBMissing.jpeg",
             "rgbMapBounds": bounds,
@@ -166,38 +204,38 @@ class ImageMapper:
 
 
         return flight_data, camera_specs, weather, map
-
-    def pre_process_images(self, selection=None):
-        # Read all image paths
-        image_paths = list()
-        images = list()
-
-        if selection is None:
-            image_paths = PathReader.read_path(self.path_to_images, ("DJI"), (".JPG", ".jpg"), sort=False)
-        else:
-            image_paths = PathReader.read_selection('./static', selection, ("DJI"), (".JPG", ".jpg"), sort=False)
-
-        # Read all images and generate image objects using multiprocessing
-        pool = multiprocessing.Pool(6)
-        images = pool.map(ImageMapper.generate_images, [image_paths])[0]
-        images.sort(key=lambda x: x.get_exif_header().get_creation_time())
-
-        # Check if the minimum number of images is reached
-        if len(images) < self.minimum_number_of_images:
-            print("-Number of loaded image paths: ", len(images))
-            return False
-
-        # Filter images
-        self.filtered_images = GimbalPitchFilter(89 - self.max_gimbal_pitch_deviation).filter(images)
-        self.filtered_images = PanoFilter("pano").filter(self.filtered_images)
-
-        #check wether infrared images are present
-        self.__check_for_dji_infrared_images(self.filtered_images)
-
-        # Generate map elements using a MapScaler object
-        self.map_scaler = MapScaler(self.filtered_images, self.map_width_px, self.map_height_px)
-        self.map_elements = self.map_scaler.get_map_elements()
-        return True
+    #
+    # def pre_process_images(self, selection=None):
+    #     # Read all image paths
+    #     image_paths = list()
+    #     images = list()
+    #
+    #     if selection is None:
+    #         image_paths = PathReader.read_path(self.path_to_images, ("DJI"), (".JPG", ".jpg"), sort=False)
+    #     else:
+    #         image_paths = PathReader.read_selection('./static', selection, ("DJI"), (".JPG", ".jpg"), sort=False)
+    #
+    #     # Read all images and generate image objects using multiprocessing
+    #     pool = multiprocessing.Pool(6)
+    #     images = pool.map(ImageMapper.generate_images, [image_paths])[0]
+    #     images.sort(key=lambda x: x.get_exif_header().get_creation_time())
+    #
+    #     # Check if the minimum number of images is reached
+    #     if len(images) < self.minimum_number_of_images:
+    #         print("-Number of loaded image paths: ", len(images))
+    #         return False
+    #
+    #     # Filter images
+    #     self.filtered_images = GimbalPitchFilter(89 - self.max_gimbal_pitch_deviation).filter(images)
+    #     self.filtered_images = PanoFilter("pano").filter(self.filtered_images)
+    #
+    #     #check wether infrared images are present
+    #     self.__check_for_dji_infrared_images(self.filtered_images)
+    #
+    #     # Generate map elements using a MapScaler object
+    #     self.map_scaler = MapScaler(self.filtered_images, self.map_width_px, self.map_height_px)
+    #     self.map_elements = self.map_scaler.get_map_elements()
+    #     return True
 
     def map_images(self, report_id):
         if self.current_report_id != report_id:
@@ -251,7 +289,7 @@ class ImageMapper:
         print("-Creating map...             ")
         self.final_map = map_obj.create_map()
         self.cropped_map = map_obj.get_cropped_map()
-        self.__calculate_gps_for_mapbox_plugin(map_obj)
+        # self.__calculate_gps_for_mapbox_plugin(map_obj)
         if self.with_ODM and self.placeholder_map is None:
             self.placeholder_map = map_obj.generate_ODM_placeholder_map(self.path_to_images)
 
@@ -280,10 +318,33 @@ class ImageMapper:
                 return
         print("-Dataset does not contain infrared images...")
 
-    def __calculate_gps_for_mapbox_plugin(self, map_obj):
+    def __calculate_gps_for_mapbox_plugin(self):
         origin_gps = self.map_elements[0].get_image().get_exif_header().get_gps()
         origin_location = self.map_elements[0].get_rotated_rectangle().get_center()
-        min_x, max_x, min_y, max_y = map_obj.get_min_and_max_coords()
+        # min_x, max_x, min_y, max_y = map_obj.get_min_and_max_coords()
+        min_x = float("inf")
+        min_y = float("inf")
+        max_x = float("-inf")
+        max_y = float("-inf")
+
+        for map_element in self.map_elements:
+            r = map_element.get_rotated_rectangle()
+            coords_lst = r.get_multipoint()
+            # print(coords_lst)
+            for coord in coords_lst.geoms:
+                x, y = coord.x, coord.y
+                if (min_x > x):
+                    min_x = x
+
+                if (min_y > y):
+                    min_y = y
+
+                if (max_x < x):
+                    max_x = x
+
+                if (max_y < y):
+                    max_y = y
+        # print(min_x, max_x, min_y, max_y)
         corner_location_right_top = (max_x, max_y)
         corner_location_left_bottom = (0, 0)
         self.corner_gps_right_top = self.map_scaler.calculate_corner_gps_coordinates(origin_gps,

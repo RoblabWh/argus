@@ -20,6 +20,7 @@ class ProjectManager:
             json.dump(project, json_file)
 
         self.highest_id += 1
+        self.projects = sorted(self.projects, key=lambda d: d['id'], reverse=True)
         return project
 
     def load_project_from_directory(self, directory):
@@ -42,7 +43,10 @@ class ProjectManager:
                     if project['id'] > self.highest_id:
                         self.highest_id = project['id']
 
+        self.projects = sorted(self.projects, key=lambda d: d['id'], reverse=True)
+
     def get_project(self, id):
+        print("getting project with id: " + str(id))
         for project in self.projects:
             if project['id'] == id:
                 return project
@@ -71,6 +75,12 @@ class ProjectManager:
         if data == {}:
             data = self.generate_empty_data_dict()
         return data
+
+    def has_project(self, id):
+        project = self.get_project(id)
+        if project != None:
+            return True
+        return False
 
     def generate_empty_data_dict(self):
         data = {"file_names": [], "flight_data": [], "camera_specs": [], "weather": [], "map": []}
@@ -137,3 +147,11 @@ class ProjectManager:
         project = self.get_project(id)
         data = project['data']
         return data[keyword]
+
+    def get_project_name(self, report_id):
+        project = self.get_project(report_id)
+        return project['name']
+
+    def get_project_description(self, report_id):
+        project = self.get_project(report_id)
+        return project['description']

@@ -2,6 +2,11 @@
 <html>
 <head>
     <style>
+        body{
+            margin-left: 0px;
+            margin-right: 0px;
+        }
+
         .bodyDiv {
             width: 94%;
             max-width: 1600px;
@@ -14,8 +19,9 @@
             width: 100%;
             height: 50px;
             position: fixed;
-            background-color: #f1f1f1;
+            background-color: rgb(56, 152, 236);
             top: 0;
+            z-index:1000;
         }
 
         .big_upload{
@@ -108,24 +114,67 @@
           padding:15px;
         }
 
+        .Progress {
+          width: 100%;
+          background-color: #ddd;
+        }
+
+        #myBar_a, #myBar_b {
+          width: 1%;
+          height: 30px;
+          background-color: #04AA6D;
+        }
+
         {% include 'tableStyle.css' %}
 
 
     </style>
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src="{{url_for('static', filename='default/jquery-3.6.3.js') }}"></script>
 </head>
 
 <body>
+    <script>
+    function check_progress(report_id) {
+        console.log("check_progress on:" + report_id + " with: " + report_id + '/process_status');
+        $.get('/{{ id }}/process_status', function(progress) {
+            var progress_arr = progress.split(",");
+            var bar_preprocess = document.getElementById("myBar_a");
+            var bar_mapping = document.getElementById("myBar_b");
+            bar_preprocess.style.width = progress_arr[0] + '%';
+            bar_mapping.style.width = progress_arr[1] + '%';
+
+            if (progress_arr[2] == "True") {
+                location.href = "http://127.0.0.1:5000/{{ id }}";
+            }
+            if (parseInt(progress_arr[1]) == 100) {
+                console.log("done");
+                window.clearInterval(intervalID);
+                for (const element of progress_arr) {
+                    console.log(element);
+                }
+                setRGBMapImage(progress_arr[3]);
+                console.log("setRGBMapImage with: " + progress_arr[3]);
+
+                //location.href = "http://127.0.0.1:5000/{{ id }}";
+            }
+        });
+
+    }
+
+    </script>
     <div class="header">
-        <h3 style="float: right;">Report ID: {{ id }}</h3>
-        <a href="/" style="float: left;">Back to overview</a>
+        <h3 style="float: right; padding: 8px; color: white">Report : {{ project.name }}</h3>
+        <a href="/" style="float: left; padding: 8px; color: white">Back to overview</a>
     </div>
 
     <div class="bodyDiv">
         <br>
         <br>
+        <br>
         <h1>Flight Report</h1>
-        <h3>Report ID: {{ id }}</h3>
+        <h3>{{ project.name }} (ID:{{ id }})</h3>
+        <a>  {{ project.description }}</a>
 
         <div id="wrapper">
             <form method="post" action="/{{ id }}/upload" enctype="multipart/form-data" style="width: 100%; ">
@@ -134,10 +183,17 @@
             </form>
             <form method="post" action="/{{ id }}/process" style="width: 100%; ">
                 <div class="big_upload">
-                    <input type="checkbox" id="with_odm" name="option1" value="odm">
-                    <label for="vehicle1"> Calc ODM orthophoto | </label>
-                    <input type="checkbox" id="ai_detection" name="option2" value="ai">
-                    <label for="vehicle2"> Use AI object detection</label>
+                    <input type="checkbox" id="with_odm" name="with_odm" value="odm">
+                    <label for="with_odm"> Calc ODM orthophoto | </label>
+                    <input type="checkbox" id="ai_detection" name="ai_detection" value="ai">
+                    <label for="ai_detection"> Use AI object detection | </label>
+                    <select name="map resolution" id="map_res">
+                        <option value="low">low</option>
+                        <option value="med">medium</option>
+                        <option selected="selected" value="high">high</option>
+                        <option value="ultra">ultra</option>
+                    </select>
+                    <label for="map_res"> Map resolution </label>
                 </div>
                 {% if not file_names %}
                 <input class="big_button" type="submit" value="Evaluate" disabled>
@@ -145,7 +201,7 @@
                 <input class="big_button" type="submit" value="Evaluate">
                 {% endif %}
             </form>
-            <form method="post" action="/{{ id }}/buildMap"><input class="big_button" value="makemap" type="submit"></form>
+<!--            <form method="post" action="/{{ id }}/buildMap"><input class="big_button" value="makemap" type="submit"></form>-->
 
             <p>
                 {% with messages = get_flashed_messages() %}
@@ -155,9 +211,21 @@
                 <li>{{ message }}</li>
                 {% endfor %}
             </ul>
-            {% endif %}
-            {% endwith %}
+                {% endif %}
+                {% endwith %}
             </p>
+            {% if processing %}
+            <div style="width: 100%;">
+                <p>Preprocessing</p>
+                <div class="Progress">
+                    <div id="myBar_a"></div>
+                </div>
+                <p>Mapping</p>
+                <div class="Progress">
+                    <div id="myBar_b"></div>
+                </div>
+            </div>
+            {% endif %}
         </div>
 
         <details>
@@ -214,5 +282,15 @@
 
         </script>
     </div>
+
+
 </body>
+<script>
+    {% if processing %}
+    console.log("next checking progess");
+    //check_progress({{ id }}, 'progress_bar');
+    var intervalID = window.setInterval(check_progress, 1000);
+    check_progress({{ id }});
+    {% endif %}
+    </script>
 </html>

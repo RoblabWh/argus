@@ -15,7 +15,7 @@
     <style>
 	     #map {
              height: 900px;
-             max-height: 1000px;
+             max-height: 80vh;
              width: 100%;
              padding-top:30px;
              display: flex;
@@ -124,6 +124,10 @@ function loadPolygons() {
   });
   gpxLayer.addTo(map);
   document.getElementById('secondMap').remove();
+}
+
+function setRGBMapImage(path) {
+    mapImage.setUrl(path);
 }
 
 function slide(e) {

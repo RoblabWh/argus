@@ -9,7 +9,7 @@
       width:100%;
     }
 
-    .slideshow-container {
+    #slideshow-container {
       width: 100%;
       position: relative;
       margin: auto;
@@ -51,6 +51,10 @@
       height: 250px;
       opacity:0;
       pointer-events:none;
+    }
+
+    .img-magnifier-hide {
+      display: none
     }
 
     a:hover .img-magnifier-glass{
@@ -103,6 +107,7 @@
 
 <script>
 
+
     function plusSlides(n) {
       slideIndex += n;
       showCurrentSlide();
@@ -123,6 +128,11 @@
     }
 
     function showSlide(n) {
+      slideshowContainer.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+          inline: "nearest"
+      });
       console.log(n);
       slideIndex = n
       showCurrentSlide();
@@ -184,10 +194,15 @@
         x = pos.x;
         y = pos.y;
         /*prevent the magnifier glass from being positioned outside the image:*/
-        if (x > img.width - (w / zoom)) {x = img.width - (w / zoom);}
-        if (x < w / zoom) {x = w / zoom;}
-        if (y > img.height - (h / zoom)) {y = img.height - (h / zoom);}
-        if (y < h / zoom) {y = h / zoom;}
+        //if (x > img.width - (w / zoom)) {x = img.width - (w / zoom);}
+        //if (x < w / zoom) {x = w / zoom;}
+        //if (y > img.height - (h / zoom)) {y = img.height - (h / zoom);}
+        //if (y < h / zoom) {y = h / zoom;}
+        if (x > img.width - (w / zoom) || x < (w / zoom) || y > img.height - (h / zoom) || y < (h / zoom)) {
+            glass.setAttribute("class", "img-magnifier-hide");
+        } else {
+            glass.setAttribute("class", "img-magnifier-glass");
+        }
         /*set the position of the magnifier glass:*/
         glass.style.left = (x - w) + "px";
         glass.style.top = (y - h) + "px";
@@ -222,11 +237,11 @@
     <input type="checkbox" id="magnifierCheckbox" checked="checked">
     <label for="magnifierCheckbox" style="margin: auto 20px auto 5px;">Enable Magnifier</label>
     <div class="slidecontainer">
-        <input type="range" min="1" max="100" value="50" class="slider" id="zoomRange">
+        <input type="range" min="10" max="100" value="50" class="slider" id="zoomRange">
     </div>
     <p style="margin: auto 10px auto 10px;">Zoom: <span id="zoomValue"></span></p>
 </div>
-<div class="slideshow-container">
+<div id="slideshow-container">
     <a class="prev" onclick="plusSlides(-1)">❮</a>
     <a class="next" onclick="plusSlides(1)">❯</a>
     {% if file_names %}
@@ -244,7 +259,7 @@
     {% if file_names %}
     {% for filename in file_names %}
     <div style="float:left;width:20%; min-width:240px;">
-        <img src="{{ url_for('static', filename=filename) }}" style="padding: 5px;width:95%;" onclick="showSlide({{loop.index0}})">
+        <img src="{{ url_for('static', filename=filename) }}" style="padding: 5px;width:95%;cursor: pointer;" onclick="showSlide({{loop.index0}})">
     </div>
     {% endfor %}
     {% endif %}
@@ -253,10 +268,13 @@
 
     var slideIndex = 0;
     showCurrentSlide(slideIndex);
+    var slideshowContainer = document.getElementById("slideshow-container");
+
 
     var checkbox = document.getElementById("magnifierCheckbox");
     var slider = document.getElementById("zoomRange");
     var output = document.getElementById("zoomValue");
+    //document.getElementById("zoomValue").innerHTML = slider.value/10;
     output.innerHTML = slider.value;
 
     document.getElementsByClassName("mySlides")[0].getElementsByTagName('a')[1].getElementsByTagName('img')[0].onload = function(){
@@ -280,7 +298,7 @@
         }
     }
 
-    output.innerHTML = this.value/10;
+    output.innerHTML = slider.value/10;
 
 
 </script>

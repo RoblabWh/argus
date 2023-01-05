@@ -3,35 +3,121 @@
 <head>
     <meta charset="UTF-8">
     <title>All Projects</title>
+    <style>
+        body{
+            margin-left: 0px;
+            margin-right: 0px;
+        }
+
+        .bodyDiv {
+            width: 94%;
+            max-width: 1600px;
+            margin: 0 auto !important;
+            float: none !important;
+            font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+        }
+
+        p {
+            text-align: justify;
+            font-size: 16px;
+        }
+
+
+        .oneLineWrapper{
+            width: 100%;
+            display: flex;
+            flex-direction: row;
+            flex-wrap: row;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .project {
+            width: 90%;
+            height: 69px;
+            border: 1px solid white;
+            margin-bottom: 10px;
+            color: white;
+            background-color: grey;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+
+        .description{
+            float: left;
+            margin: 0px 8px 0px 8px;
+            text-overflow: ellipsis;
+            width: 85%;
+            max-height: 1em;
+            white-space: nowrap;
+            overflow: hidden;
+        }
+
+        .project:hover{
+            background-color: rgb(56, 152, 236);
+            color: white;
+        }
+
+        .deleteProject{
+            height: 69px;
+            float: right;
+            margin-bottom: 10px;
+            width: 8%;
+            background-color: rgb(150, 80, 80);
+            border-radius: 6px;
+            text-align: center;
+            line-height: 75px;
+            cursor: pointer;
+        }
+
+        .deleteProject:hover{
+            background-color: rgb(255, 0, 0);
+            color: white;
+        }
+
+
+    </style>
+    <script>
+        function showProject(id) {
+            window.location.href = "/project/" + id;
+        }
+    </script>
 </head>
 <body>
-    <h1>All Projects</h1>
-    <ul>
+    <div class="bodyDiv">
+        <h1>All Projects</h1>
+                <!-- button to add a new report with the app.route / create -->
+        <details>
+            <summary>new Project</summary>
+            <div class="tab-content">
+                <form method="post" action="/create">
+                    <label for="name">Name:</label>
+                    <input type="text" id="name" name="name" required>
+                    <label for="description">Description:</label>
+                    <input type="text" id="description" name="description" required>
+                    <input type="submit" value="Create new Report">
+                </form>
+            </div>
+        </details>
         {% for project in projects %}
-        <li>
-            <a href="/python/{{ project.id }}">{{ "✖" }}</a>
-            <a href="/{{ project.id }}">{{ project.name }}</a>
-            <a> {{ project.description }}</a>
-            <a>  ID: {{ project.id }}</a>
-        </li>
-        {% endfor %}
-    </ul>
-    <!-- button to add a new report with the app.route / create -->
-    <details>
-        <summary>new Project</summary>
-        <div class="tab-content">
-            <form method="post" action="/create">
-                <label for="name">Name:</label>
-                <input type="text" id="name" name="name" required>
-                <label for="description">Description:</label>
-                <input type="text" id="description" name="description" required>
-                <input type="submit" value="Create new Report">
-            </form>
+
+        <div class="oneLineWrapper">
+            <div class="project" onclick="location.href = {{ project.id }}">
+                <h2 style="margin: 8px;"> {{ project.name }} </h2>
+                <a class="description">{{ project.description }}</a>
+                <a style="float: right; margin: 0px 8px;"> ID: {{ project.id }}</a>
+            </div>
+            <div class="deleteProject" onclick="location.href ='/delete/{{ project.id }}'">
+                <a onclick="location.href ='/delete/{{ project.id }}'"> {{ "✖" }} </a>
+            </div>
         </div>
-    </details>
-    <a href="/create">Add a new project</a>
-    {% if message %}
-    <p>{{ message }}</p>
-    {% endif %}
+
+        {% endfor %}
+
+        {% if message %}
+        <p>{{ message }}</p>
+        {% endif %}
+    </div>
 </body>
 </html>
