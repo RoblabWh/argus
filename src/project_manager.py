@@ -1,6 +1,9 @@
 import os
 import json
 import shutil
+from datetime import datetime
+
+
 class ProjectManager:
     def __init__(self):
         self.projects = []
@@ -13,7 +16,8 @@ class ProjectManager:
         print("creating project with id: " + str(id))
         os.mkdir(self.projects_path + str(id))
         data = self.generate_empty_data_dict()
-        project = ({'name': name, 'description': description, 'id': id, 'data': data})
+        creation_time = datetime.now().strftime("%d.%m.%Y %H:%M:%S")
+        project = ({'name': name, 'description': description, 'id': id, 'creation_time': creation_time, 'data': data})
         self.projects.append(project)
         #save project to static/uploads/id/project.json
         with open(self.projects_path + str(id) + "/project.json", "w") as json_file:
@@ -155,3 +159,10 @@ class ProjectManager:
     def get_project_description(self, report_id):
         project = self.get_project(report_id)
         return project['description']
+
+    def get_project_creation_time(self, report_id):
+        project = self.get_project(report_id)
+        try:
+            return project['creation_time']
+        except:
+            return "no creation time found"

@@ -70,7 +70,8 @@ def render_standard_report(report_id, thread = None):
 
 
     project = {"id": report_id, "name": project_manager.get_project_name(report_id),
-               "description": project_manager.get_project_description(report_id)}
+               "description": project_manager.get_project_description(report_id),
+               'creation_time': project_manager.get_project_creation_time(report_id)}
     return render_template('concept.html', id=report_id, file_names=file_names, flight_data=flight_data,
                            camera_specs=camera_specs, weather=weather, map=map, project=project, message=message,
                            processing=processing)
@@ -294,8 +295,8 @@ if __name__ == '__main__':
     #   Eingabemaske bei neuen Projekten erzeugen & entsprechend Daten übergeben
     #   Bestehende Projekte Löschen
     #   nach ID sortiert darstellen
-    # NEXT neues Projekt Anlegen stylen
-    # NEXT (alert) Abfrage bei Delete
+    #   neues Projekt Anlegen stylen
+    #   (alert) Abfrage bei Delete
 
     #   TODO größe der Maps ändern
     #   TODO Map Bild ersetzen, Seite nicht neu laden
