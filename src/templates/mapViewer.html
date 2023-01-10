@@ -49,10 +49,11 @@ var	imageBounds = {{map.rgbMapBounds}};
 var mapImage = L.imageOverlay('{{ url_for('static', filename=map.rgbMapFile) }}', imageBounds);
 var mapOverlay = L.layerGroup([mapImage]);
 
+{% if has_ir %}
 var	imageBounds = {{map.irMapBounds}};
 var IR = L.imageOverlay('{{ url_for('static', filename=map.irMapFile) }}', imageBounds);
 var irOverlay = L.layerGroup([IR]);
-
+{% endif %}
 
 var mapOverlayOpacity = 1;
 //var inMeasureMode = false;
@@ -129,6 +130,9 @@ function loadPolygons() {
 function setRGBMapImage(path) {
     mapImage.setUrl(path);
 }
+function setIRMapImage(path) {
+    IR.setUrl(path);
+}
 
 function slide(e) {
 	var i = polygons.indexOf(e.target);
@@ -137,7 +141,9 @@ function slide(e) {
 
 function changeAlpha(value) {
     mapImage.setOpacity(value/100);
+    {% if has_ir %}
     IR.setOpacity(value/100);
+    {% endif %}
     mapOverlayOpacity = value/100;
 }
 <!-- home button functionality -->
@@ -179,7 +185,9 @@ zoomHome.addTo(map);
 <!-- home button functionality -->
 var layerswitcher = {
 RGB: mapOverlay,
+{% if has_ir %}
 IR : irOverlay
+{% endif %}
 };
 L.control.layers(layerswitcher,{}, {collapsed: false}).addTo(map);
 layerswitcher.RGB.addTo(map);

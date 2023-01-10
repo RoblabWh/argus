@@ -28,7 +28,8 @@ class ImageMapper:
 
         self.minimum_number_of_images = 4
 
-        self.map_elements = None
+        self.map_elements_IR = None
+        self.map_elements_RGB = None
         self.final_map = None
         self.html_file_name = None
         self.corner_gps_right_top = None
@@ -91,30 +92,41 @@ class ImageMapper:
         # check wether infrared images are present
         self.__check_for_dji_infrared_images(self.filtered_images)
 
-        # Generate map elements using a MapScaler object
-        self.map_scaler = MapScaler(self.filtered_images, self.map_width_px, self.map_height_px)
-        self.map_elements = self.map_scaler.get_map_elements()
-        self.__calculate_gps_for_mapbox_plugin()
+        if self.CONTAINED_DJI_INFRARED_IMAGES:
+            (infrared_images, rgb_images) = InfraredRGBSorter().sort(self.filtered_images)
+            self.map_scaler_IR = MapScaler(infrared_images, self.map_width_px, self.map_height_px)
+            self.map_elements_IR = self.map_scaler_IR.get_map_elements()
+
+            self.map_scaler_RGB = MapScaler(rgb_images, self.map_width_px, self.map_height_px)
+            self.map_elements_RGB = self.map_scaler_RGB.get_map_elements()
+            self.__calculate_gps_for_mapbox_plugin(self.map_scaler_RGB, self.map_elements_RGB)
+        else:
+            # Generate map elements using a MapScaler object
+            self.map_scaler_RGB = MapScaler(self.filtered_images, self.map_width_px, self.map_height_px)
+            self.map_elements_RGB = self.map_scaler_RGB.get_map_elements()
+            self.__calculate_gps_for_mapbox_plugin(self.map_scaler_RGB, self.map_elements_RGB)
         return True
 
 
     # def preprocess_calculate_metadata(self):
 
     def preprocess_calculate_metadata(self):#, report_id, file_names):
-        # self.current_report_id = report_id
-        # if not self.pre_process_images(file_names): return None
-        #
+        metadta_elements = self.map_elements_RGB
+        if self.CONTAINED_DJI_INFRARED_IMAGES and metadta_elements is None:
+            print("Map elements for RGB images are not available. Only IR Found")
+            metadta_elements = self.map_elements_IR
 
-        date = str(self.map_elements[0].get_image().get_exif_header().get_creation_time_str())
+
+        date = str(metadta_elements[0].get_image().get_exif_header().get_creation_time_str())
         try:
-            self.location = str(self.map_elements[0].get_image().get_exif_header().get_gps().get_address())
+            self.location = str(metadta_elements[0].get_image().get_exif_header().get_gps().get_address())
         except:
             self.location = str("N/A")
             print("-Ignoring reverse adress search....")
             print("--", sys.exc_info()[0])
 
-        flight_time_last = self.map_elements[-1].get_image().get_exif_header().get_creation_time()
-        flight_time_first = self.map_elements[0].get_image().get_exif_header().get_creation_time()
+        flight_time_last = metadta_elements[-1].get_image().get_exif_header().get_creation_time()
+        flight_time_first = metadta_elements[0].get_image().get_exif_header().get_creation_time()
         last = time(int(flight_time_last / 10000), int(flight_time_last % 10000 / 100), int(flight_time_last % 100))
         first = time(int(flight_time_first / 10000), int(flight_time_first % 10000 / 100), int(flight_time_first % 100))
         # flight_time = datetime.combine(datetime.date.min, last) - datetime.combine(datetime.date.min, first)
@@ -122,10 +134,10 @@ class ImageMapper:
         flight_time_str = "long"  # str(flight_time).split(":")
         # flight_time_str = flight_time_str[-3] + " h : " + flight_time_str[-2] + " m : " + \
         #                        flight_time_str[-1] + " s"
-        x_res = self.map_elements[0].get_image().get_width()
-        y_res = self.map_elements[0].get_image().get_height()
+        x_res = metadta_elements[0].get_image().get_width()
+        y_res = metadta_elements[0].get_image().get_height()
 
-        camera_properties = self.map_elements[0].get_image().get_exif_header().get_camera_properties()
+        camera_properties = metadta_elements[0].get_image().get_exif_header().get_camera_properties()
         camera_model = camera_properties.get_model()
         camera_focal_length = camera_properties.get_focal_length()
         camera_fov = camera_properties.get_fov()
@@ -134,8 +146,8 @@ class ImageMapper:
 
         # print(self.area_k, self.avg_altitude, self.date, self.location, self.flight_time_str, self.camera_model, self.camera_fov)
         try:
-            actual_weather = Weather(self.map_elements[0].get_image().get_exif_header().get_gps().get_latitude(),
-                                     self.map_elements[0].get_image().get_exif_header().get_gps().get_longitude(),
+            actual_weather = Weather(metadta_elements[0].get_image().get_exif_header().get_gps().get_latitude(),
+                                     metadta_elements[0].get_image().get_exif_header().get_gps().get_longitude(),
                                      "e9d56399575efd5b03354fa77ef54abb")
             # print(weather_info_lst)
             temperature = actual_weather.get_temperature()
@@ -150,24 +162,17 @@ class ImageMapper:
             pass
 
         flight_data = []
-        # flight_data_entrys = ['Date', 'Time', 'Location', 'Area Covered', 'Flight Time', 'Processing Time', 'Images',
-        #                       'Image Resolution', 'Avg. Flight Height']
-        # for entry in flight_data_entrys:
-        #     flight_data.append({"description": entry, "value": "yyy"})
         flight_data.append({"description": 'Date', "value": date})
         flight_data.append({"description": 'Time', "value": "time"})
         flight_data.append({"description": 'Location', "value": self.location})
-        flight_data.append({"description": 'Area Covered', "value": self.map_scaler.get_area_in_m()})
+        flight_data.append({"description": 'Area Covered', "value": self.map_scaler_RGB.get_area_in_m()})
         flight_data.append({"description": 'Flight Time', "value": flight_time_str})
         flight_data.append({"description": 'Processing Time', "value": "yyy"})
-        flight_data.append({"description": 'Images', "value": len(self.map_elements)})
+        flight_data.append({"description": 'Images', "value": len(metadta_elements)})
         flight_data.append({"description": 'Image Resolution', "value": str(x_res) + " x " + str(y_res)})
-        flight_data.append({"description": 'Avg. Flight Height', "value": self.map_scaler.get_avg_altitude()})
+        flight_data.append({"description": 'Avg. Flight Height', "value": self.map_scaler_RGB.get_avg_altitude()})
 
         camera_specs = []
-        #camera_specification_entrys = ['Camera Model', 'Focal Length', 'Horizontal FOV', 'Vertical FOV', 'Sensor Size']
-        # for entry in camera_specification_entrys:
-        #     camera_specs.append({"description": entry, "value": "aaa"})
         camera_specs.append({"description": 'Camera Model', "value": camera_model})
         camera_specs.append({"description": 'Focal Length', "value": camera_focal_length})
         camera_specs.append({"description": 'Horizontal FOV', "value": camera_fov})
@@ -175,9 +180,6 @@ class ImageMapper:
         camera_specs.append({"description": 'Sensor Size', "value": str(sensor_width) + " x " + str(sensor_height)})
 
         weather = []
-        #weather_entrys = ['Temperature', 'Humidity', 'Air Preasure', 'Wind Speed', 'Wind Direction', 'Visibility']
-        # for entry in weather_entrys:
-        #     weather.append({"description": entry, "value": "www"})
         weather.append({"description": 'Temperature', "value": temperature})
         weather.append({"description": 'Humidity', "value": humidity})
         weather.append({"description": 'Air Preasure', "value": altimeter})
@@ -202,55 +204,39 @@ class ImageMapper:
             "irMapBounds": bounds,
         }
 
+        filenames_rgb = []
+        filenames_ir = []
+        for element in self.map_elements_RGB:
+            filenames_rgb.append(element.get_image().get_image_path().split("static/", 1)[1])
+        if self.CONTAINED_DJI_INFRARED_IMAGES:
+            for element in self.map_elements_IR:
+                filenames_ir.append(element.get_image().get_image_path().split("static/", 1)[1])
 
-        return flight_data, camera_specs, weather, map
-    #
-    # def pre_process_images(self, selection=None):
-    #     # Read all image paths
-    #     image_paths = list()
-    #     images = list()
-    #
-    #     if selection is None:
-    #         image_paths = PathReader.read_path(self.path_to_images, ("DJI"), (".JPG", ".jpg"), sort=False)
-    #     else:
-    #         image_paths = PathReader.read_selection('./static', selection, ("DJI"), (".JPG", ".jpg"), sort=False)
-    #
-    #     # Read all images and generate image objects using multiprocessing
-    #     pool = multiprocessing.Pool(6)
-    #     images = pool.map(ImageMapper.generate_images, [image_paths])[0]
-    #     images.sort(key=lambda x: x.get_exif_header().get_creation_time())
-    #
-    #     # Check if the minimum number of images is reached
-    #     if len(images) < self.minimum_number_of_images:
-    #         print("-Number of loaded image paths: ", len(images))
-    #         return False
-    #
-    #     # Filter images
-    #     self.filtered_images = GimbalPitchFilter(89 - self.max_gimbal_pitch_deviation).filter(images)
-    #     self.filtered_images = PanoFilter("pano").filter(self.filtered_images)
-    #
-    #     #check wether infrared images are present
-    #     self.__check_for_dji_infrared_images(self.filtered_images)
-    #
-    #     # Generate map elements using a MapScaler object
-    #     self.map_scaler = MapScaler(self.filtered_images, self.map_width_px, self.map_height_px)
-    #     self.map_elements = self.map_scaler.get_map_elements()
-    #     return True
+        return flight_data, camera_specs, weather, map, filenames_rgb, filenames_ir
+
 
     def map_images(self, report_id):
         if self.current_report_id != report_id:
             #self.pre_process_images()
             return None
-        if self.map_elements is None:
+        if self.map_elements_RGB is None:
             print("-No map elements found!")
             return None
 
 
-        #TODO add progress bar
-        #TODO IR Images verarbeiten
-        self.__calculate_map()
-        map_file_name = "map.png"
-        self.save_map(str(report_id)+'/', map_file_name)
+        self.calculate_map_RGB()
+        map_file_name_RGB = "map.png"
+        self.save_map(str(report_id)+'/', map_file_name_RGB)
+        map_file_name_RGB  = "uploads/"+str(report_id)+"/"+map_file_name_RGB
+
+
+        map_file_name_IR = "default/MapIRMissing.jpeg"
+        if self.CONTAINED_DJI_INFRARED_IMAGES:
+            self.calculate_map_IR()
+            map_file_name_IR = "mapIR.png"
+            self.save_map(str(report_id)+'/', map_file_name_IR)
+            map_file_name_IR = "uploads/"+str(report_id)+"/"+map_file_name_IR
+
         # end_time = datetime.datetime.now().replace(microsecond=0)
         # self.__create_html("", map_file_name, end_time - start_time + filter_time, pano_files)
 
@@ -266,24 +252,31 @@ class ImageMapper:
         map = {
             "center": [latc, longc],
             "zoom": 18,
-            "rgbMapFile": "uploads/"+str(report_id)+"/map.png",
+            "rgbMapFile": map_file_name_RGB,
             "rgbMapBounds": bounds,
-            "irMapFile": "default/MapIRMissing.jpeg",
+            "irMapFile": map_file_name_IR,
             "irMapBounds": bounds,
         }
 
         return map
 
-    def __calculate_map(self):
-        map_offset = self.map_scaler.get_map_offset()
+    def calculate_map_RGB(self):
+        self.__calculate_map(self.map_scaler_RGB, self.map_elements_RGB)
+
+    def calculate_map_IR(self):
+        self.__calculate_map(self.map_scaler_IR, self.map_elements_IR)
+
+
+    def __calculate_map(self, map_scaler, map_elements):
+        map_offset = map_scaler.get_map_offset()
         # print(map_offset, "map offset")
         # self.__optimize_map_DEPRECATED()
 
-        map_obj = Map(self.map_elements,
+        map_obj = Map(map_elements,
                       self.map_width_px + map_offset,
                       self.map_height_px + map_offset,
                       self.blending,
-                      self.map_scaler.get_scale_px_per_m(),
+                      map_scaler.get_scale_px_per_m(),
                       self.optimize)
 
         print("-Creating map...             ")
@@ -309,6 +302,10 @@ class ImageMapper:
         # else:
         #     print("-Dataset does not contain infrared images...")
 
+        #1. nach metadtaen zu IR suchen
+        #2. nach Rbzw ir als namenssuffix suchen
+        #3. nach unterschiedlichen bildgroessen suchen
+
         (width_0, height_0) = filtered_images[0].get_exif_header().get_image_size()
         for image in filtered_images:
             (width_1, height_1) = image.get_exif_header().get_image_size()
@@ -318,16 +315,17 @@ class ImageMapper:
                 return
         print("-Dataset does not contain infrared images...")
 
-    def __calculate_gps_for_mapbox_plugin(self):
-        origin_gps = self.map_elements[0].get_image().get_exif_header().get_gps()
-        origin_location = self.map_elements[0].get_rotated_rectangle().get_center()
+    def __calculate_gps_for_mapbox_plugin(self, map_scaler, map_elements):
+
+        origin_gps = map_elements[0].get_image().get_exif_header().get_gps()
+        origin_location = map_elements[0].get_rotated_rectangle().get_center()
         # min_x, max_x, min_y, max_y = map_obj.get_min_and_max_coords()
         min_x = float("inf")
         min_y = float("inf")
         max_x = float("-inf")
         max_y = float("-inf")
 
-        for map_element in self.map_elements:
+        for map_element in map_elements:
             r = map_element.get_rotated_rectangle()
             coords_lst = r.get_multipoint()
             # print(coords_lst)
@@ -347,11 +345,11 @@ class ImageMapper:
         # print(min_x, max_x, min_y, max_y)
         corner_location_right_top = (max_x, max_y)
         corner_location_left_bottom = (0, 0)
-        self.corner_gps_right_top = self.map_scaler.calculate_corner_gps_coordinates(origin_gps,
+        self.corner_gps_right_top = map_scaler.calculate_corner_gps_coordinates(origin_gps,
                                                                                      origin_location,
                                                                                      corner_location_right_top)
 
-        self.corner_gps_left_bottom = self.map_scaler.calculate_corner_gps_coordinates(origin_gps,
+        self.corner_gps_left_bottom = map_scaler.calculate_corner_gps_coordinates(origin_gps,
                                                                                        origin_location,
                                                                                        corner_location_left_bottom)
-        self.middle_gps = self.map_scaler.get_middle_gps()
+        self.middle_gps = map_scaler.get_middle_gps()

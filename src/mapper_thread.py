@@ -38,7 +38,11 @@ class MapperThread(threading.Thread):
         self.image_mapper.preprocess_filter_images(images)
         self.progress_preprocess = 95
 
-        self.flight_data, self.camera_specs, self.weather, self.map = self.image_mapper.preprocess_calculate_metadata()#self.report_id, self.file_names)
+        self.flight_data, self.camera_specs, self.weather, self.map, self.rgb_files, self.ir_files =\
+            self.image_mapper.preprocess_calculate_metadata()
+        print("All Files before Mapper: ", self.file_names)
+        print("RGB Files from Mapper: ", self.rgb_files)
+        print("IR Files from Mapper: ", self.ir_files)
         self.progress_preprocess = 100
 
     def get_progress_preprocess(self):
@@ -48,7 +52,7 @@ class MapperThread(threading.Thread):
         return self.progress_mapping
 
     def get_results(self):
-        return self.flight_data, self.camera_specs, self.weather, self.map
+        return self.flight_data, self.camera_specs, self.weather, self.map, self.rgb_files, self.ir_files
 
     def get_mapper(self):
         return self.image_mapper

@@ -29,6 +29,7 @@
       user-select: none;
       background-color: rgba(1,1,1,0.4);
       border-radius: 4px;
+      z-index: 10;
     }
     .next {
       right: 0;
@@ -102,11 +103,73 @@
       cursor: pointer;
     }
 
+    .container{
+        width: 100%;
+        margin: 0 auto;
+        margin-top: 20px;
+        margin-bottom: 20px
+    }
+
+    ul.tabs{
+        margin: 0px;
+        padding: 0px;
+        list-style: none;
+
+    }
+    ul.tabs li{
+        background: rgb(56, 152, 236);
+        color: white;
+        display: inline-block;
+        padding: 10px 15px;
+        cursor: pointer;
+        font-weight: bold;
+    }
+
+    #tab-link-1{
+        border-top-left-radius: 6px;
+        {% if not has_ir %}
+        border-top-right-radius: 6px;
+        {% endif %}
+    }
+
+    #tab-link-2{
+        border-top-right-radius: 6px;
+    }
+
+    ul.tabs li:hover{
+        background rgb(56, 152, 236);
+    }
+
+    ul.tabs li.current{
+        background: #cecece;
+        color: black;
+    }
+
+    .tab-content_gallery{
+        overflow: auto;
+        display: none;
+        background: #cecece;
+        padding: 20px;
+        border-ne: 3px solid rgb(56, 152, 236);
+        border-top-right-radius: 8px;
+        border-bottom-right-radius: 8px;
+        border-bottom-left-radius: 8px;
+    }
+
+    .tab-content_gallery.current{
+        display: inherit;
+    }
+
+    .ir-overlay{
+        z-index: 2;
+        opacity: 0;
+    }
+
     </style>
 
 
 <script>
-
+    var displayingIR = false;
 
     function plusSlides(n) {
       slideIndex += n;
@@ -135,10 +198,24 @@
       });
       console.log(n);
       slideIndex = n
+      displayingIR = false;
+      showCurrentSlide();
+    }
+
+    function showSlideIR(n) {
+      slideshowContainer.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+          inline: "nearest"
+      });
+      console.log(n);
+      slideIndex = n
+      displayingIR = true;
       showCurrentSlide();
     }
 
     function showCurrentSlide() {
+      checkIR();
       checkbox = document.getElementById("magnifierCheckbox");
       demagnify();
       console.log(slideIndex);
@@ -155,6 +232,27 @@
       if(checkbox.checked){
         magnify(slideIndex, zoomValue);
       }
+    }
+
+    function checkIR() {
+        if(displayingIR){
+            var divsToHide = document.getElementsByClassName("ir-overlay"); //divsToHide is an array
+            if(divsToHide[0].style.display == 0){
+                for(var i = 0; i < divsToHide.length; i++){
+                    divsToHide[i].style.opacity = 1; // depending on what you're doing
+                }
+            }
+        } else {
+            var divsToShow = document.getElementsByClassName("ir-overlay"); //divsToHide is an array
+            if(divsToShow.length == 0){
+                return; // no IR images
+            }
+            if(divsToShow[0].style.opacity > 0){
+                for(var i = 0; i < divsToShow.length; i++){
+                    divsToShow[i].style.opacity = 0; // depending on what you're doing
+                }
+            }
+        }
     }
 
 
@@ -248,22 +346,58 @@
     {% for filename in file_names %}
     <div class="mySlides">
         <a>{{filename.split('/')[-1]}}</a>
+        {% if has_ir %}
+        <div style="margin-bottom:7%;"></div>
+        <div style="position: relative;">
+            <div style="position: absolute; top: -10%; left: 0px;">
+                <a><img src="{{ url_for('static', filename=filename) }}" style="width:100%; height: 100%;"></a>
+            </div>
+            <div class="ir-overlay" style="position: relative; top: 0; left: 10%; width:80%; height:80%">
+                <img src="{{ url_for('static', filename=file_names_ir[loop.index0]) }}" style="width:100%; height: 100%;"></a>
+            </div>
+        </div>
+        <div style="margin-bottom: 10%;"></div>
+        {% else %}
         <a><img src="{{ url_for('static', filename=filename) }}" style="width:100%; height: 100%;"></a>
+        {% endif %}
     </div>
     {% endfor %}
     {% endif %}
 
 </div>
 
-<div>
-    {% if file_names %}
-    {% for filename in file_names %}
-    <div style="float:left;width:20%; min-width:240px;">
-        <img src="{{ url_for('static', filename=filename) }}" style="padding: 5px;width:95%;cursor: pointer;" onclick="showSlide({{loop.index0}})">
+    <div class="container">
+
+        <ul class="tabs">
+            <li id="tab-link-1" class="tab-link current" data-tab="tab-1">RGB Photos</li>
+            {% if has_ir %}
+            <li id="tab-link-2" class="tab-link" data-tab="tab-2"> IR Photos</li>
+            {% endif %}
+        </ul>
+
+        <div id="tab-1" class="tab-content_gallery current">
+            {% if file_names %}
+            {% for filename in file_names %}
+            <div style="float:left;width:20%; min-width:240px;">
+                <img src="{{ url_for('static', filename=filename) }}" style="padding: 5px;width:95%;cursor: pointer;" onclick="showSlide({{loop.index0}})">
+            </div>
+            {% endfor %}
+            {% endif %}
+        </div>
+        <div id="tab-2" class="tab-content_gallery">
+            <div style="width: 100%; height: 100%; overflow: auto;">
+                {% if file_names_ir %}
+                {% for filename in file_names_ir %}
+                <div style="float:left;width:20%; min-width:240px;">
+                    <img src="{{ url_for('static', filename=filename) }}" style="padding: 5px;width:95%;cursor: pointer;" onclick="showSlideIR({{loop.index0}})">
+                </div>
+                {% endfor %}
+                {% endif %}
+            </div>
+        </div>
+
     </div>
-    {% endfor %}
-    {% endif %}
-</div>
+
 <script>
 
     var slideIndex = 0;
@@ -300,7 +434,18 @@
 
     output.innerHTML = slider.value/10;
 
+    $(document).ready(function(){
+        $('ul.tabs li').click(function(){
+            var tab_id = $(this).attr('data-tab');
 
+            $('ul.tabs li').removeClass('current');
+            $('.tab-content_gallery').removeClass('current');
+
+            $(this).addClass('current');
+            $("#"+tab_id).addClass('current');
+        })
+
+    })
 </script>
 </body>
 </html>

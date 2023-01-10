@@ -2,14 +2,16 @@ import os
 import json
 import shutil
 from datetime import datetime
+from image_mapper_for_falsk import ImageMapper
 
 
 class ProjectManager:
-    def __init__(self):
+    def __init__(self, path_to_images):
         self.projects = []
         self.highest_id = -1
         self.current_project_id = None
-        self.projects_path = "./static/uploads/"
+        self.projects_path = path_to_images
+        self.image_mapper = {}
 
     def create_project(self, name, description):
         id = self.get_next_id()
@@ -87,7 +89,7 @@ class ProjectManager:
         return False
 
     def generate_empty_data_dict(self):
-        data = {"file_names": [], "flight_data": [], "camera_specs": [], "weather": [], "map": []}
+        data = {"file_names": [], "file_names_ir" : [], "flight_data": [], "camera_specs": [], "weather": [], "map": []}
         return data
 
     def update_file_names(self, id, file_names):
@@ -97,6 +99,19 @@ class ProjectManager:
         print("filenames before: " + str(data['file_names']))
         print("filenames to add: " + str(file_names))
         data['file_names'] += file_names
+        #write updated data to project.json
+        with open(self.projects_path + str(id) + "/project.json", "w") as json_file:
+            json.dump(project, json_file)
+
+        return data['file_names']
+
+    def overwrite_file_names_sorted(self, id, file_names_rgb=None, file_names_ir=None):
+        project = self.get_project(id)
+        data = project['data']
+        if file_names_rgb != None:
+            data['file_names'] = file_names_rgb
+        if file_names_ir != None:
+            data['file_names_ir'] = file_names_ir
         #write updated data to project.json
         with open(self.projects_path + str(id) + "/project.json", "w") as json_file:
             json.dump(project, json_file)
@@ -133,6 +148,9 @@ class ProjectManager:
         return False
 
     def get_file_names(self, id):
+        return self.get_data_by_keyword(id, 'file_names') + self.get_data_by_keyword(id, 'file_names_ir')
+
+    def get_file_names_rgb(self, id):
         return self.get_data_by_keyword(id, 'file_names')
 
     def get_flight_data(self, id):
@@ -166,3 +184,12 @@ class ProjectManager:
             return project['creation_time']
         except:
             return "no creation time found"
+
+    def get_image_mapper(self, report_id):
+        try:
+            mapper = self.image_mapper[str(report_id)]
+            return mapper
+        except:
+            mapper = ImageMapper(self.projects_path)
+            self.image_mapper[str(report_id)] = mapper
+            return mapper

@@ -157,6 +157,9 @@
                 }
                 setRGBMapImage(progress_arr[3]);
                 console.log("setRGBMapImage with: " + progress_arr[3]);
+                {% if has_ir %}
+                setIRMapImage(progress_arr[4]);
+                {% endif %}
 
                 //location.href = "http://127.0.0.1:5000/{{ id }}";
             }

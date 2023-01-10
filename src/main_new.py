@@ -47,8 +47,8 @@ map = {}
 path_to_images = "./static/uploads/"
 projects_dict_list = []
 
-project_manager = ProjectManager()
-image_mapper = ImageMapper(path_to_images)
+project_manager = ProjectManager(path_to_images)
+# image_mapper = ImageMapper(path_to_images)
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
@@ -59,6 +59,10 @@ def render_standard_report(report_id, thread = None):
     camera_specs = data["camera_specs"]
     weather = data["weather"]
     file_names = data["file_names"]
+    file_names_ir = data["file_names_ir"]
+    has_ir = False
+    if file_names_ir != []:
+        has_ir = True
     map = data["map"]
     message = None
     processing = False
@@ -72,9 +76,9 @@ def render_standard_report(report_id, thread = None):
     project = {"id": report_id, "name": project_manager.get_project_name(report_id),
                "description": project_manager.get_project_description(report_id),
                'creation_time': project_manager.get_project_creation_time(report_id)}
-    return render_template('concept.html', id=report_id, file_names=file_names, flight_data=flight_data,
-                           camera_specs=camera_specs, weather=weather, map=map, project=project, message=message,
-                           processing=processing)
+    return render_template('concept.html', id=report_id, file_names=file_names, file_names_ir=file_names_ir,
+                           has_ir=has_ir, flight_data=flight_data, camera_specs=camera_specs, weather=weather, map=map,
+                           project=project, message=message, processing=processing)
 
 
 @app.route('/')
@@ -146,6 +150,8 @@ def process(report_id):
         else:
             ai_detection = True
 
+        image_mapper = project_manager.get_image_mapper(report_id)
+
         map_resolution = request.form.get('map resolution')
         max_width, max_height = 2048, 2048
         if map_resolution == 'low':
@@ -165,35 +171,12 @@ def process(report_id):
 
         image_mapper.set_processing_parameters(map_width_px=max_width,
                                                map_height_px=max_height, with_ODM=with_ODM)#, ai_detection=ai_detection)
-        # start a process to preprocess the images
-        # flight_data, camera_specs, weather, map = image_mapper.calculate_metadata(report_id, file_names)
-        # if (flight_data == None):
-        #     return render_template('concept.html', id=report_id, file_names=file_names, flight_data=flight_data,
-        #                            camera_specs=camera_specs,
-        #                            weather=weather, map=map, message="Error")
-        #
-        # project_manager.update_flight_data(report_id, flight_data)
-        # project_manager.update_camera_specs(report_id, camera_specs)
-        # project_manager.update_weather(report_id, weather)
-        # project_manager.update_map(report_id, map)
-        #
-        # return render_template('concept.html', id=report_id, file_names=file_names, flight_data=flight_data,
-        #                        camera_specs=camera_specs,
-        #                        weather=weather, map=map)
-        # process = Process(target=preprocess_asynchronous, args=(report_id, file_names))
-        # process.start()
         thread = MapperThread(image_mapper, report_id, file_names)
         threads.append(thread)
         thread.start()
         print("process started")
         return render_standard_report(report_id, thread)
 
-        # project = {"id": report_id, "name": project_manager.get_project_name(report_id),
-        #            "description": project_manager.get_project_description(report_id)}
-        #
-        # return render_template('concept.html', id=report_id, file_names=file_names, flight_data=flight_data,
-        #                        camera_specs=camera_specs, weather=weather, map=map, message="processing", processing=True,
-        #                        project=project)
 
 @app.route('/<int:report_id>/process_status', methods=['GET', 'POST'])
 def check_preprocess_status(report_id):
@@ -201,7 +184,9 @@ def check_preprocess_status(report_id):
     progress_preprocessing = -1
     progress_mapping = -1
     redirect = False
-    map_url = "default/MapRGBMissing.jpeg"
+    map_url = url_for('static', filename="default/MapRGBMissing.jpeg")
+    map_ir_url = url_for('static', filename="default/MapIRMissing.jpeg")
+
     for thread in threads:
         if thread.report_id == report_id:
             print("check_preprocess_status" + str(report_id))
@@ -209,44 +194,46 @@ def check_preprocess_status(report_id):
             progress_mapping = thread.get_progress_mapping()
             print(progress_preprocessing, progress_mapping)
             if progress_preprocessing == 100 and not thread.metadata_delivered:
-                #image_mapper = thread.get_mapper()
-                flight_data, camera_specs, weather, map = thread.get_results()
+                flight_data, camera_specs, weather, map, file_names_rgb, file_names_ir = thread.get_results()
                 project_manager.update_flight_data(report_id, flight_data)
                 project_manager.update_camera_specs(report_id, camera_specs)
                 project_manager.update_weather(report_id, weather)
                 project_manager.update_map(report_id, map)
+                project_manager.overwrite_file_names_sorted(report_id, file_names_rgb= file_names_rgb, file_names_ir=file_names_ir)
                 redirect = True
                 thread.metadata_delivered = True
             elif progress_mapping == 100:
                 project_manager.update_map(report_id, thread.get_map())
                 map_url = url_for('static', filename=project_manager.get_map(report_id)['rgbMapFile'])
+                map_ir_url = url_for('static', filename=project_manager.get_map(report_id)['irMapFile'])
+                # map_ir_url = url_for('static', filename=project_manager.get_map(report_id)['rgbMapFile'])
                 print(map_url)
                 threads.remove(thread)
             break
-    return str(progress_preprocessing) + "," + str(progress_mapping) + "," + str(redirect) + "," + str(map_url)
+    return str(progress_preprocessing) + "," + str(progress_mapping) + "," + str(redirect) + "," + str(map_url) + "," + str(map_ir_url)
 
 
 
-@app.route('/<int:report_id>/buildMap', methods=['POST'])
-def buildMap(report_id):
-    if request.method == 'POST':
-        map = image_mapper.map_images(report_id)
-        file_names = project_manager.get_file_names(report_id)
-        flight_data = project_manager.get_flight_data(report_id)
-        camera_specs = project_manager.get_camera_specs(report_id)
-        weather = project_manager.get_weather(report_id)
-        project = {"id": report_id, "name": project_manager.get_project_name(report_id),
-                   "description": project_manager.get_project_description(report_id)}
-        if map == None:
-            return render_template('concept.html', id=report_id, file_names=file_names, flight_data=flight_data, camera_specs=camera_specs,
-                               weather=weather, map=map, message="Error", project=project)
-        project_manager.update_map(report_id, map)
-
-
-        return render_template('concept.html', file_names=file_names, flight_data=flight_data,
-                               camera_specs=camera_specs,
-                               weather=weather, map=map, project=project)
-    #return render_template('concept.html')
+# @app.route('/<int:report_id>/buildMap', methods=['POST'])
+# def buildMap(report_id):
+#     if request.method == 'POST':
+#         map = image_mapper.map_images(report_id)
+#         file_names = project_manager.get_file_names(report_id)
+#         flight_data = project_manager.get_flight_data(report_id)
+#         camera_specs = project_manager.get_camera_specs(report_id)
+#         weather = project_manager.get_weather(report_id)
+#         project = {"id": report_id, "name": project_manager.get_project_name(report_id),
+#                    "description": project_manager.get_project_description(report_id)}
+#         if map == None:
+#             return render_template('concept.html', id=report_id, file_names=file_names, flight_data=flight_data, camera_specs=camera_specs,
+#                                weather=weather, map=map, message="Error", project=project)
+#         project_manager.update_map(report_id, map)
+#
+#
+#         return render_template('concept.html', file_names=file_names, flight_data=flight_data,
+#                                camera_specs=camera_specs,
+#                                weather=weather, map=map, project=project)
+#     #return render_template('concept.html')
 
 @app.route('/display/<filename>')
 def display_image(filename):
@@ -277,20 +264,21 @@ if __name__ == '__main__':
     # NEXT IR Bilder in eigenen Ordner verschieben und im Projekt speichern (file_names entsprechend anpassen)
     # NEXT Switch/ Tab für IR Bilder (/mit Overlay) (von wegen Checkbox für show all, only IR oder only RGB)
     # Header Stylen
-    # Footer erstellen (Urheber etc)
+    #   Footer erstellen (Urheber etc)
     #   Buttons zum berechnen umsortieren
     #   Feedback für den User (Berechnung läuft, fertig, Fehler)
-    # GPS Polygone für FLug einbauen
+    # GPS Polygone für Flug einbauen
     # Bilder oder punkte anklickbar machen (für Link zur Slideshow)
     #   DONE map im ordner speichern und korrekt laden
     #   Maus in Gallerie bem Hovern zur Hand machen und scroll to einabuen
     # Bisschen besseres Feedback für den User (beim Mapping Balken)
     # Beschreibung bearbeitbar machen
     # Fade Slider in Map einbauen
+    # beim fenster resize neu magnify aufrufen
 
     #   TODO render project nur noch aus einer methode mit parametern machen
 
-    #TODO List Project Overview
+    # TODO List Project Overview
     #   Overview Seite Stylen
     #   Eingabemaske bei neuen Projekten erzeugen & entsprechend Daten übergeben
     #   Bestehende Projekte Löschen
@@ -300,6 +288,10 @@ if __name__ == '__main__':
 
     #   TODO größe der Maps ändern
     #   TODO Map Bild ersetzen, Seite nicht neu laden
+
+    #TODO allgemein
+    # Report mit nur IR Bildern auch als solche verarbeiten/ ermöglichen
+    # Wetter Daten aus der Vergangenheit abrufen können
 
 
 
