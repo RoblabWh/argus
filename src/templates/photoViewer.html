@@ -63,45 +63,53 @@
       pointer-events:initial;
     }
 
-    .settings{
-      width: 66%;
-      display: inline-flex;
+
+    #grad1 {
+      height: 100%;
+      background-color: purple;
+      background-image: linear-gradient(to right, black, darkblue, purple ,red,orange, yellow, white);
+      width: 100%;
     }
+
 
     .slidecontainer {
       width: 50%;
     }
 
-    .slider {
-      -webkit-appearance: none;
-      width: 100%;
-      height: 25px;
-      background: #d3d3d3;
-      outline: none;
-      opacity: 0.7;
-      -webkit-transition: .2s;
-      transition: opacity .2s;
-    }
 
-    .slider:hover {
-      opacity: 1;
-    }
+.slider {
+  -webkit-appearance: none;
+  width: 100%;
+  height: 12px;
+  border-radius: 5px;
+  background: white;
+  outline: none;
+  opacity: 0.7;
+  -webkit-transition: .2s;
+  transition: opacity .2s;
+}
 
-    .slider::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      appearance: none;
-      width: 25px;
-      height: 25px;
-      background: #04AA6D;
-      cursor: pointer;
-    }
+.slider:hover {
+  opacity: 1;
+}
 
-    .slider::-moz-range-thumb {
-      width: 25px;
-      height: 25px;
-      background: #04AA6D;
-      cursor: pointer;
-    }
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: rgb(56, 152, 236);
+  cursor: pointer;
+}
+
+.slider::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: rgb(56, 152, 236);
+  cursor: pointer;
+}
 
     .container{
         width: 100%;
@@ -198,6 +206,9 @@
       });
       console.log(n);
       slideIndex = n
+      if(displayingIR){
+        deactivateIR();
+      }
       displayingIR = false;
       showCurrentSlide();
     }
@@ -210,7 +221,7 @@
       });
       console.log(n);
       slideIndex = n
-      displayingIR = true;
+      activateIR();
       showCurrentSlide();
     }
 
@@ -331,14 +342,7 @@
 </script>
 </head>
 <body>
-<div class="settings">
-    <input type="checkbox" id="magnifierCheckbox" checked="checked">
-    <label for="magnifierCheckbox" style="margin: auto 20px auto 5px;">Enable Magnifier</label>
-    <div class="slidecontainer">
-        <input type="range" min="10" max="100" value="50" class="slider" id="zoomRange">
-    </div>
-    <p style="margin: auto 10px auto 10px;">Zoom: <span id="zoomValue"></span></p>
-</div>
+
 <div id="slideshow-container">
     <a class="prev" onclick="plusSlides(-1)">❮</a>
     <a class="next" onclick="plusSlides(1)">❯</a>
@@ -364,6 +368,183 @@
     {% endfor %}
     {% endif %}
 
+</div>
+
+<style>
+    .slideshow-settings-container {;
+        width:95%;
+        margin: auto;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        grid-template-rows: auto;
+
+        padding: 18px;
+        column-gap: 42px;
+        row-gap: 10px;
+
+        background-color: #cecece;;
+        border-radius: 6px;
+        margin-bottom: 10px;
+        justify-self: start;
+    }
+
+    .slideshow-settings-item {
+        width: 100%;
+        justify-self: start;
+        margin: auto;
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr 1fr;
+        grid-template-rows: auto;
+        grid-template-areas:
+            "a0 a0 a0 a0"
+            "b0 b0 b0 b1"
+            "c0 c0 c0 c0"
+            "d0 d1 d1 d1"
+            "e0 e1 e2 e3";
+        gap: 5px 5px;
+        margin-top: 0px;
+
+    }
+
+    .slideshow-settings-item > div {
+        justify-self: start;
+        width: 100%;
+    }
+
+    .setting-fade {
+        opacity: 1.0;
+    }
+
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 30px;
+      height: 17px;
+    }
+
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .switch-slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: rgb(150, 80, 80);;
+      -webkit-transition: .4s;
+      transition: .4s;
+    }
+
+    .switch-slider:before {
+      position: absolute;
+      content: "";
+      height: 13px;
+      width: 13px;
+      left: 2px;
+      bottom: 2px;
+      background-color: white;
+      -webkit-transition: .4s;
+      transition: .4s;
+    }
+
+    input:checked + .switch-slider {
+      background-color: #2196F3;
+    }
+
+    input:focus + .switch-slider {
+      box-shadow: 0 0 1px #2196F3;
+    }
+
+    input:checked + .switch-slider:before {
+      -webkit-transform: translateX(13px);
+      -ms-transform: translateX(13px);
+      transform: translateX(13px);
+    }
+
+    .switch-slider.round {
+      border-radius: 17px;
+    }
+
+    .switch-slider.round:before {
+      border-radius: 50%;
+    }
+
+</style>
+
+<div class="slideshow-settings-container">
+    <h3 style="margin: 8px 0">Slideshow Settings RGB</h3>
+    {% if has_ir %}
+    <h3 style="margin: 8px 0">Slideshow Settings IR</h3>
+    {% else %}
+    <h3 style="margin: 8px 0">   </h3>
+    {% endif %}
+    <div id="slideshow-settings-RGB" class="slideshow-settings-item">
+        <div style="grid-area: a0;">
+            <label>
+                <label class="switch">
+                    <input type="checkbox" id="magnifierCheckbox" checked="checked">
+                    <span class="switch-slider round"></span>
+                </label>
+              Magnifier
+            </label>
+        </div>
+        <div style="grid-area: b0;">
+            <input type="range" min="10" max="100" value="50" class="slider" id="zoomRange" style="width:100%;">
+        </div>
+        <div style="grid-area: b1;">
+             <label for="zoomRange" >Zoom: <span id="zoomValue"></span></label>
+        </div>
+        <div style="grid-area: c0; display: inline-block;"></div>
+        <div style="grid-area: d0;"></div>
+    </div>
+    {% if has_ir %}
+    <div id="slideshow-settings-IR" class="slideshow-settings-item">
+        <div style="grid-area: a0;">
+            <label>
+                <label class="switch">
+                    <input type="checkbox" id="irOverlayCheckbox">
+                    <span class="switch-slider round"></span>
+                </label>
+              Infrared image overlay
+            </label>
+        </div>
+        <div class="setting-fade" style="grid-area: b0;">
+            <input type="range" min="10" max="100" value="50" class="slider setting-disabler" id="irOpacityRange" style="width:100%; grid-area: center">
+        </div>
+        <div class="setting-fade" style="grid-area: b1;">opacity: n%</div>
+        <div class="setting-fade" style="grid-area: c0;">
+            <label>
+                <label class="switch">
+                    <input class="setting-disabler" type="checkbox" id="temperatureCheckbox">
+                    <span class="switch-slider round"></span>
+                </label>
+                Read temperature
+            </label>
+        </div>
+        <div class="setting-fade" style="grid-area: d0;">
+            <select class="setting-disabler" style="width: 100%">
+                <option>blargh</option>
+                <option>blargh2</option>
+            </select>
+        </div>
+        <div class="setting-fade" style="grid-area: d1;" id="grad1"></div>
+        <div class="setting-fade" style="grid-area: e0;">
+            <input class="setting-disabler" type="number" id="minTemp" name="minTemp" min="-20" max="800" value="20"
+                   style="width: 90%; padding; 0px: height:100%; border: 0px; border-radius: 4px;">
+        </div>
+        <div class="setting-fade" style="grid-area: e1;">min</div>
+        <div class="setting-fade" style="grid-area: e2;">
+            <input class="setting-disabler" type="number" id="maxTemp" name=maxnTemp" min="-20" max="800" value="20"
+                   style="width: 90%; padding; 0px: height:100%; border: 0px; border-radius: 4px;">
+        </div>
+        <div class="setting-fade" style="grid-area: e3;">max</div>
+    </div>
+    {% endif %}
 </div>
 
     <div class="container">
@@ -445,7 +626,83 @@
             $("#"+tab_id).addClass('current');
         })
 
+        $('#irOverlayCheckbox').change(function(){
+            if(this.checked){
+                $('#magnifierCheckbox').prop('checked', false);
+                demagnify();
+                displayingIR = true;
+                showCurrentSlide();
+                $('.setting-fade').map(function () {
+                    $(this).css("opacity", "0.999");
+                });
+                $('.setting-disabler').map(function () {
+                    $(this).prop('disabled', false);
+                });
+            }else{
+                $('#magnifierCheckbox').prop('checked', true);
+                displayingIR = false;
+                showCurrentSlide(slideIndex);
+                $('.setting-fade').map(function () {
+                    $(this).css("opacity", "0.4");
+                });
+                $('.setting-disabler').map(function () {
+                    $(this).prop('disabled', true);
+                });
+            }
+        });
+
+        $('#magnifierCheckbox').change(function(){
+            if(this.checked){
+                $('#irOverlayCheckbox').prop('checked', false);
+                displayingIR = false;
+                showCurrentSlide(slideIndex);
+            }else{
+                //$('#irOverlayCheckbox').prop('checked', true);
+                demagnify();
+                //displayingIR = true;
+                //showCurrentSlide();
+            }
+        });
+
     })
+
+    {% if has_ir %}
+    $('#irOverlayCheckbox').prop('checked', false);
+    $('#magnifierCheckbox').prop('checked', true);
+    $('.setting-fade').map(function () {
+        $(this).css("opacity", "0.4");
+    });
+    $('.setting-disabler').map(function () {
+        $(this).prop('disabled', true);
+    });
+    {% endif %}
+
+    function activateIR() {
+        displayingIR = true;
+        $('#irOverlayCheckbox').prop('checked', true);
+        $('#magnifierCheckbox').prop('checked', false);
+        $('.setting-fade').map(function () {
+            $(this).css("opacity", "0.999");
+        });
+        $('.setting-disabler').map(function () {
+            $(this).prop('disabled', false);
+        });
+        showCurrentSlide(slideIndex);
+    }
+
+     function deactivateIR() {
+        displaying = true;
+        $('#irOverlayCheckbox').prop('checked', false);
+        $('#magnifierCheckbox').prop('checked', true);
+        $('.setting-fade').map(function () {
+            $(this).css("opacity", "0.4");
+        });
+        $('.setting-disabler').map(function () {
+            $(this).prop('disabled', true);
+        });
+    }
+
+
 </script>
 </body>
 </html>

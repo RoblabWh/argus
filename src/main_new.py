@@ -261,6 +261,7 @@ if __name__ == '__main__':
 
 
     #TODO List Report
+    #   IR Map serstellen
     # NEXT IR Bilder in eigenen Ordner verschieben und im Projekt speichern (file_names entsprechend anpassen)
     # NEXT Switch/ Tab für IR Bilder (/mit Overlay) (von wegen Checkbox für show all, only IR oder only RGB)
     # Header Stylen
@@ -293,6 +294,11 @@ if __name__ == '__main__':
     # Report mit nur IR Bildern auch als solche verarbeiten/ ermöglichen
     # Wetter Daten aus der Vergangenheit abrufen können
 
+
+    # NEXT!!!!!!!!!!!!!!!!!!!!
+    # TODO IR Bilder in eigenen Ordner verschieben
+    # TODO Tab für IR Darstellungseinstellung (Checkbox für Temp messen, und Schieberegler für Transparenz)
+    # TODO Temp messen einbauen
 
 
 #Kill Process on port:
