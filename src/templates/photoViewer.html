@@ -58,9 +58,32 @@
       display: none
     }
 
-    a:hover .img-magnifier-glass{
+    a:hover .img-magnifier-glass {
       opacity:1;
       pointer-events:initial;
+    }
+
+
+    .ir-overlay{
+        z-index: 2;
+        opacity: 0;
+    }
+
+    .temp-glass {
+        position: absolute;
+        background-color: #ffffff;
+        padding: 5px;
+        opacity: 0;
+        z-index: 20;
+    }
+
+    #temp-glass p {
+        margin: 0px;
+    }
+
+
+    .ir-overlay:hover .temp-glass{
+        opacity: 1;
     }
 
 
@@ -72,44 +95,39 @@
     }
 
 
-    .slidecontainer {
-      width: 50%;
+    .slider {
+      -webkit-appearance: none;
+      width: 100%;
+      height: 12px;
+      border-radius: 5px;
+      background: lightgrey;
+      outline: none;
+      opacity: 0.7;
+      -webkit-transition: .2s;
+      transition: opacity .2s;
     }
 
+    .slider:hover {
+      opacity: 1;
+    }
 
-.slider {
-  -webkit-appearance: none;
-  width: 100%;
-  height: 12px;
-  border-radius: 5px;
-  background: white;
-  outline: none;
-  opacity: 0.7;
-  -webkit-transition: .2s;
-  transition: opacity .2s;
-}
+    .slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: rgb(56, 152, 236);
+      cursor: pointer;
+    }
 
-.slider:hover {
-  opacity: 1;
-}
-
-.slider::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: rgb(56, 152, 236);
-  cursor: pointer;
-}
-
-.slider::-moz-range-thumb {
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: rgb(56, 152, 236);
-  cursor: pointer;
-}
+    .slider::-moz-range-thumb {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: rgb(56, 152, 236);
+      cursor: pointer;
+    }
 
     .container{
         width: 100%;
@@ -168,12 +186,129 @@
         display: inherit;
     }
 
-    .ir-overlay{
-        z-index: 2;
-        opacity: 0;
+
+    .slideshow-settings-container {;
+        width-no:100%;
+        min-width: 535px;
+        margin: auto;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        grid-template-rows: auto;
+
+        padding: 20px;
+        column-gap: 5px;
+        row-gap: 0px;
+
+        background-color:white;
+        border-radius: 6px;
+        margin-bottom: 10px;
+        justify-self: start;
     }
 
-    </style>
+    .slideshow-settings-item {
+        width: 90%;
+        justify-self: start;
+        margin: 0 0 auto;
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr 1fr;
+        grid-template-rows: auto;
+        grid-template-areas:
+            "a0 a0 a0 a0"
+            "b0 b0 b0 b1"
+            "c0 c0 c0 c0"
+            "d0 d1 d1 d1"
+            "e0 e1 e2 e3";
+        gap: 5px 5px;
+        margin-top: 0px;
+        border: lightgrey 1px solid;
+        padding: 10px;
+        border-bottom-left-radius: 6px;
+        border-bottom-right-radius: 6px;
+    }
+
+    .slideshow-settings-title{
+        margin: 8px 0;
+        margin-top: 0px;
+        background-color: #dbdbdb;
+        border-radius: 6px;
+        margin-bottom: 0px;
+        padding-bottom: 0px;
+        border-bottom-left-radius: 0px;
+        border-bottom-right-radius: 0px;
+        width: 90%;
+        padding: 10px;
+        border: lightgrey 1px solid;
+    }
+
+    .slideshow-settings-item > div {
+        justify-self: start;
+        width: 100%;
+    }
+
+    .setting-fade {
+        opacity: 1.0;
+    }
+
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 30px;
+      height: 17px;
+    }
+
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .switch-slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: rgb(150, 80, 80);;
+      -webkit-transition: .4s;
+      transition: .4s;
+    }
+
+    .switch-slider:before {
+      position: absolute;
+      content: "";
+      height: 13px;
+      width: 13px;
+      left: 2px;
+      bottom: 2px;
+      background-color: white;
+      -webkit-transition: .4s;
+      transition: .4s;
+    }
+
+    input:checked + .switch-slider {
+      background-color: #2196F3;
+    }
+
+    input:focus + .switch-slider {
+      box-shadow: 0 0 1px #2196F3;
+    }
+
+    input:checked + .switch-slider:before {
+      -webkit-transform: translateX(13px);
+      -ms-transform: translateX(13px);
+      transform: translateX(13px);
+    }
+
+    .switch-slider.round {
+      border-radius: 17px;
+    }
+
+    .switch-slider.round:before {
+      border-radius: 50%;
+    }
+
+</style>
 
 
 <script>
@@ -181,6 +316,12 @@
 
     function plusSlides(n) {
       slideIndex += n;
+      var slides = document.getElementsByClassName("mySlides");
+      if(slideIndex >= slides.length){
+        slideIndex = 0;
+      } else if (slideIndex < 0){
+        slideIndex = slides.length - 1;
+      }
       showCurrentSlide();
     }
 
@@ -226,7 +367,10 @@
     }
 
     function showCurrentSlide() {
-      checkIR();
+      {% if has_ir %}
+      currentIROpacity = document.getElementById("irOpacityRange").value/100;
+      applyOpacity(currentIROpacity);//checkIR();
+      {% endif %}
       checkbox = document.getElementById("magnifierCheckbox");
       demagnify();
       console.log(slideIndex);
@@ -263,6 +407,22 @@
                     divsToShow[i].style.opacity = 0; // depending on what you're doing
                 }
             }
+        }
+    }
+
+    function applyOpacity(irOpacity) {
+        var irSlides = document.getElementsByClassName("ir-overlay");
+        if(irSlides.length == 0){
+            return; // no IR images
+        }
+
+        var currentIRSlide = document.getElementsByClassName("ir-overlay")[slideIndex];
+        if(displayingIR){
+            //var currentIRSlideOpacity = document.getElementById("irOpacityRange").value/100;
+            currentIRSlide.style.opacity = irOpacity;
+        }
+        else{
+            currentIRSlide.style.opacity = 0;
         }
     }
 
@@ -339,6 +499,8 @@
             glass.parentNode.removeChild(glass);
             }
       }
+
+
 </script>
 </head>
 <body>
@@ -357,10 +519,14 @@
                 <a><img src="{{ url_for('static', filename=filename) }}" style="width:100%; height: 100%;"></a>
             </div>
             <div class="ir-overlay" style="position: relative; top: 0; left: 10%; width:80%; height:80%">
-                <img src="{{ url_for('static', filename=file_names_ir[loop.index0]) }}" style="width:100%; height: 100%;"></a>
+<!--                <canvas style="width:100%; height: 100%;" id="canvas{{loop.index0}}"></canvas>-->
+                <img class="ir-image" id="image{{loop.index0}}" src="{{ url_for('static', filename=file_names_ir[loop.index0]) }}" style="width:100%; height: 100%;">
+                <div class="temp-glass" id="temp-glass{{loop.index0}}"> <p>Temp:</p></div>
+
             </div>
         </div>
         <div style="margin-bottom: 10%;"></div>
+
         {% else %}
         <a><img src="{{ url_for('static', filename=filename) }}" style="width:100%; height: 100%;"></a>
         {% endif %}
@@ -370,118 +536,12 @@
 
 </div>
 
-<style>
-    .slideshow-settings-container {;
-        width:95%;
-        margin: auto;
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        grid-template-rows: auto;
-
-        padding: 18px;
-        column-gap: 42px;
-        row-gap: 10px;
-
-        background-color: #cecece;;
-        border-radius: 6px;
-        margin-bottom: 10px;
-        justify-self: start;
-    }
-
-    .slideshow-settings-item {
-        width: 100%;
-        justify-self: start;
-        margin: auto;
-        display: grid;
-        grid-template-columns: 1fr 1fr 1fr 1fr;
-        grid-template-rows: auto;
-        grid-template-areas:
-            "a0 a0 a0 a0"
-            "b0 b0 b0 b1"
-            "c0 c0 c0 c0"
-            "d0 d1 d1 d1"
-            "e0 e1 e2 e3";
-        gap: 5px 5px;
-        margin-top: 0px;
-
-    }
-
-    .slideshow-settings-item > div {
-        justify-self: start;
-        width: 100%;
-    }
-
-    .setting-fade {
-        opacity: 1.0;
-    }
-
-    .switch {
-      position: relative;
-      display: inline-block;
-      width: 30px;
-      height: 17px;
-    }
-
-    .switch input {
-      opacity: 0;
-      width: 0;
-      height: 0;
-    }
-
-    .switch-slider {
-      position: absolute;
-      cursor: pointer;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background-color: rgb(150, 80, 80);;
-      -webkit-transition: .4s;
-      transition: .4s;
-    }
-
-    .switch-slider:before {
-      position: absolute;
-      content: "";
-      height: 13px;
-      width: 13px;
-      left: 2px;
-      bottom: 2px;
-      background-color: white;
-      -webkit-transition: .4s;
-      transition: .4s;
-    }
-
-    input:checked + .switch-slider {
-      background-color: #2196F3;
-    }
-
-    input:focus + .switch-slider {
-      box-shadow: 0 0 1px #2196F3;
-    }
-
-    input:checked + .switch-slider:before {
-      -webkit-transform: translateX(13px);
-      -ms-transform: translateX(13px);
-      transform: translateX(13px);
-    }
-
-    .switch-slider.round {
-      border-radius: 17px;
-    }
-
-    .switch-slider.round:before {
-      border-radius: 50%;
-    }
-
-</style>
-
 <div class="slideshow-settings-container">
-    <h3 style="margin: 8px 0">Slideshow Settings RGB</h3>
+    <h3 class="slideshow-settings-title">Slideshow Settings RGB</h3>
     {% if has_ir %}
-    <h3 style="margin: 8px 0">Slideshow Settings IR</h3>
+    <h3 class="slideshow-settings-title">Slideshow Settings IR</h3>
     {% else %}
-    <h3 style="margin: 8px 0">   </h3>
+    <h3>   </h3>
     {% endif %}
     <div id="slideshow-settings-RGB" class="slideshow-settings-item">
         <div style="grid-area: a0;">
@@ -514,9 +574,11 @@
             </label>
         </div>
         <div class="setting-fade" style="grid-area: b0;">
-            <input type="range" min="10" max="100" value="50" class="slider setting-disabler" id="irOpacityRange" style="width:100%; grid-area: center">
+            <input type="range" min="10" max="100" value="100" class="slider setting-disabler" id="irOpacityRange" style="width:100%; grid-area: center">
         </div>
-        <div class="setting-fade" style="grid-area: b1;">opacity: n%</div>
+        <div class="setting-fade" style="grid-area: b1;">
+            <label for="irOpacityRange" >Opacity: <span id="opacityValue"></span></label>
+        </div>
         <div class="setting-fade" style="grid-area: c0;">
             <label>
                 <label class="switch">
@@ -578,6 +640,33 @@
         </div>
 
     </div>
+
+<script>
+    function getPosition(obj) {
+        var curleft = 0,
+        curtop = 0;
+        if (obj.offsetParent) {
+            do {
+                curleft += obj.offsetLeft;
+                curtop += obj.offsetTop;
+            } while (obj = obj.offsetParent);
+            return {
+                x: curleft,
+                y: curtop
+            };
+        }
+        return undefined;
+    }
+
+    function rgbToHex(r, g, b) {
+        if (r > 255 || g > 255 || b > 255)
+            throw "Invalid color component";
+        return ((r << 16) | (g << 8) | b).toString(16);
+    }
+
+</script>
+
+
 
 <script>
 
@@ -664,9 +753,22 @@
             }
         });
 
-    })
 
+
+    })
     {% if has_ir %}
+
+    $('#irOpacityRange').change(function(event) {
+        irOpacity = document.querySelector('#irOpacityRange').value/100;
+        applyOpacity(irOpacity);
+        opacityValue = document.querySelector('#opacityValue');
+        opacityValue.innerHTML = irOpacity;
+    });
+
+
+
+
+
     $('#irOverlayCheckbox').prop('checked', false);
     $('#magnifierCheckbox').prop('checked', true);
     $('.setting-fade').map(function () {
@@ -675,7 +777,7 @@
     $('.setting-disabler').map(function () {
         $(this).prop('disabled', true);
     });
-    {% endif %}
+
 
     function activateIR() {
         displayingIR = true;
@@ -701,6 +803,54 @@
             $(this).prop('disabled', true);
         });
     }
+
+    $('#irOpacityRange').val(100);
+    $('#irOpacityRange').change();
+
+    window.onload = function() {
+        {% for filename_ir in file_names_ir %}
+        var img = document.getElementById('image{{loop.index0}}');
+            img.addEventListener("mousemove", function(e) {
+                if($('#temperatureCheckbox').is(':checked')){
+
+                    var img = document.getElementById('image{{loop.index0}}');
+                    var canvas = document.createElement('canvas');
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    canvas.getContext('2d').drawImage(img, 0, 0, img.width, img.height);
+                    var p = canvas.getContext('2d').getImageData(e.offsetX, e.offsetY, 1, 1).data;
+                    var coord = "x: " + e.offsetX + " ,y: " + e.offsetY;
+                    // If transparency on the image
+                    if ((p[0] == 0) && (p[1] == 0) && (p[2] == 0) && (p[3] == 0)) {
+                        coord += " (Transparent color detected, cannot be converted to HEX)";
+                    }
+                    var hex = "#" + ("000000" + rgbToHex(p[0], p[1], p[2])).slice(-6);
+
+                    document.getElementById("temp-glass{{ loop.index0 }}").style.backgroundColor = hex;
+                    document.getElementById("temp-glass{{ loop.index0 }}").innerHTML = coord + p[0] + p[1] + p[2] + p[3];
+
+                    $('#temp-glass{{ loop.index0 }}').css({
+                        left: e.offsetX + 20,
+                        top: e.offsetY + document.body.scrollTop
+                    });
+                    if ((p[0]*0.299 + p[1]*0.587 + p[3]*0.114) > 186){
+                        document.getElementById("temp-glass{{ loop.index0 }}").style.color = "#000000";
+                    } else {
+                        document.getElementById("temp-glass{{ loop.index0 }}").style.color = "#ffffff";
+                    }
+                 } else {
+                    document.getElementById("temp-glass{{ loop.index0 }}").style.backgroundColor = "transparent";
+                    document.getElementById("temp-glass{{ loop.index0 }}").innerHTML = "";
+                 }
+
+            });
+        {% endfor %}
+    };
+
+
+
+    {% endif %}
+
 
 
 </script>
