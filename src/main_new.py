@@ -1,5 +1,4 @@
-
-
+import json
 import os
 import sys
 import datetime
@@ -72,19 +71,21 @@ def render_standard_report(report_id, thread = None):
             message = thread.message
             break
 
+    gradient_lut = json.load(open("./static/default/gradient_luts/gradient_lut_1.json"))
+
 
     project = {"id": report_id, "name": project_manager.get_project_name(report_id),
                "description": project_manager.get_project_description(report_id),
                'creation_time': project_manager.get_project_creation_time(report_id)}
     return render_template('concept.html', id=report_id, file_names=file_names, file_names_ir=file_names_ir,
                            has_ir=has_ir, flight_data=flight_data, camera_specs=camera_specs, weather=weather, map=map,
-                           project=project, message=message, processing=processing)
+                           project=project, message=message, processing=processing, gradient_lut=gradient_lut)
 
 
 @app.route('/')
 def projects_overview():
     projects_dict_list = project_manager.get_projects()
-    return render_template('projectsOverview.html', projects = projects_dict_list )
+    return render_template('projectsOverview.html', projects=projects_dict_list )
 
 @app.route('/create', methods=['POST'])
 def create_report():
@@ -177,6 +178,13 @@ def process(report_id):
         print("process started")
         return render_standard_report(report_id, thread)
 
+@app.route('/gradient_lut/<int:gradient_id>', methods=['GET', 'POST'])
+def send_gradient_lut(gradient_id):
+    #load json file from static/gradient_luts
+    #return json file
+    lut = json.load(open("./static/default/gradient_luts/gradient_lut_" + str(gradient_id) + ".json"))
+    return lut
+
 
 @app.route('/<int:report_id>/process_status', methods=['GET', 'POST'])
 def check_preprocess_status(report_id):
@@ -232,27 +240,6 @@ def check_preprocess_status(report_id):
         coordinatesAsString_IR
 
 
-
-# @app.route('/<int:report_id>/buildMap', methods=['POST'])
-# def buildMap(report_id):
-#     if request.method == 'POST':
-#         map = image_mapper.map_images(report_id)
-#         file_names = project_manager.get_file_names(report_id)
-#         flight_data = project_manager.get_flight_data(report_id)
-#         camera_specs = project_manager.get_camera_specs(report_id)
-#         weather = project_manager.get_weather(report_id)
-#         project = {"id": report_id, "name": project_manager.get_project_name(report_id),
-#                    "description": project_manager.get_project_description(report_id)}
-#         if map == None:
-#             return render_template('concept.html', id=report_id, file_names=file_names, flight_data=flight_data, camera_specs=camera_specs,
-#                                weather=weather, map=map, message="Error", project=project)
-#         project_manager.update_map(report_id, map)
-#
-#
-#         return render_template('concept.html', file_names=file_names, flight_data=flight_data,
-#                                camera_specs=camera_specs,
-#                                weather=weather, map=map, project=project)
-#     #return render_template('concept.html')
 
 @app.route('/display/<filename>')
 def display_image(filename):

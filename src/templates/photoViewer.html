@@ -87,12 +87,65 @@
     }
 
 
-    #grad1 {
+    #grad {
       height: 100%;
       background-color: purple;
-      background-image: linear-gradient(to right, black, darkblue, purple ,red,orange, yellow, white);
       width: 100%;
     }
+
+    .grad-option1{
+          background-image: linear-gradient(to right, black, white);
+    }
+
+    .grad-option2{
+          background-image: linear-gradient(to right, black,red,orange, yellow, white);
+    }
+
+    .grad-option3{
+          background-image: linear-gradient(to right, black, darkblue, purple ,red,orange, yellow, white);
+    }
+
+    .grad-option4{
+          background-image:  linear-gradient(90deg, rgba(0,0,0,1) 0%, rgba(30,129,129,1) 35%, rgba(255,255,0,1) 75%,
+          rgba(255,65,0,1) 93.5%, rgba(225,0,0,1) 100%);
+    }
+
+
+    .grad-option5{
+          background-image: linear-gradient(90deg, rgba(0,0,0,1) 0%, rgba(221,60,221,1) 12.5%, rgba(32,32,255,1) 25%,
+           rgba(19,240,240,1) 37.5%, rgba(0,160,0,1) 55%, rgba(224,231,14,1) 70%, rgba(255,255,19,1) 75%,
+           rgba(255,32,32,1) 87.5%, rgba(255,255,255,1) 100%);
+    }
+
+
+    .grad-option6{
+          background-image: linear-gradient(90deg, rgba(0,0,0,1) 0%, rgba(0,64,255,1) 12.5%, rgba(0,160,60,1) 25%,
+          rgba(128,255,0,1) 37.5%, rgba(255,255,0,1) 50%, rgba(255,0,0,1) 75%, rgba(255,0,255,1) 87.5%,
+          rgba(255,255,255,1) 100%);
+    }
+
+
+    .grad-option7{
+          background-image: linear-gradient(90deg, rgba(127,0,0,1) 0%, rgba(255,0,193,1) 12.5%, rgba(207,0,255,1) 16.5%,
+          rgba(0,0,255,1) 33%, rgba(0,255,255,1) 50%, rgba(0,255,0,1) 66%,rgba(255,255,0,1) 82.5%, rgba(255,0,0,1) 100%);
+    }
+
+
+    .grad-option8{
+          background-image: linear-gradient(90deg, rgba(0,0,128,1) 0%, rgba(0,0,255,1) 12.5%, rgba(0,255,255,1) 37.5%,
+          rgba(255,255,0,1) 62.5%, rgba(255,0,0,1) 87.5%, rgba(128,0,0,1) 100%);
+    }
+
+
+    .grad-option9{
+          background-image:  linear-gradient(90deg, rgba(0,0,0,1) 0%, rgba(255,255,255,1) 70%, rgba(255,98,98,1) 87.5%,
+          rgba(222,0,0,1) 100%);
+    }
+
+    .grad-option10{
+        background-image:  linear-gradient(to right, white, black);
+    }
+
 
 
     .slider {
@@ -596,19 +649,27 @@
             </label>
         </div>
         <div class="setting-fade" style="grid-area: d0;">
-            <select class="setting-disabler" style="width: 100%">
-                <option>blargh</option>
-                <option>blargh2</option>
+            <select id="ir-palette-chooser" class="setting-disabler" style="width: 100%">
+                <option value="grad-option1">white hot</option>
+                <option value="grad-option2">Fulgurite</option>
+                <option value="grad-option3">Iron Red</option>
+                <option value="grad-option4">Hot Iron</option>
+                <option value="grad-option5">Medical</option>
+                <option value="grad-option6">Arctic</option>
+                <option value="grad-option7">Rainbow 1</option>
+                <option value="grad-option8">Rainbow 2</option>
+                <option value="grad-option9">Tint</option>
+                <option value="grad-option10">Black Hot</option>
             </select>
         </div>
-        <div class="setting-fade" style="grid-area: d1;" id="grad1"></div>
+        <div id="grad" class="setting-fade grad-option1" style="grid-area: d1;"></div>
         <div class="setting-fade" style="grid-area: e0;">
             <input class="setting-disabler" type="number" id="minTemp" name="minTemp" min="-20" max="800" value="20"
                    style="width: 90%; padding; 0px: height:100%; border: 0px; border-radius: 4px;">
         </div>
         <div class="setting-fade" style="grid-area: e1;">min</div>
         <div class="setting-fade" style="grid-area: e2;">
-            <input class="setting-disabler" type="number" id="maxTemp" name=maxnTemp" min="-20" max="800" value="20"
+            <input class="setting-disabler" type="number" id="maxTemp" name=maxnTemp" min="-20" max="800" value="80"
                    style="width: 90%; padding; 0px: height:100%; border: 0px; border-radius: 4px;">
         </div>
         <div class="setting-fade" style="grid-area: e3;">max</div>
@@ -676,7 +737,7 @@
 
 
 <script>
-
+    var gradient_lut = {{ gradient_lut }};
     var slideIndex = 0;
     showCurrentSlide(slideIndex);
     var slideshowContainer = document.getElementById("slideshow-container");
@@ -830,9 +891,10 @@
                         coord += " (Transparent color detected, cannot be converted to HEX)";
                     }
                     var hex = "#" + ("000000" + rgbToHex(p[0], p[1], p[2])).slice(-6);
-
+                    var clostestColorIndex = color_closest(p[0], p[1], p[2]);
+                    var temp = calc_temp_from_percentage(clostestColorIndex/gradient_lut.length);
                     document.getElementById("temp-glass{{ loop.index0 }}").style.backgroundColor = hex;
-                    document.getElementById("temp-glass{{ loop.index0 }}").innerHTML = coord + p[0] + p[1] + p[2] + p[3];
+                    document.getElementById("temp-glass{{ loop.index0 }}").innerHTML = temp + "°C  " +clostestColorIndex + " " + coord + " " + p[0] + " " + p[1] + " " + p[2] + " " + p[3];
 
                     $('#temp-glass{{ loop.index0 }}').css({
                         left: e.offsetX + 20,
@@ -851,6 +913,43 @@
             });
         {% endfor %}
     };
+
+    //change css class of grad depending on selected option of ir-palette-chooser
+    $("#ir-palette-chooser").change(function() {
+        $("#ir-palette-chooser option:selected").each(function() {
+            var ir_palette = $(this).val();
+            console.log(ir_palette);
+            $("#grad").removeClass();
+            $("#grad").addClass('setting-fade ' + ir_palette);
+            numbr_at_end_of_value = ir_palette.match(/\d+$/);
+            $.get('/gradient_lut/'+numbr_at_end_of_value, function(lut) {
+                console.log(lut);
+                gradient_lut = lut;
+            });
+        });
+    });
+
+
+    function color_closest(r,g,b){
+        var min_distance = null
+        var min_index = null
+        for (const [i, c] of gradient_lut.entries()){
+           var d = (r - c[0]) ** 2 + (g - c[1]) ** 2 + (b - c[2]) ** 2;
+           if (min_distance == null || d < min_distance){
+              min_distance = d;
+              min_index = i;
+           }
+        }
+        return min_index;
+    }
+
+    function calc_temp_from_percentage(perc){
+        var maxT = Number(document.getElementById("maxTemp").value);
+        var minT = Number(document.getElementById("minTemp").value);
+        var degree = minT + ((maxT - minT) * perc);
+        //console.log(perc, maxT, minT, degree, typeof minT)
+        return Math.round( degree );
+    }
 
     {% endif %}
 
