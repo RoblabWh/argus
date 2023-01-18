@@ -32,7 +32,7 @@ class MapperThread(threading.Thread):
         self.image_mapper.preprocess_start(self.report_id)
         self.progress_preprocess = 15
         images = self.image_mapper.preprocess_read_selection(self.file_names)
-        self.progress_preprocess = 70
+        self.progress_preprocess = 50
         images = self.image_mapper.preprocess_sort_images(images)
         self.progress_preprocess = 80
         self.image_mapper.preprocess_filter_images(images)

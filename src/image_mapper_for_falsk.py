@@ -229,6 +229,7 @@ class ImageMapper:
         self.save_map(str(report_id)+'/', map_file_name_RGB)
         map_file_name_RGB  = "uploads/"+str(report_id)+"/"+map_file_name_RGB
 
+        map_size_RGB = [self.cropped_map.shape[1], self.cropped_map.shape[0]]
 
         map_file_name_IR = "default/MapIRMissing.jpeg"
         if self.CONTAINED_DJI_INFRARED_IMAGES:
@@ -236,6 +237,8 @@ class ImageMapper:
             map_file_name_IR = "mapIR.png"
             self.save_map(str(report_id)+'/', map_file_name_IR)
             map_file_name_IR = "uploads/"+str(report_id)+"/"+map_file_name_IR
+
+        map_size_IR = [self.cropped_map.shape[1], self.cropped_map.shape[0]]
 
         # end_time = datetime.datetime.now().replace(microsecond=0)
         # self.__create_html("", map_file_name, end_time - start_time + filter_time, pano_files)
@@ -254,8 +257,12 @@ class ImageMapper:
             "zoom": 18,
             "rgbMapFile": map_file_name_RGB,
             "rgbMapBounds": bounds,
+            "rgbMapSize": map_size_RGB,
+            "rgbCoordinates": self.extract_coordinates(self.map_elements_RGB, map_size_RGB[1]),
             "irMapFile": map_file_name_IR,
             "irMapBounds": bounds,
+            "irMapSize": map_size_IR,
+            "irCoordinates": self.extract_coordinates(self.map_elements_RGB, map_size_IR[1])
         }
 
         return map
@@ -353,3 +360,22 @@ class ImageMapper:
                                                                                        origin_location,
                                                                                        corner_location_left_bottom)
         self.middle_gps = map_scaler.get_middle_gps()
+
+    def extract_coordinates(self, map_elements, map_height):
+        new_coordinates = list()
+        for map_element in map_elements:
+
+            #image = map_element.get_image().get_matrix()
+            rect = map_element.get_rotated_rectangle()
+            coordinates = rect.get_contour().exterior.coords[:]
+
+            tmp_coordinates = list()
+            for coordinate in coordinates:
+                x, y = coordinate
+                tmp_coordinates.append(str(int(x)) + " " + str(int(map_height - y)))
+
+            str_coordinates = ','.join(str(e) for e in tmp_coordinates)
+            print("single coordinate:", str_coordinates)
+            new_coordinates.append(str_coordinates)
+        print("coordinates:", new_coordinates)
+        return new_coordinates

@@ -13,20 +13,53 @@
             crossorigin=""></script>
     <!-- adds leaflet -->
     <style>
-	     #map {
-             height: 900px;
-             max-height: 80vh;
-             width: 100%;
-             padding-top:30px;
-             display: flex;
-             justify-content: center;
-             margin: 0 auto;
-	     }
+        #map-with-overlay-container {
+            width: 100%;
+            position: relative;
+            height: 900px;
+            max-height: 85vh;
+            padding-top:30px;
+        }
+
+        #map {
+            height: 900px;
+            max-height: 85vh;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            margin: 0 auto;
+
+            position: absolute;
+            top: 0;
+            bottom: 0;
+        }
+
+        #map-overlay-slider {
+            position: absolute;
+            bottom: 40px;
+            left: 25%;
+            width: 50%;
+            padding: 10px;
+            z-index: 1000;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 4px;
+            align-items: center;
+        }
     </style>
 </head>
 <body>
 {% if map %}
-<div id="map"></div>
+<div id="map-with-overlay-container">
+    <div id="map"></div>
+    <div id="map-overlay-slider">
+        <a>
+            <label for="mapOverlayOpacityRange" style="margin: 0 0 0 10px; color: white;">Overlay Opacity</label>
+            <input type="range" min="0" max="100" value="100" class="slider" id="mapOverlayOpacityRange" style="margin: 0px 10px; width:75%;">
+        </a>
+    </div>
+</div>
+
+
 <script>
 
 var defaultZoom = {{map.zoom}};
@@ -43,11 +76,28 @@ L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_toke
         accessToken: 'pk.eyJ1Ijoicm9ibGFidXNlcndocyIsImEiOiJja3VjaXF3d2MxMTN5Mm9tdmQzaGphdGU3In0.BhKF_054bVOPcviIq2yIKg'
     }).addTo(map);
 
-var mapSize=[2945,3849];
+{% if map.rgbMapSize %}
+var mapSize={{ map.rgbMapSize|tojson }};
+{% else %}
+var mapSize=[2000,2000];
+{% endif %}
+
+{% if map.irMapSize %}
+var mapSizeIR={{ map.irMapSize|tojson }};
+{% else %}
+var mapSizeIR=[2000,2000];
+{% endif %}
+
+console.log(mapSize);
 
 var	imageBounds = {{map.rgbMapBounds}};
 var mapImage = L.imageOverlay('{{ url_for('static', filename=map.rgbMapFile) }}', imageBounds);
 var mapOverlay = L.layerGroup([mapImage]);
+
+var lat1 = imageBounds[0][0];
+var long1 = imageBounds[0][1];
+var lat2 = imageBounds[1][0];
+var long2 = imageBounds[1][1];
 
 {% if has_ir %}
 var	imageBounds = {{map.irMapBounds}};
@@ -70,13 +120,11 @@ var threshold = 0.55;
 
 
 function highlightFeature(e) {
-	if(!inMeasureMode) {
 	if(mapOverlayOpacity > threshold) {
 		var layer = e.target;
 		layer.setStyle({
 			fillOpacity: 0.7
 		});
-	}
 	}
 }
 
@@ -84,47 +132,87 @@ function resetHighlight(e) {
 	var layer = e.target;
 
 	layer.setStyle({
-		fillOpacity: 0
+		fillOpacity: 0.0
 	});
 }
 
+function slide(e) {
+	var i = polygons.indexOf(e.target);
+	showSlide(i+1);
+}
+
+function slideIR(e) {
+	var i = polygons.indexOf(e.target);
+	showSlideIR(i+1);
+}
+
 var polygons;
-function loadPolygons() {
-	polygons = new Array();
-  var centers = new Array();
-	var svg = document.getElementById('overviewMap').getElementsByTagName('polyline');
-	for (var i = 0; i < svg.length; i++) {
-		for (var j = 0; j < svg[i]['points'].length; j++) {
-		}
-		//var names really bad, myb adjust
-		var p1=[svg[i]['points'][0]['x']/mapSize[0],svg[i]['points'][0]['y']/mapSize[1]];
-		var p2=[svg[i]['points'][1]['x']/mapSize[0],svg[i]['points'][1]['y']/mapSize[1]];
-		var p3=[svg[i]['points'][2]['x']/mapSize[0],svg[i]['points'][2]['y']/mapSize[1]];
-		var p4=[svg[i]['points'][3]['x']/mapSize[0],svg[i]['points'][3]['y']/mapSize[1]];
-		var pL1 = [p1[1] * lat1 + ((1 - p1[1]) * lat2),p1[0] * long2 + ((1 - p1[0]) * long1)];
-		var pL2 = [p2[1] * lat1 + ((1 - p2[1]) * lat2),p2[0] * long2 + ((1 - p2[0]) * long1)];
-		var pL3 = [p3[1] * lat1 + ((1 - p3[1]) * lat2),p3[0] * long2 + ((1 - p3[0]) * long1)];
-		var pL4 = [p4[1] * lat1 + ((1 - p4[1]) * lat2),p4[0] * long2 + ((1 - p4[0]) * long1)];
-		var latlngs = [pL1,pL2,pL3,pL4];
-      var center = [((pL1[0] + pL3[0]) / 2.0), ((pL1[1] + pL3[1]) / 2.0)];
-      centers.push(center);
-		var polygon = L.polygon(latlngs ,{ opacity: 0, fillOpacity: 0, fillColor: '#0000FF' });
-		polygon.on('mouseover', highlightFeature);
-		polygon.on('mouseout', resetHighlight);
-		polygon.on('click',	slide);
-           mapOverlay.addLayer(polygon);
-		polygons.push(polygon);
-	}
-  trajectory = L.polyline(centers);
-  var overlay = {
-  'Gpx': trajectory
-  };
-  var gpxLayer = L.control.layers(null, overlay, {
-  collapsed: false,
-  position: 'topleft'
-  });
-  gpxLayer.addTo(map);
-  document.getElementById('secondMap').remove();
+function loadPolygons(polygonStringsArray, loadingIR) {
+    polygons = new Array();
+    var centers = new Array();
+    //var svg = document.getElementById('overviewMap').getElementsByTagName('polyline');
+    for (var i = 0; i < polygonStringsArray.length; i++) {
+        var polygonString = polygonStringsArray[i];
+        if(polygonString =="") {
+            continue;
+        }
+        console.log('polygonString', polygonString);
+        var points_strings = polygonString.split(',');
+        console.log('points_strings', points_strings);
+        var points = new Array();
+        for (var j = 0; j < points_strings.length; j++) {
+            var point = points_strings[j].split(' ');
+            console.log('point', point);
+            points.push([parseInt(point[0]), parseInt(point[1])]);
+        }
+        if(typeof(mapSize[0]) == 'string') {
+            console.log('mapSize was String');
+            var arr = new Array();
+            arr.push(parseInt(mapSize[0]));
+            arr.push(parseInt(mapSize[1]));
+            mapSize = arr;
+        }
+        console.log('points', points);
+        console.log('mapSize', mapSize);
+        //var names really bad, myb adjust
+        var p1=[points[0][0]/mapSize[0],points[0][1]/mapSize[1]];
+        var p2=[points[1][0]/mapSize[0],points[1][1]/mapSize[1]];
+        var p3=[points[2][0]/mapSize[0],points[2][1]/mapSize[1]];
+        var p4=[points[3][0]/mapSize[0],points[3][1]/mapSize[1]];
+        var pL1 = [p1[1] * lat1 + ((1 - p1[1]) * lat2), p1[0] * long2 + ((1 - p1[0]) * long1)];
+        var pL2 = [p2[1] * lat1 + ((1 - p2[1]) * lat2), p2[0] * long2 + ((1 - p2[0]) * long1)];
+        var pL3 = [p3[1] * lat1 + ((1 - p3[1]) * lat2), p3[0] * long2 + ((1 - p3[0]) * long1)];
+        var pL4 = [p4[1] * lat1 + ((1 - p4[1]) * lat2), p4[0] * long2 + ((1 - p4[0]) * long1)];
+        var latlngs = [pL1,pL2,pL3,pL4];
+        console.log('latlngs', latlngs);
+        var center = [((pL1[0] + pL3[0]) / 2.0), ((pL1[1] + pL3[1]) / 2.0)];
+        centers.push(center);
+        var polygon = L.polygon(latlngs ,{ opacity: 0, fillOpacity: 0.0, fillColor: '#0000FF' });
+        polygon.on('mouseover', highlightFeature);
+        polygon.on('mouseout', resetHighlight);
+        if(loadingIR) {
+            polygon.on('click',	slideIR);
+            irOverlay.addLayer(polygon);
+        } else {
+            polygon.on('click',	slide);
+            mapOverlay.addLayer(polygon);
+        }
+        //mapOverlay.addLayer(polygon); //hier RGB hinzufügen für IR das ganze dem Ir Overlay hinzufügen
+        polygons.push(polygon);
+    }
+    if(!loadingIR) {
+        trajectory = L.polyline(centers);
+        var overlay = {
+            'Gpx': trajectory
+        };
+        var gpxLayer = L.control.layers(null, overlay, {
+            collapsed: false,
+            position: 'topleft'
+        });
+        gpxLayer.addTo(map);
+        console.log('polygons loaded');
+    }
+
 }
 
 function setRGBMapImage(path) {
@@ -134,10 +222,7 @@ function setIRMapImage(path) {
     IR.setUrl(path);
 }
 
-function slide(e) {
-	var i = polygons.indexOf(e.target);
-	currentSlide(i+1);
-}
+
 
 function changeAlpha(value) {
     mapImage.setOpacity(value/100);
@@ -191,6 +276,20 @@ IR : irOverlay
 };
 L.control.layers(layerswitcher,{}, {collapsed: false}).addTo(map);
 layerswitcher.RGB.addTo(map);
+
+{% if map.rgbCoordinates %}
+loadPolygons({{ map.rgbCoordinates|tojson }}, false);
+{% endif %}
+
+{% if map.irCoordinates and has_ir %}
+loadPolygons({{ map.irCoordinates|tojson }}, true);
+{% endif %}
+
+
+$('#mapOverlayOpacityRange').on('input', function() {
+    changeAlpha($(this).val());
+});
+
 console.log("map loaded");
 
 </script>

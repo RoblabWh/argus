@@ -500,6 +500,13 @@
             }
       }
 
+      function remagnify() {
+      if(!displayingIR){
+            zoomValue = document.getElementById("zoomRange").value/10;
+            magnify(slideIndex, zoomValue);
+        }
+      }
+
 
 </script>
 </head>
@@ -609,37 +616,37 @@
     {% endif %}
 </div>
 
-    <div class="container">
+<div class="container">
 
-        <ul class="tabs">
-            <li id="tab-link-1" class="tab-link current" data-tab="tab-1">RGB Photos</li>
-            {% if has_ir %}
-            <li id="tab-link-2" class="tab-link" data-tab="tab-2"> IR Photos</li>
-            {% endif %}
-        </ul>
+    <ul class="tabs">
+        <li id="tab-link-1" class="tab-link current" data-tab="tab-1">RGB Photos</li>
+        {% if has_ir %}
+        <li id="tab-link-2" class="tab-link" data-tab="tab-2"> IR Photos</li>
+        {% endif %}
+    </ul>
 
-        <div id="tab-1" class="tab-content_gallery current">
-            {% if file_names %}
-            {% for filename in file_names %}
+    <div id="tab-1" class="tab-content_gallery current">
+        {% if file_names %}
+        {% for filename in file_names %}
+        <div style="float:left;width:20%; min-width:240px;">
+            <img src="{{ url_for('static', filename=filename) }}" style="padding: 5px;width:95%;cursor: pointer;" onclick="showSlide({{loop.index0}})">
+        </div>
+        {% endfor %}
+        {% endif %}
+    </div>
+    <div id="tab-2" class="tab-content_gallery">
+        <div style="width: 100%; height: 100%; overflow: auto;">
+            {% if file_names_ir %}
+            {% for filename in file_names_ir %}
             <div style="float:left;width:20%; min-width:240px;">
-                <img src="{{ url_for('static', filename=filename) }}" style="padding: 5px;width:95%;cursor: pointer;" onclick="showSlide({{loop.index0}})">
+                <img src="{{ url_for('static', filename=filename) }}" style="padding: 5px;width:95%;cursor: pointer;" onclick="showSlideIR({{loop.index0}})">
             </div>
             {% endfor %}
             {% endif %}
         </div>
-        <div id="tab-2" class="tab-content_gallery">
-            <div style="width: 100%; height: 100%; overflow: auto;">
-                {% if file_names_ir %}
-                {% for filename in file_names_ir %}
-                <div style="float:left;width:20%; min-width:240px;">
-                    <img src="{{ url_for('static', filename=filename) }}" style="padding: 5px;width:95%;cursor: pointer;" onclick="showSlideIR({{loop.index0}})">
-                </div>
-                {% endfor %}
-                {% endif %}
-            </div>
-        </div>
-
     </div>
+
+</div>
 
 <script>
     function getPosition(obj) {
@@ -745,6 +752,7 @@
                 $('#irOverlayCheckbox').prop('checked', false);
                 displayingIR = false;
                 showCurrentSlide(slideIndex);
+                deactivateIR();
             }else{
                 //$('#irOverlayCheckbox').prop('checked', true);
                 demagnify();
@@ -764,9 +772,6 @@
         opacityValue = document.querySelector('#opacityValue');
         opacityValue.innerHTML = irOpacity;
     });
-
-
-
 
 
     $('#irOverlayCheckbox').prop('checked', false);
@@ -793,7 +798,7 @@
     }
 
      function deactivateIR() {
-        displaying = true;
+        displayingIR = true;
         $('#irOverlayCheckbox').prop('checked', false);
         $('#magnifierCheckbox').prop('checked', true);
         $('.setting-fade').map(function () {
@@ -846,8 +851,6 @@
             });
         {% endfor %}
     };
-
-
 
     {% endif %}
 

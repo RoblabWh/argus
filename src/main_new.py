@@ -186,6 +186,10 @@ def check_preprocess_status(report_id):
     redirect = False
     map_url = url_for('static', filename="default/MapRGBMissing.jpeg")
     map_ir_url = url_for('static', filename="default/MapIRMissing.jpeg")
+    coordinatesAsString_RGB = ""
+    coordinatesAsString_IR = ""
+    mapsize_RGB = "1,1"
+    mapsize_IR = "1,1"
 
     for thread in threads:
         if thread.report_id == report_id:
@@ -206,11 +210,26 @@ def check_preprocess_status(report_id):
                 project_manager.update_map(report_id, thread.get_map())
                 map_url = url_for('static', filename=project_manager.get_map(report_id)['rgbMapFile'])
                 map_ir_url = url_for('static', filename=project_manager.get_map(report_id)['irMapFile'])
-                # map_ir_url = url_for('static', filename=project_manager.get_map(report_id)['rgbMapFile'])
+
+                map = project_manager.get_map(report_id)
+                coordinates_RGB = map['rgbCoordinates']
+                mapsize_RGB = str(map['rgbMapSize'][0]) + "," + str(map['rgbMapSize'][1])
+                for coordinate in coordinates_RGB:
+                    coordinatesAsString_RGB += coordinate + "/"
+
+                coordinates_IR = map['irCoordinates']
+                mapsize_IR = str(map['irMapSize'][0]) + "," + str(map['irMapSize'][1])
+                for coordinate in coordinates_IR:
+                    coordinatesAsString_IR += coordinate + "/"
+
+
+
                 print(map_url)
                 threads.remove(thread)
             break
-    return str(progress_preprocessing) + "," + str(progress_mapping) + "," + str(redirect) + "," + str(map_url) + "," + str(map_ir_url)
+    return str(progress_preprocessing) + ";" + str(progress_mapping) + ";" + str(redirect) + ";" + str(map_url)+ ";" +\
+        str(mapsize_RGB) + ";" + coordinatesAsString_RGB + ";" + str(map_ir_url) + ";" + str(mapsize_IR) + ";" +\
+        coordinatesAsString_IR
 
 
 
@@ -262,23 +281,34 @@ if __name__ == '__main__':
 
     #TODO List Report
     #   IR Map serstellen
-    #   NEXT IR Bilder separat im Projekt speichern (file_names entsprechend anpassen)
+    # _NEXT_ IR Bilder separat im Projekt speichern (file_names entsprechend anpassen)
     #    Switch/ Tab für IR Bilder (/mit Overlay) (von wegen Checkbox für show all, only IR oder only RGB)
-    # Header Stylen
+    # Header Stylen (Logo, Name, Beschreibung)
+    # Footer Stylen (Kontakt, Impressum, Logos)
     #   Footer erstellen (Urheber etc)
     #   Buttons zum berechnen umsortieren
     #   Feedback für den User (Berechnung läuft, fertig, Fehler)
-    # GPS Polygone für Flug einbauen
-    # Bilder oder punkte anklickbar machen (für Link zur Slideshow)
+    #   _NEXT_ GPS Polygone für Flug einbauen
+    #   _NEXT_ Bilder oder punkte anklickbar machen (für Link zur Slideshow)
     #   DONE map im ordner speichern und korrekt laden
     #   Maus in Gallerie bem Hovern zur Hand machen und scroll to einabuen
     # Bisschen besseres Feedback für den User (beim Mapping Balken)
     # Beschreibung bearbeitbar machen
-    # Fade Slider in Map einbauen
-    # beim fenster resize neu magnify aufrufen
-    # Temperatur anzeigen
+    #   _NEXT_ Fade Slider in Map einbauen
+    #   _NEXT_ beim fenster resize neu magnify aufrufen
+    # _NEXT_ Temperatur anzeigen
+    # _NEXT_ mehrere Temepratur mappings realisieren
+    # _NEXT_ Karten Home mittiger setzen (und Zoom uch besser einstellen)
+    # _NEXT_ ODM Karte generieren
+    #   Tab für IR Darstellungseinstellung (Checkbox für Temp messen, und Schieberegler für Transparenz)
 
-    #   TODO render project nur noch aus einer methode mit parametern machen
+
+    #TODO allgmeien
+    #   render project nur noch aus einer methode mit parametern machen
+    # _NEXT_ IR Bilder in eigenen Ordner verschieben
+    # IDs aus Datum Und Uhrzeit Basteln
+    # Unterschiedliche Anzahl an IR und RGB Bildern handeln: Fehlerausgabe/einfach annehmen, auf jedem Fall Sorter fixen
+    # Position des Overlays in der Karte stimmt nicht (Bounds?)
 
     # TODO List Project Overview
     #   Overview Seite Stylen
@@ -294,12 +324,6 @@ if __name__ == '__main__':
     #TODO allgemein
     # Report mit nur IR Bildern auch als solche verarbeiten/ ermöglichen
     # Wetter Daten aus der Vergangenheit abrufen können
-
-
-    # NEXT!!!!!!!!!!!!!!!!!!!!
-    # TODO IR Bilder in eigenen Ordner verschieben
-    #   TODO Tab für IR Darstellungseinstellung (Checkbox für Temp messen, und Schieberegler für Transparenz)
-    # TODO Temp messen einbauen
 
 
 #Kill Process on port:

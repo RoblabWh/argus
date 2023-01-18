@@ -45,6 +45,7 @@ class InfraredRGBSorter(Sorter):
         for i, infrared_image in enumerate(infrared_images):
             infrared_image.set_to_ir()
             infrared_image.set_rgb_counterpart_path(rgb_images[i].get_image_path())
+            #TODO ungleiche Anzahl an IR/ RGB Bildern verarbeiten können
             
         return (infrared_images, rgb_images)
             

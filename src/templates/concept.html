@@ -135,37 +135,52 @@
     <script src="{{url_for('static', filename='default/jquery-3.6.3.js') }}"></script>
 </head>
 
-<body>
+<body onresize="updateSizeDependetEmelents()">
     <script>
-    function check_progress(report_id) {
-        console.log("check_progress on:" + report_id + " with: " + report_id + '/process_status');
-        $.get('/{{ id }}/process_status', function(progress) {
-            var progress_arr = progress.split(",");
-            var bar_preprocess = document.getElementById("myBar_a");
-            var bar_mapping = document.getElementById("myBar_b");
-            bar_preprocess.style.width = progress_arr[0] + '%';
-            bar_mapping.style.width = progress_arr[1] + '%';
+        function check_progress(report_id) {
+            console.log("check_progress on:" + report_id + " with: " + report_id + '/process_status');
+            $.get('/{{ id }}/process_status', function(progress) {
+                var progress_arr = progress.split(";");
+                var bar_preprocess = document.getElementById("myBar_a");
+                var bar_mapping = document.getElementById("myBar_b");
+                bar_preprocess.style.width = progress_arr[0] + '%';
+                bar_mapping.style.width = progress_arr[1] + '%';
 
-            if (progress_arr[2] == "True") {
-                location.href = "http://127.0.0.1:5000/{{ id }}";
-            }
-            if (parseInt(progress_arr[1]) == 100) {
-                console.log("done");
-                window.clearInterval(intervalID);
-                for (const element of progress_arr) {
-                    console.log(element);
+                if (progress_arr[2] == "True") {
+                    location.href = "http://127.0.0.1:5000/{{ id }}";
                 }
-                setRGBMapImage(progress_arr[3]);
-                console.log("setRGBMapImage with: " + progress_arr[3]);
-                {% if has_ir %}
-                setIRMapImage(progress_arr[4]);
-                {% endif %}
+                if (parseInt(progress_arr[1]) == 100) {
+                    console.log("done");
+                    window.clearInterval(intervalID);
+                    for (const element of progress_arr) {
+                        console.log(element);
+                    }
+                    setRGBMapImage(progress_arr[3]);
+                    console.log("setRGBMapImage with: " + progress_arr[3]);
 
-                //location.href = "http://127.0.0.1:5000/{{ id }}";
-            }
-        });
+                    console.log("arr_mapSize: " + progress_arr[4]);
+                    mapSize = progress_arr[4].split(",");
+                    console.log("mapSize: " + mapSize);
+                    loadPolygons(progress_arr[5].split("/"), false);
 
-    }
+
+                    {% if has_ir %}
+                    setIRMapImage(progress_arr[6]);
+
+                    mapSizeIR = progress_arr[7].split(",");
+                    console.log("mapSizeIR: " + mapSizeIR);
+                    loadPolygons(progress_arr[8].split("/"), true);
+                    {% endif %}
+
+                    //location.href = "http://127.0.0.1:5000/{{ id }}";
+                }
+            });
+
+        }
+
+        function updateSizeDependetEmelents(){
+            remagnify();
+        };
 
     </script>
     <div class="header">
