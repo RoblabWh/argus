@@ -193,3 +193,13 @@ class ProjectManager:
             mapper = ImageMapper(self.projects_path)
             self.image_mapper[str(report_id)] = mapper
             return mapper
+
+    def update_ir_settings(self, report_id, settings):
+        project = self.get_project(report_id)
+        map = project['data']['map']
+
+        map['ir_min_temp'] = settings[0]
+        map['ir_max_temp'] = settings[1]
+        map['ir_color_scheme'] = settings[2]
+
+        self.update_map(report_id, map)

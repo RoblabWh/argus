@@ -185,6 +185,13 @@ def send_gradient_lut(gradient_id):
     lut = json.load(open("./static/default/gradient_luts/gradient_lut_" + str(gradient_id) + ".json"))
     return lut
 
+@app.route('/update_ir_settings/<int:report_id>/<string:settings>/', methods=['GET'])
+def update_ir_settings(report_id, settings):
+    settings = settings.split(",")
+    settings = [int(i) for i in settings]
+    project_manager.update_ir_settings(report_id, settings)
+    print("update_ir_settings for id"+ str(report_id) + " with: " + str(settings))
+    return "success"
 
 @app.route('/<int:report_id>/process_status', methods=['GET', 'POST'])
 def check_preprocess_status(report_id):
@@ -283,8 +290,9 @@ if __name__ == '__main__':
     # Beschreibung bearbeitbar machen
     #   _NEXT_ Fade Slider in Map einbauen
     #   _NEXT_ beim fenster resize neu magnify aufrufen
-    # _NEXT_ Temperatur anzeigen
-    # _NEXT_ mehrere Temepratur mappings realisieren
+    #   _NEXT_ Temperatur anzeigen
+    #   _NEXT_ Temperatur settings mit im Projekt speichern
+    #   _NEXT_ mehrere Temepratur mappings realisieren
     # _NEXT_ Karten Home mittiger setzen (und Zoom uch besser einstellen)
     # _NEXT_ ODM Karte generieren
     #   Tab für IR Darstellungseinstellung (Checkbox für Temp messen, und Schieberegler für Transparenz)

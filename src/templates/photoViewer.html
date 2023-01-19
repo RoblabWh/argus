@@ -98,11 +98,13 @@
     }
 
     .grad-option2{
-          background-image: linear-gradient(to right, black,red,orange, yellow, white);
+          background-image: linear-gradient(90deg, rgba(0,0,0,1) 0%, rgba(255,0,0,1) 37.5%, rgba(255,255,0,1) 75%,
+          rgba(255,255,255,1) 100%);
     }
 
     .grad-option3{
-          background-image: linear-gradient(to right, black, darkblue, purple ,red,orange, yellow, white);
+          background-image:  linear-gradient(90deg, rgba(0,0,32,1) 0%, rgba(32,0,96,1) 12.5%, rgba(181,0,164,1) 37.5%,
+          rgba(255,64,0,1) 50%, rgba(255,255,0,1) 87.5%, rgba(255,255,200,1) 100%);
     }
 
     .grad-option4{
@@ -664,12 +666,12 @@
         </div>
         <div id="grad" class="setting-fade grad-option1" style="grid-area: d1;"></div>
         <div class="setting-fade" style="grid-area: e0;">
-            <input class="setting-disabler" type="number" id="minTemp" name="minTemp" min="-20" max="800" value="20"
+            <input class="setting-disabler" type="number" id="minTemp" name="minTemp" min="-20" max="800" value="{{ map.ir_min_temp }}"
                    style="width: 90%; padding; 0px: height:100%; border: 0px; border-radius: 4px;">
         </div>
         <div class="setting-fade" style="grid-area: e1;">min</div>
         <div class="setting-fade" style="grid-area: e2;">
-            <input class="setting-disabler" type="number" id="maxTemp" name=maxnTemp" min="-20" max="800" value="80"
+            <input class="setting-disabler" type="number" id="maxTemp" name=maxnTemp" min="-20" max="800" value="{{ map.ir_max_temp }}"
                    style="width: 90%; padding; 0px: height:100%; border: 0px; border-radius: 4px;">
         </div>
         <div class="setting-fade" style="grid-area: e3;">max</div>
@@ -926,7 +928,16 @@
                 console.log(lut);
                 gradient_lut = lut;
             });
+            $.get( "/update_ir_settings/{{ id }}/" + Number(document.getElementById("minTemp").value) + "," + Number(document.getElementById("maxTemp").value) + "," + numbr_at_end_of_value);
         });
+    });
+
+    $("#minTemp").change(function() {
+        $.get( "/update_ir_settings/{{ id }}/" + Number(document.getElementById("minTemp").value) + "," + Number(document.getElementById("maxTemp").value) + "," + Number(document.getElementById("ir-palette-chooser").value.match(/\d+$/)));
+    });
+
+    $("#maxTemp").change(function() {
+        $.get( "/update_ir_settings/{{ id }}/" + Number(document.getElementById("minTemp").value) + "," + Number(document.getElementById("maxTemp").value) + "," + Number(document.getElementById("ir-palette-chooser").value.match(/\d+$/)));
     });
 
 
@@ -950,6 +961,8 @@
         //console.log(perc, maxT, minT, degree, typeof minT)
         return Math.round( degree );
     }
+
+    $("#ir-palette-chooser").val("grad-option{{ map.ir_color_scheme }}").change();
 
     {% endif %}
 

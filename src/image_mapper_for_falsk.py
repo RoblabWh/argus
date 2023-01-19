@@ -202,6 +202,9 @@ class ImageMapper:
             "rgbMapBounds": bounds,
             "irMapFile": "default/MapIRMissing.jpeg",
             "irMapBounds": bounds,
+            "ir_max_temp": 100,
+            "ir_min_temp": 20,
+            "ir_color_scheme": 3,
         }
 
         filenames_rgb = []
@@ -262,7 +265,10 @@ class ImageMapper:
             "irMapFile": map_file_name_IR,
             "irMapBounds": bounds,
             "irMapSize": map_size_IR,
-            "irCoordinates": self.extract_coordinates(self.map_elements_RGB, map_size_IR[1])
+            "irCoordinates": self.extract_coordinates(self.map_elements_RGB, map_size_IR[1]),
+            "ir_max_temp": 100,
+            "ir_min_temp": 20,
+            "ir_color_scheme": 3,
         }
 
         return map

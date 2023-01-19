@@ -11,7 +11,7 @@
         .bodyDiv {
             min-height: 95vh;
             width: 94%;
-            max-width: 1600px;
+            max-width: 1400px;
             margin: 0 auto !important;
             float: none !important;
             font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
@@ -256,7 +256,8 @@
                 <details>
                     <summary>Flight Profiles</summary>
                     <div class="tab-content">
-                        <p>your text goes here</p>
+                        <p>a</p>
+                        <p>b</p>
                     </div>
                 </details>
             </div>
@@ -264,21 +265,21 @@
         <details>
             <summary>UAV/ Camera Specs</summary>
             <div class="tab-content">
-                <p>your text goes here</p>
+                <p>Informattion about used camera/ UAV based on image metadata</p>
                 {% include 'cameraSpecs.html' %}
             </div>
         </details>
         <details>
             <summary>Weather</summary>
             <div class="tab-content">
-                <p>your text goes here</p>
+                <p>ATTENTION - Currently using weather at time of report-creation (after pressing calculate). Not using actual flight date and time for pulling weather yet.</p>
                 {% include 'weather.html' %}
             </div>
         </details>
         <details>
             <summary>AI Detection</summary>
             <div class="tab-content">
-                <p>your text goes here</p>
+                <p>Coming soon</p>
             </div>
         </details>
 
@@ -288,9 +289,6 @@
             {% include 'mapViewer.html' %}
         </div>
 
-        <div>
-            <p> Photo slideshow with magnifier </p>
-        </div>
 
         <div>
             <h2> Photos </h2>
