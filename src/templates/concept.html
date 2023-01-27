@@ -161,15 +161,34 @@
                     console.log("arr_mapSize: " + progress_arr[4]);
                     mapSize = progress_arr[4].split(",");
                     console.log("mapSize: " + mapSize);
-                    loadPolygons(progress_arr[5].split("/"), false);
+                    map_bounds_rgb = progress_arr[5].split("/");
+                    map_bounds_rgb_arr = new Array();
+                    for (const element of map_bounds_rgb) {
+                        tmp = element.split(",");
+                        map_bounds_rgb_arr.push(tmp);
+                    }
+                    map_bounds_rgb_arr = map_bounds_rgb_arr.map(function(item) {
+                        return item.map(Number);
+                    });
+                    setRGBBounds(map_bounds_rgb_arr);
+                    loadPolygons(progress_arr[6].split("/"), false);
 
 
                     {% if has_ir %}
-                    setIRMapImage(progress_arr[6]);
+                    setIRMapImage(progress_arr[7]);
 
-                    mapSizeIR = progress_arr[7].split(",");
+                    mapSizeIR = progress_arr[8].split(",");
                     console.log("mapSizeIR: " + mapSizeIR);
-                    loadPolygons(progress_arr[8].split("/"), true);
+                    map_bounds_ir = progress_arr[9].split("/");
+                    map_bounds_ir_arr = new Array();
+                    for (const element of map_bounds_ir) {
+                        map_bounds_ir_arr.push(element.split(","));
+                    }
+                    map_bounds_ir_arr = map_bounds_ir_arr.map(function(item) {
+                        return item.map(Number);
+                    });
+                    setIRBounds(map_bounds_ir_arr);
+                    loadPolygons(progress_arr[10].split("/"), true);
                     {% endif %}
 
                     //location.href = "http://127.0.0.1:5000/{{ id }}";
@@ -216,9 +235,9 @@
                     <label for="map_res"> Map resolution </label>
                 </div>
                 {% if not file_names %}
-                <input class="big_button" type="submit" value="Evaluate" disabled>
+                <input class="big_button" type="submit" value="Process" disabled>
                 {% else %}
-                <input class="big_button" type="submit" value="Evaluate">
+                <input class="big_button" type="submit" value="Process">
                 {% endif %}
             </form>
 <!--            <form method="post" action="/{{ id }}/buildMap"><input class="big_button" value="makemap" type="submit"></form>-->

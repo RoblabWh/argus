@@ -9,12 +9,11 @@ __email__ = "arturleinweber@live.de"
 __status__ = "Production"
 
 
-import os    
-import sys
+import os
 import datetime
 import argparse
 
-from image_mapper import ImageMapper
+from src.image_mapper import ImageMapper
 from PanoramaViewer import Panorma_viewer
 
 NUMBER_ARGS = 2

@@ -400,6 +400,12 @@
           block: "start",
           inline: "nearest"
       });
+      var slides = document.getElementsByClassName("mySlides");
+      if(n >= slides.length){
+        n = 0;
+      } else if (n < 0){
+        n = slides.length - 1;
+      }
       console.log(n);
       slideIndex = n
       if(displayingIR){
@@ -415,6 +421,12 @@
           block: "start",
           inline: "nearest"
       });
+      var slides = document.getElementsByClassName("mySlides");
+      if(n >= slides.length){
+        n = 0;
+      } else if (n < 0){
+        n = slides.length - 1;
+      }
       console.log(n);
       slideIndex = n
       activateIR();
@@ -666,12 +678,12 @@
         </div>
         <div id="grad" class="setting-fade grad-option1" style="grid-area: d1;"></div>
         <div class="setting-fade" style="grid-area: e0;">
-            <input class="setting-disabler" type="number" id="minTemp" name="minTemp" min="-20" max="800" value="{{ map.ir_min_temp }}"
+            <input class="setting-disabler" type="number" id="minTemp" name="minTemp" min="-20" max="800" value="{{ ir_settings.ir_min_temp }}"
                    style="width: 90%; padding; 0px: height:100%; border: 0px; border-radius: 4px;">
         </div>
         <div class="setting-fade" style="grid-area: e1;">min</div>
         <div class="setting-fade" style="grid-area: e2;">
-            <input class="setting-disabler" type="number" id="maxTemp" name=maxnTemp" min="-20" max="800" value="{{ map.ir_max_temp }}"
+            <input class="setting-disabler" type="number" id="maxTemp" name=maxnTemp" min="-20" max="800" value="{{ ir_settings.ir_max_temp }}"
                    style="width: 90%; padding; 0px: height:100%; border: 0px; border-radius: 4px;">
         </div>
         <div class="setting-fade" style="grid-area: e3;">max</div>
@@ -829,8 +841,9 @@
     })
     {% if has_ir %}
 
-    $('#irOpacityRange').change(function(event) {
-        irOpacity = document.querySelector('#irOpacityRange').value/100;
+
+    $('#irOpacityRange').on('input', function(event) {
+        irOpacity = $(this).val()/100;
         applyOpacity(irOpacity);
         opacityValue = document.querySelector('#opacityValue');
         opacityValue.innerHTML = irOpacity;
@@ -962,7 +975,7 @@
         return Math.round( degree );
     }
 
-    $("#ir-palette-chooser").val("grad-option{{ map.ir_color_scheme }}").change();
+    $("#ir-palette-chooser").val("grad-option{{ ir_settings.ir_color_scheme }}").change();
 
     {% endif %}
 

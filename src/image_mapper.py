@@ -9,8 +9,6 @@ __status__ = "Production"
 import json
 
 import cv2
-import numpy as np
-import imutils
 import os
 import shutil 
 import datetime
@@ -19,18 +17,14 @@ import multiprocessing
 import time
 import sys
 from weather import Weather
-from datetime import datetime, date, time
+from datetime import datetime, time
 
 from path_reader import PathReader
 from image import Image
 from map_scaler import MapScaler
-from randomizer import Randomizer
-from comparator import Comparator
 from map import Map
-from transformer import Transformer
 from feature_matcher import FeatureMatcher
 from html_map import HTMLMap
-from filter import Filter
 from pano_filter import PanoFilter
 from gimbal_pitch_filter import GimbalPitchFilter
 from infrared_rgb_sorter import InfraredRGBSorter
@@ -296,7 +290,7 @@ class ImageMapper:
                 time.sleep(2)
 
             if taskmanager.task_complete:
-                with open('results/odm_georeferencing/odm_georeferenced_model.info.json','r') as j:
+                with open('results/odm_georeferencing/odm_georeferenced_model.info.json', 'r') as j:
                     contents = json.loads(j.read())
                     bbox = contents['stats']['bbox']['EPSG:4326']['bbox']
                     corner_gps_left_bottom = (bbox['minx'],bbox['miny'])

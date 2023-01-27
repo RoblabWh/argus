@@ -1,10 +1,11 @@
+import json
 
 import cv2
 import multiprocessing
 import time
 import sys
 from weather import Weather
-from datetime import datetime, date, time
+import datetime
 from path_reader import PathReader
 from image import Image
 from map_scaler import MapScaler
@@ -99,12 +100,12 @@ class ImageMapper:
 
             self.map_scaler_RGB = MapScaler(rgb_images, self.map_width_px, self.map_height_px)
             self.map_elements_RGB = self.map_scaler_RGB.get_map_elements()
-            self.__calculate_gps_for_mapbox_plugin(self.map_scaler_RGB, self.map_elements_RGB)
+            self.__calculate_gps_for_mapbox_plugin_initial_guess(self.map_scaler_RGB, self.map_elements_RGB)
         else:
             # Generate map elements using a MapScaler object
             self.map_scaler_RGB = MapScaler(self.filtered_images, self.map_width_px, self.map_height_px)
             self.map_elements_RGB = self.map_scaler_RGB.get_map_elements()
-            self.__calculate_gps_for_mapbox_plugin(self.map_scaler_RGB, self.map_elements_RGB)
+            self.__calculate_gps_for_mapbox_plugin_initial_guess(self.map_scaler_RGB, self.map_elements_RGB)
         return True
 
 
@@ -127,8 +128,8 @@ class ImageMapper:
 
         flight_time_last = metadta_elements[-1].get_image().get_exif_header().get_creation_time()
         flight_time_first = metadta_elements[0].get_image().get_exif_header().get_creation_time()
-        last = time(int(flight_time_last / 10000), int(flight_time_last % 10000 / 100), int(flight_time_last % 100))
-        first = time(int(flight_time_first / 10000), int(flight_time_first % 10000 / 100), int(flight_time_first % 100))
+        last = datetime.time(int(flight_time_last / 10000), int(flight_time_last % 10000 / 100), int(flight_time_last % 100))
+        first = datetime.time(int(flight_time_first / 10000), int(flight_time_first % 10000 / 100), int(flight_time_first % 100))
         # flight_time = datetime.combine(datetime.date.min, last) - datetime.combine(datetime.date.min, first)
 
         flight_time_str = "long"  # str(flight_time).split(":")
@@ -195,90 +196,193 @@ class ImageMapper:
         longc = self.middle_gps.get_longitude()
         bounds = [[lat1, long1], [lat2, long2]]
 
-        map = {
+        # map = {
+        #     "center": [latc, longc],
+        #     "zoom": 18,
+        #     "rgbMapFile": "default/MapRGBMissing.jpeg",
+        #     "rgbMapBounds": bounds,
+        #     "irMapFile": "default/MapIRMissing.jpeg",
+        #     "irMapBounds": bounds,
+        #     "ir_max_temp": 100,
+        #     "ir_min_temp": 20,
+        #     "ir_color_scheme": 3,
+        # }
+
+
+        map_rgb = {
             "center": [latc, longc],
             "zoom": 18,
-            "rgbMapFile": "default/MapRGBMissing.jpeg",
-            "rgbMapBounds": bounds,
-            "irMapFile": "default/MapIRMissing.jpeg",
-            "irMapBounds": bounds,
+            "file": "default/waiting.png",
+            "bounds": bounds,
+            "size": [1080, 1080],
+            "image_coordinates": None,
+            "ir": False,
+            "odm": False,
+            "name": "RGB",
+        }
+
+        map_ir = {
+            "center": [latc, longc],
+            "zoom": 18,
+            "file": "default/waiting.png",
+            "bounds": bounds,
+            "size": [1080, 1080],
+            "image_coordinates": None,
+            "ir": True,
+            "odm": False,
+            "name": "IR",
+        }
+
+        map_rgb_odm = {
+            "center": [latc, longc],
+            "zoom": 18,
+            "file": "default/waiting.png",
+            "bounds": bounds,
+            "size": [1080, 1080],
+            "image_coordinates": None,
+            "ir": False,
+            "odm": True,
+            "name": "RGB_ODM",
+        }
+
+        map_ir_odm = {
+            "center": [latc, longc],
+            "zoom": 18,
+            "file": "default/waiting.png",
+            "bounds": bounds,
+            "size": [1080, 1080],
+            "image_coordinates": None,
+            "ir": True,
+            "odm": True,
+            "name": "IR_ODM",
+        }
+
+        self.filenames_rgb = []
+        self.filenames_ir = []
+        for element in self.map_elements_RGB:
+            self.filenames_rgb.append(element.get_image().get_image_path().split("static/", 1)[1])
+        if self.CONTAINED_DJI_INFRARED_IMAGES:
+            for element in self.map_elements_IR:
+                self.filenames_ir.append(element.get_image().get_image_path().split("static/", 1)[1])
+
+        return flight_data, camera_specs, weather, [map_rgb, map_ir, map_rgb_odm, map_ir_odm], self.filenames_rgb, self.filenames_ir
+
+
+    # def map_images(self, report_id):
+    #     if self.current_report_id != report_id:
+    #         #self.pre_process_images()
+    #         return None
+    #     if self.map_elements_RGB is None:
+    #         print("-No map elements found!")
+    #         return None
+    #
+    #     maps = []
+    #     maps.append(self.calculate_map_RGB())
+    #     # map_file_name_RGB = "map.png"
+    #     # self.save_map(str(report_id)+'/', map_file_name_RGB)
+    #     # map_file_name_RGB  = "uploads/"+str(report_id)+"/"+map_file_name_RGB
+    #     #
+    #     # map_size_RGB = [self.cropped_map.shape[1], self.cropped_map.shape[0]]
+    #     #
+    #     #
+    #     #
+    #     # lat1 = self.corner_gps_left_bottom .get_latitude()
+    #     # long1 = self.corner_gps_left_bottom.get_longitude()
+    #     # lat2 = self.corner_gps_right_top .get_latitude()
+    #     # long2 = self.corner_gps_right_top .get_longitude()
+    #     # latc = self.middle_gps.get_latitude()
+    #     # longc = self.middle_gps.get_longitude()
+    #     # bounds = [[lat1, long1],[lat2, long2]]
+    #     # bounds_ir = bounds
+    #     #
+    #     # map_file_name_IR = "default/MapIRMissing.jpeg"
+    #     if self.CONTAINED_DJI_INFRARED_IMAGES:
+    #         maps.append(self.calculate_map_IR())
+    #     #     map_file_name_IR = "mapIR.png"
+    #     #     self.save_map(str(report_id)+'/', map_file_name_IR)
+    #     #     map_file_name_IR = "uploads/"+str(report_id)+"/"+map_file_name_IR
+    #     #     lat1_ir = self.corner_gps_left_bottom.get_latitude()
+    #     #     long1_ir = self.corner_gps_left_bottom.get_longitude()
+    #     #     lat2_ir = self.corner_gps_right_top.get_latitude()
+    #     #     long2_ir = self.corner_gps_right_top.get_longitude()
+    #     #     latc_ir = self.middle_gps.get_latitude()
+    #     #     longc_ir = self.middle_gps.get_longitude()
+    #     #     bounds = [[lat1_ir, long1_ir], [lat2_ir, long2_ir]]
+    #     #
+    #     # map_size_IR = [self.cropped_map.shape[1], self.cropped_map.shape[0]]
+    #
+    #     # end_time = datetime.datetime.now().replace(microsecond=0)
+    #     # self.__create_html("", map_file_name, end_time - start_time + filter_time, pano_files)
+    #
+    #
+    #
+    #
+    #     # map = {
+    #     #     "center": [latc, longc],
+    #     #     "zoom": 18,
+    #     #     "rgbMapFile": map_file_name_RGB,
+    #     #     "rgbMapBounds": bounds,
+    #     #     "rgbMapSize": map_size_RGB,
+    #     #     "rgbCoordinates": self.extract_coordinates(self.map_elements_RGB, map_size_RGB[1]),
+    #     #     "irMapFile": map_file_name_IR,
+    #     #     "irMapBounds": bounds_ir,
+    #     #     "irMapSize": map_size_IR,
+    #     #     "irCoordinates": self.extract_coordinates(self.map_elements_RGB, map_size_IR[1]),
+    #     #     "ir_max_temp": 100,
+    #     #     "ir_min_temp": 20,
+    #     #     "ir_color_scheme": 3,
+    #     # }
+    #     #
+    #     # return map
+    #
+    def get_ir_settings(self):
+        #TODO aus Meta Daten auslesen wenn vorhanden
+        ir_settings = {
             "ir_max_temp": 100,
             "ir_min_temp": 20,
             "ir_color_scheme": 3,
         }
+        return ir_settings
 
-        filenames_rgb = []
-        filenames_ir = []
-        for element in self.map_elements_RGB:
-            filenames_rgb.append(element.get_image().get_image_path().split("static/", 1)[1])
-        if self.CONTAINED_DJI_INFRARED_IMAGES:
-            for element in self.map_elements_IR:
-                filenames_ir.append(element.get_image().get_image_path().split("static/", 1)[1])
+    def calculate_map_RGB(self, report_id):
+        min_x, max_x, min_y, max_y = self.__calculate_map(self.map_scaler_RGB, self.map_elements_RGB)
+        map = self.process_map(self.map_scaler_RGB, self.map_elements_RGB, min_x, max_x, min_y, max_y, False)
+        return map
 
-        return flight_data, camera_specs, weather, map, filenames_rgb, filenames_ir
+    def calculate_map_IR(self, report_id):
+        min_x, max_x, min_y, max_y = self.__calculate_map(self.map_scaler_IR, self.map_elements_IR)
+        map = self.process_map(self.map_scaler_IR, self.map_elements_IR, min_x, max_x, min_y, max_y, True)
+        return map
+    def process_map(self, map_scaler, map_elements, min_x, max_x, min_y, max_y, ir):
+        map_file_name = "map_rgb.png" if not ir else "map_ir.png"
+        map_file_path = "uploads/" + str(self.current_report_id) + "/" + map_file_name
 
+        self.__calculate_gps_for_mapbox_plugin(map_elements, map_scaler, min_x, max_x, min_y, max_y)
+        self.save_map(str(self.current_report_id) + '/', map_file_name)
 
-    def map_images(self, report_id):
-        if self.current_report_id != report_id:
-            #self.pre_process_images()
-            return None
-        if self.map_elements_RGB is None:
-            print("-No map elements found!")
-            return None
+        map_size = [self.cropped_map.shape[1], self.cropped_map.shape[0]]
 
-
-        self.calculate_map_RGB()
-        map_file_name_RGB = "map.png"
-        self.save_map(str(report_id)+'/', map_file_name_RGB)
-        map_file_name_RGB  = "uploads/"+str(report_id)+"/"+map_file_name_RGB
-
-        map_size_RGB = [self.cropped_map.shape[1], self.cropped_map.shape[0]]
-
-        map_file_name_IR = "default/MapIRMissing.jpeg"
-        if self.CONTAINED_DJI_INFRARED_IMAGES:
-            self.calculate_map_IR()
-            map_file_name_IR = "mapIR.png"
-            self.save_map(str(report_id)+'/', map_file_name_IR)
-            map_file_name_IR = "uploads/"+str(report_id)+"/"+map_file_name_IR
-
-        map_size_IR = [self.cropped_map.shape[1], self.cropped_map.shape[0]]
-
-        # end_time = datetime.datetime.now().replace(microsecond=0)
-        # self.__create_html("", map_file_name, end_time - start_time + filter_time, pano_files)
-
-
-        lat1 = self.corner_gps_left_bottom .get_latitude()
+        lat1 = self.corner_gps_left_bottom.get_latitude()
         long1 = self.corner_gps_left_bottom.get_longitude()
-        lat2 = self.corner_gps_right_top .get_latitude()
-        long2 = self.corner_gps_right_top .get_longitude()
+        lat2 = self.corner_gps_right_top.get_latitude()
+        long2 = self.corner_gps_right_top.get_longitude()
         latc = self.middle_gps.get_latitude()
         longc = self.middle_gps.get_longitude()
-        bounds = [[lat1, long1],[lat2, long2]]
+        bounds = [[lat1, long1], [lat2, long2]]
 
         map = {
             "center": [latc, longc],
             "zoom": 18,
-            "rgbMapFile": map_file_name_RGB,
-            "rgbMapBounds": bounds,
-            "rgbMapSize": map_size_RGB,
-            "rgbCoordinates": self.extract_coordinates(self.map_elements_RGB, map_size_RGB[1]),
-            "irMapFile": map_file_name_IR,
-            "irMapBounds": bounds,
-            "irMapSize": map_size_IR,
-            "irCoordinates": self.extract_coordinates(self.map_elements_RGB, map_size_IR[1]),
-            "ir_max_temp": 100,
-            "ir_min_temp": 20,
-            "ir_color_scheme": 3,
+            "file": map_file_path,
+            "bounds": bounds,
+            "size": map_size,
+            "image_coordinates": self.extract_coordinates(map_elements, map_size[1]),
+            "ir": ir,
+            "odm": False,
+            "name": "RGB" if not ir else "IR",
         }
 
         return map
-
-    def calculate_map_RGB(self):
-        self.__calculate_map(self.map_scaler_RGB, self.map_elements_RGB)
-
-    def calculate_map_IR(self):
-        self.__calculate_map(self.map_scaler_IR, self.map_elements_IR)
-
 
     def __calculate_map(self, map_scaler, map_elements):
         map_offset = map_scaler.get_map_offset()
@@ -298,6 +402,7 @@ class ImageMapper:
         # self.__calculate_gps_for_mapbox_plugin(map_obj)
         if self.with_ODM and self.placeholder_map is None:
             self.placeholder_map = map_obj.generate_ODM_placeholder_map(self.path_to_images)
+        return map_obj.get_min_and_max_coords()
 
     def save_map(self, relative_path, file_name):
         msg_str = relative_path + file_name
@@ -328,7 +433,7 @@ class ImageMapper:
                 return
         print("-Dataset does not contain infrared images...")
 
-    def __calculate_gps_for_mapbox_plugin(self, map_scaler, map_elements):
+    def __calculate_gps_for_mapbox_plugin_initial_guess(self, map_scaler, map_elements):
 
         origin_gps = map_elements[0].get_image().get_exif_header().get_gps()
         origin_location = map_elements[0].get_rotated_rectangle().get_center()
@@ -367,6 +472,20 @@ class ImageMapper:
                                                                                        corner_location_left_bottom)
         self.middle_gps = map_scaler.get_middle_gps()
 
+    def __calculate_gps_for_mapbox_plugin(self, map_elements, map_scaler, min_x, max_x, min_y, max_y):
+        origin_gps = map_elements[0].get_image().get_exif_header().get_gps()
+        origin_location = map_elements[0].get_rotated_rectangle().get_center()
+        corner_location_right_top = (max_x, max_y)
+        corner_location_left_bottom = (0, 0)
+        self.corner_gps_right_top = map_scaler.calculate_corner_gps_coordinates(origin_gps,
+                                                                                     origin_location,
+                                                                                     corner_location_right_top)
+
+        self.corner_gps_left_bottom = map_scaler.calculate_corner_gps_coordinates(origin_gps,
+                                                                                       origin_location,
+                                                                                       corner_location_left_bottom)
+        self.middle_gps = map_scaler.get_middle_gps()
+
     def extract_coordinates(self, map_elements, map_height):
         new_coordinates = list()
         for map_element in map_elements:
@@ -385,3 +504,138 @@ class ImageMapper:
             new_coordinates.append(str_coordinates)
         print("coordinates:", new_coordinates)
         return new_coordinates
+
+    def generate_odm_orthophoto(self, container_port, image_size=0, ir=False):
+        print("-Generating ODM orthophoto...")
+        if not self.with_ODM:
+            print("Error: ODM is not enabled for this dataset!")
+            return
+
+        options = {'feature-quality': 'medium', 'fast-orthophoto': True, 'auto-boundary': True, 'pc-ept': True,'cog': True}
+        if ir:
+            options = {'feature-quality': 'high', 'fast-orthophoto': True, 'auto-boundary': True, 'pc-ept': True,'cog': True}
+        image_list = self.filenames_rgb.copy() if not ir else self.filenames_ir.copy()
+        for j, image in enumerate(image_list):
+            image_list[j] = "static/" + image
+        print(image_list)
+        taskmanager = OdmTaskManager(self.path_to_images + str(self.current_report_id) + "/", container_port)
+
+        if image_size != 0:
+            taskmanager.set_images_scaled(image_list, image_size)
+        else:
+            taskmanager.set_images(image_list)
+
+        taskmanager.run_task(options)
+
+        while True:
+            if not taskmanager.task_running():
+                break
+            time.sleep(1)
+
+        if taskmanager.task_complete:
+            bounds = None
+            middle_gps = None
+            with open('results/odm_georeferencing/odm_georeferenced_model.info.json', 'r') as j:
+                contents = json.loads(j.read())
+                bbox = contents['stats']['bbox']['EPSG:4326']['bbox']
+                corner_gps_left_bottom = (bbox['minx'],bbox['miny'])
+                corner_gps_right_top = (bbox['maxx'],bbox['maxy'])
+                middle_gps = [(corner_gps_left_bottom[1] + corner_gps_right_top[1])/2, (corner_gps_left_bottom[0] + corner_gps_right_top[0])/2]
+                bounds = [[corner_gps_left_bottom[1], corner_gps_left_bottom[0]], [corner_gps_right_top[1], corner_gps_right_top[0]]]
+                print(corner_gps_left_bottom, corner_gps_right_top)
+
+            im = cv2.imread("results/odm_orthophoto/odm_orthophoto.tif", cv2.IMREAD_UNCHANGED)
+            map_size = [im.shape[1], im.shape[0]]
+            target_path = self.path_to_images + str(self.current_report_id) + "/"
+            filename = "odm_map.png" if not ir else "odm_map_ir.png"
+            cv2.imwrite(target_path + filename, im)
+            print("Orthophoto saved under", target_path+ filename)
+            taskmanager.close()
+
+            map = {
+                "center": middle_gps,
+                "zoom": 18,
+                "file": 'uploads/'+ str(self.current_report_id) + "/" + filename,
+                "bounds": bounds,
+                "size": map_size,
+                "image_coordinates": None,
+                "ir": ir,
+                "odm": True,
+                "name": "RGB_ODM" if not ir else "IR_ODM",
+            }
+
+        else:
+            taskmanager.close()
+
+            lat1 = self.corner_gps_left_bottom.get_latitude()
+            long1 = self.corner_gps_left_bottom.get_longitude()
+            lat2 = self.corner_gps_right_top.get_latitude()
+            long2 = self.corner_gps_right_top.get_longitude()
+            latc = self.middle_gps.get_latitude()
+            longc = self.middle_gps.get_longitude()
+            bounds = [[lat1, long1], [lat2, long2]]
+
+            map = {
+                "center": [latc, longc],
+                "zoom": 18,
+                "file": "default/ODMFehler.png",
+                "bounds": bounds,
+                "size": [1080,1080],
+                "image_coordinates": None,
+                "ir": ir,
+                "odm": True,
+                "name": "RGB_ODM" if not ir else "IR_ODM",
+            }
+            print("Error: ODM task failed!")
+
+        return map
+
+    def generate_odm_orthophoto_all_at_once(self, container_port, image_size=0):
+        options = [{'feature-quality': 'medium', 'fast-orthophoto': True, 'auto-boundary': True, 'pc-ept': True,'cog': True},
+                   {'feature-quality': 'high', 'fast-orthophoto': True, 'auto-boundary': True, 'pc-ept': True,'cog': True}]
+        image_lists = []
+        maps = []
+        image_lists.append(self.filenames_rgb.copy())
+        if self.CONTAINED_DJI_INFRARED_IMAGES:
+            image_lists.append(self.filenames_ir.copy())
+
+        print(options)
+
+        taskmanager = OdmTaskManager(self.path_to_images + str(self.current_report_id) + "/", container_port)
+
+        #  run in loop over image_lists
+        for i, list in enumerate(image_lists):
+
+            for j, image in enumerate(list):
+                list[j] = "static/" + image
+
+            if(i == 0):
+                taskmanager.set_images_scaled(list, image_size)
+            else:
+                taskmanager.set_images(list)
+
+            taskmanager.run_task(options[i])
+
+            while True:
+                if not taskmanager.task_running():
+                    break
+                time.sleep(1)
+
+            if taskmanager.task_complete:
+                with open('results/odm_georeferencing/odm_georeferenced_model.info.json', 'r') as j:
+                    contents = json.loads(j.read())
+                    bbox = contents['stats']['bbox']['EPSG:4326']['bbox']
+                    corner_gps_left_bottom = (bbox['minx'],bbox['miny'])
+                    corner_gps_right_top = (bbox['maxx'],bbox['maxy'])
+                #Todo, bounds irgendwie nutzen
+                print(corner_gps_left_bottom, corner_gps_right_top)
+
+                im = cv2.imread("results/odm_orthophoto/odm_orthophoto.tif", cv2.IMREAD_UNCHANGED)
+                target_path = self.path_to_images + str(self.current_report_id) + "/"
+                filename = "odm_map.png" if(i == 0) else "odm_map_ir.png"
+                cv2.imwrite(target_path + filename, im)
+                print("Orthophoto saved under", target_path+ filename)
+                maps.append(target_path + filename)
+
+        taskmanager.close()
+        return maps

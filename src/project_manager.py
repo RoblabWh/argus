@@ -89,7 +89,7 @@ class ProjectManager:
         return False
 
     def generate_empty_data_dict(self):
-        data = {"file_names": [], "file_names_ir" : [], "flight_data": [], "camera_specs": [], "weather": [], "map": []}
+        data = {"file_names": [], "file_names_ir" : [], "flight_data": [], "camera_specs": [], "weather": [], "maps": [], "ir_settings": []}
         return data
 
     def update_file_names(self, id, file_names):
@@ -127,8 +127,11 @@ class ProjectManager:
     def update_weather(self, id, weather):
         return self.update_data_by_keyword(id, 'weather', weather)
 
-    def update_map(self, id, map):
-        return self.update_data_by_keyword(id, 'map', map)
+    def update_maps(self, id, maps):
+        return self.update_data_by_keyword(id, 'maps', maps)
+
+    def update_ir_settings(self, id, ir_settings):
+        return self.update_data_by_keyword(id, 'ir_settings', ir_settings)
 
     def update_data_by_keyword(self, id, keyword, data):
         project = self.get_project(id)
@@ -162,8 +165,8 @@ class ProjectManager:
     def get_weather(self, id):
         return self.get_data_by_keyword(id, 'weather')
 
-    def get_map(self, id):
-        return self.get_data_by_keyword(id, 'map')
+    def get_maps(self, id):
+        return self.get_data_by_keyword(id, 'maps')
 
     def get_data_by_keyword(self, id, keyword):
         project = self.get_project(id)
@@ -194,12 +197,12 @@ class ProjectManager:
             self.image_mapper[str(report_id)] = mapper
             return mapper
 
-    def update_ir_settings(self, report_id, settings):
+    def update_ir_settings_from_website(self, report_id, settings):
         project = self.get_project(report_id)
-        map = project['data']['map']
+        ir_settings = project['data']['ir_settings']
 
-        map['ir_min_temp'] = settings[0]
-        map['ir_max_temp'] = settings[1]
-        map['ir_color_scheme'] = settings[2]
+        ir_settings['ir_min_temp'] = settings[0]
+        ir_settings['ir_max_temp'] = settings[1]
+        ir_settings['ir_color_scheme'] = settings[2]
 
-        self.update_map(report_id, map)
+        self.update_ir_settings(report_id, ir_settings)

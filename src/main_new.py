@@ -59,10 +59,11 @@ def render_standard_report(report_id, thread = None):
     weather = data["weather"]
     file_names = data["file_names"]
     file_names_ir = data["file_names_ir"]
+    ir_settings = data["ir_settings"]
     has_ir = False
     if file_names_ir != []:
         has_ir = True
-    map = data["map"]
+    maps = data["maps"]
     message = None
     processing = False
     for thread in threads:
@@ -78,8 +79,9 @@ def render_standard_report(report_id, thread = None):
                "description": project_manager.get_project_description(report_id),
                'creation_time': project_manager.get_project_creation_time(report_id)}
     return render_template('concept.html', id=report_id, file_names=file_names, file_names_ir=file_names_ir,
-                           has_ir=has_ir, flight_data=flight_data, camera_specs=camera_specs, weather=weather, map=map,
-                           project=project, message=message, processing=processing, gradient_lut=gradient_lut)
+                           has_ir=has_ir, flight_data=flight_data, camera_specs=camera_specs, weather=weather, maps=maps,
+                           project=project, message=message, processing=processing, gradient_lut=gradient_lut,
+                           ir_settings=ir_settings)
 
 
 @app.route('/')
@@ -189,7 +191,7 @@ def send_gradient_lut(gradient_id):
 def update_ir_settings(report_id, settings):
     settings = settings.split(",")
     settings = [int(i) for i in settings]
-    project_manager.update_ir_settings(report_id, settings)
+    project_manager.update_ir_settings_from_website(report_id, settings)
     print("update_ir_settings for id"+ str(report_id) + " with: " + str(settings))
     return "success"
 
@@ -205,6 +207,8 @@ def check_preprocess_status(report_id):
     coordinatesAsString_IR = ""
     mapsize_RGB = "1,1"
     mapsize_IR = "1,1"
+    map_bounds_RGB_string = ""
+    map_bounds_IR_string = ""
 
     for thread in threads:
         if thread.report_id == report_id:
@@ -213,38 +217,42 @@ def check_preprocess_status(report_id):
             progress_mapping = thread.get_progress_mapping()
             print(progress_preprocessing, progress_mapping)
             if progress_preprocessing == 100 and not thread.metadata_delivered:
-                flight_data, camera_specs, weather, map, file_names_rgb, file_names_ir = thread.get_results()
+                flight_data, camera_specs, weather, maps, file_names_rgb, file_names_ir, ir_settings = thread.get_results()
                 project_manager.update_flight_data(report_id, flight_data)
                 project_manager.update_camera_specs(report_id, camera_specs)
                 project_manager.update_weather(report_id, weather)
-                project_manager.update_map(report_id, map)
+                project_manager.update_maps(report_id, maps)
+                project_manager.update_ir_settings(report_id, ir_settings)
                 project_manager.overwrite_file_names_sorted(report_id, file_names_rgb= file_names_rgb, file_names_ir=file_names_ir)
                 redirect = True
                 thread.metadata_delivered = True
             elif progress_mapping == 100:
-                project_manager.update_map(report_id, thread.get_map())
-                map_url = url_for('static', filename=project_manager.get_map(report_id)['rgbMapFile'])
-                map_ir_url = url_for('static', filename=project_manager.get_map(report_id)['irMapFile'])
-
-                map = project_manager.get_map(report_id)
-                coordinates_RGB = map['rgbCoordinates']
-                mapsize_RGB = str(map['rgbMapSize'][0]) + "," + str(map['rgbMapSize'][1])
-                for coordinate in coordinates_RGB:
-                    coordinatesAsString_RGB += coordinate + "/"
-
-                coordinates_IR = map['irCoordinates']
-                mapsize_IR = str(map['irMapSize'][0]) + "," + str(map['irMapSize'][1])
-                for coordinate in coordinates_IR:
-                    coordinatesAsString_IR += coordinate + "/"
-
-
-
-                print(map_url)
+                project_manager.update_maps(report_id, thread.get_maps())
+                # map_url = url_for('static', filename=project_manager.get_maps(report_id)[0]['file'])
+                # map_ir_url = url_for('static', filename=project_manager.get_map(report_id)['irMapFile'])
+                #
+                # map = project_manager.get_map(report_id)
+                # coordinates_RGB = map['rgbCoordinates']
+                # mapsize_RGB = str(map['rgbMapSize'][0]) + "," + str(map['rgbMapSize'][1])
+                # map_bounds_RGB = map['rgbMapBounds']
+                # map_bounds_RGB_string = str(map_bounds_RGB[0][0]) + "," + str(map_bounds_RGB[0][1]) + "/" + str(map_bounds_RGB[1][0]) + "," + str(map_bounds_RGB[1][1])
+                # for coordinate in coordinates_RGB:
+                #     coordinatesAsString_RGB += coordinate + "/"
+                #
+                # coordinates_IR = map['irCoordinates']
+                # mapsize_IR = str(map['irMapSize'][0]) + "," + str(map['irMapSize'][1])
+                # map_bounds_IR = map['irMapBounds']
+                # map_bounds_IR_string = str(map_bounds_IR[0][0]) + "," + str(map_bounds_IR[0][1]) + "/" + str(map_bounds_IR[1][0]) + "," + str(map_bounds_IR[1][1])
+                # print("map_bounds_IR: ", str(map_bounds_IR), "map_bounds_IR_string: ", map_bounds_IR_string)
+                #
+                # for coordinate in coordinates_IR:
+                #     coordinatesAsString_IR += coordinate + "/"
+                # print(map_url)
                 threads.remove(thread)
             break
     return str(progress_preprocessing) + ";" + str(progress_mapping) + ";" + str(redirect) + ";" + str(map_url)+ ";" +\
-        str(mapsize_RGB) + ";" + coordinatesAsString_RGB + ";" + str(map_ir_url) + ";" + str(mapsize_IR) + ";" +\
-        coordinatesAsString_IR
+        str(mapsize_RGB) + ";" + map_bounds_RGB_string + ";" + coordinatesAsString_RGB + ";" + str(map_ir_url) + ";" + str(mapsize_IR) + ";" +\
+        map_bounds_IR_string + ";" + coordinatesAsString_IR
 
 
 

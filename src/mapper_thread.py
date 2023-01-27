@@ -12,18 +12,42 @@ class MapperThread(threading.Thread):
         self.image_mapper = image_mapper
         self.report_id = report_id
         self.file_names = file_names
+        self.odm = image_mapper.with_ODM
+        self.ir = image_mapper.CONTAINED_DJI_INFRARED_IMAGES
         self.flight_data = None
-        self.map = None
+        self.maps = []
+        self.map_rgb = None
+        self.map_ir = None
+        self.map_odm = None
+        self.map_odm_ir = None
+        self.ir_settings = None
+        self.number_of_maps = 1 + self.odm + self.ir + self.odm * self.ir
         super().__init__()
 
     def run(self):
+        print("run with n maps: " + str(self.number_of_maps))
         self.preprocess()
-        self.progress_mapping = 1
+        self.progress_mapping = 4/ self.number_of_maps
         self.mapping = True
         self.message = "Step 2/2: Mapping"
-        self.map = self.image_mapper.map_images(self.report_id)
-        self.progress_mapping = 100
+        self.map_rgb = self.image_mapper.calculate_map_RGB(self.report_id)
+        self.maps = []
+        self.maps.append(self.map_rgb)
+        self.progress_mapping = 100 / self.number_of_maps
+        if self.ir:
+            self.map_ir = self.image_mapper.calculate_map_IR(self.report_id)
+            self.maps.append(self.map_ir)
+            self.progress_mapping += 100 / self.number_of_maps
+        if self.odm:
+            self.map_odm = self.image_mapper.generate_odm_orthophoto(3001, 840)
+            self.maps.append(self.map_odm)
+            self.progress_mapping += 100 / self.number_of_maps
+            if self.ir:
+                self.map_odm_ir = self.image_mapper.generate_odm_orthophoto(3001, ir=True)
+                self.maps.append(self.map_odm_ir)
+                self.progress_mapping += 100 / self.number_of_maps
 
+        self.progress_mapping = 100
 
 
     def preprocess(self):
@@ -34,15 +58,32 @@ class MapperThread(threading.Thread):
         images = self.image_mapper.preprocess_read_selection(self.file_names)
         self.progress_preprocess = 50
         images = self.image_mapper.preprocess_sort_images(images)
-        self.progress_preprocess = 80
+        self.progress_preprocess = 70
         self.image_mapper.preprocess_filter_images(images)
-        self.progress_preprocess = 95
+        self.progress_preprocess = 85
 
-        self.flight_data, self.camera_specs, self.weather, self.map, self.rgb_files, self.ir_files =\
+        self.flight_data, self.camera_specs, self.weather, maps, self.rgb_files, self.ir_files =\
             self.image_mapper.preprocess_calculate_metadata()
-        print("All Files before Mapper: ", self.file_names)
-        print("RGB Files from Mapper: ", self.rgb_files)
-        print("IR Files from Mapper: ", self.ir_files)
+
+        self.odm = self.image_mapper.with_ODM
+        self.ir = self.image_mapper.CONTAINED_DJI_INFRARED_IMAGES
+        self.number_of_maps = 1 + self.odm + self.ir + self.odm * self.ir
+
+        self.map_rgb = maps[0]
+        self.map_ir = maps[1]
+        self.map_odm = maps[2]
+        self.map_odm_ir = maps[3]
+
+        self.maps = []
+        self.maps.append(self.map_rgb)
+        if self.ir:
+            self.maps.append(self.map_ir)
+        if self.odm:
+            self.maps.append(self.map_odm)
+            if self.ir:
+                self.maps.append(self.map_odm_ir)
+
+        self.ir_settings = self.image_mapper.get_ir_settings()
         self.progress_preprocess = 100
 
     def get_progress_preprocess(self):
@@ -52,7 +93,7 @@ class MapperThread(threading.Thread):
         return self.progress_mapping
 
     def get_results(self):
-        return self.flight_data, self.camera_specs, self.weather, self.map, self.rgb_files, self.ir_files
+        return self.flight_data, self.camera_specs, self.weather, self.maps, self.rgb_files, self.ir_files, self.ir_settings
 
     def get_mapper(self):
         return self.image_mapper
@@ -64,4 +105,20 @@ class MapperThread(threading.Thread):
         return self.mapping
 
     def get_map(self):
-        return self.map
+        return self.map_rgb
+
+    def get_map_ir(self):
+        return self.map_ir
+
+    def get_map_odm(self):
+        return self.map_odm
+
+    def get_map_odm_ir(self):
+        return self.map_odm_ir
+
+    def get_maps(self):
+        return self.maps
+
+    def get_ir_settings(self):
+        return self.ir_settings
+
