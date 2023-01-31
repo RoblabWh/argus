@@ -10,7 +10,7 @@ from project_manager import ProjectManager
 from mapper_thread import MapperThread
 from PanoramaViewer import Panorma_viewer
 
-from flask import Flask, flash, request, redirect, url_for, render_template
+from flask import Flask, flash, request, redirect, url_for, render_template, jsonify
 #import urllib.request
 import os
 from werkzeug.utils import secure_filename
@@ -195,12 +195,43 @@ def update_ir_settings(report_id, settings):
     print("update_ir_settings for id"+ str(report_id) + " with: " + str(settings))
     return "success"
 
+@app.route('/get_map/<int:report_id>/<int:map_index>', methods=['GET', 'POST'])
+def send_next_map(report_id, map_index):
+    #load json file from static/gradient_luts
+    #return json file
+    print("get_map for id"+ str(report_id) + " with: " + str(map_index))
+    for thread in threads:
+        if thread.report_id == report_id:
+            maps_done = thread.get_maps_done()
+            if maps_done[map_index]:
+                map = thread.get_maps()[map_index]
+                #map["image_coordinates_json"] = jsonify(map["image_coordinates"])
+                if map_index == len(maps_done) - 1:
+                    threads.remove(thread)
+                map["file_url"] = url_for('static', filename=map["file"])
+                return jsonify(map)
+
+    return jsonify({"file": "empty"})
+
+
+@app.route('/stop_mapping_thread/<int:report_id>/', methods=['GET', 'POST'])
+def stop_thread(report_id):
+    #load json file from static/gradient_luts
+    #return json file
+    print("stop_thread for id"+ str(report_id))
+    for thread in threads:
+        if thread.report_id == report_id:
+            threads.remove(thread)
+            return "success"
+    return "failure"
+
 @app.route('/<int:report_id>/process_status', methods=['GET', 'POST'])
 def check_preprocess_status(report_id):
     print('asking for status of report ' + str(report_id))
     progress_preprocessing = -1
     progress_mapping = -1
     redirect = False
+    maps_done = []
     map_url = url_for('static', filename="default/MapRGBMissing.jpeg")
     map_ir_url = url_for('static', filename="default/MapIRMissing.jpeg")
     coordinatesAsString_RGB = ""
@@ -216,6 +247,7 @@ def check_preprocess_status(report_id):
             progress_preprocessing = thread.get_progress_preprocess()
             progress_mapping = thread.get_progress_mapping()
             print(progress_preprocessing, progress_mapping)
+            maps_done = thread.get_maps_done()
             if progress_preprocessing == 100 and not thread.metadata_delivered:
                 flight_data, camera_specs, weather, maps, file_names_rgb, file_names_ir, ir_settings = thread.get_results()
                 project_manager.update_flight_data(report_id, flight_data)
@@ -248,11 +280,11 @@ def check_preprocess_status(report_id):
                 # for coordinate in coordinates_IR:
                 #     coordinatesAsString_IR += coordinate + "/"
                 # print(map_url)
-                threads.remove(thread)
             break
-    return str(progress_preprocessing) + ";" + str(progress_mapping) + ";" + str(redirect) + ";" + str(map_url)+ ";" +\
-        str(mapsize_RGB) + ";" + map_bounds_RGB_string + ";" + coordinatesAsString_RGB + ";" + str(map_ir_url) + ";" + str(mapsize_IR) + ";" +\
-        map_bounds_IR_string + ";" + coordinatesAsString_IR
+    return str(progress_preprocessing) + ";" + str(progress_mapping) + ";" + str(redirect) + ";" + str(maps_done)
+    # return str(progress_preprocessing) + ";" + str(progress_mapping) + ";" + str(redirect) + ";" + str(map_url)+ ";" +\
+    #     str(mapsize_RGB) + ";" + map_bounds_RGB_string + ";" + coordinatesAsString_RGB + ";" + str(map_ir_url) + ";" + str(mapsize_IR) + ";" +\
+    #     map_bounds_IR_string + ";" + coordinatesAsString_IR
 
 
 
@@ -286,7 +318,7 @@ if __name__ == '__main__':
     # _NEXT_ IR Bilder separat im Projekt speichern (file_names entsprechend anpassen)
     #    Switch/ Tab für IR Bilder (/mit Overlay) (von wegen Checkbox für show all, only IR oder only RGB)
     # Header Stylen (Logo, Name, Beschreibung)
-    # Footer Stylen (Kontakt, Impressum, Logos)
+    #   Footer Stylen (Kontakt, Impressum, Logos)
     #   Footer erstellen (Urheber etc)
     #   Buttons zum berechnen umsortieren
     #   Feedback für den User (Berechnung läuft, fertig, Fehler)
@@ -302,7 +334,7 @@ if __name__ == '__main__':
     #   _NEXT_ Temperatur settings mit im Projekt speichern
     #   _NEXT_ mehrere Temepratur mappings realisieren
     # _NEXT_ Karten Home mittiger setzen (und Zoom uch besser einstellen)
-    # _NEXT_ ODM Karte generieren
+    #   _NEXT_ ODM Karte generieren
     #   Tab für IR Darstellungseinstellung (Checkbox für Temp messen, und Schieberegler für Transparenz)
 
 

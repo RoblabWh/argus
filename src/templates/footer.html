@@ -21,11 +21,40 @@
     }
 
     .footer_content{
-          width: 95%;
-          max-width: 1600px;
-          margin: 0 auto !important;
-          float: none !important;
-          padding: 20px 0px;
+        width: 95%;
+        max-width: 1600px;
+        margin: 0 auto !important;
+        float: none !important;
+        padding: 20px 0px;
+
+        justify-self: start;
+        margin: 0 0 auto;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        grid-template-rows: auto;
+        grid-template-areas:
+            "title title"
+            "credit logos";
+    }
+
+    .footer_content p{
+          line-height: 2.0;
+          margin: 0px;
+    }
+
+    .footer_logo{
+        width: 25%;
+        margin: 10px;
+        vertical-align: middle;
+        background-color: white;
+    }
+
+    .footer_logos_container{
+        grid-area: logos;
+        background-color: white;
+        margin: 10px;
+        border-radius: 5px;
+        cursor: pointer;
     }
 
 
@@ -34,10 +63,24 @@
 <body>
     <footer>
         <div class="footer_content">
-            <h4 style="margin: 0px;">Image-Mapper Webapp V2-wip</h4>
-            <p>Author: Max Schulte, Artur Leinweber, Hartmut Surmann & DRZ Team WHS</p>
-            <p>contact: max.schulte@w-hs.de</p>
+            <h3 style="margin: 0px; grid-area: title; line-height: 61px">Image-Mapper Webapp V2-wip</h3>
+            <div style="grid-area: credit; align-self: flex-end; margin: 10px;">
+                <p>Author: Max Schulte, Artur Leinweber, Hartmut Surmann & DRZ Team WHS </p>
+                <p>Contact person: hartmut.surmann@w-hs.de</p>
+                <p>Developer contact: max.schulte@w-hs.de</p>
+            </div>
+            <div class="footer_logos_container">
+                <img class="footer_logo" src="{{ url_for('static', filename='default/Westfälische_Hochschule_Logo.svg') }}" alt="WHS Logo" style="padding:5px;" onclick="linkTo('https://www.w-hs.de/')">
+                <img class="footer_logo" src="{{ url_for('static', filename='default/DRZ_Logo.jpg') }}" alt="DRZ Logo" style="padding:5px;" onclick="linkTo('https://rettungsrobotik.de/home')">
+                <img class="footer_logo" src="{{ url_for('static', filename='default/neues-BMBF-Logo.png') }}" alt="BMBF Logo" onclick="linkTo('https://www.sifo.de/sifo/de/projekte/querschnittsthemen-und-aktivitaeten/praxistransfer-und-kompetenzaufbau/kompetenzzentren-fuer-robotersysteme/a-drz/a-drz-kompetenzzentrum-aufbau--schen-rettungsrobotik-zentrums.html')">
+            </div>
         </div>
+
+        <script>
+            function linkTo(link){
+                window.open(link, '_blank');
+            }
+        </script>
 
     </footer>
 </body>

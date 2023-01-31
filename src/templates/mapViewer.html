@@ -100,7 +100,7 @@ L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_toke
 
 var imageBounds{{map.name}} = {{map.bounds}};
 var mapSize{{map.name}} = {{map.size}};
-var center{{map.name}} = {{map.size}};
+var center{{map.name}} = {{map.center}};
 var imageOverlay{{map.name}} = L.imageOverlay('{{ url_for('static', filename=map.file) }}', imageBounds{{map.name}});
 var {{map.name}}Overlay = L.layerGroup([imageOverlay{{map.name}}]);
 
@@ -113,8 +113,19 @@ function set{{map.name}}MapImage(path) {
     imageOverlay{{map.name}}.setUrl(path);
 }
 
+function update{{map.name}}Map(map) {
+    mapSize{{map.name}} = map.size;
+    center{{map.name}} = map.center;
+    set{{map.name}}MapImage(map.file_url);
+    set{{map.name}}Bounds(map.bounds);
+    {% if not map.odm %}
+    loadPolygons{{map.name}}(map.image_coordinates);
+    {% endif %}
+}
+
 function set{{map.name}}Bounds(bounds) {
     imageOverlay{{map.name}}.setBounds(bounds);
+    var imageBounds{{map.name}} = bounds;
     lat1{{map.name}} = imageBounds{{map.name}}[0][0];
     long1{{map.name}} = imageBounds{{map.name}}[0][1];
     lat2{{map.name}} = imageBounds{{map.name}}[1][0];
@@ -125,6 +136,7 @@ function set{{map.name}}Bounds(bounds) {
 {% if not map.odm %}
 var polygons{{map.name}};
 function loadPolygons{{map.name}}(polygonStringsArray) {
+    console.log("loading polygons");
     polygons{{map.name}} = new Array();
     var centers{{map.name}} = new Array();
     for (var i = 0; i < polygonStringsArray.length; i++) {
@@ -145,7 +157,6 @@ function loadPolygons{{map.name}}(polygonStringsArray) {
             arr.push(parseInt(mapSize{{map.name}}[1]));
             mapSize{{map.name}} = arr;
         }
-        //var names really bad, myb adjust
         var p1=[points[0][0]/mapSize{{map.name}}[0],points[0][1]/mapSize{{map.name}}[1]];
         var p2=[points[1][0]/mapSize{{map.name}}[0],points[1][1]/mapSize{{map.name}}[1]];
         var p3=[points[2][0]/mapSize{{map.name}}[0],points[2][1]/mapSize{{map.name}}[1]];
@@ -167,7 +178,6 @@ function loadPolygons{{map.name}}(polygonStringsArray) {
         {% endif %}
         {{map.name}}Overlay.addLayer(polygon);
 
-        //mapOverlay.addLayer(polygon); //hier RGB hinzufügen für IR das ganze dem Ir Overlay hinzufügen
         polygons{{map.name}}.push(polygon);
     }
     {% if not map.ir and not map.odm %}
@@ -187,18 +197,7 @@ function loadPolygons{{map.name}}(polygonStringsArray) {
 {% endfor %}
 
 var mapOverlayOpacity = 1;
-//var inMeasureMode = false;
-//IR.on('click', function(e) {
-//    if(!inMeasureMode) {
-//        var loc = window.location.pathname;
-//        var url = loc.substring(0, loc.lastIndexOf('/')) + '/ir/flight_report_map_2500x2500_2022-08-31_23_22_51_optimize_True.html';
-//        window.open(url,'_blank');
-//    }});
 var threshold = 0.55;
-
-//var svg = document.getElementById('mymap');
-//loadPolygons();
-
 
 function highlightFeature(e) {
 	if(mapOverlayOpacity > threshold) {
@@ -219,37 +218,15 @@ function resetHighlight(e) {
 
 function slide(e) {
 	var i = polygons{{maps[0].name}}.indexOf(e.target);
-	showSlide(i+1);
+	showSlide(i);
 }
 
 {% if maps[1] %}
 function slideIR(e) {
 	var i = polygons{{maps[1].name}}.indexOf(e.target);
-	showSlideIR(i+1);
+	showSlideIR(i);
 }
 {% endif %}
-
-
-//function setRGBMapImage(path) {
-//    mapImage.setUrl(path);
-//}
-//function setIRMapImage(path) {
-//    IR.setUrl(path);
-//}
-
-//function setRGBBounds(bounds) {
-//    mapImage.setBounds(bounds);
-//    lat1 = bounds[0][0];
-//    long1 = bounds[0][1];
-//    lat2 = bounds[1][0];
-//    long2 = bounds[1][1];
-//}
-
-//function setIRBounds(bounds) {
-//    IR.setBounds(bounds);
-//}
-
-
 
 function changeAlpha(value) {
     {% for map in maps %}
@@ -264,45 +241,46 @@ function changeAlpha(value) {
 }
 <!-- home button functionality -->
 L.Control.zoomHome = L.Control.extend({
-options: {
-position: 'topleft',
-zoomHomeText: '&#9873;',
-zoomHomeTitle: 'Zoom home'
-},
-onAdd: function (map) {
-var controlName = 'gin-control-zoom',
-container = L.DomUtil.create('div', controlName + ' leaflet-bar'),
-options = this.options;
-//container.innerHTML
-this._zoomHomeButton = this._createButton(options.zoomHomeText, options.zoomHomeTitle,
-controlName + '-home', container, this._zoomHome);
-return container;
-},
-onRemove: function (map) {
-},
-_zoomHome: function (e) {
-map.flyTo(center, defaultZoom);
-},
-_createButton: function (html, title, className, container, fn) {
-var link = L.DomUtil.create('a', className, container);
-link.innerHTML = html;
-link.href = '#';
-link.title = title;
-link.role = "button";
-L.DomEvent
-.on(link, 'click', fn, this)
-.on(link, 'click', L.DomEvent.stop)
-.on(link, 'click', this._refocusOnMap, this);;
-return link;
-},
+    options: {
+        position: 'topleft',
+        zoomHomeText: '&#9873;',
+        zoomHomeTitle: 'Zoom home'
+    },
+    onAdd: function (map) {
+        var controlName = 'gin-control-zoom',
+        container = L.DomUtil.create('div', controlName + ' leaflet-bar'),
+        options = this.options;
+        //container.innerHTML
+        this._zoomHomeButton = this._createButton(options.zoomHomeText, options.zoomHomeTitle,
+        controlName + '-home', container, this._zoomHome);
+        return container;
+    },
+    onRemove: function (map) {
+    },
+    _zoomHome: function (e) {
+        map.flyTo(center, defaultZoom);
+    },
+    _createButton: function (html, title, className, container, fn) {
+        var link = L.DomUtil.create('a', className, container);
+        link.innerHTML = html;
+        link.href = '#';
+        link.title = title;
+        link.role = "button";
+        L.DomEvent
+            .on(link, 'click', fn, this)
+            .on(link, 'click', L.DomEvent.stop)
+            .on(link, 'click', this._refocusOnMap, this);;
+        return link;
+    },
 });
 var zoomHome = new L.Control.zoomHome();
 zoomHome.addTo(map);
+
 <!-- home button functionality -->
 var layerswitcher = {
-{% for map in maps %}
-{{map.name}}: {{map.name}}Overlay,
-{% endfor %}
+    {% for map in maps %}
+    {{map.name}}: {{map.name}}Overlay,
+    {% endfor %}
 };
 
 //RGB: mapOverlay,
@@ -315,8 +293,6 @@ L.control.layers(layerswitcher,{}, {collapsed: false}).addTo(map);
 layerswitcher.{{maps[0].name}}.addTo(map);
 
 
-//loadPolygons({{ maps[0].image_coordinates|tojson }}, false);
-//loadPolygons({{ maps[0].image_coordinates|tojson }}, true);
 {% for map in maps %}
 {% if not map.odm %}
 {% if map.image_coordinates %}

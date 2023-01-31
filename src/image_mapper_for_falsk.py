@@ -14,6 +14,8 @@ from pano_filter import PanoFilter
 from gimbal_pitch_filter import GimbalPitchFilter
 from infrared_rgb_sorter import InfraredRGBSorter
 from OdmTaskManager import OdmTaskManager
+from gps import GPS
+
 
 class ImageMapper:
     def __init__(self, path_to_images, map_width_px=2048, map_height_px=2048, blending=0.7, optimize=True, max_gimbal_pitch_deviation=10, with_ODM=True):
@@ -470,7 +472,13 @@ class ImageMapper:
         self.corner_gps_left_bottom = map_scaler.calculate_corner_gps_coordinates(origin_gps,
                                                                                        origin_location,
                                                                                        corner_location_left_bottom)
-        self.middle_gps = map_scaler.get_middle_gps()
+        # self.middle_gps = map_scaler.get_middle_gps()
+
+        #calculate middle gps out of corners
+        self.middle_gps = GPS(self.corner_gps_left_bottom.altitude, self.corner_gps_left_bottom.get_latitude() +
+            (self.corner_gps_right_top.get_latitude() - self.corner_gps_left_bottom.get_latitude()) / 2,
+            self.corner_gps_left_bottom.get_longitude() +
+            (self.corner_gps_right_top.get_longitude() - self.corner_gps_left_bottom.get_longitude()) / 2)
 
     def __calculate_gps_for_mapbox_plugin(self, map_elements, map_scaler, min_x, max_x, min_y, max_y):
         origin_gps = map_elements[0].get_image().get_exif_header().get_gps()
@@ -484,7 +492,10 @@ class ImageMapper:
         self.corner_gps_left_bottom = map_scaler.calculate_corner_gps_coordinates(origin_gps,
                                                                                        origin_location,
                                                                                        corner_location_left_bottom)
-        self.middle_gps = map_scaler.get_middle_gps()
+        self.middle_gps = self.middle_gps = GPS(self.corner_gps_left_bottom.altitude, self.corner_gps_left_bottom.get_latitude() +
+            (self.corner_gps_right_top.get_latitude() - self.corner_gps_left_bottom.get_latitude()) / 2,
+            self.corner_gps_left_bottom.get_longitude() +
+            (self.corner_gps_right_top.get_longitude() - self.corner_gps_left_bottom.get_longitude()) / 2)
 
     def extract_coordinates(self, map_elements, map_height):
         new_coordinates = list()

@@ -16,6 +16,7 @@ class MapperThread(threading.Thread):
         self.ir = image_mapper.CONTAINED_DJI_INFRARED_IMAGES
         self.flight_data = None
         self.maps = []
+        self.maps_done = []
         self.map_rgb = None
         self.map_ir = None
         self.map_odm = None
@@ -33,18 +34,22 @@ class MapperThread(threading.Thread):
         self.map_rgb = self.image_mapper.calculate_map_RGB(self.report_id)
         self.maps = []
         self.maps.append(self.map_rgb)
+        self.set_next_map_done()
         self.progress_mapping = 100 / self.number_of_maps
         if self.ir:
             self.map_ir = self.image_mapper.calculate_map_IR(self.report_id)
             self.maps.append(self.map_ir)
+            self.set_next_map_done()
             self.progress_mapping += 100 / self.number_of_maps
         if self.odm:
             self.map_odm = self.image_mapper.generate_odm_orthophoto(3001, 840)
             self.maps.append(self.map_odm)
+            self.set_next_map_done()
             self.progress_mapping += 100 / self.number_of_maps
             if self.ir:
                 self.map_odm_ir = self.image_mapper.generate_odm_orthophoto(3001, ir=True)
                 self.maps.append(self.map_odm_ir)
+                self.set_next_map_done()
                 self.progress_mapping += 100 / self.number_of_maps
 
         self.progress_mapping = 100
@@ -68,6 +73,7 @@ class MapperThread(threading.Thread):
         self.odm = self.image_mapper.with_ODM
         self.ir = self.image_mapper.CONTAINED_DJI_INFRARED_IMAGES
         self.number_of_maps = 1 + self.odm + self.ir + self.odm * self.ir
+        self.maps_done = [False] * self.number_of_maps
 
         self.map_rgb = maps[0]
         self.map_ir = maps[1]
@@ -85,6 +91,10 @@ class MapperThread(threading.Thread):
 
         self.ir_settings = self.image_mapper.get_ir_settings()
         self.progress_preprocess = 100
+
+    def set_next_map_done(self):
+        index = self.maps_done.index(False)
+        self.maps_done[index] = True
 
     def get_progress_preprocess(self):
         return self.progress_preprocess
@@ -121,4 +131,7 @@ class MapperThread(threading.Thread):
 
     def get_ir_settings(self):
         return self.ir_settings
+
+    def get_maps_done(self):
+        return self.maps_done
 

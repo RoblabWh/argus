@@ -34,6 +34,7 @@ class ProjectManager:
         # if no project.json exists, return None
         project = None
         if os.path.isfile(self.projects_path + directory + "/project.json"):
+            print("loading project from directory: " + directory)
             with open(self.projects_path + directory + "/project.json", "r") as json_file:
                 project = json.load(json_file)
         return project
@@ -89,7 +90,7 @@ class ProjectManager:
         return False
 
     def generate_empty_data_dict(self):
-        data = {"file_names": [], "file_names_ir" : [], "flight_data": [], "camera_specs": [], "weather": [], "maps": [], "ir_settings": []}
+        data = {"file_names": [], "file_names_ir" : [], "file_names_pano": [], "flight_data": [], "camera_specs": [], "weather": [], "maps": [], "ir_settings": []}
         return data
 
     def update_file_names(self, id, file_names):
@@ -105,13 +106,15 @@ class ProjectManager:
 
         return data['file_names']
 
-    def overwrite_file_names_sorted(self, id, file_names_rgb=None, file_names_ir=None):
+    def overwrite_file_names_sorted(self, id, file_names_rgb=None, file_names_ir=None, file_names_pano=None):
         project = self.get_project(id)
         data = project['data']
         if file_names_rgb != None:
             data['file_names'] = file_names_rgb
         if file_names_ir != None:
             data['file_names_ir'] = file_names_ir
+        if file_names_pano != None:
+            data['file_names_pano'] = file_names_pano
         #write updated data to project.json
         with open(self.projects_path + str(id) + "/project.json", "w") as json_file:
             json.dump(project, json_file)
@@ -151,10 +154,16 @@ class ProjectManager:
         return False
 
     def get_file_names(self, id):
-        return self.get_data_by_keyword(id, 'file_names') + self.get_data_by_keyword(id, 'file_names_ir')
+        return self.get_data_by_keyword(id, 'file_names') + self.get_data_by_keyword(id, 'file_names_ir') + self.get_data_by_keyword(id, 'file_names_pano')
 
     def get_file_names_rgb(self, id):
         return self.get_data_by_keyword(id, 'file_names')
+
+    def get_file_names_ir(self, id):
+        return self.get_data_by_keyword(id, 'file_names_ir')
+
+    def get_file_names_pano(self, id):
+        return self.get_data_by_keyword(id, 'file_names_pano')
 
     def get_flight_data(self, id):
         return self.get_data_by_keyword(id, 'flight_data')
