@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>panoviewer</title>
+    <link rel="stylesheet" href="{{url_for('static', filename='default/panellum/pannellum.css') }}"/>
+    <script type="text/javascript" src="{{url_for('static', filename='default/panellum/pannellum.js') }}"></script>
+
+    <style>
+    #panorama {
+        width: 100%;
+        height: 800px;
+    }
+    #controls {
+        position: absolute;
+        bottom: 0;
+        z-index: 2;
+        text-align: center;
+        width: 100%;
+        padding-bottom: 3px;
+    }
+    .ctrl {
+        padding: 8px 5px;
+        width: 30px;
+        text-align: center;
+        background: rgba(200, 200, 200, 0.8);
+        display: inline-block;
+        cursor: pointer;
+    }
+    .ctrl:hover {
+        background: rgba(200, 200, 200, 1);
+    }
+    </style>
+</head>
+<body>
+
+<div id="panorama">
+    <div id="controls">
+        <div class="ctrl" id="load-previous-pano">&#9665;</div>
+        <div class="ctrl" id="pan-up">&#9650;</div>
+        <div class="ctrl" id="pan-down">&#9660;</div>
+        <div class="ctrl" id="pan-left">&#9666;</div>
+        <div class="ctrl" id="pan-right">&#9656;</div>
+        <div class="ctrl" id="zoom-in">&plus;</div>
+        <div class="ctrl" id="zoom-out">&minus;</div>
+        <div class="ctrl" id="fullscreen">&#x2922;</div>
+        <div class="ctrl" id="load-next-pano">&#9655;</div>
+
+    </div>
+</div>
+<script>
+var details_pano = document.getElementById("panoDetails");
+
+viewer = pannellum.viewer('panorama', {
+    "default": {
+        "firstScene": "0",
+        "author": "Matthew Petroff",
+        "sceneFadeDuration": 1000
+    },
+    "scenes": {
+        {% for pano in panos %}
+        "{{ loop.index0 }}": {
+            "title": "{{ pano.title }}",
+            "author": "{{ pano.author }}",
+            "type": "{{ pano.type }}",
+            "panorama": "{{ url_for('static', filename=pano.file) }}",
+            "preview": "{{ url_for('static', filename=pano.file) }}",
+            "autoLoad": false,
+            //"autoRotate": -5,
+            "minHfov": 5,
+            "maxHfov": 140,
+            "showControls": false
+        },
+        {% endfor %}
+    }
+});
+
+var numOfPanos = {{ panos|length }};
+
+// Make buttons work
+document.getElementById('pan-up').addEventListener('click', function(e) {
+    viewer.setPitch(viewer.getPitch() + 10);
+});
+document.getElementById('pan-down').addEventListener('click', function(e) {
+    viewer.setPitch(viewer.getPitch() - 10);
+});
+document.getElementById('pan-left').addEventListener('click', function(e) {
+    viewer.setYaw(viewer.getYaw() - 10);
+});
+document.getElementById('pan-right').addEventListener('click', function(e) {
+    viewer.setYaw(viewer.getYaw() + 10);
+});
+document.getElementById('zoom-in').addEventListener('click', function(e) {
+    viewer.setHfov(viewer.getHfov() - 10);
+});
+document.getElementById('zoom-out').addEventListener('click', function(e) {
+    viewer.setHfov(viewer.getHfov() + 10);
+});
+document.getElementById('fullscreen').addEventListener('click', function(e) {
+    viewer.toggleFullscreen();
+});
+document.getElementById('load-previous-pano').addEventListener('click', function(e) {
+    viewer.loadScene((parseInt(viewer.getScene()) - 1) % numOfPanos);
+});
+document.getElementById('load-next-pano').addEventListener('click', function(e) {
+    viewer.loadScene((parseInt(viewer.getScene()) + 1) % numOfPanos);
+});
+
+function show_pano(scene_number) {
+    if(!details_pano.open) details_pano.open = true;
+
+    if(parseInt(viewer.getScene()) != scene_number) {
+        viewer.loadScene(""+scene_number);
+    }
+
+    $('html, body').animate({
+        scrollTop: $('#panorama').offset().top
+    }, 500);
+}
+</script>
+
+</body>
+</html>

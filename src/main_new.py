@@ -59,6 +59,7 @@ def render_standard_report(report_id, thread = None):
     weather = data["weather"]
     file_names = data["file_names"]
     file_names_ir = data["file_names_ir"]
+    panos = data["panos"]
     ir_settings = data["ir_settings"]
     has_ir = False
     if file_names_ir != []:
@@ -79,9 +80,9 @@ def render_standard_report(report_id, thread = None):
                "description": project_manager.get_project_description(report_id),
                'creation_time': project_manager.get_project_creation_time(report_id)}
     return render_template('concept.html', id=report_id, file_names=file_names, file_names_ir=file_names_ir,
-                           has_ir=has_ir, flight_data=flight_data, camera_specs=camera_specs, weather=weather, maps=maps,
-                           project=project, message=message, processing=processing, gradient_lut=gradient_lut,
-                           ir_settings=ir_settings)
+                           panos=panos,has_ir=has_ir, flight_data=flight_data,
+                           camera_specs=camera_specs, weather=weather, maps=maps, project=project, message=message,
+                           processing=processing, gradient_lut=gradient_lut,ir_settings=ir_settings)
 
 
 @app.route('/')

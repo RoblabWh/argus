@@ -283,14 +283,19 @@ var layerswitcher = {
     {% endfor %}
 };
 
-//RGB: mapOverlay,
-{% if has_ir %}
-//IR : irOverlay
-{% endif %}
-//};
-
 L.control.layers(layerswitcher,{}, {collapsed: false}).addTo(map);
 layerswitcher.{{maps[0].name}}.addTo(map);
+
+{% if panos %}
+{% for pano in panos %}
+{% if pano.coordinates %}
+
+marker{{ loop.index0  }} = L.marker({{pano.coordinates}}, {clickable: true});
+marker{{ loop.index0  }}.on("click", function(e) { show_pano({{ loop.index0 }}); });
+marker{{ loop.index0  }}.addTo(map);
+{% endif %}
+{% endfor %}
+{% endif %}
 
 
 {% for map in maps %}

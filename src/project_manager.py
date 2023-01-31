@@ -90,7 +90,7 @@ class ProjectManager:
         return False
 
     def generate_empty_data_dict(self):
-        data = {"file_names": [], "file_names_ir" : [], "file_names_pano": [], "flight_data": [], "camera_specs": [], "weather": [], "maps": [], "ir_settings": []}
+        data = {"file_names": [], "file_names_ir" : [], "panos": [], "flight_data": [], "camera_specs": [], "weather": [], "maps": [], "ir_settings": []}
         return data
 
     def update_file_names(self, id, file_names):
@@ -106,15 +106,13 @@ class ProjectManager:
 
         return data['file_names']
 
-    def overwrite_file_names_sorted(self, id, file_names_rgb=None, file_names_ir=None, file_names_pano=None):
+    def overwrite_file_names_sorted(self, id, file_names_rgb=None, file_names_ir=None):
         project = self.get_project(id)
         data = project['data']
         if file_names_rgb != None:
             data['file_names'] = file_names_rgb
         if file_names_ir != None:
             data['file_names_ir'] = file_names_ir
-        if file_names_pano != None:
-            data['file_names_pano'] = file_names_pano
         #write updated data to project.json
         with open(self.projects_path + str(id) + "/project.json", "w") as json_file:
             json.dump(project, json_file)
@@ -136,6 +134,13 @@ class ProjectManager:
     def update_ir_settings(self, id, ir_settings):
         return self.update_data_by_keyword(id, 'ir_settings', ir_settings)
 
+    def update_panos(self, id, panos):
+        return self.update_data_by_keyword(id, 'panos', panos)
+
+    def add_panos(self, id, panos):
+        panos = self.get_panos(id) + panos
+        self.update_data_by_keyword(id, 'panos', panos)
+
     def update_data_by_keyword(self, id, keyword, data):
         project = self.get_project(id)
         project['data'][keyword] = data
@@ -154,7 +159,7 @@ class ProjectManager:
         return False
 
     def get_file_names(self, id):
-        return self.get_data_by_keyword(id, 'file_names') + self.get_data_by_keyword(id, 'file_names_ir') + self.get_data_by_keyword(id, 'file_names_pano')
+        return self.get_data_by_keyword(id, 'file_names') + self.get_data_by_keyword(id, 'file_names_ir')
 
     def get_file_names_rgb(self, id):
         return self.get_data_by_keyword(id, 'file_names')
@@ -162,8 +167,8 @@ class ProjectManager:
     def get_file_names_ir(self, id):
         return self.get_data_by_keyword(id, 'file_names_ir')
 
-    def get_file_names_pano(self, id):
-        return self.get_data_by_keyword(id, 'file_names_pano')
+    def get_panos(self, id):
+        return self.get_data_by_keyword(id, 'panos')
 
     def get_flight_data(self, id):
         return self.get_data_by_keyword(id, 'flight_data')

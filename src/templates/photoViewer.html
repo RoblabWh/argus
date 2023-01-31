@@ -214,6 +214,12 @@
     }
 
     #tab-link-2{
+        {% if not panos %}
+        border-top-right-radius: 6px;
+        {% endif %}
+    }
+
+    #tab-link-3{
         border-top-right-radius: 6px;
     }
 
@@ -395,6 +401,10 @@
     }
 
     function showSlide(n) {
+      var details = document.getElementById("gallery-details");
+      if(!details.open){
+        details.open = true;
+      }
       slideshowContainer.scrollIntoView({
           behavior: "smooth",
           block: "start",
@@ -416,6 +426,10 @@
     }
 
     function showSlideIR(n) {
+      var details = document.getElementById("gallery-details");
+      if(!details.open){
+        details.open = true;
+      }
       slideshowContainer.scrollIntoView({
           behavior: "smooth",
           block: "start",
@@ -434,6 +448,10 @@
     }
 
     function showCurrentSlide() {
+      var details = document.getElementById("gallery-details");
+      if(!details.open){
+        details.open = true;
+      }
       {% if has_ir %}
       currentIROpacity = document.getElementById("irOpacityRange").value/100;
       applyOpacity(currentIROpacity);//checkIR();
@@ -578,118 +596,130 @@
 </script>
 </head>
 <body>
+<details id="gallery-details">
+    <summary>Photo Gallery</summary>
+        <div id="slideshow-container">
+            <a class="prev" onclick="plusSlides(-1)">❮</a>
+            <a class="next" onclick="plusSlides(1)">❯</a>
+            {% if file_names %}
+            {% for filename in file_names %}
+            <div class="mySlides">
+                <a>{{filename.split('/')[-1]}}</a>
+                {% if has_ir %}
+                <div style="margin-bottom:7%;"></div>
+                <div style="position: relative;">
+                    <div style="position: absolute; top: -10%; left: 0px;">
+                        <a><img src="{{ url_for('static', filename=filename) }}" style="width:100%; height: 100%;"></a>
+                    </div>
+                    <div class="ir-overlay" style="position: relative; top: 0; left: 10%; width:80%; height:80%">
+        <!--                <canvas style="width:100%; height: 100%;" id="canvas{{loop.index0}}"></canvas>-->
+                        <img class="ir-image" id="image{{loop.index0}}" src="{{ url_for('static', filename=file_names_ir[loop.index0]) }}" style="width:100%; height: 100%;">
+                        <div class="temp-glass" id="temp-glass{{loop.index0}}"> <p>Temp:</p></div>
 
-<div id="slideshow-container">
-    <a class="prev" onclick="plusSlides(-1)">❮</a>
-    <a class="next" onclick="plusSlides(1)">❯</a>
-    {% if file_names %}
-    {% for filename in file_names %}
-    <div class="mySlides">
-        <a>{{filename.split('/')[-1]}}</a>
-        {% if has_ir %}
-        <div style="margin-bottom:7%;"></div>
-        <div style="position: relative;">
-            <div style="position: absolute; top: -10%; left: 0px;">
+                    </div>
+                </div>
+                <div style="margin-bottom: 10%;"></div>
+
+                {% else %}
                 <a><img src="{{ url_for('static', filename=filename) }}" style="width:100%; height: 100%;"></a>
+                {% endif %}
             </div>
-            <div class="ir-overlay" style="position: relative; top: 0; left: 10%; width:80%; height:80%">
-<!--                <canvas style="width:100%; height: 100%;" id="canvas{{loop.index0}}"></canvas>-->
-                <img class="ir-image" id="image{{loop.index0}}" src="{{ url_for('static', filename=file_names_ir[loop.index0]) }}" style="width:100%; height: 100%;">
-                <div class="temp-glass" id="temp-glass{{loop.index0}}"> <p>Temp:</p></div>
+            {% endfor %}
+            {% endif %}
 
+        </div>
+
+        <div class="slideshow-settings-container">
+            <h3 class="slideshow-settings-title">Slideshow Settings RGB</h3>
+            {% if has_ir %}
+            <h3 class="slideshow-settings-title">Slideshow Settings IR</h3>
+            {% else %}
+            <h3>   </h3>
+            {% endif %}
+            <div id="slideshow-settings-RGB" class="slideshow-settings-item">
+                <div style="grid-area: a0;">
+                    <label>
+                        <label class="switch">
+                            <input type="checkbox" id="magnifierCheckbox" checked="checked">
+                            <span class="switch-slider round"></span>
+                        </label>
+                      Magnifier
+                    </label>
+                </div>
+                <div style="grid-area: b0;">
+                    <input type="range" min="10" max="100" value="50" class="slider" id="zoomRange" style="width:100%;">
+                </div>
+                <div style="grid-area: b1;">
+                     <label for="zoomRange" >Zoom: <span id="zoomValue"></span></label>
+                </div>
+                <div style="grid-area: c0; display: inline-block;"></div>
+                <div style="grid-area: d0;"></div>
             </div>
+            {% if has_ir %}
+            <div id="slideshow-settings-IR" class="slideshow-settings-item">
+                <div style="grid-area: a0;">
+                    <label>
+                        <label class="switch">
+                            <input type="checkbox" id="irOverlayCheckbox">
+                            <span class="switch-slider round"></span>
+                        </label>
+                      Infrared image overlay
+                    </label>
+                </div>
+                <div class="setting-fade" style="grid-area: b0;">
+                    <input type="range" min="10" max="100" value="100" class="slider setting-disabler" id="irOpacityRange" style="width:100%; grid-area: center">
+                </div>
+                <div class="setting-fade" style="grid-area: b1;">
+                    <label for="irOpacityRange" >Opacity: <span id="opacityValue"></span></label>
+                </div>
+                <div class="setting-fade" style="grid-area: c0;">
+                    <label>
+                        <label class="switch">
+                            <input class="setting-disabler" type="checkbox" id="temperatureCheckbox">
+                            <span class="switch-slider round"></span>
+                        </label>
+                        Read temperature
+                    </label>
+                </div>
+                <div class="setting-fade" style="grid-area: d0;">
+                    <select id="ir-palette-chooser" class="setting-disabler" style="width: 100%">
+                        <option value="grad-option1">white hot</option>
+                        <option value="grad-option2">Fulgurite</option>
+                        <option value="grad-option3">Iron Red</option>
+                        <option value="grad-option4">Hot Iron</option>
+                        <option value="grad-option5">Medical</option>
+                        <option value="grad-option6">Arctic</option>
+                        <option value="grad-option7">Rainbow 1</option>
+                        <option value="grad-option8">Rainbow 2</option>
+                        <option value="grad-option9">Tint</option>
+                        <option value="grad-option10">Black Hot</option>
+                    </select>
+                </div>
+                <div id="grad" class="setting-fade grad-option1" style="grid-area: d1;"></div>
+                <div class="setting-fade" style="grid-area: e0;">
+                    <input class="setting-disabler" type="number" id="minTemp" name="minTemp" min="-20" max="800" value="{{ ir_settings.ir_min_temp }}"
+                           style="width: 90%; padding; 0px: height:100%; border: 0px; border-radius: 4px;">
+                </div>
+                <div class="setting-fade" style="grid-area: e1;">min</div>
+                <div class="setting-fade" style="grid-area: e2;">
+                    <input class="setting-disabler" type="number" id="maxTemp" name=maxnTemp" min="-20" max="800" value="{{ ir_settings.ir_max_temp }}"
+                           style="width: 90%; padding; 0px: height:100%; border: 0px; border-radius: 4px;">
+                </div>
+                <div class="setting-fade" style="grid-area: e3;">max</div>
+            </div>
+            {% endif %}
         </div>
-        <div style="margin-bottom: 10%;"></div>
+        </div>
+</details>
 
-        {% else %}
-        <a><img src="{{ url_for('static', filename=filename) }}" style="width:100%; height: 100%;"></a>
-        {% endif %}
+{% if panos %}
+<details id="panoDetails">
+    <summary>Panorama Viewer</summary>
+    <div class="tab-content">
+        {% include 'panoViewer.html' %}
     </div>
-    {% endfor %}
-    {% endif %}
-
-</div>
-
-<div class="slideshow-settings-container">
-    <h3 class="slideshow-settings-title">Slideshow Settings RGB</h3>
-    {% if has_ir %}
-    <h3 class="slideshow-settings-title">Slideshow Settings IR</h3>
-    {% else %}
-    <h3>   </h3>
-    {% endif %}
-    <div id="slideshow-settings-RGB" class="slideshow-settings-item">
-        <div style="grid-area: a0;">
-            <label>
-                <label class="switch">
-                    <input type="checkbox" id="magnifierCheckbox" checked="checked">
-                    <span class="switch-slider round"></span>
-                </label>
-              Magnifier
-            </label>
-        </div>
-        <div style="grid-area: b0;">
-            <input type="range" min="10" max="100" value="50" class="slider" id="zoomRange" style="width:100%;">
-        </div>
-        <div style="grid-area: b1;">
-             <label for="zoomRange" >Zoom: <span id="zoomValue"></span></label>
-        </div>
-        <div style="grid-area: c0; display: inline-block;"></div>
-        <div style="grid-area: d0;"></div>
-    </div>
-    {% if has_ir %}
-    <div id="slideshow-settings-IR" class="slideshow-settings-item">
-        <div style="grid-area: a0;">
-            <label>
-                <label class="switch">
-                    <input type="checkbox" id="irOverlayCheckbox">
-                    <span class="switch-slider round"></span>
-                </label>
-              Infrared image overlay
-            </label>
-        </div>
-        <div class="setting-fade" style="grid-area: b0;">
-            <input type="range" min="10" max="100" value="100" class="slider setting-disabler" id="irOpacityRange" style="width:100%; grid-area: center">
-        </div>
-        <div class="setting-fade" style="grid-area: b1;">
-            <label for="irOpacityRange" >Opacity: <span id="opacityValue"></span></label>
-        </div>
-        <div class="setting-fade" style="grid-area: c0;">
-            <label>
-                <label class="switch">
-                    <input class="setting-disabler" type="checkbox" id="temperatureCheckbox">
-                    <span class="switch-slider round"></span>
-                </label>
-                Read temperature
-            </label>
-        </div>
-        <div class="setting-fade" style="grid-area: d0;">
-            <select id="ir-palette-chooser" class="setting-disabler" style="width: 100%">
-                <option value="grad-option1">white hot</option>
-                <option value="grad-option2">Fulgurite</option>
-                <option value="grad-option3">Iron Red</option>
-                <option value="grad-option4">Hot Iron</option>
-                <option value="grad-option5">Medical</option>
-                <option value="grad-option6">Arctic</option>
-                <option value="grad-option7">Rainbow 1</option>
-                <option value="grad-option8">Rainbow 2</option>
-                <option value="grad-option9">Tint</option>
-                <option value="grad-option10">Black Hot</option>
-            </select>
-        </div>
-        <div id="grad" class="setting-fade grad-option1" style="grid-area: d1;"></div>
-        <div class="setting-fade" style="grid-area: e0;">
-            <input class="setting-disabler" type="number" id="minTemp" name="minTemp" min="-20" max="800" value="{{ ir_settings.ir_min_temp }}"
-                   style="width: 90%; padding; 0px: height:100%; border: 0px; border-radius: 4px;">
-        </div>
-        <div class="setting-fade" style="grid-area: e1;">min</div>
-        <div class="setting-fade" style="grid-area: e2;">
-            <input class="setting-disabler" type="number" id="maxTemp" name=maxnTemp" min="-20" max="800" value="{{ ir_settings.ir_max_temp }}"
-                   style="width: 90%; padding; 0px: height:100%; border: 0px; border-radius: 4px;">
-        </div>
-        <div class="setting-fade" style="grid-area: e3;">max</div>
-    </div>
-    {% endif %}
-</div>
+</details>
+{% endif %}
 
 <div class="container">
 
@@ -697,6 +727,9 @@
         <li id="tab-link-1" class="tab-link current" data-tab="tab-1">RGB Photos</li>
         {% if has_ir %}
         <li id="tab-link-2" class="tab-link" data-tab="tab-2"> IR Photos</li>
+        {% endif %}
+        {% if panos %}
+        <li id="tab-link-3" class="tab-link" data-tab="tab-3">Panoramas</li>
         {% endif %}
     </ul>
 
@@ -715,6 +748,17 @@
             {% for filename in file_names_ir %}
             <div style="float:left;width:20%; min-width:240px;">
                 <img src="{{ url_for('static', filename=filename) }}" style="padding: 5px;width:95%;cursor: pointer;" onclick="showSlideIR({{loop.index0}})">
+            </div>
+            {% endfor %}
+            {% endif %}
+        </div>
+    </div>
+    <div id="tab-3" class="tab-content_gallery">
+        <div style="width: 100%; height: 100%; overflow: auto;">
+            {% if panos %}
+            {% for pano in panos %}
+            <div style="float:left;width:20%; min-width:240px;">
+                <img src="{{ url_for('static', filename=pano.file) }}" style="padding: 5px;width:95%;cursor: pointer;" onclick="show_pano({{ loop.index0 }})">
             </div>
             {% endfor %}
             {% endif %}
@@ -978,6 +1022,8 @@
     $("#ir-palette-chooser").val("grad-option{{ ir_settings.ir_color_scheme }}").change();
 
     {% endif %}
+
+
 
 
 
