@@ -37,12 +37,16 @@ class ExifHeader:
         self.creation_time = None
         self.creation_time_str = None       
         self.ir = False
+        self.pano = False
+        self.pano_data = None
 
         self.read_gps_coordinate()
         self.read_xmp_metadata()
         self.read_camera_properties()
         self.read_image_size()
         self.read_creation_time()
+        self.read_xmp_ir()
+        self.read_xmp_projection_type()
 
 
         #print(self.python_dict)   
@@ -89,6 +93,39 @@ class ExifHeader:
         flight_roll_degree = float(self._get_if_exist(self.python_dict, 'XMP:FlightRollDegree'))
         self.xmp_metadata = XMP(flight_yaw_degree, flight_pitch_degree, flight_roll_degree, gimbal_yaw_degree, gimbal_pitch_degree, gimbal_roll_degree)
 
+    def read_xmp_ir(self):
+        """
+        Trying to read IR metadata, if available
+        :return:
+        """
+
+        try:
+            imageSource = self._get_if_exist(self.python_dict, 'XMP:ImageSource')
+            if "infrared" in imageSource or "ir" in imageSource or "Infrared" in imageSource or "IR" in imageSource or "InfraRed" in imageSource:
+                self.enable_ir()
+        except:
+            return
+
+    def read_xmp_projection_type(self):
+        try:
+            # print(self.python_dict)
+            projectionType = self._get_if_exist(self.python_dict, 'XMP:ProjectionType')
+            print(projectionType)
+
+            self.pano = True
+
+            short_path = self.image_path[self.image_path.find("uploads"):]
+            author = "WHS-Team DRZ"
+            title = "Pano taken at" + str(self.creation_time)
+
+            self.pano_data = dict(file=short_path, author=author, title=title, type=projectionType, coordinates=[
+                self.gps_coordinate.get_latitude(),
+                self.gps_coordinate.get_longitude()
+            ])
+            # print(self.pano)
+        except:
+            return
+
     def read_camera_properties(self):
         """
         Reading the camera properties of the image
@@ -119,12 +156,12 @@ class ExifHeader:
         fl = None
         fov = None
         try:
-            fl = self.get_data_from_camera_specs(self.camera_properties.camera_model_name,
+            fl = self.get_data_from_camera_specs(self.camera_properties.get_model,
                                                                         'EXIF:FocalLength')
-            fov = self.get_data_from_camera_specs(self.camera_properties.camera_model_name,
+            fov = self.get_data_from_camera_specs(self.camera_properties.get_model,
                                                                          'Composite:FOV')
         except:
-            #print(f"no specific ir camera properties found in camera_specs.json for model: { self.camera_properties.model }")
+            #print(f"no specific ir camera properties found in camera_specs.json for model: { self.camera_properties.get_model }")
             return
 
         self.camera_properties.fl = fl

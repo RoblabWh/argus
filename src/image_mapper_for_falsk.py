@@ -4,6 +4,8 @@ import cv2
 import multiprocessing
 import time
 import sys
+
+from src.imageTypeSorter import ImageTypeSorter
 from weather import Weather
 import datetime
 from path_reader import PathReader
@@ -41,6 +43,7 @@ class ImageMapper:
         self.CONTAINED_DJI_INFRARED_IMAGES = False
         self.placeholder_map = None
         self.current_report_id = None
+        self.contains_panos = False
 
     @staticmethod
     def generate_images(image_paths):
@@ -88,12 +91,20 @@ class ImageMapper:
             print("-Number of loaded image paths: ", len(images))
             return False
 
+        # filter panoramas
+        imageSorter = ImageTypeSorter()
+        panos, images = imageSorter.filter_panos(images)
+        if len(panos) > 0:
+            self.contains_panos = True
+            self.panos = panos
+
         # Filter images
         self.filtered_images = GimbalPitchFilter(89 - self.max_gimbal_pitch_deviation).filter(images)
         self.filtered_images = PanoFilter("pano").filter(self.filtered_images)
 
-        # check wether infrared images are present
-        self.__check_for_dji_infrared_images(self.filtered_images)
+
+        self.CONTAINED_DJI_INFRARED_IMAGES = imageSorter.check_for_IR(self.filtered_images)
+        # self.__check_for_dji_infrared_images(self.filtered_images)
 
         if self.CONTAINED_DJI_INFRARED_IMAGES:
             (infrared_images, rgb_images) = InfraredRGBSorter().sort(self.filtered_images)
@@ -110,8 +121,13 @@ class ImageMapper:
             self.__calculate_gps_for_mapbox_plugin_initial_guess(self.map_scaler_RGB, self.map_elements_RGB)
         return True
 
+    def get_panos(self):
+        panos = []
+        if self.contains_panos:
+            for pano in self.panos:
+                panos.append(pano.get_exif_header().pano_data)
 
-    # def preprocess_calculate_metadata(self):
+        return panos
 
     def preprocess_calculate_metadata(self):#, report_id, file_names):
         metadta_elements = self.map_elements_RGB

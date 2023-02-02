@@ -21,8 +21,9 @@ class MapperThread(threading.Thread):
         self.map_ir = None
         self.map_odm = None
         self.map_odm_ir = None
-        self.ir_settings = None
         self.number_of_maps = 1 + self.odm + self.ir + self.odm * self.ir
+        self.ir_settings = None
+        self.panos = []
         super().__init__()
 
     def run(self):
@@ -65,6 +66,7 @@ class MapperThread(threading.Thread):
         images = self.image_mapper.preprocess_sort_images(images)
         self.progress_preprocess = 70
         self.image_mapper.preprocess_filter_images(images)
+        self.panos = self.image_mapper.get_panos()
         self.progress_preprocess = 85
 
         self.flight_data, self.camera_specs, self.weather, maps, self.rgb_files, self.ir_files =\
@@ -103,7 +105,8 @@ class MapperThread(threading.Thread):
         return self.progress_mapping
 
     def get_results(self):
-        return self.flight_data, self.camera_specs, self.weather, self.maps, self.rgb_files, self.ir_files, self.ir_settings
+        return self.flight_data, self.camera_specs, self.weather, self.maps, self.rgb_files, self.ir_files, \
+            self.ir_settings, self.panos
 
     def get_mapper(self):
         return self.image_mapper
