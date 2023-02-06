@@ -375,7 +375,7 @@ class HTMLMap():
         for i, pano_marker in enumerate(self.pano_files):
             name = 'marker' + str(i)
             path_offset = ""
-            if self.is_only_ir: path_offset = "../"
+            if self.is_only_ir: path_offset = "../../"
             file_desciptor.write(name + " = L.marker([" + str(pano_marker[0]) + "," + str(pano_marker[1]) + "], {clickable: true});\n"\
                                  "" + name + ".on(\"click\", function(e) {window.open(\"" + path_offset + pano_marker[2] + "\", '_blank').focus();});\n"\
                                  "" + name + ".addTo(map);\n")
@@ -578,7 +578,7 @@ class HTMLMap():
         for i, pano_marker in enumerate(self.pano_files):
             name = 'marker' + str(i)
             path_offset = ""
-            if self.is_only_ir: path_offset = "../"
+            if self.is_only_ir: path_offset = "../../"
             file_desciptor.write(name + " = L.marker([" + str(pano_marker[0]) + "," + str(pano_marker[1]) + "], {clickable: true});\n"\
                                  "" + name + ".on(\"click\", function(e) {window.open(\"" + path_offset + pano_marker[2] + "\", '_blank').focus()});\n"\
                                  "" + name + ".addTo(map);\n")

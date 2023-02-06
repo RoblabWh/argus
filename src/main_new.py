@@ -190,6 +190,17 @@ def update_ir_settings(report_id, settings):
     print("update_ir_settings for id"+ str(report_id) + " with: " + str(settings))
     return "success"
 
+@app.route("/update_description/<int:report_id>", methods=['POST'])
+def update_description(report_id):
+    description = request.form.get('description')
+    print("update_description for id"+ str(report_id) + " with: " + str(description))
+    old_description = project_manager.get_project_description(report_id)
+    description = description.replace("\n", "")
+    description = description.strip()
+    description = description.replace("<br>", "\n")
+    project_manager.update_description(report_id, description)
+    return "success"
+
 @app.route('/get_map/<int:report_id>/<int:map_index>', methods=['GET', 'POST'])
 def send_next_map(report_id, map_index):
     #load json file from static/gradient_luts
@@ -272,8 +283,8 @@ if __name__ == '__main__':
     start = datetime.datetime.now().replace(microsecond=0)
     project_manager.initiate_project_list()
 
-    app.run(debug=True)
-
+    # app.run(debug=True)
+    app.run(host="0.0.0.0", port=5000, debug=True)
 
     #TODO List Report
     #   IR Map serstellen

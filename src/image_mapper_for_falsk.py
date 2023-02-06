@@ -44,6 +44,7 @@ class ImageMapper:
         self.placeholder_map = None
         self.current_report_id = None
         self.contains_panos = False
+        self.unfiltered_sorted_images = []
 
     @staticmethod
     def generate_images(image_paths):
@@ -70,15 +71,31 @@ class ImageMapper:
     def preprocess_start(self, report_id):
         self.current_report_id = report_id
 
+    def chunks(self, lst, n):
+        """Yield successive n-sized chunks from lst."""
+        for i in range(0, len(lst), n):
+            yield lst[i:i + n]
+
     def preprocess_read_selection(self, selection):
         if selection is None:
             image_paths = PathReader.read_path(self.path_to_images, ("DJI"), (".JPG", ".jpg"), sort=False)
         else:
             image_paths = PathReader.read_selection('./static', selection, ("DJI"), (".JPG", ".jpg"), sort=False)
 
+        nmbr_of_processes = 6
+        image_paths_list = list(self.chunks(image_paths,  int(len(image_paths)/nmbr_of_processes)+1))
+
             # Read all images and generate image objects using multiprocessing
-        pool = multiprocessing.Pool(6)
-        images = pool.map(ImageMapper.generate_images, [image_paths])[0]
+        pool = multiprocessing.Pool(nmbr_of_processes)
+        time_before_loading = time.time()
+        # image_paths
+        images_lists = pool.map(ImageMapper.generate_images, image_paths_list)
+        images = []
+        for lst in images_lists:
+            images += (lst)
+
+        time_after_loading = time.time()
+        print("LOADING TIME SUMMARY: ", str(time_after_loading - time_before_loading))
         return images
 
     def preprocess_sort_images(self, images):
@@ -98,6 +115,8 @@ class ImageMapper:
             self.contains_panos = True
             self.panos = panos
 
+
+        self.unfiltered_sorted_images = images.copy()
         # Filter images
         self.filtered_images = GimbalPitchFilter(89 - self.max_gimbal_pitch_deviation).filter(images)
         self.filtered_images = PanoFilter("pano").filter(self.filtered_images)
@@ -214,19 +233,6 @@ class ImageMapper:
         longc = self.middle_gps.get_longitude()
         bounds = [[lat1, long1], [lat2, long2]]
 
-        # map = {
-        #     "center": [latc, longc],
-        #     "zoom": 18,
-        #     "rgbMapFile": "default/MapRGBMissing.jpeg",
-        #     "rgbMapBounds": bounds,
-        #     "irMapFile": "default/MapIRMissing.jpeg",
-        #     "irMapBounds": bounds,
-        #     "ir_max_temp": 100,
-        #     "ir_min_temp": 20,
-        #     "ir_color_scheme": 3,
-        # }
-
-
         map_rgb = {
             "center": [latc, longc],
             "zoom": 18,
@@ -286,73 +292,11 @@ class ImageMapper:
         return flight_data, camera_specs, weather, [map_rgb, map_ir, map_rgb_odm, map_ir_odm], self.filenames_rgb, self.filenames_ir
 
 
-    # def map_images(self, report_id):
-    #     if self.current_report_id != report_id:
-    #         #self.pre_process_images()
-    #         return None
-    #     if self.map_elements_RGB is None:
-    #         print("-No map elements found!")
-    #         return None
-    #
-    #     maps = []
-    #     maps.append(self.calculate_map_RGB())
-    #     # map_file_name_RGB = "map.png"
-    #     # self.save_map(str(report_id)+'/', map_file_name_RGB)
-    #     # map_file_name_RGB  = "uploads/"+str(report_id)+"/"+map_file_name_RGB
-    #     #
-    #     # map_size_RGB = [self.cropped_map.shape[1], self.cropped_map.shape[0]]
-    #     #
-    #     #
-    #     #
-    #     # lat1 = self.corner_gps_left_bottom .get_latitude()
-    #     # long1 = self.corner_gps_left_bottom.get_longitude()
-    #     # lat2 = self.corner_gps_right_top .get_latitude()
-    #     # long2 = self.corner_gps_right_top .get_longitude()
-    #     # latc = self.middle_gps.get_latitude()
-    #     # longc = self.middle_gps.get_longitude()
-    #     # bounds = [[lat1, long1],[lat2, long2]]
-    #     # bounds_ir = bounds
-    #     #
-    #     # map_file_name_IR = "default/MapIRMissing.jpeg"
-    #     if self.CONTAINED_DJI_INFRARED_IMAGES:
-    #         maps.append(self.calculate_map_IR())
-    #     #     map_file_name_IR = "mapIR.png"
-    #     #     self.save_map(str(report_id)+'/', map_file_name_IR)
-    #     #     map_file_name_IR = "uploads/"+str(report_id)+"/"+map_file_name_IR
-    #     #     lat1_ir = self.corner_gps_left_bottom.get_latitude()
-    #     #     long1_ir = self.corner_gps_left_bottom.get_longitude()
-    #     #     lat2_ir = self.corner_gps_right_top.get_latitude()
-    #     #     long2_ir = self.corner_gps_right_top.get_longitude()
-    #     #     latc_ir = self.middle_gps.get_latitude()
-    #     #     longc_ir = self.middle_gps.get_longitude()
-    #     #     bounds = [[lat1_ir, long1_ir], [lat2_ir, long2_ir]]
-    #     #
-    #     # map_size_IR = [self.cropped_map.shape[1], self.cropped_map.shape[0]]
-    #
-    #     # end_time = datetime.datetime.now().replace(microsecond=0)
-    #     # self.__create_html("", map_file_name, end_time - start_time + filter_time, pano_files)
-    #
-    #
-    #
-    #
-    #     # map = {
-    #     #     "center": [latc, longc],
-    #     #     "zoom": 18,
-    #     #     "rgbMapFile": map_file_name_RGB,
-    #     #     "rgbMapBounds": bounds,
-    #     #     "rgbMapSize": map_size_RGB,
-    #     #     "rgbCoordinates": self.extract_coordinates(self.map_elements_RGB, map_size_RGB[1]),
-    #     #     "irMapFile": map_file_name_IR,
-    #     #     "irMapBounds": bounds_ir,
-    #     #     "irMapSize": map_size_IR,
-    #     #     "irCoordinates": self.extract_coordinates(self.map_elements_RGB, map_size_IR[1]),
-    #     #     "ir_max_temp": 100,
-    #     #     "ir_min_temp": 20,
-    #     #     "ir_color_scheme": 3,
-    #     # }
-    #     #
-    #     # return map
-    #
+    def generate_flight_profiles(self):
+        # self.unfiltered_sorted_images = fe
+        pass
+
+
     def get_ir_settings(self):
         #TODO aus Meta Daten auslesen wenn vorhanden
         ir_settings = {
@@ -362,15 +306,19 @@ class ImageMapper:
         }
         return ir_settings
 
+
     def calculate_map_RGB(self, report_id):
         min_x, max_x, min_y, max_y = self.__calculate_map(self.map_scaler_RGB, self.map_elements_RGB)
         map = self.process_map(self.map_scaler_RGB, self.map_elements_RGB, min_x, max_x, min_y, max_y, False)
         return map
 
+
     def calculate_map_IR(self, report_id):
         min_x, max_x, min_y, max_y = self.__calculate_map(self.map_scaler_IR, self.map_elements_IR)
         map = self.process_map(self.map_scaler_IR, self.map_elements_IR, min_x, max_x, min_y, max_y, True)
         return map
+
+
     def process_map(self, map_scaler, map_elements, min_x, max_x, min_y, max_y, ir):
         map_file_name = "map_rgb.png" if not ir else "map_ir.png"
         map_file_path = "uploads/" + str(self.current_report_id) + "/" + map_file_name
@@ -402,6 +350,7 @@ class ImageMapper:
 
         return map
 
+
     def __calculate_map(self, map_scaler, map_elements):
         map_offset = map_scaler.get_map_offset()
         # print(map_offset, "map offset")
@@ -418,9 +367,10 @@ class ImageMapper:
         self.final_map = map_obj.create_map()
         self.cropped_map = map_obj.get_cropped_map()
         # self.__calculate_gps_for_mapbox_plugin(map_obj)
-        if self.with_ODM and self.placeholder_map is None:
-            self.placeholder_map = map_obj.generate_ODM_placeholder_map(self.path_to_images)
+        # if self.with_ODM and self.placeholder_map is None:
+        #     self.placeholder_map = map_obj.generate_ODM_placeholder_map(self.path_to_images)
         return map_obj.get_min_and_max_coords()
+
 
     def save_map(self, relative_path, file_name):
         msg_str = relative_path + file_name
@@ -429,27 +379,6 @@ class ImageMapper:
 
         print("-Saved map under ", path + msg_str)
 
-    def __check_for_dji_infrared_images(self, filtered_images):
-        # (width_0, height_0) = filtered_images[0].get_exif_header().get_image_size()
-        # (width_1, height_1) = filtered_images[1].get_exif_header().get_image_size()
-        # if(width_0 != width_1 and height_0 != height_1):
-        #     self.CONTAINED_DJI_INFRARED_IMAGES = True
-        #     print("-Dataset contains infrared images...")
-        # else:
-        #     print("-Dataset does not contain infrared images...")
-
-        #1. nach metadtaen zu IR suchen
-        #2. nach Rbzw ir als namenssuffix suchen
-        #3. nach unterschiedlichen bildgroessen suchen
-
-        (width_0, height_0) = filtered_images[0].get_exif_header().get_image_size()
-        for image in filtered_images:
-            (width_1, height_1) = image.get_exif_header().get_image_size()
-            if (width_0 != width_1 and height_0 != height_1):
-                self.CONTAINED_DJI_INFRARED_IMAGES = True
-                print("-Dataset contains infrared images...")
-                return
-        print("-Dataset does not contain infrared images...")
 
     def __calculate_gps_for_mapbox_plugin_initial_guess(self, map_scaler, map_elements):
 
@@ -496,6 +425,7 @@ class ImageMapper:
             self.corner_gps_left_bottom.get_longitude() +
             (self.corner_gps_right_top.get_longitude() - self.corner_gps_left_bottom.get_longitude()) / 2)
 
+
     def __calculate_gps_for_mapbox_plugin(self, map_elements, map_scaler, min_x, max_x, min_y, max_y):
         origin_gps = map_elements[0].get_image().get_exif_header().get_gps()
         origin_location = map_elements[0].get_rotated_rectangle().get_center()
@@ -512,6 +442,7 @@ class ImageMapper:
             (self.corner_gps_right_top.get_latitude() - self.corner_gps_left_bottom.get_latitude()) / 2,
             self.corner_gps_left_bottom.get_longitude() +
             (self.corner_gps_right_top.get_longitude() - self.corner_gps_left_bottom.get_longitude()) / 2)
+
 
     def extract_coordinates(self, map_elements, map_height):
         new_coordinates = list()
@@ -531,6 +462,7 @@ class ImageMapper:
             new_coordinates.append(str_coordinates)
         print("coordinates:", new_coordinates)
         return new_coordinates
+
 
     def generate_odm_orthophoto(self, container_port, image_size=0, ir=False):
         print("-Generating ODM orthophoto...")
@@ -617,52 +549,3 @@ class ImageMapper:
 
         return map
 
-    def generate_odm_orthophoto_all_at_once(self, container_port, image_size=0):
-        options = [{'feature-quality': 'medium', 'fast-orthophoto': True, 'auto-boundary': True, 'pc-ept': True,'cog': True},
-                   {'feature-quality': 'high', 'fast-orthophoto': True, 'auto-boundary': True, 'pc-ept': True,'cog': True}]
-        image_lists = []
-        maps = []
-        image_lists.append(self.filenames_rgb.copy())
-        if self.CONTAINED_DJI_INFRARED_IMAGES:
-            image_lists.append(self.filenames_ir.copy())
-
-        print(options)
-
-        taskmanager = OdmTaskManager(self.path_to_images + str(self.current_report_id) + "/", container_port)
-
-        #  run in loop over image_lists
-        for i, list in enumerate(image_lists):
-
-            for j, image in enumerate(list):
-                list[j] = "static/" + image
-
-            if(i == 0):
-                taskmanager.set_images_scaled(list, image_size)
-            else:
-                taskmanager.set_images(list)
-
-            taskmanager.run_task(options[i])
-
-            while True:
-                if not taskmanager.task_running():
-                    break
-                time.sleep(1)
-
-            if taskmanager.task_complete:
-                with open('results/odm_georeferencing/odm_georeferenced_model.info.json', 'r') as j:
-                    contents = json.loads(j.read())
-                    bbox = contents['stats']['bbox']['EPSG:4326']['bbox']
-                    corner_gps_left_bottom = (bbox['minx'],bbox['miny'])
-                    corner_gps_right_top = (bbox['maxx'],bbox['maxy'])
-                #Todo, bounds irgendwie nutzen
-                print(corner_gps_left_bottom, corner_gps_right_top)
-
-                im = cv2.imread("results/odm_orthophoto/odm_orthophoto.tif", cv2.IMREAD_UNCHANGED)
-                target_path = self.path_to_images + str(self.current_report_id) + "/"
-                filename = "odm_map.png" if(i == 0) else "odm_map_ir.png"
-                cv2.imwrite(target_path + filename, im)
-                print("Orthophoto saved under", target_path+ filename)
-                maps.append(target_path + filename)
-
-        taskmanager.close()
-        return maps

@@ -208,7 +208,7 @@
 
     #tab-link-1{
         border-top-left-radius: 6px;
-        {% if not has_ir %}
+        {% if not has_ir and not panos %}
         border-top-right-radius: 6px;
         {% endif %}
     }
@@ -250,7 +250,7 @@
 
     .slideshow-settings-container {;
         width-no:100%;
-        min-width: 535px;
+        min-width: 300px;
         margin: auto;
         display: grid;
         grid-template-columns: 1fr 1fr;

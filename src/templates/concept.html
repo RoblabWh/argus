@@ -26,6 +26,38 @@
             z-index:1500;
         }
 
+        #edit-description-button{
+            font-size: 18px;
+            height: fit-content;
+            width: 18px;
+            margin-top:5px;
+            border-radius: 5px;
+            border-style: solid;
+            border-color: grey;
+            border-width: 1px;
+            background-color: lightgrey;
+        }
+
+        #edit-description-button:hover{
+            background-color: rgb(56, 152, 236);
+            color: white;
+        }
+
+        #descriptionText{
+            margin: 0px;
+            padding: 8px;
+            border-radius: 5px;
+            border-style: solid;
+            border-color: transparent;
+            background-color: transparent;
+        }
+
+        #descriptionText.editable{
+            border-radius: 5px;
+            border-style: solid;
+            border-color: rgb(56, 152, 236);
+        }
+
         .big_upload{
           float:left;
           width: 63%;
@@ -40,7 +72,7 @@
         .big_button{
           float:right;
           position: relative;
-          width: 35%;
+          width: 33%;
           padding: 11px 0px;
           background-color: rgb(56, 152, 236);
           color: white;
@@ -108,7 +140,7 @@
           margin: 20px;
         }
 
-        #wrapper {
+        .wrapper {
           display: flex;
           flex-direction: row;
           flex-wrap: wrap;
@@ -189,6 +221,26 @@
             remagnify();
         };
 
+        function toggleTextfield(){
+            description = document.getElementById("descriptionText");
+            fakeButton = document.getElementById("edit-description-button");
+            console.log(description.contentEditable);
+            if (description.contentEditable == "true") {
+                description.contentEditable = false;
+                //description.style.border = "none";
+                fakeButton.children[0].style.display = "inline-block";
+                fakeButton.children[1].style.display = "none";
+                $('#descriptionText').removeClass('editable');
+                $.post("/update_description/{{ id }}", {description: description.innerHTML});
+            } else {
+                description.contentEditable = "true";
+                //description.style.border = "1px solid rgb(204, 204, 204)";
+                $('#descriptionText').addClass('editable');
+                fakeButton.children[0].style.display = "none";
+                fakeButton.children[1].style.display = "inline-block";
+            }
+        };
+
     </script>
     <div class="header">
         <h3 style="float: right; padding: 8px; color: white">Report : {{ project.name }}</h3>
@@ -201,9 +253,23 @@
         <br>
         <h1>Flight Report</h1>
         <h3>{{ project.name }} (ID:{{ id }})</h3>
-        <a>  {{ project.description }}</a>
 
-        <div id="wrapper">
+        <div style="display: inline-flex; width:100% ">
+            <div style="max-width: 97%; margin-right:10px">
+                <p id="descriptionText">
+                    {% for line in project.description.splitlines()[:-1] %}
+                        {{line}}<br>
+                    {% endfor %}
+                        {{project.description.splitlines()[-1]}}
+                </p>
+            </div>
+            <div id="edit-description-button" onclick="toggleTextfield()">
+                <span style="display: inline-block; transform: rotate(100deg); -ms-transform: rotate(100deg); -moz-transform: rotate(100deg); -webkit-transform: rotate(100deg);">&#x270E;</span>
+                <span style="display: none;">&check;</span>
+            </div>
+        </div>
+
+        <div class="wrapper">
             <form method="post" action="/{{ id }}/upload" enctype="multipart/form-data" style="width: 100%; ">
                 <input class="big_upload" type="file" name="files[]" multiple="true" autocomplete="off" required>
                 <input class="big_button" type="submit" value="Upload">
@@ -317,5 +383,6 @@
     var intervalID = window.setInterval(check_progress, 1000);
     check_progress({{ id }});
     {% endif %}
+    $('descriptionText').contentEditable = "false";
     </script>
 </html>

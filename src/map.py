@@ -1,3 +1,6 @@
+import multiprocessing
+import time
+
 import numpy as np
 import cv2
 import imutils
@@ -20,9 +23,22 @@ class Map:
         self.bounds = None
 
     def create_map(self):
-        self.load_images()
+        map_creation_time_start = time.time()
+        # self.load_images()
+        self.load_images_parallel()
+        map_creation_time_loading = time.time()
         self.add_images_to_map()
-        self.draw_flight_trajectorie()
+        map_creation_time_mapping = time.time()
+        self.crop_map()
+        # self.draw_flight_trajectorie()
+        map_creation_time_end = time.time()
+
+        print("MAPPING TIME SUMMARY: ", "\n  loading:", str(map_creation_time_loading-map_creation_time_start),
+              "\n  mapping:", str(map_creation_time_mapping - map_creation_time_loading),
+              "\n  cropping:", str(map_creation_time_end-map_creation_time_mapping),
+              "\n  total:", str(map_creation_time_end-map_creation_time_start))
+
+
         #self.crop_map()
         return self.final_map
 
@@ -47,6 +63,23 @@ class Map:
         #average_color_map = int(average_color_map / len(self.map_elements))    
         #self.final_map = self.final_map 
 
+    def load_images_parallel(self):
+        pool = multiprocessing.Pool(6)
+        self.map_elements = pool.map(Map.load_image, self.map_elements)
+
+    @staticmethod
+    def load_image(map_element):
+        image = map_element.get_image().get_matrix()
+        rotated_rectangle = map_element.get_rotated_rectangle()
+        (w, h) = rotated_rectangle.get_size()
+        h1, w1, c = image.shape
+        # print (rotated_rectangle.get_angle(), w, h, w1, h1, c)
+        resized_image = cv2.resize(image, (w, h), cv2.INTER_NEAREST)
+        rotated_image = imutils.rotate_bound(resized_image, -rotated_rectangle.get_angle())
+        (h, w) = rotated_rectangle.get_shape()
+        rotated_image = cv2.resize(rotated_image, (int(w), int(h)), cv2.INTER_NEAREST)
+        map_element.get_image().set_matrix(rotated_image)
+        return map_element
 
     def add_images_to_map(self):
         if self.optimize: #voronoi aenderung

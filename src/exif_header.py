@@ -1,12 +1,5 @@
 #!/usr/bin/env python3
-__author__      = "Artur Leinweber"
-__copyright__ = "Copyright 2020"
-__credits__ = ["None"]
-__license__ = "GPL"
-__version__ = "1.0.1"
-__maintainer__ = "Artur Leinweber"
-__email__ = "arturleinweber@live.de"
-__status__ = "Production"
+
 
 import json
 import re

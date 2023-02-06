@@ -290,7 +290,7 @@ class ImageMapper:
                 time.sleep(2)
 
             if taskmanager.task_complete:
-                with open('results/odm_georeferencing/odm_georeferenced_model.info.json', 'r') as j:
+                with open('../results/odm_georeferencing/odm_georeferenced_model.info.json', 'r') as j:
                     contents = json.loads(j.read())
                     bbox = contents['stats']['bbox']['EPSG:4326']['bbox']
                     corner_gps_left_bottom = (bbox['minx'],bbox['miny'])

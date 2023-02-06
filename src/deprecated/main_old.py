@@ -13,7 +13,7 @@ import os
 import datetime
 import argparse
 
-from src.image_mapper import ImageMapper
+from src.deprecated.image_mapper import ImageMapper
 from PanoramaViewer import Panorma_viewer
 
 NUMBER_ARGS = 2
