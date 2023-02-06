@@ -26,11 +26,15 @@ class Map:
         map_creation_time_start = time.time()
         # self.load_images()
         self.load_images_parallel()
+        # pool = multiprocessing.Pool(6)
+        # self.map_elements = pool.map(Map.load_image, self.map_elements.copy())
+        # pool.close()
+        # pool.join()
         map_creation_time_loading = time.time()
         self.add_images_to_map()
         map_creation_time_mapping = time.time()
-        self.crop_map()
-        # self.draw_flight_trajectorie()
+        # self.crop_map()
+        self.draw_flight_trajectorie()
         map_creation_time_end = time.time()
 
         print("MAPPING TIME SUMMARY: ", "\n  loading:", str(map_creation_time_loading-map_creation_time_start),
@@ -46,12 +50,10 @@ class Map:
         #average_color_map = 0
         #j = 0
         for map_element in self.map_elements:
-            #print("MapElement: ", map_element.get_image().get_image_path()[-12:])
             image = map_element.get_image().get_matrix()
             rotated_rectangle = map_element.get_rotated_rectangle()
             (w, h) = rotated_rectangle.get_size()
             h1,w1,c = image.shape
-            #print (rotated_rectangle.get_angle(), w, h, w1, h1, c)
             resized_image = cv2.resize(image, (w, h), cv2.INTER_NEAREST)
             rotated_image = imutils.rotate_bound(resized_image, -rotated_rectangle.get_angle())
             (h, w) = rotated_rectangle.get_shape()
@@ -65,7 +67,9 @@ class Map:
 
     def load_images_parallel(self):
         pool = multiprocessing.Pool(6)
-        self.map_elements = pool.map(Map.load_image, self.map_elements)
+        self.map_elements = pool.map(Map.load_image, self.map_elements.copy())
+        pool.close()
+        pool.join()
 
     @staticmethod
     def load_image(map_element):
@@ -277,6 +281,9 @@ class Map:
         image[y_offset:y_offset+text_img.shape[0], x_offset:x_offset+text_img.shape[1], :] = text_img
         image = np.maximum(image_bg, image, image)
         return image
+
+    def get_map_elements(self):
+        return self.map_elements
 
 
 

@@ -53,7 +53,7 @@ class ProjectManager:
         self.projects = sorted(self.projects, key=lambda d: d['id'], reverse=True)
 
     def get_project(self, id):
-        print("getting project with id: " + str(id))
+        # print("getting project with id: " + str(id))
         for project in self.projects:
             if project['id'] == id:
                 return project
@@ -97,8 +97,8 @@ class ProjectManager:
         # append filenames to filenames inside of data of project with id
         project = self.get_project(id)
         data = project['data']
-        print("filenames before: " + str(data['file_names']))
-        print("filenames to add: " + str(file_names))
+        # print("filenames before: " + str(data['file_names']))
+        # print("filenames to add: " + str(file_names))
         data['file_names'] += file_names
         #write updated data to project.json
         with open(self.projects_path + str(id) + "/project.json", "w") as json_file:
@@ -200,7 +200,7 @@ class ProjectManager:
 
     def get_project_description(self, report_id):
         project = self.get_project(report_id)
-        print("get project description", project['description'])
+        # print("get project description", project['description'])
         return project['description']
 
     def get_project_creation_time(self, report_id):

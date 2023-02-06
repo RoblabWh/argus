@@ -241,10 +241,10 @@ def check_preprocess_status(report_id):
 
     for thread in threads:
         if thread.report_id == report_id:
-            print("check_preprocess_status" + str(report_id))
+            # print("check_preprocess_status" + str(report_id))
             progress_preprocessing = thread.get_progress_preprocess()
             progress_mapping = thread.get_progress_mapping()
-            print(progress_preprocessing, progress_mapping)
+            # print(progress_preprocessing, progress_mapping)
             maps_done = thread.get_maps_done()
             if progress_preprocessing == 100 and not thread.metadata_delivered:
                 flight_data, camera_specs, weather, maps, file_names_rgb, file_names_ir, ir_settings, panos = thread.get_results()

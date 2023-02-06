@@ -5,7 +5,7 @@ import multiprocessing
 import time
 import sys
 
-from src.imageTypeSorter import ImageTypeSorter
+from imageTypeSorter import ImageTypeSorter
 from weather import Weather
 import datetime
 from path_reader import PathReader
@@ -56,8 +56,8 @@ class ImageMapper:
 
     def set_processing_parameters(self, path_to_images=None, map_width_px=2048, map_height_px=2048, blending=0.7, optimize=True, max_gimbal_pitch_deviation=10, with_ODM=True):
         if path_to_images is not None:
-            print("old Path to images: ", self.path_to_images)
-            print("new Path to images: ", path_to_images)
+            # print("old Path to images: ", self.path_to_images)
+            # print("new Path to images: ", path_to_images)
             if path_to_images[-1] != "/":
                 path_to_images += "/"
             self.path_to_images = path_to_images
@@ -95,7 +95,7 @@ class ImageMapper:
             images += (lst)
 
         time_after_loading = time.time()
-        print("LOADING TIME SUMMARY: ", str(time_after_loading - time_before_loading))
+        # print("LOADING TIME SUMMARY: ", str(time_after_loading - time_before_loading))
         return images
 
     def preprocess_sort_images(self, images):
@@ -105,7 +105,7 @@ class ImageMapper:
     def preprocess_filter_images(self, images):
         # Check if the minimum number of images is reached
         if len(images) < self.minimum_number_of_images:
-            print("-Number of loaded image paths: ", len(images))
+            # print("-Number of loaded image paths: ", len(images))
             return False
 
         # filter panoramas
@@ -308,13 +308,13 @@ class ImageMapper:
 
 
     def calculate_map_RGB(self, report_id):
-        min_x, max_x, min_y, max_y = self.__calculate_map(self.map_scaler_RGB, self.map_elements_RGB)
+        (min_x, max_x, min_y, max_y), self.map_elements_RGB = self.__calculate_map(self.map_scaler_RGB, self.map_elements_RGB)
         map = self.process_map(self.map_scaler_RGB, self.map_elements_RGB, min_x, max_x, min_y, max_y, False)
         return map
 
 
     def calculate_map_IR(self, report_id):
-        min_x, max_x, min_y, max_y = self.__calculate_map(self.map_scaler_IR, self.map_elements_IR)
+        (min_x, max_x, min_y, max_y), self.map_elements_IR = self.__calculate_map(self.map_scaler_IR, self.map_elements_IR)
         map = self.process_map(self.map_scaler_IR, self.map_elements_IR, min_x, max_x, min_y, max_y, True)
         return map
 
@@ -322,7 +322,7 @@ class ImageMapper:
     def process_map(self, map_scaler, map_elements, min_x, max_x, min_y, max_y, ir):
         map_file_name = "map_rgb.png" if not ir else "map_ir.png"
         map_file_path = "uploads/" + str(self.current_report_id) + "/" + map_file_name
-
+        # print("MAPPROCESS; min_x: " + str(min_x) + " max_x: " + str(max_x) + " min_y: " + str(min_y) + " max_y: " + str(max_y))
         self.__calculate_gps_for_mapbox_plugin(map_elements, map_scaler, min_x, max_x, min_y, max_y)
         self.save_map(str(self.current_report_id) + '/', map_file_name)
 
@@ -364,12 +364,18 @@ class ImageMapper:
                       self.optimize)
 
         print("-Creating map...             ")
+        timaa = time.time()
         self.final_map = map_obj.create_map()
+        timeb = time.time()
         self.cropped_map = map_obj.get_cropped_map()
+        timec = time.time()
+        # print("Map creation time: ", timeb - timaa)
+        # print("Map cropping time: ", timec - timeb)
+        map_elements = map_obj.get_map_elements()
         # self.__calculate_gps_for_mapbox_plugin(map_obj)
         # if self.with_ODM and self.placeholder_map is None:
         #     self.placeholder_map = map_obj.generate_ODM_placeholder_map(self.path_to_images)
-        return map_obj.get_min_and_max_coords()
+        return map_obj.get_min_and_max_coords(), map_elements
 
 
     def save_map(self, relative_path, file_name):
@@ -458,9 +464,9 @@ class ImageMapper:
                 tmp_coordinates.append(str(int(x)) + " " + str(int(map_height - y)))
 
             str_coordinates = ','.join(str(e) for e in tmp_coordinates)
-            print("single coordinate:", str_coordinates)
+            # print("single coordinate:", str_coordinates)
             new_coordinates.append(str_coordinates)
-        print("coordinates:", new_coordinates)
+        # print("coordinates:", new_coordinates)
         return new_coordinates
 
 
@@ -476,7 +482,7 @@ class ImageMapper:
         image_list = self.filenames_rgb.copy() if not ir else self.filenames_ir.copy()
         for j, image in enumerate(image_list):
             image_list[j] = "static/" + image
-        print(image_list)
+        # print(image_list)
         taskmanager = OdmTaskManager(self.path_to_images + str(self.current_report_id) + "/", container_port)
 
         if image_size != 0:
@@ -501,7 +507,7 @@ class ImageMapper:
                 corner_gps_right_top = (bbox['maxx'],bbox['maxy'])
                 middle_gps = [(corner_gps_left_bottom[1] + corner_gps_right_top[1])/2, (corner_gps_left_bottom[0] + corner_gps_right_top[0])/2]
                 bounds = [[corner_gps_left_bottom[1], corner_gps_left_bottom[0]], [corner_gps_right_top[1], corner_gps_right_top[0]]]
-                print(corner_gps_left_bottom, corner_gps_right_top)
+                # print(corner_gps_left_bottom, corner_gps_right_top)
 
             im = cv2.imread("results/odm_orthophoto/odm_orthophoto.tif", cv2.IMREAD_UNCHANGED)
             map_size = [im.shape[1], im.shape[0]]
