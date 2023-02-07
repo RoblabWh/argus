@@ -1,6 +1,4 @@
 import json
-import os
-import sys
 import datetime
 
 from project_manager import ProjectManager
@@ -8,7 +6,9 @@ from mapper_thread import MapperThread
 
 from flask import Flask, flash, request, redirect, url_for, render_template, jsonify
 import os
+import signal
 from werkzeug.utils import secure_filename
+
 import urllib.request
 
 
@@ -276,15 +276,27 @@ def generate_id_for_image(filename):
     #print('display_image filename: ' + filename)
     return redirect(url_for('static', filename='uploads/' + filename), code=301)
 
-if __name__ == '__main__':
-    print("Sudo permission is required to add GPS based evaluations to the report")
-    os.system(": $(sudo chmod +x ./get-gps-info.sh)")
+#shutdown program
 
+@app.route('/shutdown')
+def shutdown():
+    print("Server shutting down...")
+    stop_server()
+    return 'Server shutting down...'
+
+def stop_server():
+    # global server
+    # quit()
+    # server.shutdown()
+    # os._exit(0)
+    os.kill(os.getpid(), signal.SIGINT)
+
+if __name__ == '__main__':
     start = datetime.datetime.now().replace(microsecond=0)
     project_manager.initiate_project_list()
 
-    # app.run(debug=True)
     app.run(host="0.0.0.0", port=5000, debug=True)
+    #start_server()  # start server
 
     #TODO List Report
     #   IR Map serstellen
@@ -319,6 +331,7 @@ if __name__ == '__main__':
     # IDs aus Datum Und Uhrzeit Basteln
     # Unterschiedliche Anzahl an IR und RGB Bildern handeln: Fehlerausgabe/einfach annehmen, auf jedem Fall Sorter fixen
     #   Position des Overlays in der Karte stimmt nicht (Bounds?)
+    # _NEXT_ Shutdown Button
 
     # TODO List Project Overview
     #   Overview Seite Stylen
@@ -334,6 +347,9 @@ if __name__ == '__main__':
     #TODO allgemein
     # Report mit nur IR Bildern auch als solche verarbeiten/ ermöglichen
     # Wetter Daten aus der Vergangenheit abrufen können
+
+    #TODO Bilderkennung
+    # von Julien den Code aus EDRZ einabauen
 
 
 #Kill Process on port:

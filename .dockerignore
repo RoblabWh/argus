@@ -1,0 +1,6 @@
+src/deprecated
+src/env
+src/results
+src_for_windows
+WindowsInstaller
+src/static/uploads/*

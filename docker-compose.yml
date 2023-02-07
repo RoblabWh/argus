@@ -1,0 +1,7 @@
+services:
+  image_mapper:
+    image: image_mapper
+    ports:
+      - "5000:5000"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"
