@@ -737,7 +737,7 @@
         {% if file_names %}
         {% for filename in file_names %}
         <div style="float:left;width:20%; min-width:240px;">
-            <img src="{{ url_for('static', filename=filename) }}" style="padding: 5px;width:95%;cursor: pointer;" onclick="showSlide({{loop.index0}})">
+            <img id="galleryImage{{filename.split('/')[-1]}}" src="{{ url_for('static', filename=filename) }}" style="padding: 5px;width:95%;cursor: pointer;" onclick="showSlide({{loop.index0}})">
         </div>
         {% endfor %}
         {% endif %}

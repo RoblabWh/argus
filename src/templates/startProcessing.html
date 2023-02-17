@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body{
+            margin-left: 0px;
+            margin-right: 0px;
+            margin-bottom: 0px;
+        }
+
+        .bodyDiv {
+            min-height: 95vh;
+            width: 94%;
+            max-width: 1400px;
+            margin: 0 auto !important;
+            float: none !important;
+            font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+        }
+
+        .header{
+            width: 100%;
+            height: 50px;
+            position: fixed;
+            background-color: rgb(56, 152, 236);
+            top: 0;
+            z-index:1500;
+        }
+
+        #edit-description-button{
+            font-size: 18px;
+            height: fit-content;
+            width: 18px;
+            margin-top:5px;
+            border-radius: 5px;
+            border-style: solid;
+            border-color: grey;
+            border-width: 1px;
+            background-color: lightgrey;
+        }
+
+        #edit-description-button:hover{
+            background-color: rgb(56, 152, 236);
+            color: white;
+        }
+
+        #descriptionText{
+            margin: 0px;
+            padding: 8px;
+            border-radius: 5px;
+            border-style: solid;
+            border-color: transparent;
+            background-color: transparent;
+        }
+
+        #descriptionText.editable{
+            border-radius: 5px;
+            border-style: solid;
+            border-color: rgb(56, 152, 236);
+        }
+
+        .big_upload{
+          float:left;
+          width: 63%;
+          position: relative;
+          padding: 10px 0px 10px 10px;
+          border-radius: 3px;
+          border-color: rgb(204, 204, 204);
+          border-style: solid;
+          border-width: 1px;
+        }
+
+        .big_button{
+          float:right;
+          position: relative;
+          width: 33%;
+          padding: 11px 0px;
+          background-color: rgb(56, 152, 236);
+          color: white;
+          border-radius: 4px;
+          cursor: pointer;
+        }
+
+        .big_button:disabled{
+          background-color: white;
+          color: grey;
+        }
+
+        #big_button_a{
+          width: 35%;
+          padding: 11px 0px;
+        }
+
+        .map_container {
+          padding: 18 px;
+          background-color: white;
+          overflow: hidden;
+        }
+
+        p {
+            text-align: justify;
+            font-size: 16px;
+        }
+
+        summary {
+          background-color: grey;
+          color: white;
+          font-weight: bold;
+          padding: 1rem;
+          margin-bottom: 1rem;
+          outline: none;
+          border-radius: 4px;
+          cursor: pointer;
+          position: relative;
+        }
+
+        details[open]>summary{
+          background-color: black;
+          color: white;
+        }
+        details[open]>summary:hover, summary:hover {
+          background-color: rgb(56, 152, 236);
+          color: black;
+        }
+
+        details > summary::after {
+          position: absolute;
+          content: "+";
+          right: 20px;
+        }
+        details[open] > summary::after {
+          position: absolute;
+          content: "-";
+          right: 20px;
+        }
+        details > summary::-webkit-details-marker {
+          display: none;
+        }
+
+        .tab-content{
+          margin: 20px;
+        }
+
+        .wrapper {
+          display: flex;
+          flex-direction: row;
+          flex-wrap: wrap;
+          justify-content: space-between;
+          padding:15px;
+        }
+
+        .Progress {
+          width: 100%;
+          background-color: #ddd;
+        }
+
+        #myBar_a, #myBar_b {
+          width: 1%;
+          height: 30px;
+          background-color: #04AA6D;
+        }
+
+        {% include 'tableStyle.css' %}
+
+
+    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src="{{url_for('static', filename='default/jquery-3.6.3.js') }}"></script>
+</head>
+
+<body onresize="updateSizeDependetEmelents()">
+    <script>
+        var loaded_maps = new Array(0);
+        var next_map = 0;
+
+        {% for map in maps %}
+            loaded_maps.push(true);
+        {% endfor %}
+
+        function check_progress(report_id) {
+            console.log("check_progress on:" + report_id + " with: " + report_id + '/process_status');
+            $.get('/{{ id }}/process_status', function(progress) {
+                var progress_arr = progress.split(";");
+                var bar_preprocess = document.getElementById("myBar_a");
+                var bar_mapping = document.getElementById("myBar_b");
+                bar_preprocess.style.width = progress_arr[0] + '%';
+                bar_mapping.style.width = progress_arr[1] + '%';
+
+                if (progress_arr[2] == "True") {
+                    location.href = "http://127.0.0.1:5000/{{ id }}";
+                }
+                console.log(progress_arr);
+                if (progress_arr[0] == 100 && progress_arr[2] != "True") {
+                    //if (all_maps_loaded() || maps_done_initilized()) {
+                    console.log(progress_arr[3]);
+                    $.get('/get_map/{{ id }}/'+next_map, function(map) {
+                        if(map.file != "empty"){
+                            console.log(map);
+                            loaded_maps[next_map] = true;
+                            switch(next_map){
+                            {% for map in maps %}
+                                case {{ loop.index0 }}:
+                                    update{{map.name}}Map(map);
+                                    break;
+                            {% endfor %}
+                            }
+                            next_map += 1;
+                        }
+                    });
+                }
+                if (parseInt(progress_arr[1]) == 100) {
+                    $.get( "/stop_mapping_thread/{{ id }}");
+                    console.log("done");
+                    window.clearInterval(intervalID);
+                }
+
+            });
+
+        }
+
+        function updateSizeDependetEmelents(){
+            remagnify();
+        };
+
+        function toggleTextfield(){
+            description = document.getElementById("descriptionText");
+            fakeButton = document.getElementById("edit-description-button");
+            console.log(description.contentEditable);
+            if (description.contentEditable == "true") {
+                description.contentEditable = false;
+                //description.style.border = "none";
+                fakeButton.children[0].style.display = "inline-block";
+                fakeButton.children[1].style.display = "none";
+                $('#descriptionText').removeClass('editable');
+                $.post("/update_description/{{ id }}", {description: description.innerHTML});
+            } else {
+                description.contentEditable = "true";
+                //description.style.border = "1px solid rgb(204, 204, 204)";
+                $('#descriptionText').addClass('editable');
+                fakeButton.children[0].style.display = "none";
+                fakeButton.children[1].style.display = "inline-block";
+            }
+        };
+
+        function shutdownServer(){
+            console.log("shutdown");
+            $.get("/shutdown");
+        };
+
+    </script>
+    <div class="header">
+        <h3 style="float: right; padding: 8px; color: white">Report : {{ project.name }}</h3>
+        <a href="/" style="float: left; padding: 8px; color: white">Back to overview</a>
+        <a style="float: right; padding: 8px; color: white" onclick="shutdownServer()">SHUTDOWN</a>
+    </div>
+
+    <div class="bodyDiv">
+        <br>
+        <br>
+        <br>
+        <h1>Flight Report</h1>
+        <h3>{{ project.name }} (ID:{{ id }})</h3>
+
+        <div style="display: inline-flex; width:100% ">
+            <div style="max-width: 97%; margin-right:10px">
+                <p id="descriptionText">
+                    {% for line in project.description.splitlines()[:-1] %}
+                        {{line}}<br>
+                    {% endfor %}
+                        {{project.description.splitlines()[-1]}}
+                </p>
+            </div>
+            <div id="edit-description-button" onclick="toggleTextfield()">
+                <span style="display: inline-block; transform: rotate(100deg); -ms-transform: rotate(100deg); -moz-transform: rotate(100deg); -webkit-transform: rotate(100deg);">&#x270E;</span>
+                <span style="display: none;">&check;</span>
+            </div>
+        </div>
+
+        <div class="wrapper">
+            <form method="post" action="/{{ id }}/upload" enctype="multipart/form-data" style="width: 100%; ">
+                <input class="big_upload" type="file" name="files[]" multiple="true" autocomplete="off" required>
+                <input class="big_button" type="submit" value="Upload">
+            </form>
+            <form method="post" action="/{{ id }}/process" style="width: 100%; ">
+                <div class="big_upload">
+                    <input type="checkbox" id="with_odm" name="with_odm" value="odm">
+                    <label for="with_odm"> Calc ODM orthophoto | </label>
+                    <input type="checkbox" id="ai_detection" name="ai_detection" value="ai">
+                    <label for="ai_detection"> Use AI object detection | </label>
+                    <select name="map resolution" id="map_res">
+                        <option value="low">low</option>
+                        <option value="med">medium</option>
+                        <option selected="selected" value="high">high</option>
+                        <option value="ultra">ultra</option>
+                    </select>
+                    <label for="map_res"> Map resolution </label>
+                </div>
+                {% if not file_names %}
+                <input class="big_button" type="submit" value="Process" disabled>
+                {% else %}
+                <input class="big_button" type="submit" value="Process">
+                {% endif %}
+            </form>
+<!--            <form method="post" action="/{{ id }}/buildMap"><input class="big_button" value="makemap" type="submit"></form>-->
+
+            <p>
+                {% with messages = get_flashed_messages() %}
+                {% if messages %}
+            <ul class=flashes>
+                {% for message in messages %}
+                <li>{{ message }}</li>
+                {% endfor %}
+            </ul>
+                {% endif %}
+                {% endwith %}
+            </p>
+            {% if processing %}
+            <div style="width: 100%;">
+                <p>Preprocessing</p>
+                <div class="Progress">
+                    <div id="myBar_a"></div>
+                </div>
+                <p>Mapping</p>
+                <div class="Progress">
+                    <div id="myBar_b"></div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+
+        {% if file_names %}
+        <div>
+            {% include 'photoViewer.html' %}
+        </div>
+        {% endif %}
+
+
+        <script>
+
+        </script>
+    </div>
+
+    <div></div>
+{% include 'footer.html' %}
+</body>
+<script>
+    {% if processing %}
+    console.log("next checking progess");
+    //check_progress({{ id }}, 'progress_bar');
+    var intervalID = window.setInterval(check_progress, 1000);
+    check_progress({{ id }});
+    {% endif %}
+    $('descriptionText').contentEditable = "false";
+    </script>
+</html>

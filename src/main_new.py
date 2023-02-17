@@ -1,5 +1,6 @@
 import json
 import datetime
+from argparse import Namespace
 
 from project_manager import ProjectManager
 from mapper_thread import MapperThread
@@ -45,7 +46,7 @@ project_manager = ProjectManager(path_to_images)
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-def render_standard_report(report_id, thread = None):
+def render_standard_report(report_id, thread = None, template = "concept.html"):
     #check if process is running and if it is only preprocessing or calculating map
     data = project_manager.get_project(report_id)['data']
     flight_data = data["flight_data"]
@@ -59,6 +60,15 @@ def render_standard_report(report_id, thread = None):
     if file_names_ir != []:
         has_ir = True
     maps = data["maps"]
+    detections_path = ""
+    try:
+        detections_path = data["detections"]
+    except:
+        pass
+    if detections_path != "":
+        detections = json.load(open("./static/"+detections_path))
+    else:
+        detections = None
     message = None
     processing = False
     for thread in threads:
@@ -73,10 +83,10 @@ def render_standard_report(report_id, thread = None):
     project = {"id": report_id, "name": project_manager.get_project_name(report_id),
                "description": project_manager.get_project_description(report_id),
                'creation_time': project_manager.get_project_creation_time(report_id)}
-    return render_template('concept.html', id=report_id, file_names=file_names, file_names_ir=file_names_ir,
+    return render_template(template, id=report_id, file_names=file_names, file_names_ir=file_names_ir,
                            panos=panos,has_ir=has_ir, flight_data=flight_data,
                            camera_specs=camera_specs, weather=weather, maps=maps, project=project, message=message,
-                           processing=processing, gradient_lut=gradient_lut,ir_settings=ir_settings)
+                           processing=processing, gradient_lut=gradient_lut,ir_settings=ir_settings, detections=detections)
 
 
 @app.route('/')
@@ -101,6 +111,8 @@ def upload_form(report_id):
     print("upload_form" + str(report_id))
     if(project_manager.has_project(report_id)):
         print("Directory exists")
+        if not project_manager.get_project(report_id)['data']['flight_data']:
+            return render_standard_report(report_id, template='startProcessing.html')
         return render_standard_report(report_id)
     else:
         projects_dict_list = project_manager.get_projects()
@@ -130,6 +142,8 @@ def upload_image(report_id):
     file_names = project_manager.update_file_names(report_id, file_names)
     print(file_names)
     project = {"id": report_id, "name": project_manager.get_project_name(report_id), "description": project_manager.get_project_description(report_id)}
+    if not project_manager.get_project(report_id)['data']['flight_data']:
+        return render_standard_report(report_id, template='startProcessing.html')
     return render_standard_report(report_id)
     # return render_template('concept.html', id=report_id, file_names=file_names, flight_data=flight_data, camera_specs=camera_specs,
     #                        weather=weather, map=map, project=project)
@@ -211,6 +225,7 @@ def send_next_map(report_id, map_index):
             maps_done = thread.get_maps_done()
             if maps_done[map_index]:
                 map = thread.get_maps()[map_index]
+                project_manager.update_maps(report_id, thread.get_maps())
                 #map["image_coordinates_json"] = jsonify(map["image_coordinates"])
                 if map_index == len(maps_done) - 1:
                     threads.remove(thread)
@@ -264,7 +279,6 @@ def check_preprocess_status(report_id):
 
 
 
-
 @app.route('/display/<filename>')
 def display_image(filename):
     # print('display_image filename: ' + filename)
@@ -291,6 +305,14 @@ def stop_server():
     # os._exit(0)
     os.kill(os.getpid(), signal.SIGINT)
 
+def run_image_detection(reprt_id):
+    print("run_image_detection")
+    image_list = project_manager.get_file_names_rgb(reprt_id)
+    namespace_obj = Namespace(inputfolder=None, extensions=['.jpg', '.jpeg', '.png', '.JPG', '.JEPG', '.PNG'],
+                              pattern='*', include_subdirs=True, batch_size=1, img=None, out_file=None)
+    handler = DataHandler(image_list)
+
+
 if __name__ == '__main__':
     start = datetime.datetime.now().replace(microsecond=0)
     project_manager.initiate_project_list()
@@ -312,7 +334,7 @@ if __name__ == '__main__':
     #   DONE map im ordner speichern und korrekt laden
     #   Maus in Gallerie bem Hovern zur Hand machen und scroll to einabuen
     # Bisschen besseres Feedback für den User (beim Mapping Balken)
-    # Beschreibung bearbeitbar machen
+    #   Beschreibung bearbeitbar machen
     #   _NEXT_ Fade Slider in Map einbauen
     #   _NEXT_ beim fenster resize neu magnify aufrufen
     #   _NEXT_ Temperatur anzeigen
@@ -347,9 +369,13 @@ if __name__ == '__main__':
     #TODO allgemein
     # Report mit nur IR Bildern auch als solche verarbeiten/ ermöglichen
     # Wetter Daten aus der Vergangenheit abrufen können
+    # Überall wo multiprocessing pool genutzt wird, vorher schauen, wie viel threads verfügbar sind
+    # nach aufruf von start den browser öffnen
+    # start shell script für linux
 
     #TODO Bilderkennung
     # von Julien den Code aus EDRZ einabauen
+
 
 
 #Kill Process on port:
