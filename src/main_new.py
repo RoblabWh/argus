@@ -280,7 +280,7 @@ def check_preprocess_status(report_id):
     return str(progress_preprocessing) + ";" + str(progress_mapping) + ";" + str(redirect) + ";" + str(maps_done)
 
 
-@app.route("/run_detection/<int:report_id>", methods=['POST'])
+@app.route("/run_detection/<int:report_id>", methods=['GET', 'POST'])
 def run_detection(report_id):
     numbr_of_models = 2
     models_setting = request.form.get('model_options')
@@ -290,9 +290,10 @@ def run_detection(report_id):
         numbr_of_models = 3
 
     detect_objects(numbr_of_models, report_id)
+    detections = json.load(open(project_manager.get_annotation_file_path(report_id)))
 
     # return render_standard_report(report_id)
-    return "success"
+    return detections
 
 def detect_objects(numbr_of_models, report_id):
     networks_weights_folder = "./detection/model_weights"
@@ -351,12 +352,7 @@ def stop_server():
     # os._exit(0)
     os.kill(os.getpid(), signal.SIGINT)
 
-def run_image_detection(reprt_id):
-    print("run_image_detection")
-    image_list = project_manager.get_file_names_rgb(reprt_id)
-    namespace_obj = Namespace(inputfolder=None, extensions=['.jpg', '.jpeg', '.png', '.JPG', '.JEPG', '.PNG'],
-                              pattern='*', include_subdirs=True, batch_size=1, img=None, out_file=None)
-    handler = DataHandler(image_list)
+
 
 
 if __name__ == '__main__':

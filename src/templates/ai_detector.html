@@ -31,6 +31,15 @@
         }
         {% endfor %}
 
+        function showTableByCategory(category) {
+            var x = document.getElementById("table" + category);
+            if (x.style.display === "none") {
+                x.style.display = "inline-table";
+            } else {
+                x.style.display = "none";
+            }
+        }
+
         function showImageByFileName(fileName) {
             console.log("galleryImage" + fileName);
             var x = document.getElementById("galleryImage" + fileName);
@@ -41,7 +50,10 @@
             var x = document.getElementById("ai_model_options");
             var selectedValue = x.options[x.selectedIndex].value;
             console.log(selectedValue);
-            $.post("/run_detection/{{ id }}", {model_options: selectedValue});
+            $.post("/run_detection/{{ id }}", {model_options: selectedValue}, function(data){
+                console.log("Data: " + data );
+                generateDetectionTable(data);
+            });
         }
 
         function generateDetectionTable(detectionData) {
@@ -50,24 +62,88 @@
             if (x === null) {
                 //create detectionTable
                 var detectionTableContainer = document.getElementById("detectionTableContainer");
-                var detectionTable = document.createElement("table");
-                detectionTable.id = "detectionTable";
-                detectionTableContainer.appendChild(detectionTable);
+                var tbl = document.createElement("table");
+                tbl.id = "detectionTable";
+                detectionTableContainer.appendChild(tbl);
+
                 //create header
-                var header = document.createElement("tr");
-                var headerCategory = document.createElement("th");
-                headerCategory.innerHTML = "Category";
-                header.appendChild(headerCategory);
-                var headerFindings = document.createElement("th");
-                headerFindings.innerHTML = "Findings";
-                header.appendChild(headerFindings);
-                var headerLowestConfidence = document.createElement("th");
-                headerLowestConfidence.innerHTML = "lowest confidence";
-                header.appendChild(headerLowestConfidence);
-                var headerImages = document.createElement("th");
-                headerImages.innerHTML = "images";
-                header.appendChild(headerImages);
-                detectionTable.appendChild(header);
+                var header = tbl.insertRow();
+                //create header cells for "category", "findings", "lowest confidence" and "images"
+                var headings = ["Category", "Findings", "Lowest Confidence", "Images"];
+                for (let i = 0; i < headings.length; i++){
+                    var h1 = document.createElement('th');
+                    h1.innerHTML = headings[i];
+                    header.appendChild(h1);
+                }
+
+
+                //for every "category" in detection data create a row
+                var categories = detectionData["categories"];
+                for (let i = 0; i < categories.length; i++){
+                    var category = categories[i];
+                    var row = tbl.insertRow();
+
+                    subHeader = document.createElement('th');
+                    subHeader.innerHTML = category.name;
+                    row.append(subHeader);
+                    row.insertCell().innerHTML=category.sum;
+                    var a = document.createElement('a');
+                    if(category.sum > 0){
+                        row.insertCell().innerHTML=category.lowest_score;
+                        a.innerHTML = "&#x00A0; show &#x25BE; &#x00A0;";
+                        a.setAttribute("class", "tableButton");
+                    }else{
+                        row.insertCell().innerHTML="-";
+                        a.innerHTML = "no images with object found";
+                    }
+                    row.insertCell().appendChild(a);
+
+
+                    //create a new table in the next row that shows all the image names of the category
+                    var expandableRow = tbl.insertRow();
+                    var subTableCell = expandableRow.insertCell();
+                    subTableCell.setAttribute("colspan", "4");
+                    var subTable = document.createElement("table");
+
+                    subTable.id = "table" + category.name;
+                    subTable.style.display = "none";
+
+                    var subTableHeader = subTable.insertRow();
+                    var subHeadings = ["Image Name", "Number of detected objects"];
+                    for (let j = 0; j < subHeadings.length; j++){
+                        var h1 = document.createElement('th');
+                        h1.innerHTML = subHeadings[j];
+                        subTableHeader.appendChild(h1);
+                    }
+
+                    //loop over all images in detectionData and add them to the table if the category matches
+                    var images = detectionData["images"];
+                    for (let j = 0; j < images.length; j++){
+                        var image = images[j];
+                        if (image.sum[i] > 0){
+                            var subTableRow = subTable.insertRow();
+                            var lineHeading = document.createElement('th');
+                            lineHeading.innerHTML = image.file_name;
+                            subTableRow.append(lineHeading);
+
+                            subTableRow.insertCell().innerHTML=image.sum[i];
+                            subTableRow.cells[0].setAttribute("class", "tableHyperlink");
+                            subTableRow.cells[0].onclick = (function(opt) {return function(){
+                                showImageByFileName(opt);
+                                };
+                            })(image.file_name);
+                        }
+                    }
+
+                    subTableCell.appendChild(subTable);
+
+                    if(category.sum > 0){
+                        row.onclick = (function(opt) {return function(){
+                            showTableByCategory(opt)
+                            };
+                        })(category.name);
+                    }
+                }
             }
         }
     </script>
@@ -86,46 +162,51 @@
         <button class="big_button" onclick="runAIDetection()">Run AI Detection</button>
         {% endif %}
     </div>
-    {% if detections %}
     <div id="detectionTableContainer">
-        <table id="detectionTable">
-            <tr>
-                <th>Category</th>
-                <th>Findings</th>
-                <th>lowest confidence</th>
-                <th>images</th>
-            </tr>
-            {% for category in detections.categories %}
+        <!--    {% if detections %}-->
+<!--        <table id="detectionTable">-->
+<!--            <tr>-->
+<!--                <th>Category</th>-->
+<!--                <th>Findings</th>-->
+<!--                <th>lowest confidence</th>-->
+<!--                <th>images</th>-->
+<!--            </tr>-->
+<!--            {% for category in detections.categories %}-->
 
-            <tr onclick="showTable{{category.name}}()">
-                <th>{{ category.name }}</th>
-                <td>{{ category.sum }}</td>
-                <td>{{ category.lowest_score | round(3)}}</td>
-                <td> <a class="tableButton"> &nbsp; &#x25BE; &nbsp; </a></td>
-            </tr>
-            <tr>
-                <td colspan="4">
-                    <table id="table{{category.name}}" style="display:none; width: 100%">
-                        <tr>
-                            <th>Image</th>
-                            <th>Number of objects</th>
-                        </tr>
-                        {% set outer_loop = loop %}
-                        {% for image in detections.images %}
-                        {% if image.sum[outer_loop.index0] > 0 %}
-                        <tr>
-                            <td> <a class="tableHyperlink" onclick="showImageByFileName('{{ image.file_name }}')">{{ image.file_name }} </a> </td>
-                            <td>{{ image.sum[outer_loop.index0] }}</td>
-                        </tr>
-                        {% endif %}
-                        {% endfor %}
-                    </table>
-                </td>
-            </tr>
+<!--            <tr onclick="showTable{{category.name}}()">-->
+<!--                <th>{{ category.name }}</th>-->
+<!--                <td>{{ category.sum }}</td>-->
+<!--                <td>{{ category.lowest_score | round(3)}}</td>-->
+<!--                <td> <a class="tableButton"> &nbsp; &#x25BE; &nbsp; </a></td>-->
+<!--            </tr>-->
+<!--            <tr>-->
+<!--                <td colspan="4">-->
+<!--                    <table id="table{{category.name}}" style="display:none; width: 100%">-->
+<!--                        <tr>-->
+<!--                            <th>Image</th>-->
+<!--                            <th>Number of objects</th>-->
+<!--                        </tr>-->
+<!--                        {% set outer_loop = loop %}-->
+<!--                        {% for image in detections.images %}-->
+<!--                        {% if image.sum[outer_loop.index0] > 0 %}-->
+<!--                        <tr>-->
+<!--                            <td> <a class="tableHyperlink" onclick="showImageByFileName('{{ image.file_name }}')">{{ image.file_name }} </a> </td>-->
+<!--                            <td>{{ image.sum[outer_loop.index0] }}</td>-->
+<!--                        </tr>-->
+<!--                        {% endif %}-->
+<!--                        {% endfor %}-->
+<!--                    </table>-->
+<!--                </td>-->
+<!--            </tr>-->
 
-            {% endfor %}
-            {% endif %}
-        </table>
+<!--            {% endfor %}-->
+<!--            {% endif %}-->
+<!--        </table>-->
     </div>
+    <script>
+        {% if detections %}
+        //generateDetectionTable({{ detections | tojson }});
+        {% endif %}
+    </script>
 </body>
 </html>
