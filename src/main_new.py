@@ -4,6 +4,8 @@ from argparse import Namespace
 
 from project_manager import ProjectManager
 from mapper_thread import MapperThread
+from detection.datahandler import DataHandler
+from detection.InferenceEngine import InferenceEngine
 
 from flask import Flask, flash, request, redirect, url_for, render_template, jsonify
 import os
@@ -62,11 +64,11 @@ def render_standard_report(report_id, thread = None, template = "concept.html"):
     maps = data["maps"]
     detections_path = ""
     try:
-        detections_path = data["detections"]
+        detections_path = data["annotation_file_path"]
     except:
         pass
     if detections_path != "":
-        detections = json.load(open("./static/"+detections_path))
+        detections = json.load(open(detections_path))
     else:
         detections = None
     message = None
@@ -278,6 +280,50 @@ def check_preprocess_status(report_id):
     return str(progress_preprocessing) + ";" + str(progress_mapping) + ";" + str(redirect) + ";" + str(maps_done)
 
 
+@app.route("/run_detection/<int:report_id>", methods=['POST'])
+def run_detection(report_id):
+    numbr_of_models = 2
+    models_setting = request.form.get('model_options')
+    if models_setting == "all":
+        numbr_of_models = 5
+    elif models_setting == "medium":
+        numbr_of_models = 3
+
+    detect_objects(numbr_of_models, report_id)
+
+    # return render_standard_report(report_id)
+    return "success"
+
+def detect_objects(numbr_of_models, report_id):
+    networks_weights_folder = "./detection/model_weights"
+    weights_paths_list = []
+
+    weights_paths_list.append(networks_weights_folder + "/deformable_detr_twostage_refine_r50_16x2_50e_coco_fire_04")
+    weights_paths_list.append(networks_weights_folder + "/autoassign_r50_fpn_8x2_1x_coco_fire_0")
+    if numbr_of_models >= 3:
+        weights_paths_list.append(networks_weights_folder + "/tood_r101_fpn_dconv_c3-c5_mstrain_2x_coco_fire_5")
+        if numbr_of_models >= 4:
+            weights_paths_list.append(
+                networks_weights_folder + "/vfnet_x101_32x4d_fpn_mdconv_c3-c5_mstrain_2x_coco_fire_1")
+            if numbr_of_models >= 5:
+                weights_paths_list.append(networks_weights_folder + "/yolox_s_8x8_300e_coco_fire_300_4")
+
+    images_path_list = project_manager.get_file_names(report_id)
+    images_path_list = ["./static/" + path for path in images_path_list]
+    config_path = "detection/config/custom/config.py"
+    ann_path = project_manager.get_annotation_file_path(report_id)  # vom project manager geben lassen
+
+    data_handler = DataHandler(config_path, ann_path)
+    data_handler.set_image_paths(images_path_list, 2)
+    data_handler.create_empty_ann()
+
+    engine = InferenceEngine(network_folders=weights_paths_list)
+    results = engine.inference_all(data_handler, 0.3)
+    bboxes = data_handler.compare_results(results)
+    data_handler.create_coco()
+    # data_handler.save_images("result", bboxes, engine.models[0], 0.3)
+    data_handler.save_results_in_json(bboxes)
+    data_handler.structure_ann_by_images()
 
 @app.route('/display/<filename>')
 def display_image(filename):

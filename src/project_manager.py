@@ -228,3 +228,20 @@ class ProjectManager:
         ir_settings['ir_color_scheme'] = settings[2]
 
         self.update_ir_settings(report_id, ir_settings)
+
+    def get_annotation_file_path(self, report_id):
+        project = self.get_project(report_id)
+        path = ""
+        try:
+            path = project['data']['annotation_file_path']
+        except:
+            path = self.generate_new_annotation_file_path(report_id)
+
+        return path
+
+    def generate_new_annotation_file_path(self, report_id):
+        project = self.get_project(report_id)
+        path = self.projects_path + str(report_id) + "/detection_annotations.json"
+        project['data']['annotation_file_path'] = path
+        self.update_data_by_keyword(report_id, 'annotation_file_path', path)
+        return path

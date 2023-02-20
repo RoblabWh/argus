@@ -2,4 +2,5 @@ src/results
 src/env
 src/static/uploads
 data
+detection/model_weights
 

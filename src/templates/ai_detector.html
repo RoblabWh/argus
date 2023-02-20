@@ -36,6 +36,40 @@
             var x = document.getElementById("galleryImage" + fileName);
             x.click();
         }
+
+        function runAIDetection() {
+            var x = document.getElementById("ai_model_options");
+            var selectedValue = x.options[x.selectedIndex].value;
+            console.log(selectedValue);
+            $.post("/run_detection/{{ id }}", {model_options: selectedValue});
+        }
+
+        function generateDetectionTable(detectionData) {
+            //check if detectionTable exists
+            var x = document.getElementById("detectionTable");
+            if (x === null) {
+                //create detectionTable
+                var detectionTableContainer = document.getElementById("detectionTableContainer");
+                var detectionTable = document.createElement("table");
+                detectionTable.id = "detectionTable";
+                detectionTableContainer.appendChild(detectionTable);
+                //create header
+                var header = document.createElement("tr");
+                var headerCategory = document.createElement("th");
+                headerCategory.innerHTML = "Category";
+                header.appendChild(headerCategory);
+                var headerFindings = document.createElement("th");
+                headerFindings.innerHTML = "Findings";
+                header.appendChild(headerFindings);
+                var headerLowestConfidence = document.createElement("th");
+                headerLowestConfidence.innerHTML = "lowest confidence";
+                header.appendChild(headerLowestConfidence);
+                var headerImages = document.createElement("th");
+                headerImages.innerHTML = "images";
+                header.appendChild(headerImages);
+                detectionTable.appendChild(header);
+            }
+        }
     </script>
 </head>
 <body>
@@ -43,53 +77,55 @@
         <select name="Detection Quality" id="ai_model_options" style="margin: auto 0 auto 0">
                         <option value="fast">quick (only two models)</option>
                         <option value="medium">medium (more models, more potential detections)</option>
-                        <option selected="best" value="high">best (all models, but slowest)</option>
+                        <option selected="all" value="all">best (all models, but slowest)</option>
                     </select>
         <label for="ai_model_options" style="margin: auto auto auto 16px"> Detection Quality </label>
         {% if detections %}
-        <button class="big_button" onclick="run_ai_detection()">Re-Run AI Detection</button>
+        <button class="big_button" onclick="runAIDetection()">Re-Run AI Detection</button>
         {% else %}
-        <button class="big_button" onclick="run_ai_detection()">Run AI Detection</button>
+        <button class="big_button" onclick="runAIDetection()">Run AI Detection</button>
         {% endif %}
     </div>
     {% if detections %}
-    <table>
-        <tr>
-            <th>Category</th>
-            <th>Findings</th>
-            <th>lowest confidence</th>
-            <th>images</th>
-        </tr>
-        {% for category in detections.categories %}
+    <div id="detectionTableContainer">
+        <table id="detectionTable">
+            <tr>
+                <th>Category</th>
+                <th>Findings</th>
+                <th>lowest confidence</th>
+                <th>images</th>
+            </tr>
+            {% for category in detections.categories %}
 
-        <tr onclick="showTable{{category.name}}()">
-            <th>{{ category.name }}</th>
-            <td>{{ category.sum }}</td>
-            <td>{{ category.lowest_score }}</td>
-            <td> <a class="tableButton"> &nbsp; &#x25BE; &nbsp; </a></td>
-        </tr>
-        <tr>
-            <td colspan="4">
-                <table id="table{{category.name}}" style="display:none; width: 100%">
-                    <tr>
-                        <th>Image</th>
-                        <th>Number of objects</th>
-                    </tr>
-                    {% set outer_loop = loop %}
-                    {% for image in detections.images %}
-                    {% if image.sum[outer_loop.index0] > 0 %}
-                    <tr>
-                        <td> <a class="tableHyperlink" onclick="showImageByFileName('{{ image.file_name }}')">{{ image.file_name }} </a> </td>
-                        <td>{{ image.sum[outer_loop.index0] }}</td>
-                    </tr>
-                    {% endif %}
-                    {% endfor %}
-                </table>
-            </td>
-        </tr>
+            <tr onclick="showTable{{category.name}}()">
+                <th>{{ category.name }}</th>
+                <td>{{ category.sum }}</td>
+                <td>{{ category.lowest_score | round(3)}}</td>
+                <td> <a class="tableButton"> &nbsp; &#x25BE; &nbsp; </a></td>
+            </tr>
+            <tr>
+                <td colspan="4">
+                    <table id="table{{category.name}}" style="display:none; width: 100%">
+                        <tr>
+                            <th>Image</th>
+                            <th>Number of objects</th>
+                        </tr>
+                        {% set outer_loop = loop %}
+                        {% for image in detections.images %}
+                        {% if image.sum[outer_loop.index0] > 0 %}
+                        <tr>
+                            <td> <a class="tableHyperlink" onclick="showImageByFileName('{{ image.file_name }}')">{{ image.file_name }} </a> </td>
+                            <td>{{ image.sum[outer_loop.index0] }}</td>
+                        </tr>
+                        {% endif %}
+                        {% endfor %}
+                    </table>
+                </td>
+            </tr>
 
-        {% endfor %}
-        {% endif %}
-    </table>
+            {% endfor %}
+            {% endif %}
+        </table>
+    </div>
 </body>
 </html>
