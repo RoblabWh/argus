@@ -20,16 +20,7 @@
         }
     </style>
     <script>
-        {% for category in detections.categories %}
-        function showTable{{category.name}}() {
-            var x = document.getElementById("table{{category.name}}");
-            if (x.style.display === "none") {
-                x.style.display = "inline-table";
-            } else {
-                x.style.display = "none";
-            }
-        }
-        {% endfor %}
+        var detections = {{ detections | tojson }};
 
         function showTableByCategory(category) {
             var x = document.getElementById("table" + category);
@@ -44,6 +35,7 @@
             console.log("galleryImage" + fileName);
             var x = document.getElementById("galleryImage" + fileName);
             x.click();
+            drawAnnotationsOnImage(fileName);
         }
 
         function runAIDetection() {
@@ -53,6 +45,7 @@
             $.post("/run_detection/{{ id }}", {model_options: selectedValue}, function(data){
                 console.log("Data: " + data );
                 generateDetectionTable(data);
+                detections = data;
             });
         }
 
@@ -146,6 +139,51 @@
                 }
             }
         }
+
+        function getImageIndexByName(filename){
+            var images = detections["images"];
+            for (let i = 0; i < images.length; i++){
+                if (images[i].file_name === filename){
+                    return i;
+                }
+            }
+        }
+
+        function drawAnnotationsOnImage(filename){
+            var canvas = document.getElementById("canvas" + filename);
+            var ctx = canvas.getContext("2d");
+            var img = document.getElementById("baseImage" + filename);
+
+            //scale based on images source size and the current size of the image
+            var scale = img.width/ img.naturalWidth;
+
+            imageIndex = getImageIndexByName(filename);
+            annotationData = detections["annotations"][imageIndex];
+
+            //console.log("filename: " + filename);
+            //console.log("camvas id: " + canvas.id);
+            //console.log("imageIndex: " + imageIndex);
+            //console.log("annotationData: " + annotationData);
+
+            canvas.width = img.width;
+            canvas.height = img.height;
+
+            for (let i = 0; i < annotationData.length; i++){
+                var annotation = annotationData[i];
+                //if (annotation.image_id === imageIndex){
+                    var x, y, w, h;
+                    x = annotation.bbox[0] * scale;
+                    y = annotation.bbox[1] * scale;
+                    w = annotation.bbox[2] * scale;
+                    h = annotation.bbox[3] * scale;
+                    ctx.lineWidth = 4;
+                    ctx.strokeStyle = "red";
+                    //ctx.clearRect(x, y, w, h);
+                    ctx.strokeRect(x, y, w, h);
+
+                //}
+            }
+        }
     </script>
 </head>
 <body>
@@ -163,49 +201,10 @@
         {% endif %}
     </div>
     <div id="detectionTableContainer">
-        <!--    {% if detections %}-->
-<!--        <table id="detectionTable">-->
-<!--            <tr>-->
-<!--                <th>Category</th>-->
-<!--                <th>Findings</th>-->
-<!--                <th>lowest confidence</th>-->
-<!--                <th>images</th>-->
-<!--            </tr>-->
-<!--            {% for category in detections.categories %}-->
-
-<!--            <tr onclick="showTable{{category.name}}()">-->
-<!--                <th>{{ category.name }}</th>-->
-<!--                <td>{{ category.sum }}</td>-->
-<!--                <td>{{ category.lowest_score | round(3)}}</td>-->
-<!--                <td> <a class="tableButton"> &nbsp; &#x25BE; &nbsp; </a></td>-->
-<!--            </tr>-->
-<!--            <tr>-->
-<!--                <td colspan="4">-->
-<!--                    <table id="table{{category.name}}" style="display:none; width: 100%">-->
-<!--                        <tr>-->
-<!--                            <th>Image</th>-->
-<!--                            <th>Number of objects</th>-->
-<!--                        </tr>-->
-<!--                        {% set outer_loop = loop %}-->
-<!--                        {% for image in detections.images %}-->
-<!--                        {% if image.sum[outer_loop.index0] > 0 %}-->
-<!--                        <tr>-->
-<!--                            <td> <a class="tableHyperlink" onclick="showImageByFileName('{{ image.file_name }}')">{{ image.file_name }} </a> </td>-->
-<!--                            <td>{{ image.sum[outer_loop.index0] }}</td>-->
-<!--                        </tr>-->
-<!--                        {% endif %}-->
-<!--                        {% endfor %}-->
-<!--                    </table>-->
-<!--                </td>-->
-<!--            </tr>-->
-
-<!--            {% endfor %}-->
-<!--            {% endif %}-->
-<!--        </table>-->
     </div>
     <script>
         {% if detections %}
-        //generateDetectionTable({{ detections | tojson }});
+        generateDetectionTable({{ detections | tojson }});
         {% endif %}
     </script>
 </body>

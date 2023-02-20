@@ -43,7 +43,7 @@
 
     .img-magnifier-glass {
       position: absolute;
-      z-index: 3;
+      z-index: 300;
       border: 3px solid #000;
       border-radius: 4px;
       cursor: none;
@@ -61,6 +61,7 @@
     a:hover .img-magnifier-glass {
       opacity:1;
       pointer-events:initial;
+
     }
 
 
@@ -515,16 +516,21 @@
 
     // magnify hover
     function magnify(imgNbr, zoom) {
-      var img, glass, w, h, bw;
+      var img, glass, w, h, bw, annotationCanvas;
       demagnify();
       //img = document.getElementById(imgID);
       img = document.getElementsByClassName("mySlides")[imgNbr].getElementsByTagName('a')[1].getElementsByTagName('img')[0];
+      annotationCanvas = document.getElementsByClassName("mySlides")[imgNbr].getElementsByTagName('a')[2].getElementsByTagName('canvas')[0];
+      //substring after finding canvas
+      //realImgID ="image" + img.id.substring(img.id.indexOf("canvas")+6);
+      //console.log("Real Image ID: " + realImgID);
+      //realImg = document.getElementById(realImgID);
       /*create magnifier glass:*/
       glass = document.createElement("DIV");
       glass.setAttribute("class", "img-magnifier-glass");
       glass.setAttribute("id", "magnifying-glass-id-for-deleting");
       /*insert magnifier glass:*/
-      img.parentElement.insertBefore(glass, img);
+      annotationCanvas.parentElement.insertBefore(glass, annotationCanvas);
       /*set background properties for the magnifier glass:*/
       glass.style.backgroundImage = "url('" + img.src + "')";
       glass.style.backgroundRepeat = "no-repeat";
@@ -535,9 +541,11 @@
       h = glass.offsetHeight / 2;
       /*execute a function when someone moves the magnifier glass over the image:*/
       glass.addEventListener("mousemove", moveMagnifier);
+      annotationCanvas.addEventListener("mousemove", moveMagnifier);
       img.addEventListener("mousemove", moveMagnifier);
       /*and also for touch screens:*/
       glass.addEventListener("touchmove", moveMagnifier);
+        annotationCanvas.addEventListener("touchmove", moveMagnifier);
       img.addEventListener("touchmove", moveMagnifier);
       function moveMagnifier(e) {
         var pos, x, y;
@@ -609,7 +617,14 @@
                 <div style="margin-bottom:7%;"></div>
                 <div style="position: relative;">
                     <div style="position: absolute; top: -10%; left: 0px;">
-                        <a><img src="{{ url_for('static', filename=filename) }}" style="width:100%; height: 100%;"></a>
+                        <a>
+                            <img id="baseImage{{filename.split('/')[-1]}}" src="{{ url_for('static', filename=filename) }}" style="width:100%; height: 100%;">
+                        </a>
+                    </div>
+                    <div style="position: absolute; top: -10%; left: 0px;">
+                        <a>
+                            <canvas id="canvas{{filename.split('/')[-1]}}" class="annotaionsCanvas" width="100%" height="100%;"></canvas>
+                        </a>
                     </div>
                     <div class="ir-overlay" style="position: relative; top: 0; left: 10%; width:80%; height:80%">
         <!--                <canvas style="width:100%; height: 100%;" id="canvas{{loop.index0}}"></canvas>-->
@@ -621,7 +636,19 @@
                 <div style="margin-bottom: 10%;"></div>
 
                 {% else %}
-                <a><img src="{{ url_for('static', filename=filename) }}" style="width:100%; height: 100%;"></a>
+                <div style="position: inherent;">
+                    <div style="position: relative; top: 0; left: 0;">
+                        <a>
+                            <img id="baseImage{filename.split('/')[-1]}}"  src="{{ url_for('static', filename=filename) }}" style="width:100%; height: 100%;">
+                        </a>
+                    </div>
+                    <div style="position: absolute; top: 18px; left: 0;">
+                        <a>
+                            <canvas id="canvas{{filename.split('/')[-1]}}" class="annotaionsCanvas" width="100%" height="100%;"></canvas>
+                        </a>
+                    </div>
+
+                </div>
                 {% endif %}
             </div>
             {% endfor %}
@@ -883,6 +910,9 @@
 
 
     })
+
+
+
     {% if has_ir %}
 
 
@@ -918,7 +948,7 @@
     }
 
      function deactivateIR() {
-        displayingIR = true;
+        displayingIR = false;
         $('#irOverlayCheckbox').prop('checked', false);
         $('#magnifierCheckbox').prop('checked', true);
         $('.setting-fade').map(function () {
@@ -1024,6 +1054,40 @@
     {% endif %}
 
 
+    {% if file_names %}
+    {% for filename in file_names %}
+    canvas{{loop.index0}} = document.getElementById('canvas{{filename.split('/')[-1]}}');
+    context{{loop.index0}} = canvas{{loop.index0}}.getContext('2d');
+    var img{{loop.index0}} = new Image();
+    img{{loop.index0}}.src = "{{ url_for('static', filename=filename) }}";
+    img{{loop.index0}}.id = "image{{filename.split('/')[-1]}}";
+    img{{loop.index0}}.onload = () => {
+        //width of div of class container
+        var body_width = document.getElementsByClassName("container")[0].offsetWidth;
+        canvas{{loop.index0}}.width = body_width;
+        canvas{{loop.index0}}.height = img{{loop.index0}}.height * ( body_width/ img{{loop.index0}}.width);
+    }
+
+    {% endfor %}
+    {% endif %}
+
+    function resizeCanvas(){
+        //get all objects with class "annotaionsCanvas"
+        var canvases = document.getElementsByClassName("annotaionsCanvas");
+        var img = document.getElementById("baseImage" + canvases[slideIndex].id.split("canvas")[1]);
+
+        console.log("baseImage" + canvases[0].id.split("canvas")[1]);
+
+        for (var i = 0; i < canvases.length; i++) {
+            var canvas = canvases[i];
+            canvas.width = img.width;
+            canvas.height = img.height;
+        }
+
+        //redraw the current canvas by calling drawAnnotationsOnImage(filename)
+
+        drawAnnotationsOnImage(img.id.split("baseImage")[1]);
+    }
 
 
 
