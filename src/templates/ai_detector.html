@@ -35,6 +35,7 @@
             console.log("galleryImage" + fileName);
             var x = document.getElementById("galleryImage" + fileName);
             x.click();
+            generateAnnotationsLayerTableForImage(fileName);
             drawAnnotationsOnImage(fileName);
         }
 
@@ -45,6 +46,7 @@
             $.post("/run_detection/{{ id }}", {model_options: selectedValue}, function(data){
                 console.log("Data: " + data );
                 generateDetectionTable(data);
+                generateAnnotationSettings(data);
                 detections = data;
             });
         }
@@ -140,6 +142,110 @@
             }
         }
 
+        function generateAnnotationSettings(detectionData){
+            //check if slideshow-settings-annotaions-tablink exists
+            var x = document.getElementById("slideshow-settings-annotaions-tablink");
+            if (x === null) {
+                //create slideshow-settings-annotaions-tablink
+                var tabsDiv = document.getElementById("slideshow-settings-tabs");
+                var tabLink = document.createElement("button");
+                tabLink.id = "slideshow-settings-annotaions-tablink";
+                tabLink.setAttribute("class", "tablink-vertical");
+                tabLink.innerHTML = "AI-Detections";
+                //call openSettings(event,'slideshow-settings-Annotations')
+                tabLink.onclick = (function() {return function(){
+                    openSettings(event,'slideshow-settings-Annotations')
+                    };
+                });
+                tabsDiv.appendChild(tabLink);
+            }
+        }
+
+        function generateAnnotationsLayerTableForImage(fileName){
+            var tableContainer = document.getElementById("layer-table-container");
+            tableContainer.innerHTML = "";
+            var tbl = document.createElement("table");
+            //create a headline with the titles "show", "Layer", "total found objects", "displayed objects", "threshold"
+            var header = tbl.insertRow();
+            var headings = ["Show", "Object", "Color","Total found objects", "Displayed objects", "Threshold"];
+            for (let i = 0; i < headings.length; i++){
+                var h1 = document.createElement('th');
+                h1.innerHTML = headings[i];
+                header.appendChild(h1);
+            }
+            //last header cell is empty
+            header.insertCell();
+
+            var annotations = detections["annotations"][getImageIndexByName(fileName)];
+            var categories = detections["categories"];
+
+            //create a row for every category
+            for(let i = 0; i < categories.length; i++){
+                var row = tbl.insertRow();
+                var category = categories[i];
+                var toalFoundObjects = 0;
+                var displayedObjects = 0;
+
+                for(let j = 0; j < annotations.length; j++){
+                    var annotation = annotations[j];
+                    if(annotation.category_id == category.id){
+                        toalFoundObjects++;
+                        displayedObjects++;
+                    }
+                }
+
+                var lableSwitch = document.createElement("label");
+                lableSwitch.className = "switch";
+                var span = document.createElement("span");
+                span.className = "switch-slider round";
+                var checkbox = document.createElement("input");
+                checkbox.type = "checkbox";
+                checkbox.checked = true;
+                checkbox.id = "checkbox" + category.name;
+                checkbox.onclick = (function(opt) {return function(){
+                    toggleLayer(opt)
+                    };
+                })(category.name);
+                lableSwitch.appendChild(checkbox);
+                lableSwitch.appendChild(span);
+
+                row.insertCell().appendChild(lableSwitch);
+                row.insertCell().innerHTML = category.name;
+
+                var color = document.createElement("input");
+                color.type = "color";
+                color.value = category.color;
+                color.id = "color" + category.name;
+                color.className = "setting_disabler";
+                color.oninput = (function(opt) {return function(){
+                    changeColor(opt)
+                    };
+                })(category.name);
+                row.insertCell().appendChild(color);
+
+                row.insertCell().innerHTML = toalFoundObjects
+                row.insertCell().innerHTML = displayedObjects;
+                var slider = document.createElement("input");
+                slider.type = "range";
+                slider.min = 0.3;
+                slider.max = 1;
+                slider.step = 0.01;
+                slider.value = 0.3;
+                slider.id = "slider" + category.name;
+                slider.className = "slider setting_disabler";
+                slider.oninput = (function(opt) {return function(){
+                    changeThreshold(opt)
+                    };
+                })(category.name);
+                row.insertCell().appendChild(slider);
+                var sliderValue = document.createElement("span");
+                sliderValue.id = "sliderValue" + category.name;
+                sliderValue.innerHTML = slider.value;
+                row.insertCell().appendChild(sliderValue);
+            }
+            tableContainer.appendChild(tbl);
+        }
+
         function getImageIndexByName(filename){
             var images = detections["images"];
             for (let i = 0; i < images.length; i++){
@@ -203,9 +309,7 @@
     <div id="detectionTableContainer">
     </div>
     <script>
-        {% if detections %}
-        generateDetectionTable({{ detections | tojson }});
-        {% endif %}
+
     </script>
 </body>
 </html>

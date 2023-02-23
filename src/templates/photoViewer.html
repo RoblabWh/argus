@@ -156,7 +156,7 @@
       width: 100%;
       height: 12px;
       border-radius: 5px;
-      background: lightgrey;
+      background: white;
       outline: none;
       opacity: 0.7;
       -webkit-transition: .2s;
@@ -196,8 +196,9 @@
         margin: 0px;
         padding: 0px;
         list-style: none;
-
     }
+
+
     ul.tabs li{
         background: rgb(56, 152, 236);
         color: white;
@@ -205,6 +206,11 @@
         padding: 10px 15px;
         cursor: pointer;
         font-weight: bold;
+        transition: all 0.3s ease;
+    }
+
+    ul.tabs li:hover{
+        color: black;
     }
 
     #tab-link-1{
@@ -268,7 +274,7 @@
     }
 
     .slideshow-settings-item {
-        width: 90%;
+        overflow: hidden;
         justify-self: start;
         margin: 0 0 auto;
         display: grid;
@@ -282,10 +288,19 @@
             "e0 e1 e2 e3";
         gap: 5px 5px;
         margin-top: 0px;
-        border: lightgrey 1px solid;
-        padding: 10px;
-        border-bottom-left-radius: 6px;
-        border-bottom-right-radius: 6px;
+        padding: 16px;
+    }
+
+    .slideshow-settings-item-unstructured {
+        overflow: hidden;
+        justify-self: start;
+        margin: 0 0 auto;
+        margin-top: 0px;
+        padding: 16px;
+    }
+
+    .slideshow-settings-item table {
+        oveflow: hidden;
     }
 
     .slideshow-settings-title{
@@ -369,6 +384,95 @@
     .switch-slider.round:before {
       border-radius: 50%;
     }
+
+
+    .tab-vertical {
+        float: left;
+        width: 20%;
+        margin-right: 8px;
+    }
+
+    /* Style the buttons inside the tab */
+    .tab-vertical button {
+        display: block;
+        background-color: rgb(56, 152, 236);
+        color: white;
+        padding: 12px 6px;
+        margin-top: 0px;
+        margin-bottom: 10px;
+        width: 100%;
+        border-style: solid;
+        border-width: 2px;
+        border-color: rgb(56, 152, 236);
+        outline: none;
+        text-align: left;
+        cursor: pointer;
+        transition: 0.3s;
+        font-size: 17px;
+        border-radius: 6px;
+    }
+
+    /* Change background color of buttons on hover */
+    .tab-vertical button:hover {
+        font-weight: bold;
+        color: black;
+    }
+
+    /* Create an active/current "tab button" class */
+    .tab-vertical button.active {
+        background-color: lightgrey;
+        color: black;
+        font-weight: bold;
+        border-style: solid;
+        border-width: 2px;
+        border-color: rgb(56, 152, 236);
+    }
+
+    /* Style the tab content */
+    .tabcontent-vertical {
+        padding: 0px 12px;
+        background-color: lightgrey;
+        border-radius: 6px;
+        float: none;
+        overflow: hidden;
+        border-left: none;
+        min-height: 120px;
+        width: 100%;
+        margin-bottom: auto;
+    }
+
+    #slideshow-settings-tabs{
+        display: flex;
+        width: 100%;
+        box-sizing: border-box;
+        margin-bottom: 20px;
+    }
+
+   #layer-table-container{
+        background-color: white;//rgb(66,66,66);
+        color: black;
+        border-radius: 6px;
+        padding: 6px;
+    }
+
+    #layer-table-container td, th {
+        border: 0px solid;
+        text-align: left;
+        padding: 8px;
+    }
+
+    #layer-table-container tr {
+        background-color: rgb(230,230,230)
+    }
+    #layer-table-container tr:nth-child(even) {
+        background-color: rgb(230,230,230);
+    }
+    #layer-table-container tr:nth-child(1) {
+        background-color: transparent;
+        border-bottom: 2px solid lightgrey;
+    }
+
+
 
 </style>
 
@@ -600,6 +704,19 @@
         }
       }
 
+    function openSettings(evt, divName) {
+      var i, tabcontent, tablinks;
+      tabcontent = document.getElementsByClassName("tabcontent-vertical");
+      for (i = 0; i < tabcontent.length; i++) {
+        tabcontent[i].style.display = "none";
+      }
+      tablinks = document.getElementsByClassName("tablink-vertical");
+      for (i = 0; i < tablinks.length; i++) {
+        tablinks[i].className = tablinks[i].className.replace(" active", "");
+      }
+      document.getElementById(divName).style.display = "block";
+      evt.currentTarget.className += " active";
+    }
 
 </script>
 </head>
@@ -656,86 +773,164 @@
 
         </div>
 
-        <div class="slideshow-settings-container">
-            <h3 class="slideshow-settings-title">Slideshow Settings RGB</h3>
-            {% if has_ir %}
-            <h3 class="slideshow-settings-title">Slideshow Settings IR</h3>
-            {% else %}
-            <h3>   </h3>
-            {% endif %}
-            <div id="slideshow-settings-RGB" class="slideshow-settings-item">
-                <div style="grid-area: a0;">
-                    <label>
-                        <label class="switch">
-                            <input type="checkbox" id="magnifierCheckbox" checked="checked">
-                            <span class="switch-slider round"></span>
-                        </label>
-                      Magnifier
-                    </label>
-                </div>
-                <div style="grid-area: b0;">
-                    <input type="range" min="10" max="100" value="50" class="slider" id="zoomRange" style="width:100%;">
-                </div>
-                <div style="grid-area: b1;">
-                     <label for="zoomRange" >Zoom: <span id="zoomValue"></span></label>
-                </div>
-                <div style="grid-area: c0; display: inline-block;"></div>
-                <div style="grid-area: d0;"></div>
+        <div id="slideshow-settings-tabs">
+            <div class="tab-vertical">
+                <button class="tablink-vertical" onclick="openSettings(event, 'slideshow-settings-RGB')" id="defaultOpen">Magnifier</button>
+                {% if has_ir %}
+                <button class="tablink-vertical" onclick="openSettings(event,'slideshow-settings-IR')">IR-Overlay</button>
+                {% endif %}
+                {% if detections %}
+                <button id="slideshow-settings-annotaions-tablink" class="tablink-vertical" onclick="openSettings(event,'slideshow-settings-Annotations')">AI-Overlays</button>
+                {% endif %}
             </div>
-            {% if has_ir %}
-            <div id="slideshow-settings-IR" class="slideshow-settings-item">
-                <div style="grid-area: a0;">
-                    <label>
-                        <label class="switch">
-                            <input type="checkbox" id="irOverlayCheckbox">
-                            <span class="switch-slider round"></span>
+
+            <div id="slideshow-settings-RGB" class="tabcontent-vertical">
+                <div class="slideshow-settings-item">
+                    <div style="grid-area: a0;">
+                        <label>
+                            <label class="switch">
+                                <input type="checkbox" id="magnifierCheckbox" checked="checked">
+                                <span class="switch-slider round"></span>
+                            </label>
+                          Magnifier
                         </label>
-                      Infrared image overlay
-                    </label>
+                    </div>
+                    <div style="grid-area: b0;">
+                        <input type="range" min="10" max="100" value="50" class="slider" id="zoomRange" style="width:100%;">
+                    </div>
+                    <div style="grid-area: b1;">
+                         <label for="zoomRange" >Zoom: <span id="zoomValue"></span></label>
+                    </div>
+                    <div style="grid-area: c0; display: inline-block;"></div>
+                    <div style="grid-area: d0;"></div>
                 </div>
-                <div class="setting-fade" style="grid-area: b0;">
-                    <input type="range" min="10" max="100" value="100" class="slider setting-disabler" id="irOpacityRange" style="width:100%; grid-area: center">
-                </div>
-                <div class="setting-fade" style="grid-area: b1;">
-                    <label for="irOpacityRange" >Opacity: <span id="opacityValue"></span></label>
-                </div>
-                <div class="setting-fade" style="grid-area: c0;">
-                    <label>
-                        <label class="switch">
-                            <input class="setting-disabler" type="checkbox" id="temperatureCheckbox">
-                            <span class="switch-slider round"></span>
-                        </label>
-                        Read temperature
-                    </label>
-                </div>
-                <div class="setting-fade" style="grid-area: d0;">
-                    <select id="ir-palette-chooser" class="setting-disabler" style="width: 100%">
-                        <option value="grad-option1">white hot</option>
-                        <option value="grad-option2">Fulgurite</option>
-                        <option value="grad-option3">Iron Red</option>
-                        <option value="grad-option4">Hot Iron</option>
-                        <option value="grad-option5">Medical</option>
-                        <option value="grad-option6">Arctic</option>
-                        <option value="grad-option7">Rainbow 1</option>
-                        <option value="grad-option8">Rainbow 2</option>
-                        <option value="grad-option9">Tint</option>
-                        <option value="grad-option10">Black Hot</option>
-                    </select>
-                </div>
-                <div id="grad" class="setting-fade grad-option1" style="grid-area: d1;"></div>
-                <div class="setting-fade" style="grid-area: e0;">
-                    <input class="setting-disabler" type="number" id="minTemp" name="minTemp" min="-20" max="800" value="{{ ir_settings.ir_min_temp }}"
-                           style="width: 90%; padding; 0px: height:100%; border: 0px; border-radius: 4px;">
-                </div>
-                <div class="setting-fade" style="grid-area: e1;">min</div>
-                <div class="setting-fade" style="grid-area: e2;">
-                    <input class="setting-disabler" type="number" id="maxTemp" name=maxnTemp" min="-20" max="800" value="{{ ir_settings.ir_max_temp }}"
-                           style="width: 90%; padding; 0px: height:100%; border: 0px; border-radius: 4px;">
-                </div>
-                <div class="setting-fade" style="grid-area: e3;">max</div>
             </div>
-            {% endif %}
-        </div>
+            <div id="slideshow-settings-IR" class="tabcontent-vertical">
+                <div class="slideshow-settings-item">
+                    <div style="grid-area: a0;">
+                        <label>
+                            <label class="switch">
+                                <input type="checkbox" id="irOverlayCheckbox">
+                                <span class="switch-slider round"></span>
+                            </label>
+                          Infrared image overlay
+                        </label>
+                    </div>
+                    <div class="setting-fade" style="grid-area: b0;">
+                        <input type="range" min="10" max="100" value="100" class="slider setting-disabler" id="irOpacityRange" style="width:100%; grid-area: center">
+                    </div>
+                    <div class="setting-fade" style="grid-area: b1;">
+                        <label for="irOpacityRange" >Opacity: <span id="opacityValue"></span></label>
+                    </div>
+                    <div class="setting-fade" style="grid-area: c0;">
+                        <label>
+                            <label class="switch">
+                                <input class="setting-disabler" type="checkbox" id="temperatureCheckbox">
+                                <span class="switch-slider round"></span>
+                            </label>
+                            Read temperature
+                        </label>
+                    </div>
+                    <div class="setting-fade" style="grid-area: d0;">
+                        <select id="ir-palette-chooser" class="setting-disabler" style="width: 100%">
+                            <option value="grad-option1">white hot</option>
+                            <option value="grad-option2">Fulgurite</option>
+                            <option value="grad-option3">Iron Red</option>
+                            <option value="grad-option4">Hot Iron</option>
+                            <option value="grad-option5">Medical</option>
+                            <option value="grad-option6">Arctic</option>
+                            <option value="grad-option7">Rainbow 1</option>
+                            <option value="grad-option8">Rainbow 2</option>
+                            <option value="grad-option9">Tint</option>
+                            <option value="grad-option10">Black Hot</option>
+                        </select>
+                    </div>
+                    <div id="grad" class="setting-fade grad-option1" style="grid-area: d1;"></div>
+                    <div class="setting-fade" style="grid-area: e0;">
+                        <input class="setting-disabler" type="number" id="minTemp" name="minTemp" min="-20" max="800" value="{{ ir_settings.ir_min_temp }}"
+                               style="width: 90%; padding; 0px: height:100%; border: 0px; border-radius: 4px;">
+                    </div>
+                    <div class="setting-fade" style="grid-area: e1;">min</div>
+                    <div class="setting-fade" style="grid-area: e2;">
+                        <input class="setting-disabler" type="number" id="maxTemp" name=maxnTemp" min="-20" max="800" value="{{ ir_settings.ir_max_temp }}"
+                               style="width: 90%; padding; 0px: height:100%; border: 0px; border-radius: 4px;">
+                    </div>
+                    <div class="setting-fade" style="grid-area: e3;">max</div>
+                </div>
+            </div>
+            <div id="slideshow-settings-Annotations" class="tabcontent-vertical">
+                <div class="slideshow-settings-item-unstructured">
+                    <div style="margin-bottom: 10px;">
+                        <label style="margin-bottom: 8px;">
+                            <label class="switch">
+                                <input type="checkbox" id="aiOverlayCheckbox">
+                                <span class="switch-slider round"></span>
+                            </label>
+                          AI-Overlays
+                        </label>
+                    </div>
+                    <div id="layer-table-container">
+                        <table>
+                            <tbody>
+                            <tr>
+                                <th colspan="1">Layer</th>
+                                <td colspan="1">total found objects</td>
+                                <td colspan="1">displayed objects</td>
+                                <td colspan="2">threshold</td>
+
+                            </tr>
+                            <tr>
+                                <td>
+                                    <label>
+                                        <label class="switch">
+                                            <input type="checkbox" id="annotationClassVehiclesCheckbox">
+                                            <span class="switch-slider round"></span>
+                                        </label>
+                                      Vehicles
+                                    </label>
+                                </td>
+                                <td>
+                                    <a>20</a>
+                                </td>
+                                <td>
+                                    <a>4</a>
+                                </td>
+                                <td>
+                                    <a>0.65</a>
+                                </td>
+                                <td>
+                                    <input type="range" min="0.3" max="1" value="0.65" class="slider setting_disabler" id="annotationClassVehiclesSlider" style="width:100%;">
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <label>
+                                        <label class="switch">
+                                            <input type="checkbox" id="annotationClassHumanCheckbox">
+                                            <span class="switch-slider round"></span>
+                                        </label>
+                                      Humans
+                                    </label>
+                                </td>
+                                <td>
+                                    <a>2</a>
+                                </td>
+                                <td>
+                                    <a>2</a>
+                                </td>
+                                <td>
+                                    <a>0.3</a>
+                                </td>
+                                <td>
+                                    <input type="range" min="0.3" max="1" value="0.3" class="slider" id="annotationClassHumansSlider" style="width:100%;">
+                                </td>
+                            </tr>
+                            </label>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
         </div>
 </details>
 
@@ -1001,6 +1196,13 @@
 
             });
         {% endfor %}
+
+        {% if detections %}
+        generateDetectionTable({{ detections | tojson }});
+        generateAnnotationSettings({{ detections | tojson }});
+        var fileName = "{{ file_names[0].split('/')[-1] }}";
+        generateAnnotationsLayerTableForImage(fileName);
+        {% endif %}
     };
 
     //change css class of grad depending on selected option of ir-palette-chooser
@@ -1089,6 +1291,7 @@
         drawAnnotationsOnImage(img.id.split("baseImage")[1]);
     }
 
+    document.getElementById("defaultOpen").click();
 
 
 </script>
