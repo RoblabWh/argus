@@ -1,0 +1,20 @@
+:root {
+  --accent-color-interaction: rgb(56, 152, 236);//rgb(56, 152, 236);
+  --accent-color-red: rgb(150, 80, 80);
+  --bg-color-a: lightgrey;
+  --bg-color-b: grey;
+  --bg-color-c: black;
+  --bg-color-page: white;
+  --font-color-a: black;
+  --font-color-b: white;
+
+  //Dark Mode
+  //--accent-color-interaction: rgb(255, 159, 36);//rgb(56, 152, 236);
+  //--accent-color-red: rgb(150, 80, 80);
+  //--bg-color-a: #181818;
+  //--bg-color-b: #9d9d9d;
+  //--bg-color-c: white;
+  //--bg-color-page: #464646;
+  //--font-color-a: white;
+  //--font-color-b: black;
+}

@@ -22,7 +22,7 @@
       width: auto;
       padding: 16px;
       margin-top: -22px;
-      color: white;
+      color: var(--font-color-b);
       font-weight: bold;
       font-size: 32px;
       transition: 0.3s ease;
@@ -36,8 +36,8 @@
     }
 
     .prev:hover, .next:hover {
-      color: white;
-      background-color: rgb(56, 152, 236);
+      color: var(--font-color-b);
+      background-color: var(--accent-color-interaction);
     }
 
 
@@ -158,14 +158,11 @@
       border-radius: 5px;
       background: white;
       outline: none;
-      opacity: 0.7;
+      opacity: 1;
       -webkit-transition: .2s;
-      transition: opacity .2s;
+      transition: .2s;
     }
 
-    .slider:hover {
-      opacity: 1;
-    }
 
     .slider::-webkit-slider-thumb {
       -webkit-appearance: none;
@@ -173,16 +170,24 @@
       width: 20px;
       height: 20px;
       border-radius: 50%;
-      background: rgb(56, 152, 236);
+      background: var(--accent-color-interaction);
       cursor: pointer;
+      transition: all 0.3s ease;
     }
 
     .slider::-moz-range-thumb {
       width: 20px;
       height: 20px;
       border-radius: 50%;
-      background: rgb(56, 152, 236);
+      background: var(--accent-color-interaction);
       cursor: pointer;
+    }
+
+    .slider::-webkit-slider-thumb:hover {
+      border: 2px solid var(--accent-color-interaction);
+    }
+    .slider::-moz-range-thumb:hover {
+      border: 2px solid var(--accent-color-interaction);
     }
 
     .container{
@@ -200,8 +205,8 @@
 
 
     ul.tabs li{
-        background: rgb(56, 152, 236);
-        color: white;
+        background: var(--accent-color-interaction);
+        color: var(--font-color-b);
         display: inline-block;
         padding: 10px 15px;
         cursor: pointer;
@@ -210,7 +215,7 @@
     }
 
     ul.tabs li:hover{
-        color: black;
+        color: var(--font-color-a);
     }
 
     #tab-link-1{
@@ -231,20 +236,20 @@
     }
 
     ul.tabs li:hover{
-        background rgb(56, 152, 236);
+        background var(--accent-color-interaction);
     }
 
     ul.tabs li.current{
-        background: #cecece;
-        color: black;
+        background: var(--bg-color-a);
+        color: var(--font-color-a);
     }
 
     .tab-content_gallery{
         overflow: auto;
         display: none;
-        background: #cecece;
+        background: var(--bg-color-a);
         padding: 20px;
-        border-ne: 3px solid rgb(56, 152, 236);
+        border-ne: 3px solid var(--accent-color-interaction);
         border-top-right-radius: 8px;
         border-bottom-right-radius: 8px;
         border-bottom-left-radius: 8px;
@@ -267,7 +272,7 @@
         column-gap: 5px;
         row-gap: 0px;
 
-        background-color:white;
+        background-color: var(--bg-color-page);
         border-radius: 6px;
         margin-bottom: 10px;
         justify-self: start;
@@ -314,7 +319,7 @@
         border-bottom-right-radius: 0px;
         width: 90%;
         padding: 10px;
-        border: lightgrey 1px solid;
+        border: var(--bg-color-a) 1px solid;
     }
 
     .slideshow-settings-item > div {
@@ -346,7 +351,7 @@
       left: 0;
       right: 0;
       bottom: 0;
-      background-color: rgb(150, 80, 80);;
+      background-color: var(--accent-color-red);
       -webkit-transition: .4s;
       transition: .4s;
     }
@@ -358,17 +363,17 @@
       width: 13px;
       left: 2px;
       bottom: 2px;
-      background-color: white;
+      background-color: var(--bg-color-page);
       -webkit-transition: .4s;
       transition: .4s;
     }
 
     input:checked + .switch-slider {
-      background-color: #2196F3;
+      background-color: var(--accent-color-interaction);
     }
 
     input:focus + .switch-slider {
-      box-shadow: 0 0 1px #2196F3;
+      box-shadow: 0 0 1px var(--accent-color-interaction);
     }
 
     input:checked + .switch-slider:before {
@@ -395,15 +400,15 @@
     /* Style the buttons inside the tab */
     .tab-vertical button {
         display: block;
-        background-color: rgb(56, 152, 236);
-        color: white;
+        background-color: var(--accent-color-interaction);
+        color: var(--font-color-b);
         padding: 12px 6px;
         margin-top: 0px;
         margin-bottom: 10px;
         width: 100%;
         border-style: solid;
         border-width: 2px;
-        border-color: rgb(56, 152, 236);
+        border-color: var(--accent-color-interaction);
         outline: none;
         text-align: left;
         cursor: pointer;
@@ -415,23 +420,23 @@
     /* Change background color of buttons on hover */
     .tab-vertical button:hover {
         font-weight: bold;
-        color: black;
+        color: var(--font-color-a);
     }
 
     /* Create an active/current "tab button" class */
     .tab-vertical button.active {
-        background-color: lightgrey;
-        color: black;
+        background-color: var(--bg-color-a);
+        color: var(--font-color-a);
         font-weight: bold;
         border-style: solid;
         border-width: 2px;
-        border-color: rgb(56, 152, 236);
+        border-color: var(--accent-color-interaction);
     }
 
     /* Style the tab content */
     .tabcontent-vertical {
         padding: 0px 12px;
-        background-color: lightgrey;
+        background-color: var(--bg-color-a);
         border-radius: 6px;
         float: none;
         overflow: hidden;
@@ -449,8 +454,8 @@
     }
 
    #layer-table-container{
-        background-color: white;//rgb(66,66,66);
-        color: black;
+        background-color: var(--bg-color-page);//rgb(66,66,66);
+        color: var(--font-color-a);
         border-radius: 6px;
         padding: 6px;
     }
@@ -469,7 +474,7 @@
     }
     #layer-table-container tr:nth-child(1) {
         background-color: transparent;
-        border-bottom: 2px solid lightgrey;
+        border-bottom: 2px solid var(--bg-color-a);
     }
 
 
@@ -586,8 +591,10 @@
         }
 
         if(displayingAI){
+            toggleLayerSettings(false);
             drawAnnotationsOnCurrentSlide();
         } else{
+            toggleLayerSettings(true);
             removeAnnotations();
         }
         lastSlide = slideIndex;
@@ -718,7 +725,11 @@
         }
       }
 
-    function openSettings(evt, divName) {
+    function openSettingsEvent(evt, divName){
+        openSettings(evt.currentTarget, divName);
+    }
+
+    function openSettings(selctedLink, divName) {
       var i, tabcontent, tablinks;
       tabcontent = document.getElementsByClassName("tabcontent-vertical");
       for (i = 0; i < tabcontent.length; i++) {
@@ -729,7 +740,7 @@
         tablinks[i].className = tablinks[i].className.replace(" active", "");
       }
       document.getElementById(divName).style.display = "block";
-      evt.currentTarget.className += " active";
+      selctedLink.className += " active";
     }
 
 </script>
@@ -789,12 +800,12 @@
 
         <div id="slideshow-settings-tabs">
             <div id="slideshow-settings-tabs-links" class="tab-vertical">
-                <button class="tablink-vertical" onclick="openSettings(event, 'slideshow-settings-RGB')" id="defaultOpen">Magnifier</button>
+                <button class="tablink-vertical" onclick="openSettingsEvent(event, 'slideshow-settings-RGB')" id="defaultOpen">Magnifier</button>
                 {% if has_ir %}
-                <button class="tablink-vertical" onclick="openSettings(event,'slideshow-settings-IR')">IR-Overlay</button>
+                <button class="tablink-vertical" onclick="openSettingsEvent(event,'slideshow-settings-IR')">IR-Overlay</button>
                 {% endif %}
                 {% if detections %}
-                <button id="slideshow-settings-annotaions-tablink" class="tablink-vertical" onclick="openSettings(event,'slideshow-settings-Annotations')">AI-Overlays</button>
+                <button id="slideshow-settings-annotaions-tablink" class="tablink-vertical" onclick="openSettingsEvent(event,'slideshow-settings-Annotations')">AI-Overlays</button>
                 {% endif %}
             </div>
 
@@ -866,7 +877,7 @@
                     </div>
                     <div class="setting-fade" style="grid-area: e1;">min</div>
                     <div class="setting-fade" style="grid-area: e2;">
-                        <input class="setting-disabler" type="number" id="maxTemp" name=maxnTemp" min="-20" max="800" value="{{ ir_settings.ir_max_temp }}"
+                        <input class="setting-disabler" type="number" id="maxTemp" name="maxTemp" min="-20" max="800" value="{{ ir_settings.ir_max_temp }}"
                                style="width: 90%; padding; 0px: height:100%; border: 0px; border-radius: 4px;">
                     </div>
                     <div class="setting-fade" style="grid-area: e3;">max</div>
@@ -882,6 +893,11 @@
                             </label>
                           AI-Overlays
                         </label>
+                    </div>
+                    <div>
+                        Annotations line width:
+                        <input type="number" id="annotationsLineWidth" name="lineWidth" min="1" max="100" value="2"
+                               style="width: 60px; margin-bottom: 10px; border: 0px; border-radius: 4px;">
                     </div>
                     <div id="layer-table-container">
                         <table>
@@ -1070,28 +1086,27 @@
         $('#aiOverlayCheckbox').change(function(){
             if(this.checked){
                 displayingAI = true;
+                toggleLayerSettings(false);
                 showCurrentSlide();
-                $('.setting-fade').map(function () {
-                    $(this).css("opacity", "0.999");
-                });
-                $('.setting-disabler').map(function () {
-                    $(this).prop('disabled', false);
-                });
+                filenameOfSlide = x[slideIndex].getElementsByTagName("a")[0].innerHTML;
+                generateAnnotationsLayerTableForImage(filenameOfSlide);
             }else{
                 displayingAI = false;
+                toggleLayerSettings(true);
                 showCurrentSlide(slideIndex);
-                $('.setting-fade').map(function () {
-                    $(this).css("opacity", "0.4");
-                });
-                $('.setting-disabler').map(function () {
-                    $(this).prop('disabled', true);
-                });
+            }
+        });
+
+        $('#annotationsLineWidth').change(function(event) {
+            if(displayingAI){
+                drawAnnotationsOnCurrentSlide();
             }
         });
 
 
-
     })
+
+
 
 
 
@@ -1144,6 +1159,7 @@
     $('#irOpacityRange').val(100);
     $('#irOpacityRange').change();
 
+
     window.onload = function() {
         {% for filename_ir in file_names_ir %}
         var img = document.getElementById('image{{loop.index0}}');
@@ -1189,6 +1205,8 @@
         generateAnnotationSettings({{ detections | tojson }});
         var fileName = "{{ file_names[0].split('/')[-1] }}";
         generateAnnotationsLayerTableForImage(fileName);
+        $('#aiOverlayCheckbox').prop('checked', false);
+        toggleLayerSettings(true);
         {% endif %}
     };
 

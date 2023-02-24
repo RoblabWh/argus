@@ -6,16 +6,16 @@
     <style>
         .tableButton{
             cursor: pointer;
-            color: white;
+            color: var(--font-color-b);
             font-weight: bold;
-            background-color:rgb(56, 152, 236);
+            background-color:var(--accent-color-interaction);
             border-radius: 4px;
         }
 
         .tableHyperlink{
             text-decoration: underline;
             cursor: pointer;
-            color: rgb(56, 152, 236);
+            color: var(--accent-color-interaction);
             font-weight: bold;
         }
     </style>
@@ -37,8 +37,11 @@
             console.log("galleryImage" + fileName);
             var x = document.getElementById("galleryImage" + fileName);
             x.click();
-            generateAnnotationsLayerTableForImage(fileName);
-            drawAnnotationsOnImage(fileName);
+            //generateAnnotationsLayerTableForImage(fileName);
+            //drawAnnotationsOnImage(fileName);
+            $('#aiOverlayCheckbox').prop('checked', true);
+            $('#aiOverlayCheckbox').change();
+            openSettings(document.getElementById('slideshow-settings-annotaions-tablink'), 'slideshow-settings-Annotations');
         }
 
         function runAIDetection() {
@@ -185,6 +188,16 @@
             annotationColorOffset = parseInt(360/categories.length);
             filteredSelection = [];
 
+            if(currentImageAnnotations == null){
+                var row = tbl.insertRow();
+                var cell = row.insertCell();
+                cell.innerHTML = "No results found, please (re-)run the detection";
+                cell.setAttribute("colspan", "6");
+                tableContainer.appendChild(tbl);
+                $('#aiOverlayCheckbox').change();
+                return;
+            }
+
             for(let i = 0; i < categories.length; i++){
                 var row = tbl.insertRow();
                 var category = categories[i];
@@ -199,6 +212,8 @@
                         filteredSelection.push(j);
                     }
                 }
+
+
 
                 var lableSwitch = document.createElement("label");
                 lableSwitch.className = "switch";
@@ -215,22 +230,25 @@
                 lableSwitch.appendChild(checkbox);
                 lableSwitch.appendChild(span);
 
-                row.insertCell().appendChild(lableSwitch);
-                row.insertCell().innerHTML = category.name;
+                var categoryName = document.createElement("span");
+                categoryName.innerHTML = category.name;
+
 
                 var color = document.createElement("input");
                 color.type = "color";
                 color.value = hslToHex(i*annotationColorOffset, 100, 50);
                 color.id = "color" + category.name;
-                color.className = "setting_disabler";
                 color.oninput = (function(opt) {return function(){
                     changeColor(opt)
                     };
                 })(category.name);
-                row.insertCell().appendChild(color);
 
-                row.insertCell().innerHTML = totalFoundObjects
-                row.insertCell().innerHTML = displayedObjects;
+                var totalFoundObjectsSpan = document.createElement("span");
+                totalFoundObjectsSpan.innerHTML = totalFoundObjects;
+
+                var displayedObjectsSpan = document.createElement("span");
+                displayedObjectsSpan.id = "layer-displayed-objects-" + category.name;
+                displayedObjectsSpan.innerHTML = displayedObjects;
 
                 var slider = document.createElement("input");
                 slider.type = "range";
@@ -239,18 +257,45 @@
                 slider.step = 0.01;
                 slider.value = 0.3;
                 slider.id = "layer-threshold-slider-" + category.name;
-                slider.className = "slider setting_disabler";
+                slider.className = "slider";
                 slider.oninput = (function(opt) {return function(){
                     changeThreshold(opt)
                     };
                 })(category.name);
-                row.insertCell().appendChild(slider);
 
                 var sliderValue = document.createElement("span");
                 sliderValue.id = "layer-threshold-" + category.name;
                 sliderValue.innerHTML = slider.value;
                 sliderValue.style = "min-width:42px;display:inline-block";
+
+
+                if(totalFoundObjects <= 0){
+                    //lableSwitch.style = "opacity:0.5";
+                    lableSwitch.style = "display: none";
+                    color.style = "opacity:0.25";
+                    //slider.style = "opacity:0.5";
+                    slider.style = "display:none";
+                    //sliderValue.style = "opacity:0.5";
+                    sliderValue.style = "display:none";
+                    categoryName.style = "opacity:0.5";
+                    totalFoundObjectsSpan.style = "opacity:0.5";
+                    displayedObjectsSpan.style = "opacity:0.5";
+                    slider.disabled = true;
+                    checkbox.disabled = true;
+                    checkbox.checked = false;
+                    color.disabled = true;
+                }
+
+                row.insertCell().appendChild(lableSwitch);
+                row.insertCell().appendChild(categoryName);
+                row.insertCell().appendChild(color);
+                row.insertCell().appendChild(totalFoundObjectsSpan);
+                row.insertCell().appendChild(displayedObjectsSpan);
+                row.insertCell().appendChild(slider);
                 row.insertCell().appendChild(sliderValue);
+
+                row.id = "layer-row-" + category.name;
+
             }
             tableContainer.appendChild(tbl);
         }
@@ -260,7 +305,9 @@
             var sliderValue = document.getElementById("layer-threshold-" + category);
             sliderValue.innerHTML = slider.value;
             filterSelection();
-            drawAnnotationsOnCurrentSlide();
+            if(displayingAI){
+                drawAnnotationsOnCurrentSlide();
+            }
         }
 
         function filterSelection(){
@@ -270,6 +317,7 @@
             for(let i = 0; i < categories.length; i++){
                 var category = categories[i];
                 var checkbox = document.getElementById("layer-checkbox-" + category.name);
+                var displayedObjects = 0;
                 if (checkbox.checked){
                     var slider = document.getElementById("layer-threshold-slider-" + category.name);
                     var threshold = slider.value;
@@ -278,15 +326,22 @@
                         if(annotation.category_id == category.id){
                             if (annotation.score >= threshold){
                                 filteredSelection.push(j);
+                                displayedObjects++;
                             }
                         }
                     }
                 }
+                var displayedObjectsCell = document.getElementById("layer-displayed-objects-" + category.name);
+                displayedObjectsCell.innerHTML = displayedObjects;
             }
         }
 
+
+
         function changeColor(category){
-            drawAnnotationsOnCurrentSlide();
+            if(displayingAI){
+                drawAnnotationsOnCurrentSlide();
+            }
         }
 
         function getImageIndexByName(filename){
@@ -298,22 +353,58 @@
             }
         }
 
+        function toggleLayerSettings(disable){
+            tableContainer = document.getElementById("layer-table-container");
+            var table = tableContainer.getElementsByTagName("table")[0];
+            var rows = table.rows;
+            for (let i = 1; i < rows.length; i++){
+                var row = rows[i];
+                var labelSwitch = row.cells[0].getElementsByTagName("label")[0];
+                if (labelSwitch.style.display != "none"){
+                    //loop over every cell and set the content to 0.5 opacity. If cell content is from tape input disable it
+                    for (let j = 0; j < row.cells.length; j++){
+                        var cell = row.cells[j];
+                        var elements = cell.getElementsByTagName("*");
+                        for (let k = 0; k < elements.length; k++){
+                            var element = elements[k];
+                            if (element.tagName == "INPUT"){
+                                element.disabled = disable;
+                            }
+                            if (disable){
+                                element.style.opacity = 0.5;
+                            } else {
+                                element.style.opacity = 1;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+
         function toggleLayer(category){
-            var checkbox = document.getElementById("layer-checkbox-" + category);
-            var sliderValue = document.getElementById("layer-threshold-" + category);
-            var slider = document.getElementById("layer-threshold-slider-" + category);
-            var color = document.getElementById("color" + category);
-            if (checkbox.checked){
-                slider.classList.remove("setting_disabler");
-                sliderValue.classList.remove("setting_disabler");
-                color.classList.remove("setting_disabler");
-            } else {
-                slider.classList.add("setting_disabler");
-                sliderValue.classList.add("setting_disabler");
-                color.classList.add("setting_disabler");
+            row = document.getElementById("layer-row-" + category);
+            checkbox = document.getElementById("layer-checkbox-" + category);
+            //loop over every cell and set the content to 0.5 opacity. If cell content is from tape input disable it
+            for (let i = 1; i < row.cells.length; i++){
+                var cell = row.cells[i];
+                var elements = cell.getElementsByTagName("*");
+                for (let j = 0; j < elements.length; j++){
+                    var element = elements[j];
+                    if (element.tagName == "INPUT"){
+                        element.disabled = !checkbox.checked;
+                    }
+                    if (checkbox.checked){
+                        element.style.opacity = 1;
+                    } else {
+                        element.style.opacity = 0.5;
+                    }
+                }
             }
             filterSelection();
-            drawAnnotationsOnCurrentSlide();
+            if(displayingAI){
+                drawAnnotationsOnCurrentSlide();
+            }
         }
 
         function drawAnnotationsOnCurrentSlide(){
@@ -348,7 +439,7 @@
                     y = annotation.bbox[1] * scale;
                     w = annotation.bbox[2] * scale;
                     h = annotation.bbox[3] * scale;
-                    ctx.lineWidth = 2;
+                    ctx.lineWidth = document.getElementById("annotationsLineWidth").value;
                     ctx.strokeStyle = color;
                     //ctx.clearRect(x, y, w, h);
                     ctx.strokeRect(x, y, w, h);

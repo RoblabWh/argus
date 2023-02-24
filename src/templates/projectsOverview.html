@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <title>Reports Overview</title>
     <style>
+        {%include 'variables.css' %}
+
         body{
             margin-left: 0px;
             margin-right: 0px;
@@ -39,8 +41,8 @@
             height: 69px;
             border: 1px solid white;
             margin-bottom: 10px;
-            color: white;
-            background-color: grey;
+            color: var(--font-color-b);
+            background-color: var(--bg-color-b);
             border-radius: 6px;
             cursor: pointer;
         }
@@ -57,8 +59,8 @@
         }
 
         .project:hover{
-            background-color: rgb(56, 152, 236);
-            color: white;
+            background-color: var(--accent-color-interaction);
+            color: var(--font-color-b);
         }
 
         .deleteProject{
@@ -66,7 +68,7 @@
             float: right;
             margin-bottom: 10px;
             width: 8%;
-            background-color: rgb(150, 80, 80);
+            background-color: var(--accent-color-red);
             border-radius: 6px;
             text-align: center;
             line-height: 75px;
@@ -75,13 +77,13 @@
 
         .deleteProject:hover{
             background-color: rgb(255, 0, 0);
-            color: white;
+            color: var(--font-color-b);
         }
 
 
         summary {
-          background-color: grey;
-          color: white;
+          background-color: var(--bg-color-b);
+          color: var(--font-color-b);
           font-weight: bold;
           padding: 1rem;
           margin-bottom: 1rem;
@@ -93,11 +95,11 @@
 
         details[open]>summary{
           background-color: black;
-          color: white;
+          color: var(--font-color-b);
         }
         details[open]>summary:hover, summary:hover {
-          background-color: rgb(56, 152, 236);
-          color: black;
+          background-color: var(--accent-color-interaction);
+          color: var(--font-color-a);
         }
 
         details > summary::after {
@@ -123,8 +125,8 @@
           position: relative;
           width: 15%;
           padding: 11px 0px;
-          background-color: rgb(56, 152, 236);
-          color: white;
+          background-color: var(--accent-color-interaction);
+          color: var(--font-color-b);
           border-radius: 4px;
           cursor: pointer;
           border-style: none;
@@ -157,9 +159,9 @@
             <div class="tab-content">
                 <form style="display: flex; justify-content: space-between;" method="post" action="/create">
                     <label style="line-height: 42px;" for="name">Name:</label>
-                    <input style="width:30%; border-radius: 4px; border-style: solid; border-color: lightgray" type="text" id="name" name="name" required>
+                    <input style="width:30%; border-radius: 4px; border-style: solid; border-color: var(--bg-color-a)" type="text" id="name" name="name" required>
                     <label style="line-height: 42px;" for="description">Description:</label>
-                    <textarea style="width:30%; border-radius: 4px; border-style: solid; border-color: lightgray"  id="description" name="description" required></textarea>
+                    <textarea style="width:30%; border-radius: 4px; border-style: solid; border-color: var(--bg-color-a)"  id="description" name="description" required></textarea>
                     <input class="big_button" type="submit" value="Create new Report">
                 </form>
             </div>

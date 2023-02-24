@@ -309,7 +309,7 @@ def detect_objects(numbr_of_models, report_id):
             if numbr_of_models >= 5:
                 weights_paths_list.append(networks_weights_folder + "/yolox_s_8x8_300e_coco_fire_300_4")
 
-    images_path_list = project_manager.get_file_names(report_id)
+    images_path_list = project_manager.get_file_names_rgb(report_id)
     images_path_list = ["./static/" + path for path in images_path_list]
     config_path = "detection/config/custom/config.py"
     ann_path = project_manager.get_annotation_file_path(report_id)  # vom project manager geben lassen
