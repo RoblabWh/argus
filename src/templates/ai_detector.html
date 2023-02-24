@@ -21,6 +21,8 @@
     </style>
     <script>
         var detections = {{ detections | tojson }};
+        var currentImageAnnotations = [];
+        var filteredSelection = [];
 
         function showTableByCategory(category) {
             var x = document.getElementById("table" + category);
@@ -45,8 +47,11 @@
             console.log(selectedValue);
             $.post("/run_detection/{{ id }}", {model_options: selectedValue}, function(data){
                 console.log("Data: " + data );
+                detections = data;
                 generateDetectionTable(data);
                 generateAnnotationSettings(data);
+                var currentImageName = document.getElementsByClassName("mySlides")[slideIndex].getElementsByTagName('a')[0].innerHTML;
+                generateAnnotationsLayerTableForImage(currentImageName);
                 detections = data;
             });
         }
@@ -147,16 +152,13 @@
             var x = document.getElementById("slideshow-settings-annotaions-tablink");
             if (x === null) {
                 //create slideshow-settings-annotaions-tablink
-                var tabsDiv = document.getElementById("slideshow-settings-tabs");
+                var tabsDiv = document.getElementById("slideshow-settings-tabs-links");
                 var tabLink = document.createElement("button");
                 tabLink.id = "slideshow-settings-annotaions-tablink";
                 tabLink.setAttribute("class", "tablink-vertical");
                 tabLink.innerHTML = "AI-Detections";
                 //call openSettings(event,'slideshow-settings-Annotations')
-                tabLink.onclick = (function() {return function(){
-                    openSettings(event,'slideshow-settings-Annotations')
-                    };
-                });
+                tabLink.onclick = function() {openSettings(event,'slideshow-settings-Annotations')};
                 tabsDiv.appendChild(tabLink);
             }
         }
@@ -164,8 +166,8 @@
         function generateAnnotationsLayerTableForImage(fileName){
             var tableContainer = document.getElementById("layer-table-container");
             tableContainer.innerHTML = "";
+
             var tbl = document.createElement("table");
-            //create a headline with the titles "show", "Layer", "total found objects", "displayed objects", "threshold"
             var header = tbl.insertRow();
             var headings = ["Show", "Object", "Color","Total found objects", "Displayed objects", "Threshold"];
             for (let i = 0; i < headings.length; i++){
@@ -173,24 +175,28 @@
                 h1.innerHTML = headings[i];
                 header.appendChild(h1);
             }
-            //last header cell is empty
             header.insertCell();
 
-            var annotations = detections["annotations"][getImageIndexByName(fileName)];
-            var categories = detections["categories"];
 
-            //create a row for every category
+            currentImageAnnotations = detections["annotations"][getImageIndexByName(fileName)];
+            var categories = detections["categories"];
+            //currentImageAnnotations = annotations;
+
+            annotationColorOffset = parseInt(360/categories.length);
+            filteredSelection = [];
+
             for(let i = 0; i < categories.length; i++){
                 var row = tbl.insertRow();
                 var category = categories[i];
-                var toalFoundObjects = 0;
+                var totalFoundObjects = 0;
                 var displayedObjects = 0;
 
-                for(let j = 0; j < annotations.length; j++){
-                    var annotation = annotations[j];
+                for(let j = 0; j < currentImageAnnotations.length; j++){
+                    var annotation = currentImageAnnotations[j];
                     if(annotation.category_id == category.id){
-                        toalFoundObjects++;
+                        totalFoundObjects++;
                         displayedObjects++;
+                        filteredSelection.push(j);
                     }
                 }
 
@@ -201,7 +207,7 @@
                 var checkbox = document.createElement("input");
                 checkbox.type = "checkbox";
                 checkbox.checked = true;
-                checkbox.id = "checkbox" + category.name;
+                checkbox.id = "layer-checkbox-" + category.name;
                 checkbox.onclick = (function(opt) {return function(){
                     toggleLayer(opt)
                     };
@@ -214,7 +220,7 @@
 
                 var color = document.createElement("input");
                 color.type = "color";
-                color.value = category.color;
+                color.value = hslToHex(i*annotationColorOffset, 100, 50);
                 color.id = "color" + category.name;
                 color.className = "setting_disabler";
                 color.oninput = (function(opt) {return function(){
@@ -223,27 +229,64 @@
                 })(category.name);
                 row.insertCell().appendChild(color);
 
-                row.insertCell().innerHTML = toalFoundObjects
+                row.insertCell().innerHTML = totalFoundObjects
                 row.insertCell().innerHTML = displayedObjects;
+
                 var slider = document.createElement("input");
                 slider.type = "range";
                 slider.min = 0.3;
                 slider.max = 1;
                 slider.step = 0.01;
                 slider.value = 0.3;
-                slider.id = "slider" + category.name;
+                slider.id = "layer-threshold-slider-" + category.name;
                 slider.className = "slider setting_disabler";
                 slider.oninput = (function(opt) {return function(){
                     changeThreshold(opt)
                     };
                 })(category.name);
                 row.insertCell().appendChild(slider);
+
                 var sliderValue = document.createElement("span");
-                sliderValue.id = "sliderValue" + category.name;
+                sliderValue.id = "layer-threshold-" + category.name;
                 sliderValue.innerHTML = slider.value;
+                sliderValue.style = "min-width:42px;display:inline-block";
                 row.insertCell().appendChild(sliderValue);
             }
             tableContainer.appendChild(tbl);
+        }
+
+        function changeThreshold(category){
+            var slider = document.getElementById("layer-threshold-slider-" + category);
+            var sliderValue = document.getElementById("layer-threshold-" + category);
+            sliderValue.innerHTML = slider.value;
+            filterSelection();
+            drawAnnotationsOnCurrentSlide();
+        }
+
+        function filterSelection(){
+            filteredSelection = [];
+            console.log("filterSelection");
+            var categories = detections["categories"];
+            for(let i = 0; i < categories.length; i++){
+                var category = categories[i];
+                var checkbox = document.getElementById("layer-checkbox-" + category.name);
+                if (checkbox.checked){
+                    var slider = document.getElementById("layer-threshold-slider-" + category.name);
+                    var threshold = slider.value;
+                    for(let j = 0; j < currentImageAnnotations.length; j++){
+                        var annotation = currentImageAnnotations[j];
+                        if(annotation.category_id == category.id){
+                            if (annotation.score >= threshold){
+                                filteredSelection.push(j);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        function changeColor(category){
+            drawAnnotationsOnCurrentSlide();
         }
 
         function getImageIndexByName(filename){
@@ -255,6 +298,29 @@
             }
         }
 
+        function toggleLayer(category){
+            var checkbox = document.getElementById("layer-checkbox-" + category);
+            var sliderValue = document.getElementById("layer-threshold-" + category);
+            var slider = document.getElementById("layer-threshold-slider-" + category);
+            var color = document.getElementById("color" + category);
+            if (checkbox.checked){
+                slider.classList.remove("setting_disabler");
+                sliderValue.classList.remove("setting_disabler");
+                color.classList.remove("setting_disabler");
+            } else {
+                slider.classList.add("setting_disabler");
+                sliderValue.classList.add("setting_disabler");
+                color.classList.add("setting_disabler");
+            }
+            filterSelection();
+            drawAnnotationsOnCurrentSlide();
+        }
+
+        function drawAnnotationsOnCurrentSlide(){
+            var currentImageName = document.getElementsByClassName("mySlides")[slideIndex].getElementsByTagName('a')[0].innerHTML;
+            drawAnnotationsOnImage(currentImageName);
+        }
+
         function drawAnnotationsOnImage(filename){
             var canvas = document.getElementById("canvas" + filename);
             var ctx = canvas.getContext("2d");
@@ -264,31 +330,49 @@
             var scale = img.width/ img.naturalWidth;
 
             imageIndex = getImageIndexByName(filename);
-            annotationData = detections["annotations"][imageIndex];
-
-            //console.log("filename: " + filename);
-            //console.log("camvas id: " + canvas.id);
-            //console.log("imageIndex: " + imageIndex);
-            //console.log("annotationData: " + annotationData);
+            //annotationData = detections["annotations"][imageIndex];
 
             canvas.width = img.width;
             canvas.height = img.height;
 
-            for (let i = 0; i < annotationData.length; i++){
-                var annotation = annotationData[i];
+            console.log("Drawing " + filteredSelection.length + " annotations on " + filename);
+
+            for (let i = 0; i < filteredSelection.length; i++){
+                var annotation = currentImageAnnotations[filteredSelection[i]];
+                var categoryID = annotation.category_id;
+                var category = detections["categories"][categoryID-1];
+                var color = document.getElementById("color" + category.name).value;
                 //if (annotation.image_id === imageIndex){
                     var x, y, w, h;
                     x = annotation.bbox[0] * scale;
                     y = annotation.bbox[1] * scale;
                     w = annotation.bbox[2] * scale;
                     h = annotation.bbox[3] * scale;
-                    ctx.lineWidth = 4;
-                    ctx.strokeStyle = "red";
+                    ctx.lineWidth = 2;
+                    ctx.strokeStyle = color;
                     //ctx.clearRect(x, y, w, h);
                     ctx.strokeRect(x, y, w, h);
 
                 //}
             }
+        }
+
+        function removeAnnotations(){
+            var currentImageName = document.getElementsByClassName("mySlides")[slideIndex].getElementsByTagName('a')[0].innerHTML;
+            var canvas = document.getElementById("canvas" + currentImageName);
+            var ctx = canvas.getContext("2d");
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+
+        function hslToHex(h, s, l) {
+            l /= 100;
+            const a = s * Math.min(l, 1 - l) / 100;
+            const f = n => {
+                const k = (n + h / 30) % 12;
+                const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+                return Math.round(255 * color).toString(16).padStart(2, '0');   // convert to Hex and prefix "0" if needed
+            };
+            return `#${f(0)}${f(8)}${f(4)}`;
         }
     </script>
 </head>
