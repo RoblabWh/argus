@@ -1,0 +1,10 @@
+:root {
+  --accent-color-interaction: rgb(35, 140, 121);//rgb(49, 182, 234);//rgb(56, 152, 236);
+  --accent-color-red: rgb(247, 79, 79);
+  --bg-color-a: #313030;//#181818;
+  --bg-color-b: #9d9d9d;
+  --bg-color-c: white;
+  --bg-color-page: #464646;
+  --font-color-a: white;
+  --font-color-b: black;
+}

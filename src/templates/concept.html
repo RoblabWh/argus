@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <link rel="stylesheet" href="{{ url_for('static', filename='default/variables-light.css') }}" id="currentCss">
     <style>
-        {%include 'variables.css' %}
 
         body{
             margin-left: 0px;
@@ -23,11 +23,12 @@
 
         .header{
             width: 100%;
-            height: 50px;
             position: fixed;
             background-color: var(--accent-color-interaction);
             top: 0;
             z-index:1500;
+            //padding-top: 8px;
+            display: block;
         }
 
         #edit-description-button{
@@ -163,6 +164,52 @@
           background-color: #04AA6D;
         }
 
+        .dropdown-settings {
+            display: inline-block;
+            position: relative;
+            float: right;
+            padding: 8px 16px;
+        }
+
+        .dropdown-settings button{
+            border:none;
+            border-radius:4px;
+            padding:5px 10px;
+            font-size:14px;
+            cursor:pointer;
+        }
+
+        .dropdown-settings button:hover{
+            background-color: var(--bg-color-b);
+            color: var(--font-color-b);
+        }
+
+        .dropdown-settings-options {
+            display: none;
+            position: absolute;
+            left:-55px;
+            overflow: auto;
+        }
+
+        .dropdown-settings:hover .dropdown-settings-options {
+            display: block;
+        }
+
+        .dropdown-settings-options a {
+            display: block;
+            color: #000000;
+            padding: 5px;
+            text-decoration: none;
+            padding:5px 10px;
+            background-color: var(--bg-color-a);
+        }
+
+        .dropdown-settings-options a:hover {
+            color: var(--font-color-b);
+            background-color: var(--bg-color-b);
+
+        }
+
         {% include 'tableStyle.css' %}
 
 
@@ -251,11 +298,37 @@
             $.get("/shutdown");
         };
 
+        function changeColorMode(){
+            var x = document.getElementById("colorModeButton");
+            var oldLink = document.getElementById("currentCss");
+
+            var newlink = document.createElement("link");
+            newlink.setAttribute("rel", "stylesheet");
+            newlink.setAttribute("type", "text/css");
+            newlink.setAttribute("id", "currentCss");
+
+            if (x.innerHTML == "Dark Mode") {
+                x.innerHTML = "Light Mode";
+                newlink.setAttribute("href", "{{ url_for('static', filename='default/variables-dark.css') }}" );
+            } else {
+                x.innerHTML = "Dark Mode";
+                newlink.setAttribute("href", "{{ url_for('static', filename='default/variables-light.css') }}" );
+            }
+            document.getElementsByTagName("head").item(0).replaceChild(newlink, oldLink);
+        };
+
     </script>
     <div class="header">
-        <h3 style="float: right; padding: 8px; color: var(--font-color-b)">Report : {{ project.name }}</h3>
-        <a href="/" style="float: left; padding: 8px; color: var(--font-color-b)">Back to overview</a>
-        <a style="float: right; padding: 8px; color: var(--font-color-b)" onclick="shutdownServer()">SHUTDOWN</a>
+        <a href="/" style="position: relative; float: left; margin: 14px 16px 0px 16px; color: var(--font-color-b)">Back to overview</a>
+        <div class="dropdown-settings">
+            <button>Settings</button>
+            <div class="dropdown-settings-options">
+               <a id="colorModeButton" onclick="changeColorMode();">Dark Mode</a>
+               <a onclick="console.Log(Language)">German</a>
+               <a onclick="shutdownServer()">Shutdown Server</a>
+            </div>
+        </div>
+        <h3 style="position: relative; float: left; margin: 4px; color: var(--font-color-b); font-size: 26px; padding-top:4px">Report : {{ project.name }}</h3>
     </div>
 
     <div class="bodyDiv">

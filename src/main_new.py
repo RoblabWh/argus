@@ -363,60 +363,23 @@ if __name__ == '__main__':
     #start_server()  # start server
 
     #TODO List Report
-    #   IR Map serstellen
-    # _NEXT_ IR Bilder separat im Projekt speichern (file_names entsprechend anpassen)
-    #    Switch/ Tab für IR Bilder (/mit Overlay) (von wegen Checkbox für show all, only IR oder only RGB)
+    # IR Bilder separat im Projekt speichern (file_names entsprechend anpassen)
     # Header Stylen (Logo, Name, Beschreibung)
-    #   Footer Stylen (Kontakt, Impressum, Logos)
-    #   Footer erstellen (Urheber etc)
-    #   Buttons zum berechnen umsortieren
-    #   Feedback für den User (Berechnung läuft, fertig, Fehler)
-    #   _NEXT_ GPS Polygone für Flug einbauen
-    #   _NEXT_ Bilder oder punkte anklickbar machen (für Link zur Slideshow)
-    #   DONE map im ordner speichern und korrekt laden
-    #   Maus in Gallerie bem Hovern zur Hand machen und scroll to einabuen
     # Bisschen besseres Feedback für den User (beim Mapping Balken)
-    #   Beschreibung bearbeitbar machen
-    #   _NEXT_ Fade Slider in Map einbauen
-    #   _NEXT_ beim fenster resize neu magnify aufrufen
-    #   _NEXT_ Temperatur anzeigen
-    #   _NEXT_ Temperatur settings mit im Projekt speichern
-    #   _NEXT_ mehrere Temepratur mappings realisieren
-    #   _NEXT_ Karten Home mittiger setzen (und Zoom uch besser einstellen)
-    #   _NEXT_ ODM Karte generieren
-    #   Tab für IR Darstellungseinstellung (Checkbox für Temp messen, und Schieberegler für Transparenz)
-    #   _NEXT_ Panoramen verarbeiten
-    #   _NEXT_ IR Panoramen in Report darstellen
-
 
     #TODO allgmeien
-    #   render project nur noch aus einer methode mit parametern machen
-    # _NEXT_ IR Bilder in eigenen Ordner verschieben
+    # IR Bilder in eigenen Ordner verschieben
     # IDs aus Datum Und Uhrzeit Basteln
     # Unterschiedliche Anzahl an IR und RGB Bildern handeln: Fehlerausgabe/einfach annehmen, auf jedem Fall Sorter fixen
-    #   Position des Overlays in der Karte stimmt nicht (Bounds?)
-    # _NEXT_ Shutdown Button
 
     # TODO List Project Overview
-    #   Overview Seite Stylen
-    #   Eingabemaske bei neuen Projekten erzeugen & entsprechend Daten übergeben
-    #   Bestehende Projekte Löschen
-    #   nach ID sortiert darstellen
-    #   neues Projekt Anlegen stylen
-    #   (alert) Abfrage bei Delete
-
-    #   TODO größe der Maps ändern
-    #   TODO Map Bild ersetzen, Seite nicht neu laden
 
     #TODO allgemein
     # Report mit nur IR Bildern auch als solche verarbeiten/ ermöglichen
     # Wetter Daten aus der Vergangenheit abrufen können
     # Überall wo multiprocessing pool genutzt wird, vorher schauen, wie viel threads verfügbar sind
     # nach aufruf von start den browser öffnen
-    # start shell script für linux
 
-    #TODO Bilderkennung
-    # von Julien den Code aus EDRZ einabauen
 
 
 
