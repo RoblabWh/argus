@@ -117,6 +117,12 @@ class ImageMapper:
 
 
         self.unfiltered_sorted_images = images.copy()
+
+        print("start building couples_path_list")
+        self.couples_path_list = InfraredRGBSorter().build_couples_path_list(self.unfiltered_sorted_images)
+        print("couples_path_list: ", self.couples_path_list)
+
+
         # Filter images
         self.filtered_images = GimbalPitchFilter(89 - self.max_gimbal_pitch_deviation).filter(images)
         self.filtered_images = PanoFilter("pano").filter(self.filtered_images)
@@ -147,6 +153,7 @@ class ImageMapper:
                 panos.append(pano.get_exif_header().pano_data)
 
         return panos
+
 
     def preprocess_calculate_metadata(self):#, report_id, file_names):
         metadta_elements = self.map_elements_RGB
@@ -465,7 +472,9 @@ class ImageMapper:
 
             str_coordinates = ','.join(str(e) for e in tmp_coordinates)
             # print("single coordinate:", str_coordinates)
-            new_coordinates.append(str_coordinates)
+            coodinate = {"coordinates_string": str_coordinates, "file_name": map_element.get_image().get_image_path().split("static/")[1]}
+
+            new_coordinates.append(coodinate)
         # print("coordinates:", new_coordinates)
         return new_coordinates
 

@@ -108,6 +108,9 @@ var lat1{{map.name}} = imageBounds{{map.name}}[0][0];
 var long1{{map.name}} = imageBounds{{map.name}}[0][1];
 var lat2{{map.name}} = imageBounds{{map.name}}[1][0];
 var long2{{map.name}} = imageBounds{{map.name}}[1][1];
+{% if not map.odm %}
+var coordinates{{map.name}} = {{map.image_coordinates | tojson}};
+{% endif %}
 
 function set{{map.name}}MapImage(path) {
     imageOverlay{{map.name}}.setUrl(path);
@@ -119,6 +122,7 @@ function update{{map.name}}Map(map) {
     set{{map.name}}MapImage(map.file_url);
     set{{map.name}}Bounds(map.bounds);
     {% if not map.odm %}
+    coordinates{{map.name}} = map.image_coordinates
     loadPolygons{{map.name}}(map.image_coordinates);
     {% endif %}
 }
@@ -135,12 +139,12 @@ function set{{map.name}}Bounds(bounds) {
 
 {% if not map.odm %}
 var polygons{{map.name}};
-function loadPolygons{{map.name}}(polygonStringsArray) {
+function loadPolygons{{map.name}}(coordinates) {
     console.log("loading polygons");
     polygons{{map.name}} = new Array();
     var centers{{map.name}} = new Array();
-    for (var i = 0; i < polygonStringsArray.length; i++) {
-        var polygonString = polygonStringsArray[i];
+    for (var i = 0; i < coordinates.length; i++) {
+        var polygonString = coordinates[i].coordinates_string;
         if(polygonString =="") {
             continue;
         }
@@ -171,11 +175,7 @@ function loadPolygons{{map.name}}(polygonStringsArray) {
         var polygon = L.polygon(latlngs ,{ opacity: 0, fillOpacity: 0.0, fillColor: '#0000FF' });
         polygon.on('mouseover', highlightFeature);
         polygon.on('mouseout', resetHighlight);
-        {% if map.ir %}
-        polygon.on('click',	slideIR);
-        {% else %}
-        polygon.on('click',	slide);
-        {% endif %}
+        polygon.on('click',	slide{{map.name}});
         {{map.name}}Overlay.addLayer(polygon);
 
         polygons{{map.name}}.push(polygon);
@@ -192,6 +192,11 @@ function loadPolygons{{map.name}}(polygonStringsArray) {
     gpxLayer.addTo(map);
     console.log('polygons loaded');
     {% endif %}
+}
+function slide{{map.name}}(e) {
+	var i = polygons{{ map.name }}.indexOf(e.target);
+	filename = coordinates{{ map.name }}[i].file_name;
+	showSlideByFilename(filename);
 }
 {% endif %}
 {% endfor %}
@@ -216,10 +221,7 @@ function resetHighlight(e) {
 	});
 }
 
-function slide(e) {
-	var i = polygons{{maps[0].name}}.indexOf(e.target);
-	showSlide(i);
-}
+
 
 {% if maps[1] %}
 function slideIR(e) {
@@ -301,6 +303,7 @@ marker{{ loop.index0  }}.addTo(map);
 {% for map in maps %}
 {% if not map.odm %}
 {% if map.image_coordinates %}
+coordinates{{map.name}} = {{ map.image_coordinates|tojson }};
 loadPolygons{{map.name}}({{ map.image_coordinates|tojson }});
 {% endif %}
 {% endif %}

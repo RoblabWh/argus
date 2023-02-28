@@ -1,0 +1,1389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>photo viewer</title>
+    <style>
+    .mySlides {
+      display: none;
+      width:100%;
+    }
+
+    #slideshow-container {
+      width: 100%;
+      position: relative;
+      margin: auto;
+    }
+
+    .prev, .next {
+      cursor: pointer;
+      position: absolute;
+      top: 50%;
+      width: auto;
+      padding: 16px;
+      margin-top: -22px;
+      color: var(--font-color-b);
+      font-weight: bold;
+      font-size: 32px;
+      transition: 0.3s ease;
+      user-select: none;
+      background-color: rgba(1,1,1,0.4);
+      border-radius: 4px;
+      z-index: 10;
+    }
+    .next {
+      right: 0;
+    }
+
+    .prev:hover, .next:hover {
+      color: var(--font-color-b);
+      background-color: var(--accent-color-interaction);
+    }
+
+
+    .img-magnifier-glass {
+      position: absolute;
+      z-index: 300;
+      border: 3px solid #000;
+      border-radius: 4px;
+      cursor: none;
+      /*Set the size of the magnifier glass:*/
+      width: 250px;
+      height: 250px;
+      opacity:0;
+      pointer-events:none;
+    }
+
+    .img-magnifier-hide {
+      display: none
+    }
+
+    a:hover .img-magnifier-glass {
+      opacity:1;
+      pointer-events:initial;
+
+    }
+
+
+    .ir-overlay{
+        z-index: 2;
+        opacity: 0;
+    }
+
+    .temp-glass {
+        position: absolute;
+        background-color: #ffffff;
+        padding: 5px;
+        opacity: 0;
+        z-index: 20;
+    }
+
+    #temp-glass p {
+        margin: 0px;
+    }
+
+
+    .ir-overlay:hover .temp-glass{
+        opacity: 1;
+    }
+
+
+    #grad {
+      height: 100%;
+      background-color: purple;
+      width: 100%;
+    }
+
+    .grad-option1{
+          background-image: linear-gradient(to right, black, white);
+    }
+
+    .grad-option2{
+          background-image: linear-gradient(90deg, rgba(0,0,0,1) 0%, rgba(255,0,0,1) 37.5%, rgba(255,255,0,1) 75%,
+          rgba(255,255,255,1) 100%);
+    }
+
+    .grad-option3{
+          background-image:  linear-gradient(90deg, rgba(0,0,32,1) 0%, rgba(32,0,96,1) 12.5%, rgba(181,0,164,1) 37.5%,
+          rgba(255,64,0,1) 50%, rgba(255,255,0,1) 87.5%, rgba(255,255,200,1) 100%);
+    }
+
+    .grad-option4{
+          background-image:  linear-gradient(90deg, rgba(0,0,0,1) 0%, rgba(30,129,129,1) 35%, rgba(255,255,0,1) 75%,
+          rgba(255,65,0,1) 93.5%, rgba(225,0,0,1) 100%);
+    }
+
+
+    .grad-option5{
+          background-image: linear-gradient(90deg, rgba(0,0,0,1) 0%, rgba(221,60,221,1) 12.5%, rgba(32,32,255,1) 25%,
+           rgba(19,240,240,1) 37.5%, rgba(0,160,0,1) 55%, rgba(224,231,14,1) 70%, rgba(255,255,19,1) 75%,
+           rgba(255,32,32,1) 87.5%, rgba(255,255,255,1) 100%);
+    }
+
+
+    .grad-option6{
+          background-image: linear-gradient(90deg, rgba(0,0,0,1) 0%, rgba(0,64,255,1) 12.5%, rgba(0,160,60,1) 25%,
+          rgba(128,255,0,1) 37.5%, rgba(255,255,0,1) 50%, rgba(255,0,0,1) 75%, rgba(255,0,255,1) 87.5%,
+          rgba(255,255,255,1) 100%);
+    }
+
+
+    .grad-option7{
+          background-image: linear-gradient(90deg, rgba(127,0,0,1) 0%, rgba(255,0,193,1) 12.5%, rgba(207,0,255,1) 16.5%,
+          rgba(0,0,255,1) 33%, rgba(0,255,255,1) 50%, rgba(0,255,0,1) 66%,rgba(255,255,0,1) 82.5%, rgba(255,0,0,1) 100%);
+    }
+
+
+    .grad-option8{
+          background-image: linear-gradient(90deg, rgba(0,0,128,1) 0%, rgba(0,0,255,1) 12.5%, rgba(0,255,255,1) 37.5%,
+          rgba(255,255,0,1) 62.5%, rgba(255,0,0,1) 87.5%, rgba(128,0,0,1) 100%);
+    }
+
+
+    .grad-option9{
+          background-image:  linear-gradient(90deg, rgba(0,0,0,1) 0%, rgba(255,255,255,1) 70%, rgba(255,98,98,1) 87.5%,
+          rgba(222,0,0,1) 100%);
+    }
+
+    .grad-option10{
+        background-image:  linear-gradient(to right, white, black);
+    }
+
+
+
+    .slider {
+      -webkit-appearance: none;
+      width: 100%;
+      height: 12px;
+      border-radius: 5px;
+      background: white;
+      outline: none;
+      opacity: 1;
+      -webkit-transition: .2s;
+      transition: .2s;
+    }
+
+
+    .slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: var(--accent-color-interaction);
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .slider::-moz-range-thumb {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: var(--accent-color-interaction);
+      cursor: pointer;
+    }
+
+    .slider::-webkit-slider-thumb:hover {
+      border: 2px solid var(--accent-color-interaction);
+    }
+    .slider::-moz-range-thumb:hover {
+      border: 2px solid var(--accent-color-interaction);
+    }
+
+    .container{
+        width: 100%;
+        margin: 0 auto;
+        margin-top: 20px;
+        margin-bottom: 20px
+    }
+
+    ul.tabs{
+        margin: 0px;
+        padding: 0px;
+        list-style: none;
+    }
+
+
+    ul.tabs li{
+        background: var(--accent-color-interaction);
+        color: var(--font-color-b);
+        display: inline-block;
+        padding: 10px 15px;
+        cursor: pointer;
+        font-weight: bold;
+        transition: all 0.3s ease;
+    }
+
+    ul.tabs li:hover{
+        color: var(--font-color-a);
+    }
+
+    #tab-link-1{
+        border-top-left-radius: 6px;
+        {% if not has_ir and not panos %}
+        border-top-right-radius: 6px;
+        {% endif %}
+    }
+
+    #tab-link-2{
+        {% if not panos %}
+        border-top-right-radius: 6px;
+        {% endif %}
+    }
+
+    #tab-link-3{
+        border-top-right-radius: 6px;
+    }
+
+    ul.tabs li:hover{
+        background var(--accent-color-interaction);
+    }
+
+    ul.tabs li.current{
+        background: var(--bg-color-a);
+        color: var(--font-color-a);
+    }
+
+    .tab-content_gallery{
+        overflow: auto;
+        display: none;
+        background: var(--bg-color-a);
+        padding: 20px;
+        border-ne: 3px solid var(--accent-color-interaction);
+        border-top-right-radius: 8px;
+        border-bottom-right-radius: 8px;
+        border-bottom-left-radius: 8px;
+    }
+
+    .tab-content_gallery.current{
+        display: inherit;
+    }
+
+
+    .slideshow-settings-container {
+        width-no:100%;
+        min-width: 300px;
+        margin: auto;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        grid-template-rows: auto;
+
+        padding: 20px;
+        column-gap: 5px;
+        row-gap: 0px;
+
+        background-color: var(--bg-color-page);
+        border-radius: 6px;
+        margin-bottom: 10px;
+        justify-self: start;
+    }
+
+    .slideshow-settings-item {
+        overflow: hidden;
+        justify-self: start;
+        margin: 0 0 auto;
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr 1fr;
+        grid-template-rows: auto;
+        grid-template-areas:
+            "a0 a0 a0 a0"
+            "b0 b0 b0 b1"
+            "c0 c0 c0 c0"
+            "d0 d1 d1 d1"
+            "e0 e1 e2 e3";
+        gap: 5px 5px;
+        margin-top: 0px;
+        padding: 16px;
+    }
+
+    .slideshow-settings-item-unstructured {
+        overflow: hidden;
+        justify-self: start;
+        margin: 0 0 auto;
+        margin-top: 0px;
+        padding: 16px;
+    }
+
+    .slideshow-settings-item table {
+        oveflow: hidden;
+    }
+
+    .slideshow-settings-title{
+        margin: 8px 0;
+        margin-top: 0px;
+        background-color: #dbdbdb;
+        border-radius: 6px;
+        margin-bottom: 0px;
+        padding-bottom: 0px;
+        border-bottom-left-radius: 0px;
+        border-bottom-right-radius: 0px;
+        width: 90%;
+        padding: 10px;
+        border: var(--bg-color-a) 1px solid;
+    }
+
+    .slideshow-settings-item > div {
+        justify-self: start;
+        width: 100%;
+    }
+
+    .setting-fade {
+        opacity: 1.0;
+    }
+
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 30px;
+      height: 17px;
+    }
+
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .switch-slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: var(--accent-color-red);
+      -webkit-transition: .4s;
+      transition: .4s;
+    }
+
+    .switch-slider:before {
+      position: absolute;
+      content: "";
+      height: 13px;
+      width: 13px;
+      left: 2px;
+      bottom: 2px;
+      background-color: var(--bg-color-page);
+      -webkit-transition: .4s;
+      transition: .4s;
+    }
+
+    input:checked + .switch-slider {
+      background-color: var(--accent-color-interaction);
+    }
+
+    input:focus + .switch-slider {
+      box-shadow: 0 0 1px var(--accent-color-interaction);
+    }
+
+    input:checked + .switch-slider:before {
+      -webkit-transform: translateX(13px);
+      -ms-transform: translateX(13px);
+      transform: translateX(13px);
+    }
+
+    .switch-slider.round {
+      border-radius: 17px;
+    }
+
+    .switch-slider.round:before {
+      border-radius: 50%;
+    }
+
+
+    .tab-vertical {
+        float: left;
+        width: 20%;
+        margin-right: 8px;
+    }
+
+    /* Style the buttons inside the tab */
+    .tab-vertical button {
+        display: block;
+        background-color: var(--accent-color-interaction);
+        color: var(--font-color-b);
+        padding: 12px 6px;
+        margin-top: 0px;
+        margin-bottom: 10px;
+        width: 100%;
+        border-style: solid;
+        border-width: 2px;
+        border-color: var(--accent-color-interaction);
+        outline: none;
+        text-align: left;
+        cursor: pointer;
+        transition: 0.3s;
+        font-size: 17px;
+        border-radius: 6px;
+    }
+
+    /* Change background color of buttons on hover */
+    .tab-vertical button:hover {
+        font-weight: bold;
+        color: var(--font-color-a);
+    }
+
+    /* Create an active/current "tab button" class */
+    .tab-vertical button.active {
+        background-color: var(--bg-color-a);
+        color: var(--font-color-a);
+        font-weight: bold;
+        border-style: solid;
+        border-width: 2px;
+        border-color: var(--accent-color-interaction);
+    }
+
+    /* Style the tab content */
+    .tabcontent-vertical {
+        padding: 0px 12px;
+        background-color: var(--bg-color-a);
+        border-radius: 6px;
+        float: none;
+        overflow: hidden;
+        border-left: none;
+        min-height: 120px;
+        width: 100%;
+        margin-bottom: auto;
+    }
+
+    #slideshow-settings-tabs{
+        display: flex;
+        width: 100%;
+        box-sizing: border-box;
+        margin-bottom: 20px;
+    }
+
+   #layer-table-container{
+        background-color: var(--bg-color-page);//rgb(66,66,66);
+        color: var(--font-color-a);
+        border-radius: 6px;
+        padding: 6px;
+    }
+
+    #layer-table-container td, th {
+        border: 0px solid;
+        text-align: left;
+        padding: 8px;
+    }
+
+    #layer-table-container tr {
+        background-color: rgb(230,230,230)
+    }
+    #layer-table-container tr:nth-child(even) {
+        background-color: rgb(230,230,230);
+    }
+    #layer-table-container tr:nth-child(1) {
+        background-color: transparent;
+        border-bottom: 2px solid var(--bg-color-a);
+    }
+
+
+
+</style>
+
+
+<script>
+    var displayingIR = false;
+    var displayingAI = false;
+    var lastSlide = 0;
+
+    function plusSlides(n) {
+      slideIndex += n;
+      var slides = document.getElementsByClassName("mySlides");
+      if(slideIndex >= slides.length){
+        slideIndex = 0;
+      } else if (slideIndex < 0){
+        slideIndex = slides.length - 1;
+      }
+      if(displayingIR){
+        if(slideshow_couples[slideIndex][1] == ""){
+          plusSlides(n);
+        }
+        else{
+          showCurrentSlide();
+        }
+      } else {
+        if(slideshow_couples[slideIndex][0] == ""){
+          plusSlides(n);
+        }
+        else{
+          showCurrentSlide();
+        }
+      }
+    }
+
+    function showSlideByID(id) {
+        console.log(id);
+        var i;
+        var slides = document.getElementsByClassName("mySlides");
+        console.log(slides.findIndex(x => x.id === id));
+        for (i = 0; i < slides.length; i++) {
+            console.log(slides[i].id +id);
+            if (slides[i].id === id) {
+                showSlide(i);
+                break;
+            }
+        }
+    }
+
+    function showSlideByFilename(filename){
+        var slideIndex = getSlideIndexByFilename(filename, 0);
+        if(slideIndex != -1){
+            showSlide(slideIndex);
+        } else {
+            slideIndex = getSlideIndexByFilename(filename, 1);
+            if(slideIndex != -1){
+                showSlideIR(slideIndex);
+            }
+        }
+    }
+
+    function showSlideByFilenameIR(filename){
+        var slideIndex = getSlideIndexByFilename(filename, 1);
+        if(slideIndex != -1){
+            showSlideIR(slideIndex);
+        }
+    }
+
+    function showSlide(n) {
+      var details = document.getElementById("gallery-details");
+      if(!details.open){
+        details.open = true;
+      }
+      slideshowContainer.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+          inline: "nearest"
+      });
+      var slides = document.getElementsByClassName("mySlides");
+      if(n >= slides.length){
+        n = 0;
+      } else if (n < 0){
+        n = slides.length - 1;
+      }
+      console.log(n);
+      slideIndex = n
+      if(displayingIR){
+        deactivateIR();
+      }
+      displayingIR = false;
+      showCurrentSlide();
+    }
+
+    function showSlideIR(n) {
+      var details = document.getElementById("gallery-details");
+      if(!details.open){
+        details.open = true;
+      }
+      slideshowContainer.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+          inline: "nearest"
+      });
+      var slides = document.getElementsByClassName("mySlides");
+      if(n >= slides.length){
+        n = 0;
+      } else if (n < 0){
+        n = slides.length - 1;
+      }
+      console.log(n);
+      slideIndex = n
+      activateIR();
+      showCurrentSlide();
+    }
+
+    function showCurrentSlide() {
+        var details = document.getElementById("gallery-details");
+        if(!details.open){
+            details.open = true;
+        }
+        {% if has_ir %}
+        currentIROpacity = document.getElementById("irOpacityRange").value/100;
+        applyOpacity(currentIROpacity);//checkIR();
+        {% endif %}
+        checkbox = document.getElementById("magnifierCheckbox");
+        demagnify();
+        console.log(slideIndex);
+        var i;
+        var x = document.getElementsByClassName("mySlides");
+        console.log(x);
+        if (slideIndex >= x.length) {slideIndex = 0}
+        if (slideIndex < 0) {slideIndex = x.length-1}
+        for (i = 0; i < x.length; i++) {
+            x[i].style.display = "none";
+        }
+        x[slideIndex].style.display = "block";
+        zoomValue = document.getElementById("zoomRange").value/10;
+        if(checkbox.checked){
+            magnify(slideIndex, zoomValue);
+        }
+
+        if(lastSlide != slideIndex){
+            if (detections != null){
+                filenameOfSlide = getFilenameBySlideIndex(slideIndex, 0);
+                generateAnnotationsLayerTableForImage(filenameOfSlide);
+            }
+        }
+
+        if(displayingAI){
+            toggleLayerSettings(false);
+            drawAnnotationsOnCurrentSlide();
+        } else{
+            toggleLayerSettings(true);
+            removeAnnotations();
+        }
+        lastSlide = slideIndex;
+    }
+
+    function checkIR() {
+        if(displayingIR){
+            var divsToHide = document.getElementsByClassName("ir-overlay"); //divsToHide is an array
+            if(divsToHide[0].style.display == 0){
+                for(var i = 0; i < divsToHide.length; i++){
+                    divsToHide[i].style.opacity = 1; // depending on what you're doing
+                }
+            }
+        } else {
+            var divsToShow = document.getElementsByClassName("ir-overlay"); //divsToHide is an array
+            if(divsToShow.length == 0){
+                return; // no IR images
+            }
+            if(divsToShow[0].style.opacity > 0){
+                for(var i = 0; i < divsToShow.length; i++){
+                    divsToShow[i].style.opacity = 0; // depending on what you're doing
+                }
+            }
+        }
+    }
+
+    function applyOpacity(irOpacity) {
+        var irSlides = document.getElementsByClassName("ir-overlay");
+        if(irSlides.length == 0){
+            return; // no IR images
+        }
+
+        var currentIRSlide = document.getElementsByClassName("ir-overlay")[slideIndex];
+        if(displayingIR){
+            //var currentIRSlideOpacity = document.getElementById("irOpacityRange").value/100;
+            currentIRSlide.style.opacity = irOpacity;
+        }
+        else{
+            currentIRSlide.style.opacity = 0;
+        }
+    }
+
+
+
+    // magnify hover
+    function magnify(imgNbr, zoom) {
+      var img, glass, w, h, bw, annotationCanvas;
+      demagnify();
+      //img = document.getElementById(imgID);
+      img = document.getElementsByClassName("mySlides")[imgNbr].getElementsByTagName('img')[0];
+      //img = document.getElementsByClassName("mySlides")[imgNbr].getElementsByTagName('a')[1].getElementsByTagName('img')[0];
+      annotationCanvas = document.getElementsByClassName("mySlides")[imgNbr].getElementsByTagName('canvas')[0];
+      //annotationCanvas = document.getElementsByClassName("mySlides")[imgNbr].getElementsByTagName('a')[2].getElementsByTagName('canvas')[0];
+      //substring after finding canvas
+      //realImgID ="image" + img.id.substring(img.id.indexOf("canvas")+6);
+      //console.log("Real Image ID: " + realImgID);
+      //realImg = document.getElementById(realImgID);
+      /*create magnifier glass:*/
+      glass = document.createElement("DIV");
+      glass.setAttribute("class", "img-magnifier-glass");
+      glass.setAttribute("id", "magnifying-glass-id-for-deleting");
+      /*insert magnifier glass:*/
+      annotationCanvas.parentElement.insertBefore(glass, annotationCanvas);
+      /*set background properties for the magnifier glass:*/
+      glass.style.backgroundImage = "url('" + img.src + "')";
+      glass.style.backgroundRepeat = "no-repeat";
+      console.log(img.width + " " + img.height);
+      glass.style.backgroundSize = (img.width * zoom) + "px " + (img.height * zoom) + "px";
+      bw = 3;
+      w = glass.offsetWidth / 2;
+      h = glass.offsetHeight / 2;
+      /*execute a function when someone moves the magnifier glass over the image:*/
+      glass.addEventListener("mousemove", moveMagnifier);
+      annotationCanvas.addEventListener("mousemove", moveMagnifier);
+      img.addEventListener("mousemove", moveMagnifier);
+      /*and also for touch screens:*/
+      glass.addEventListener("touchmove", moveMagnifier);
+        annotationCanvas.addEventListener("touchmove", moveMagnifier);
+      img.addEventListener("touchmove", moveMagnifier);
+      function moveMagnifier(e) {
+        var pos, x, y;
+        /*prevent any other actions that may occur when moving over the image*/
+        e.preventDefault();
+        /*get the cursor's x and y positions:*/
+        pos = getCursorPos(e);
+        x = pos.x;
+        y = pos.y;
+        /*prevent the magnifier glass from being positioned outside the image:*/
+        //if (x > img.width - (w / zoom)) {x = img.width - (w / zoom);}
+        //if (x < w / zoom) {x = w / zoom;}
+        //if (y > img.height - (h / zoom)) {y = img.height - (h / zoom);}
+        //if (y < h / zoom) {y = h / zoom;}
+        if (x > img.width - (w / zoom) || x < (w / zoom) || y > img.height - (h / zoom) || y < (h / zoom)) {
+            glass.setAttribute("class", "img-magnifier-hide");
+        } else {
+            glass.setAttribute("class", "img-magnifier-glass");
+        }
+        /*set the position of the magnifier glass:*/
+        glass.style.left = (x - w) + "px";
+        glass.style.top = (y - h) + "px";
+        /*display what the magnifier glass "sees":*/
+        glass.style.backgroundPosition = "-" + ((x * zoom) - w + bw) + "px -" + ((y * zoom) - h + bw) + "px";
+      }
+      function getCursorPos(e) {
+        var a, x = 0, y = 0;
+        e = e || window.event;
+        /*get the x and y positions of the image:*/
+        a = img.getBoundingClientRect();
+        /*calculate the cursor's x and y coordinates, relative to the image:*/
+        x = e.pageX - a.left;
+        y = e.pageY - a.top;
+        /*consider any page scrolling:*/
+        x = x - window.pageXOffset;
+        y = y - window.pageYOffset;
+        return {x : x, y : y};
+      }
+      }
+
+      function demagnify() {
+        glass = document.getElementById("magnifying-glass-id-for-deleting");
+        if(glass){
+            glass.parentNode.removeChild(glass);
+            }
+      }
+
+      function remagnify() {
+      if(!displayingIR){
+            zoomValue = document.getElementById("zoomRange").value/10;
+            magnify(slideIndex, zoomValue);
+        }
+      }
+
+    function openSettingsEvent(evt, divName){
+        openSettings(evt.currentTarget, divName);
+    }
+
+    function openSettings(selctedLink, divName) {
+      var i, tabcontent, tablinks;
+      tabcontent = document.getElementsByClassName("tabcontent-vertical");
+      for (i = 0; i < tabcontent.length; i++) {
+        tabcontent[i].style.display = "none";
+      }
+      tablinks = document.getElementsByClassName("tablink-vertical");
+      for (i = 0; i < tablinks.length; i++) {
+        tablinks[i].className = tablinks[i].className.replace(" active", "");
+      }
+      document.getElementById(divName).style.display = "block";
+      selctedLink.className += " active";
+    }
+
+    var slideshow_couples = {{ slide_file_paths|tojson }};
+
+    function getSlideIndexByFilename(filename, imagetype){
+        var index = -1;
+        for(var i = 0; i < slideshow_couples.length; i++){
+            if(slideshow_couples[i][imagetype] == filename){
+                index = i;
+                break;
+            }
+        }
+        return index;
+    }
+
+    function getSlideByFilenameRGB(filename){
+        var index = getSlideIndexByFilename(filename, 0);
+        if(index != -1){
+            var slide = document.getElementById("slide" + index);
+            return slide;
+        }
+        return null;
+    }
+
+    function getSLideByFilenameIR(filename){
+        var index = getSlideIndexByFilename(filename, 1);
+        if(index != -1){
+            var slide = document.getElementById("slide" + index);
+            return slide;
+        }
+        return null;
+    }
+
+    function getFilenameBySlideIndex(index, imagetype){
+        var path = slideshow_couples[index][imagetype];
+        return path.substring(path.lastIndexOf('/')+1);
+    }
+
+</script>
+</head>
+<body>
+<details id="gallery-details">
+    <summary>Photo Gallery</summary>
+        <div id="slideshow-container">
+            <a class="prev" onclick="plusSlides(-1)">❮</a>
+            <a class="next" onclick="plusSlides(1)">❯</a>
+            {% if slide_file_paths %}
+            {% for couple in slide_file_paths %}
+            <div class="mySlides" id="slide{{ loop.index0 }}">
+                {% if couple[0] != "" %}
+                <a>RGB: {{couple[0].split('/')[-1]}}</a>
+                {% endif %}
+                {% if couple[1] != "" %}
+                <a>IR: {{couple[1].split('/')[-1]}}</a>
+                {% endif %}
+                <div style="margin-bottom:7%;"></div>
+                <div style="position: relative;">
+                    <div style="position: absolute; top: -10%; left: 0px;">
+                        <a>
+                            {% if couple[0] != "" %}
+                            <img id="baseImage{{couple[0].split('/')[-1]}}" src="{{ url_for('static', filename=couple[0]) }}" style="width:100%; height: 100%;">
+                            {% else %}
+                            <img src="{{ url_for('static', filename='default/missingCounterpartRGB.JPG') }}" style="width:100%; height: 100%; opacity: 50%">
+                            {% endif %}
+                        </a>
+                    </div>
+                    <div style="position: absolute; top: -10%; left: 0px;">
+                        <a>
+                            <canvas id="canvas{{couple[0].split('/')[-1]}}" class="annotaionsCanvas" width="100%" height="100%;"></canvas>
+                        </a>
+                    </div>
+                    <div class="ir-overlay" style="position: relative; top: 0; left: 10%; width:80%; height:80%">
+        <!--                <canvas style="width:100%; height: 100%;" id="canvas{{loop.index0}}"></canvas>-->
+                        {% if couple[1] != "" %}
+                        <img class="ir-image" id="image{{loop.index0}}" src="{{ url_for('static', filename=couple[1]) }}" style="width:100%; height: 100%;">
+                        {% else %}
+                        <img class="ir-image" src="{{ url_for('static', filename='default/missingCounterpartIR.JPG') }}" style="width:100%; height: 100%;">
+                        {% endif %}
+                        <div class="temp-glass" id="temp-glass{{loop.index0}}"> <p>Temp:</p></div>
+
+                    </div>
+                </div>
+                <div style="margin-bottom: 10%;"></div>
+
+            </div>
+            {% endfor %}
+            {% endif %}
+
+        </div>
+
+        <div id="slideshow-settings-tabs">
+            <div id="slideshow-settings-tabs-links" class="tab-vertical">
+                <button class="tablink-vertical" onclick="openSettingsEvent(event, 'slideshow-settings-RGB')" id="defaultOpen">Magnifier</button>
+                {% if has_ir %}
+                <button class="tablink-vertical" onclick="openSettingsEvent(event,'slideshow-settings-IR')">IR-Overlay</button>
+                {% endif %}
+                {% if detections %}
+                <button id="slideshow-settings-annotaions-tablink" class="tablink-vertical" onclick="openSettingsEvent(event,'slideshow-settings-Annotations')">AI-Overlays</button>
+                {% endif %}
+            </div>
+
+            <div id="slideshow-settings-RGB" class="tabcontent-vertical">
+                <div class="slideshow-settings-item">
+                    <div style="grid-area: a0;">
+                        <label>
+                            <label class="switch">
+                                <input type="checkbox" id="magnifierCheckbox" checked="checked">
+                                <span class="switch-slider round"></span>
+                            </label>
+                          Magnifier
+                        </label>
+                    </div>
+                    <div style="grid-area: b0;">
+                        <input type="range" min="10" max="100" value="50" class="slider" id="zoomRange" style="width:100%;">
+                    </div>
+                    <div style="grid-area: b1;">
+                         <label for="zoomRange" >Zoom: <span id="zoomValue"></span></label>
+                    </div>
+                    <div style="grid-area: c0; display: inline-block;"></div>
+                    <div style="grid-area: d0;"></div>
+                </div>
+            </div>
+            <div id="slideshow-settings-IR" class="tabcontent-vertical">
+                <div class="slideshow-settings-item">
+                    <div style="grid-area: a0;">
+                        <label>
+                            <label class="switch">
+                                <input type="checkbox" id="irOverlayCheckbox">
+                                <span class="switch-slider round"></span>
+                            </label>
+                          Infrared image overlay
+                        </label>
+                    </div>
+                    <div class="setting-fade" style="grid-area: b0;">
+                        <input type="range" min="10" max="100" value="100" class="slider setting-disabler" id="irOpacityRange" style="width:100%; grid-area: center">
+                    </div>
+                    <div class="setting-fade" style="grid-area: b1;">
+                        <label for="irOpacityRange" >Opacity: <span id="opacityValue"></span></label>
+                    </div>
+                    <div class="setting-fade" style="grid-area: c0;">
+                        <label>
+                            <label class="switch">
+                                <input class="setting-disabler" type="checkbox" id="temperatureCheckbox">
+                                <span class="switch-slider round"></span>
+                            </label>
+                            Read temperature
+                        </label>
+                    </div>
+                    <div class="setting-fade" style="grid-area: d0;">
+                        <select id="ir-palette-chooser" class="setting-disabler" style="width: 100%">
+                            <option value="grad-option1">white hot</option>
+                            <option value="grad-option2">Fulgurite</option>
+                            <option value="grad-option3">Iron Red</option>
+                            <option value="grad-option4">Hot Iron</option>
+                            <option value="grad-option5">Medical</option>
+                            <option value="grad-option6">Arctic</option>
+                            <option value="grad-option7">Rainbow 1</option>
+                            <option value="grad-option8">Rainbow 2</option>
+                            <option value="grad-option9">Tint</option>
+                            <option value="grad-option10">Black Hot</option>
+                        </select>
+                    </div>
+                    <div id="grad" class="setting-fade grad-option1" style="grid-area: d1;"></div>
+                    <div class="setting-fade" style="grid-area: e0;">
+                        <input class="setting-disabler" type="number" id="minTemp" name="minTemp" min="-20" max="800" value="{{ ir_settings.ir_min_temp }}"
+                               style="width: 90%; padding; 0px: height:100%; border: 0px; border-radius: 4px;">
+                    </div>
+                    <div class="setting-fade" style="grid-area: e1;">min</div>
+                    <div class="setting-fade" style="grid-area: e2;">
+                        <input class="setting-disabler" type="number" id="maxTemp" name="maxTemp" min="-20" max="800" value="{{ ir_settings.ir_max_temp }}"
+                               style="width: 90%; padding; 0px: height:100%; border: 0px; border-radius: 4px;">
+                    </div>
+                    <div class="setting-fade" style="grid-area: e3;">max</div>
+                </div>
+            </div>
+            <div id="slideshow-settings-Annotations" class="tabcontent-vertical">
+                <div class="slideshow-settings-item-unstructured">
+                    <div style="margin-bottom: 10px;">
+                        <label style="margin-bottom: 8px;">
+                            <label class="switch">
+                                <input type="checkbox" id="aiOverlayCheckbox">
+                                <span class="switch-slider round"></span>
+                            </label>
+                          AI-Overlays
+                        </label>
+                    </div>
+                    <div>
+                        Annotations line width:
+                        <input type="number" id="annotationsLineWidth" name="lineWidth" min="1" max="100" value="2"
+                               style="width: 60px; margin-bottom: 10px; border: 0px; border-radius: 4px;">
+                    </div>
+                    <div id="layer-table-container">
+                        <table>
+                            <tbody>
+                            <tr>
+                                <th colspan="1">Layer</th>
+                                <td colspan="1">total found objects</td>
+                                <td colspan="1">displayed objects</td>
+                                <td colspan="2">threshold</td>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+</details>
+
+{% if panos %}
+<details id="panoDetails">
+    <summary>Panorama Viewer</summary>
+    <div class="tab-content">
+        {% include 'panoViewer.html' %}
+    </div>
+</details>
+{% endif %}
+
+<div class="container">
+
+    <ul class="tabs">
+        <li id="tab-link-1" class="tab-link current" data-tab="tab-1">RGB Photos</li>
+        {% if has_ir %}
+        <li id="tab-link-2" class="tab-link" data-tab="tab-2"> IR Photos</li>
+        {% endif %}
+        {% if panos %}
+        <li id="tab-link-3" class="tab-link" data-tab="tab-3">Panoramas</li>
+        {% endif %}
+    </ul>
+
+    <div id="tab-1" class="tab-content_gallery current">
+        {% if slide_file_paths %}
+        {% for couple in slide_file_paths %}
+        {% if couple[0] != "" %}
+        <div style="float:left;width:20%; min-width:240px;">
+            <img id="galleryImage{{ couple[0].split('/')[-1] }}" src="{{ url_for('static', filename=couple[0]) }}" style="padding: 5px;width:95%;cursor: pointer;" onclick="showSlideByFilename('{{ couple[0] }}')">
+        </div>
+        {% endif %}
+        {% endfor %}
+        {% endif %}
+    </div>
+    <div id="tab-2" class="tab-content_gallery">
+        <div style="width: 100%; height: 100%; overflow: auto;">
+            {% if slide_file_paths %}
+            {% for couple in slide_file_paths %}
+            {% if couple[1] != "" %}
+            <div style="float:left;width:20%; min-width:240px;">
+                <img src="{{ url_for('static', filename=couple[1]) }}" style="padding: 5px;width:95%;cursor: pointer;" onclick="showSlideByFilename('{{ couple[1] }}')">
+            </div>
+            {% endif %}
+            {% endfor %}
+            {% endif %}
+        </div>
+    </div>
+    <div id="tab-3" class="tab-content_gallery">
+        <div style="width: 100%; height: 100%; overflow: auto;">
+            {% if panos %}
+            {% for pano in panos %}
+            <div style="float:left;width:20%; min-width:240px;">
+                <img src="{{ url_for('static', filename=pano.file) }}" style="padding: 5px;width:95%;cursor: pointer;" onclick="show_pano({{ loop.index0 }})">
+            </div>
+            {% endfor %}
+            {% endif %}
+        </div>
+    </div>
+
+</div>
+
+<script>
+    function getPosition(obj) {
+        var curleft = 0,
+        curtop = 0;
+        if (obj.offsetParent) {
+            do {
+                curleft += obj.offsetLeft;
+                curtop += obj.offsetTop;
+            } while (obj = obj.offsetParent);
+            return {
+                x: curleft,
+                y: curtop
+            };
+        }
+        return undefined;
+    }
+
+    function rgbToHex(r, g, b) {
+        if (r > 255 || g > 255 || b > 255)
+            throw "Invalid color component";
+        return ((r << 16) | (g << 8) | b).toString(16);
+    }
+
+</script>
+
+
+
+<script>
+    var gradient_lut = {{ gradient_lut }};
+    var slideIndex = 0;
+    slideshow_couples = {{ slide_file_paths | tojson}};
+    for (var i = 0; i < slideshow_couples.length; i++) {
+        if (slideshow_couples[i][0] != "") {
+            slideIndex = i;
+            break;
+        }
+    }
+    showCurrentSlide(slideIndex);
+    var slideshowContainer = document.getElementById("slideshow-container");
+
+
+    var checkbox = document.getElementById("magnifierCheckbox");
+    var slider = document.getElementById("zoomRange");
+    var output = document.getElementById("zoomValue");
+    //document.getElementById("zoomValue").innerHTML = slider.value/10;
+    output.innerHTML = slider.value;
+
+    document.getElementsByClassName("mySlides")[0].getElementsByTagName('img')[0].onload = function(){
+        magnify(0,slider.value/10);
+    }
+
+    slider.oninput = function() {
+      output.innerHTML = this.value/10;
+      demagnify();
+      if(checkbox.checked){
+        magnify(slideIndex, this.value/10);
+      }
+    }
+
+
+    checkbox.onchange = function() {
+        if(this.checked){
+            magnify(slideIndex, slider.value/10);
+        }else{
+            demagnify();
+        }
+    }
+
+    output.innerHTML = slider.value/10;
+
+    $(document).ready(function(){
+        $('ul.tabs li').click(function(){
+            var tab_id = $(this).attr('data-tab');
+
+            $('ul.tabs li').removeClass('current');
+            $('.tab-content_gallery').removeClass('current');
+
+            $(this).addClass('current');
+            $("#"+tab_id).addClass('current');
+        })
+
+        $('#irOverlayCheckbox').change(function(){
+            if(this.checked){
+                $('#magnifierCheckbox').prop('checked', false);
+                demagnify();
+                displayingIR = true;
+                showCurrentSlide();
+                $('.setting-fade').map(function () {
+                    $(this).css("opacity", "0.999");
+                });
+                $('.setting-disabler').map(function () {
+                    $(this).prop('disabled', false);
+                });
+            }else{
+                $('#magnifierCheckbox').prop('checked', true);
+                displayingIR = false;
+                showCurrentSlide(slideIndex);
+                $('.setting-fade').map(function () {
+                    $(this).css("opacity", "0.4");
+                });
+                $('.setting-disabler').map(function () {
+                    $(this).prop('disabled', true);
+                });
+            }
+        });
+
+        $('#magnifierCheckbox').change(function(){
+            if(this.checked){
+                $('#irOverlayCheckbox').prop('checked', false);
+                displayingIR = false;
+                showCurrentSlide(slideIndex);
+                deactivateIR();
+            }else{
+                //$('#irOverlayCheckbox').prop('checked', true);
+                demagnify();
+                //displayingIR = true;
+                //showCurrentSlide();
+            }
+        });
+
+        $('#aiOverlayCheckbox').change(function(){
+            if(this.checked){
+                displayingAI = true;
+                toggleLayerSettings(false);
+                showCurrentSlide();
+                filenameOfSlide = getFilenameBySlideIndex(slideIndex,0);
+                generateAnnotationsLayerTableForImage(filenameOfSlide);
+            }else{
+                displayingAI = false;
+                toggleLayerSettings(true);
+                showCurrentSlide(slideIndex);
+            }
+        });
+
+        $('#annotationsLineWidth').change(function(event) {
+            if(displayingAI){
+                drawAnnotationsOnCurrentSlide();
+            }
+        });
+
+
+    })
+
+
+
+
+
+    {% if has_ir %}
+
+
+    $('#irOpacityRange').on('input', function(event) {
+        irOpacity = $(this).val()/100;
+        applyOpacity(irOpacity);
+        opacityValue = document.querySelector('#opacityValue');
+        opacityValue.innerHTML = irOpacity;
+    });
+
+
+    $('#irOverlayCheckbox').prop('checked', false);
+    $('#magnifierCheckbox').prop('checked', true);
+    $('.setting-fade').map(function () {
+        $(this).css("opacity", "0.4");
+    });
+    $('.setting-disabler').map(function () {
+        $(this).prop('disabled', true);
+    });
+
+
+    function activateIR() {
+        displayingIR = true;
+        $('#irOverlayCheckbox').prop('checked', true);
+        $('#magnifierCheckbox').prop('checked', false);
+        $('.setting-fade').map(function () {
+            $(this).css("opacity", "0.999");
+        });
+        $('.setting-disabler').map(function () {
+            $(this).prop('disabled', false);
+        });
+        showCurrentSlide(slideIndex);
+    }
+
+     function deactivateIR() {
+        displayingIR = false;
+        $('#irOverlayCheckbox').prop('checked', false);
+        $('#magnifierCheckbox').prop('checked', true);
+        $('.setting-fade').map(function () {
+            $(this).css("opacity", "0.4");
+        });
+        $('.setting-disabler').map(function () {
+            $(this).prop('disabled', true);
+        });
+    }
+
+    $('#irOpacityRange').val(100);
+    $('#irOpacityRange').change();
+
+
+    window.onload = function() {
+        {% for couple in slide_file_paths %}
+        {% if couple[1] != "" %}
+        var img = document.getElementById('image{{loop.index0}}');
+            img.addEventListener("mousemove", function(e) {
+                if($('#temperatureCheckbox').is(':checked')){
+
+                    var img = document.getElementById('image{{loop.index0}}');
+                    var canvas = document.createElement('canvas');
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    canvas.getContext('2d').drawImage(img, 0, 0, img.width, img.height);
+                    var p = canvas.getContext('2d').getImageData(e.offsetX, e.offsetY, 1, 1).data;
+                    var coord = "x: " + e.offsetX + " ,y: " + e.offsetY;
+                    // If transparency on the image
+                    if ((p[0] == 0) && (p[1] == 0) && (p[2] == 0) && (p[3] == 0)) {
+                        coord += " (Transparent color detected, cannot be converted to HEX)";
+                    }
+                    var hex = "#" + ("000000" + rgbToHex(p[0], p[1], p[2])).slice(-6);
+                    var clostestColorIndex = color_closest(p[0], p[1], p[2]);
+                    var temp = calc_temp_from_percentage(clostestColorIndex/gradient_lut.length);
+                    document.getElementById("temp-glass{{ loop.index0 }}").style.backgroundColor = hex;
+                    document.getElementById("temp-glass{{ loop.index0 }}").innerHTML = temp + "°C  " +clostestColorIndex + " " + coord + " " + p[0] + " " + p[1] + " " + p[2] + " " + p[3];
+
+                    $('#temp-glass{{ loop.index0 }}').css({
+                        left: e.offsetX + 20,
+                        top: e.offsetY + document.body.scrollTop
+                    });
+                    if ((p[0]*0.299 + p[1]*0.587 + p[3]*0.114) > 186){
+                        document.getElementById("temp-glass{{ loop.index0 }}").style.color = "#000000";
+                    } else {
+                        document.getElementById("temp-glass{{ loop.index0 }}").style.color = "#ffffff";
+                    }
+                 } else {
+                    document.getElementById("temp-glass{{ loop.index0 }}").style.backgroundColor = "transparent";
+                    document.getElementById("temp-glass{{ loop.index0 }}").innerHTML = "";
+                 }
+
+            });
+        {% endif %}
+        {% endfor %}
+
+        {% if detections %}
+        generateDetectionTable({{ detections | tojson }});
+        generateAnnotationSettings({{ detections | tojson }});
+        var fileName = "{{ file_names[0].split('/')[-1] }}";
+        generateAnnotationsLayerTableForImage(fileName);
+        $('#aiOverlayCheckbox').prop('checked', false);
+        toggleLayerSettings(true);
+        {% endif %}
+    };
+
+    //change css class of grad depending on selected option of ir-palette-chooser
+    $("#ir-palette-chooser").change(function() {
+        $("#ir-palette-chooser option:selected").each(function() {
+            var ir_palette = $(this).val();
+            console.log(ir_palette);
+            $("#grad").removeClass();
+            $("#grad").addClass('setting-fade ' + ir_palette);
+            numbr_at_end_of_value = ir_palette.match(/\d+$/);
+            $.get('/gradient_lut/'+numbr_at_end_of_value, function(lut) {
+                console.log(lut);
+                gradient_lut = lut;
+            });
+            $.get( "/update_ir_settings/{{ id }}/" + Number(document.getElementById("minTemp").value) + "," + Number(document.getElementById("maxTemp").value) + "," + numbr_at_end_of_value);
+        });
+    });
+
+    $("#minTemp").change(function() {
+        $.get( "/update_ir_settings/{{ id }}/" + Number(document.getElementById("minTemp").value) + "," + Number(document.getElementById("maxTemp").value) + "," + Number(document.getElementById("ir-palette-chooser").value.match(/\d+$/)));
+    });
+
+    $("#maxTemp").change(function() {
+        $.get( "/update_ir_settings/{{ id }}/" + Number(document.getElementById("minTemp").value) + "," + Number(document.getElementById("maxTemp").value) + "," + Number(document.getElementById("ir-palette-chooser").value.match(/\d+$/)));
+    });
+
+
+    function color_closest(r,g,b){
+        var min_distance = null
+        var min_index = null
+        for (const [i, c] of gradient_lut.entries()){
+           var d = (r - c[0]) ** 2 + (g - c[1]) ** 2 + (b - c[2]) ** 2;
+           if (min_distance == null || d < min_distance){
+              min_distance = d;
+              min_index = i;
+           }
+        }
+        return min_index;
+    }
+
+    function calc_temp_from_percentage(perc){
+        var maxT = Number(document.getElementById("maxTemp").value);
+        var minT = Number(document.getElementById("minTemp").value);
+        var degree = minT + ((maxT - minT) * perc);
+        //console.log(perc, maxT, minT, degree, typeof minT)
+        return Math.round( degree );
+    }
+
+    $("#ir-palette-chooser").val("grad-option{{ ir_settings.ir_color_scheme }}").change();
+
+    {% endif %}
+
+
+    {% if slide_file_paths %}
+    {% for couple in slide_file_paths %}
+    {% if couple[0] != "" %}
+    canvas{{loop.index0}} = document.getElementById('canvas{{ couple[0].split('/')[-1] }}');
+    context{{loop.index0}} = canvas{{loop.index0}}.getContext('2d');
+    var img{{loop.index0}} = new Image();
+    img{{loop.index0}}.src = "{{ url_for('static', filename=couple[0]) }}";
+    img{{loop.index0}}.id = "image{{couple[0].split('/')[-1]}}";
+    img{{loop.index0}}.onload = () => {
+        //width of div of class container
+        var body_width = document.getElementsByClassName("container")[0].offsetWidth;
+        canvas{{loop.index0}}.width = body_width;
+        canvas{{loop.index0}}.height = img{{loop.index0}}.height * ( body_width/ img{{loop.index0}}.width);
+    }
+    {% endif %}
+    {% endfor %}
+    {% endif %}
+
+    function resizeCanvas(){
+        //get all objects with class "annotaionsCanvas"
+        var canvases = document.getElementsByClassName("annotaionsCanvas");
+        var img = document.getElementById("baseImage" + canvases[slideIndex].id.split("canvas")[1]);
+
+        console.log("baseImage" + canvases[0].id.split("canvas")[1]);
+
+        for (var i = 0; i < canvases.length; i++) {
+            var canvas = canvases[i];
+            canvas.width = img.width;
+            canvas.height = img.height;
+        }
+
+        //redraw the current canvas by calling drawAnnotationsOnImage(filename)
+        if (displayingAI){
+            drawAnnotationsOnImage(img.id.split("baseImage")[1]);
+        }
+    }
+
+    document.getElementById("defaultOpen").click();
+
+
+</script>
+</body>
+</html>

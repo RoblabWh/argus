@@ -71,6 +71,14 @@ def render_standard_report(report_id, thread = None, template = "concept.html"):
         detections = json.load(open(detections_path))
     else:
         detections = None
+
+    slide_file_paths = []
+    try:
+        slide_file_paths = data["slide_file_paths"]
+    except:
+        pass
+
+
     message = None
     processing = False
     for thread in threads:
@@ -86,7 +94,7 @@ def render_standard_report(report_id, thread = None, template = "concept.html"):
                "description": project_manager.get_project_description(report_id),
                'creation_time': project_manager.get_project_creation_time(report_id)}
     return render_template(template, id=report_id, file_names=file_names, file_names_ir=file_names_ir,
-                           panos=panos,has_ir=has_ir, flight_data=flight_data,
+                           panos=panos, has_ir=has_ir, flight_data=flight_data, slide_file_paths=slide_file_paths,
                            camera_specs=camera_specs, weather=weather, maps=maps, project=project, message=message,
                            processing=processing, gradient_lut=gradient_lut,ir_settings=ir_settings, detections=detections)
 
@@ -264,13 +272,14 @@ def check_preprocess_status(report_id):
             # print(progress_preprocessing, progress_mapping)
             maps_done = thread.get_maps_done()
             if progress_preprocessing == 100 and not thread.metadata_delivered:
-                flight_data, camera_specs, weather, maps, file_names_rgb, file_names_ir, ir_settings, panos = thread.get_results()
+                flight_data, camera_specs, weather, maps, file_names_rgb, file_names_ir, ir_settings, panos, couples_path_list = thread.get_results()
                 project_manager.update_flight_data(report_id, flight_data)
                 project_manager.update_camera_specs(report_id, camera_specs)
                 project_manager.update_weather(report_id, weather)
                 project_manager.update_maps(report_id, maps)
                 project_manager.update_ir_settings(report_id, ir_settings)
                 project_manager.add_panos(report_id, panos)
+                project_manager.update_slide_file_paths(report_id, couples_path_list)
                 project_manager.overwrite_file_names_sorted(report_id, file_names_rgb= file_names_rgb, file_names_ir=file_names_ir)
                 redirect = True
                 thread.metadata_delivered = True

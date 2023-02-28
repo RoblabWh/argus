@@ -53,7 +53,7 @@
                 detections = data;
                 generateDetectionTable(data);
                 generateAnnotationSettings(data);
-                var currentImageName = document.getElementsByClassName("mySlides")[slideIndex].getElementsByTagName('a')[0].innerHTML;
+                var currentImageName = document.getElementsByClassName("mySlides")[slideIndex].getElementsByTagName('a')[0].innerHTML.split(": ")[1];
                 generateAnnotationsLayerTableForImage(currentImageName);
                 detections = data;
             });
@@ -167,6 +167,7 @@
         }
 
         function generateAnnotationsLayerTableForImage(fileName){
+
             var tableContainer = document.getElementById("layer-table-container");
             tableContainer.innerHTML = "";
 
@@ -180,6 +181,16 @@
             }
             header.insertCell();
 
+            console.log("generateAnnotationsLayerTableForImage: " + fileName);
+
+            if (fileName == null || fileName == ""){
+                var row = tbl.insertRow();
+                var cell = row.insertCell();
+                cell.innerHTML = "No RGB image found";
+                cell.setAttribute("colspan", "6");
+                tableContainer.appendChild(tbl);
+                return;
+            }
 
             currentImageAnnotations = detections["annotations"][getImageIndexByName(fileName)];
             var categories = detections["categories"];
@@ -357,6 +368,14 @@
             tableContainer = document.getElementById("layer-table-container");
             var table = tableContainer.getElementsByTagName("table")[0];
             var rows = table.rows;
+            if(rows[1] == null){
+                return;
+            }
+            if (rows[1].cells.length == 1){
+                console.log(rows[1].cells);
+                console.log("returing");
+                return;
+            }
             for (let i = 1; i < rows.length; i++){
                 var row = rows[i];
                 var labelSwitch = row.cells[0].getElementsByTagName("label")[0];
@@ -408,7 +427,7 @@
         }
 
         function drawAnnotationsOnCurrentSlide(){
-            var currentImageName = document.getElementsByClassName("mySlides")[slideIndex].getElementsByTagName('a')[0].innerHTML;
+            var currentImageName = document.getElementsByClassName("mySlides")[slideIndex].getElementsByTagName('a')[0].innerHTML.split(": ")[1];
             drawAnnotationsOnImage(currentImageName);
         }
 
@@ -449,8 +468,7 @@
         }
 
         function removeAnnotations(){
-            var currentImageName = document.getElementsByClassName("mySlides")[slideIndex].getElementsByTagName('a')[0].innerHTML;
-            var canvas = document.getElementById("canvas" + currentImageName);
+            var canvas = document.getElementsByClassName("mySlides")[slideIndex].getElementsByTagName('canvas')[0];
             var ctx = canvas.getContext("2d");
             ctx.clearRect(0, 0, canvas.width, canvas.height);
         }

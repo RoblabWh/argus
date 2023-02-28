@@ -245,3 +245,6 @@ class ProjectManager:
         project['data']['annotation_file_path'] = path
         self.update_data_by_keyword(report_id, 'annotation_file_path', path)
         return path
+
+    def update_slide_file_paths(self, report_id, slide_file_paths):
+        self.update_data_by_keyword(report_id, 'slide_file_paths', slide_file_paths)
