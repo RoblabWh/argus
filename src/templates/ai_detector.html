@@ -18,6 +18,38 @@
             color: var(--accent-color-interaction);
             font-weight: bold;
         }
+
+        .spinner {
+          width: 42px;
+          --b: 8px; /* the border thickness */
+          aspect-ratio: 1;
+          border-radius: 50%;
+          padding: 1px;
+          background: conic-gradient(#0000 10%,var(--accent-color-interaction)) content-box;
+          -webkit-mask:
+            repeating-conic-gradient(#0000 0deg,#000 1deg 20deg,#0000 21deg 36deg),
+            radial-gradient(farthest-side,#0000 calc(100% - var(--b) - 1px),#000 calc(100% - var(--b)));
+          -webkit-mask-composite: destination-in;
+          mask-composite: intersect;
+          animation:s4 1s infinite steps(10);
+        }
+        @keyframes s4 {to{transform: rotate(1turn)}}
+
+        .spinner-small {
+          width: 30px;
+          --b: 6px; /* the border thickness */
+          aspect-ratio: 1;
+          border-radius: 50%;
+          padding: 1px;
+          background: conic-gradient(#0000 10%,var(--accent-color-interaction)) content-box;
+          -webkit-mask:
+            repeating-conic-gradient(#0000 0deg,#000 1deg 20deg,#0000 21deg 36deg),
+            radial-gradient(farthest-side,#0000 calc(100% - var(--b) - 1px),#000 calc(100% - var(--b)));
+          -webkit-mask-composite: destination-in;
+          mask-composite: intersect;
+          animation:s4 1s infinite steps(10);
+        }
+        @keyframes s4 {to{transform: rotate(1turn)}}
     </style>
     <script>
         var detections = {{ detections | tojson }};
@@ -44,10 +76,25 @@
             openSettings(document.getElementById('slideshow-settings-annotaions-tablink'), 'slideshow-settings-Annotations');
         }
 
+        function reRunAIDetection(){
+            if(confirm("Rerunning The Detection will overwrite old detection results")){
+                runAIDetection();
+            }
+        }
+
         function runAIDetection() {
             var x = document.getElementById("ai_model_options");
             var selectedValue = x.options[x.selectedIndex].value;
             console.log(selectedValue);
+            //disable button with id runDetectionButton and start loading circle animation
+            var button = document.getElementById("runDetectionButton");
+            button.disabled = true;
+            button.innerHTML = 'Running Detection...';
+            spinner = document.getElementById("detectionsRunningCircle");
+            spinner.style.display = "inline-block";
+            //create new div that sits in left to the button and contains the loading circle
+            //button.innerHTML = ;
+
             $.post("/run_detection/{{ id }}", {model_options: selectedValue}, function(data){
                 console.log("Data: " + data );
                 detections = data;
@@ -56,98 +103,109 @@
                 var currentImageName = document.getElementsByClassName("mySlides")[slideIndex].getElementsByTagName('a')[0].innerHTML.split(": ")[1];
                 generateAnnotationsLayerTableForImage(currentImageName);
                 detections = data;
+
+                var button = document.getElementById("runDetectionButton");
+                button.disabled = false;
+                button.innerHTML = 'Re-Run Detection';
+
+                spinner = document.getElementById("detectionsRunningCircle");
+                spinner.style.display = "none";
             });
         }
 
         function generateDetectionTable(detectionData) {
             //check if detectionTable exists
             var x = document.getElementById("detectionTable");
-            if (x === null) {
-                //create detectionTable
-                var detectionTableContainer = document.getElementById("detectionTableContainer");
-                var tbl = document.createElement("table");
-                tbl.id = "detectionTable";
-                detectionTableContainer.appendChild(tbl);
+            var detectionTableContainer = document.getElementById("detectionTableContainer");
 
-                //create header
-                var header = tbl.insertRow();
-                //create header cells for "category", "findings", "lowest confidence" and "images"
-                var headings = ["Category", "Findings", "Lowest Confidence", "Images"];
-                for (let i = 0; i < headings.length; i++){
+            if (x != null){
+                detectionTableContainer.innerHTML = "";
+            }
+
+            //create detectionTable
+            var tbl = document.createElement("table");
+            tbl.id = "detectionTable";
+            detectionTableContainer.appendChild(tbl);
+
+            //create header
+            var header = tbl.insertRow();
+            //create header cells for "category", "findings", "lowest confidence" and "images"
+            var headings = ["Category", "Findings", "Lowest Confidence", "Images"];
+            for (let i = 0; i < headings.length; i++){
+                var h1 = document.createElement('th');
+                h1.innerHTML = headings[i];
+                header.appendChild(h1);
+            }
+
+
+            //for every "category" in detection data create a row
+            var categories = detectionData["categories"];
+            for (let i = 0; i < categories.length; i++){
+                var category = categories[i];
+                var row = tbl.insertRow();
+
+                subHeader = document.createElement('th');
+                subHeader.innerHTML = category.name;
+                row.append(subHeader);
+                row.insertCell().innerHTML=category.sum;
+                var a = document.createElement('a');
+                if(category.sum > 0){
+                    row.insertCell().innerHTML=category.lowest_score;
+                    a.innerHTML = "&#x00A0; show &#x25BE; &#x00A0;";
+                    a.setAttribute("class", "tableButton");
+                }else{
+                    row.insertCell().innerHTML="-";
+                    a.innerHTML = "no images with object found";
+                }
+                row.insertCell().appendChild(a);
+
+
+                //create a new table in the next row that shows all the image names of the category
+                var expandableRow = tbl.insertRow();
+                var subTableCell = expandableRow.insertCell();
+                subTableCell.setAttribute("colspan", "4");
+                var subTable = document.createElement("table");
+
+                subTable.id = "table" + category.name;
+                subTable.style.display = "none";
+
+                var subTableHeader = subTable.insertRow();
+                var subHeadings = ["Image Name", "Number of detected objects"];
+                for (let j = 0; j < subHeadings.length; j++){
                     var h1 = document.createElement('th');
-                    h1.innerHTML = headings[i];
-                    header.appendChild(h1);
+                    h1.innerHTML = subHeadings[j];
+                    subTableHeader.appendChild(h1);
                 }
 
+                //loop over all images in detectionData and add them to the table if the category matches
+                var images = detectionData["images"];
+                for (let j = 0; j < images.length; j++){
+                    var image = images[j];
+                    if (image.sum[i] > 0){
+                        var subTableRow = subTable.insertRow();
+                        var lineHeading = document.createElement('th');
+                        lineHeading.innerHTML = image.file_name;
+                        subTableRow.append(lineHeading);
 
-                //for every "category" in detection data create a row
-                var categories = detectionData["categories"];
-                for (let i = 0; i < categories.length; i++){
-                    var category = categories[i];
-                    var row = tbl.insertRow();
-
-                    subHeader = document.createElement('th');
-                    subHeader.innerHTML = category.name;
-                    row.append(subHeader);
-                    row.insertCell().innerHTML=category.sum;
-                    var a = document.createElement('a');
-                    if(category.sum > 0){
-                        row.insertCell().innerHTML=category.lowest_score;
-                        a.innerHTML = "&#x00A0; show &#x25BE; &#x00A0;";
-                        a.setAttribute("class", "tableButton");
-                    }else{
-                        row.insertCell().innerHTML="-";
-                        a.innerHTML = "no images with object found";
-                    }
-                    row.insertCell().appendChild(a);
-
-
-                    //create a new table in the next row that shows all the image names of the category
-                    var expandableRow = tbl.insertRow();
-                    var subTableCell = expandableRow.insertCell();
-                    subTableCell.setAttribute("colspan", "4");
-                    var subTable = document.createElement("table");
-
-                    subTable.id = "table" + category.name;
-                    subTable.style.display = "none";
-
-                    var subTableHeader = subTable.insertRow();
-                    var subHeadings = ["Image Name", "Number of detected objects"];
-                    for (let j = 0; j < subHeadings.length; j++){
-                        var h1 = document.createElement('th');
-                        h1.innerHTML = subHeadings[j];
-                        subTableHeader.appendChild(h1);
-                    }
-
-                    //loop over all images in detectionData and add them to the table if the category matches
-                    var images = detectionData["images"];
-                    for (let j = 0; j < images.length; j++){
-                        var image = images[j];
-                        if (image.sum[i] > 0){
-                            var subTableRow = subTable.insertRow();
-                            var lineHeading = document.createElement('th');
-                            lineHeading.innerHTML = image.file_name;
-                            subTableRow.append(lineHeading);
-
-                            subTableRow.insertCell().innerHTML=image.sum[i];
-                            subTableRow.cells[0].setAttribute("class", "tableHyperlink");
-                            subTableRow.cells[0].onclick = (function(opt) {return function(){
-                                showImageByFileName(opt);
-                                };
-                            })(image.file_name);
-                        }
-                    }
-
-                    subTableCell.appendChild(subTable);
-
-                    if(category.sum > 0){
-                        row.onclick = (function(opt) {return function(){
-                            showTableByCategory(opt)
+                        subTableRow.insertCell().innerHTML=image.sum[i];
+                        subTableRow.cells[0].setAttribute("class", "tableHyperlink");
+                        subTableRow.cells[0].onclick = (function(opt) {return function(){
+                            showImageByFileName(opt);
                             };
-                        })(category.name);
+                        })(image.file_name);
                     }
+                }
+
+                subTableCell.appendChild(subTable);
+
+                if(category.sum > 0){
+                    row.onclick = (function(opt) {return function(){
+                        showTableByCategory(opt)
+                        };
+                    })(category.name);
                 }
             }
+
         }
 
         function generateAnnotationSettings(detectionData){
@@ -196,7 +254,7 @@
             var categories = detections["categories"];
             //currentImageAnnotations = annotations;
 
-            annotationColorOffset = parseInt(360/categories.length);
+            annotationColorOffset = parseInt(360/categories.lengtableButtonth);
             filteredSelection = [];
 
             if(currentImageAnnotations == null){
@@ -493,14 +551,22 @@
                         <option selected="all" value="all">best (all models, but slowest)</option>
                     </select>
         <label for="ai_model_options" style="margin: auto auto auto 16px"> Detection Quality </label>
+        <div style="float: right; margin: auto 8px auto 0">
+            <div id="detectionsRunningCircle" class="spinner-small" style="display: none;"></div>
+        </div>
         {% if detections %}
-        <button class="big_button" onclick="runAIDetection()">Re-Run AI Detection</button>
+        <button id="runDetectionButton" class="big_button" onclick="reRunAIDetection()">Re-Run AI Detection</button>
         {% else %}
-        <button class="big_button" onclick="runAIDetection()">Run AI Detection</button>
+        <button id="runDetectionButton" class="big_button" onclick="runAIDetection()">Run AI Detection</button>
         {% endif %}
     </div>
     <div id="detectionTableContainer">
     </div>
+    {% if detections %}
+    <div id="initialDetectionsLoading">
+        <div class="spinner"></div>
+    </div>
+    {% endif %}
     <script>
 
     </script>

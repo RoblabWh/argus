@@ -1241,57 +1241,7 @@
     $('#irOpacityRange').change();
 
 
-    window.onload = function() {
-        {% for couple in slide_file_paths %}
-        {% if couple[1] != "" %}
-        var img = document.getElementById('image{{loop.index0}}');
-            img.addEventListener("mousemove", function(e) {
-                if($('#temperatureCheckbox').is(':checked')){
 
-                    var img = document.getElementById('image{{loop.index0}}');
-                    var canvas = document.createElement('canvas');
-                    canvas.width = img.width;
-                    canvas.height = img.height;
-                    canvas.getContext('2d').drawImage(img, 0, 0, img.width, img.height);
-                    var p = canvas.getContext('2d').getImageData(e.offsetX, e.offsetY, 1, 1).data;
-                    var coord = "x: " + e.offsetX + " ,y: " + e.offsetY;
-                    // If transparency on the image
-                    if ((p[0] == 0) && (p[1] == 0) && (p[2] == 0) && (p[3] == 0)) {
-                        coord += " (Transparent color detected, cannot be converted to HEX)";
-                    }
-                    var hex = "#" + ("000000" + rgbToHex(p[0], p[1], p[2])).slice(-6);
-                    var clostestColorIndex = color_closest(p[0], p[1], p[2]);
-                    var temp = calc_temp_from_percentage(clostestColorIndex/gradient_lut.length);
-                    document.getElementById("temp-glass{{ loop.index0 }}").style.backgroundColor = hex;
-                    document.getElementById("temp-glass{{ loop.index0 }}").innerHTML = temp + "°C  " +clostestColorIndex + " " + coord + " " + p[0] + " " + p[1] + " " + p[2] + " " + p[3];
-
-                    $('#temp-glass{{ loop.index0 }}').css({
-                        left: e.offsetX + 20,
-                        top: e.offsetY + document.body.scrollTop
-                    });
-                    if ((p[0]*0.299 + p[1]*0.587 + p[3]*0.114) > 186){
-                        document.getElementById("temp-glass{{ loop.index0 }}").style.color = "#000000";
-                    } else {
-                        document.getElementById("temp-glass{{ loop.index0 }}").style.color = "#ffffff";
-                    }
-                 } else {
-                    document.getElementById("temp-glass{{ loop.index0 }}").style.backgroundColor = "transparent";
-                    document.getElementById("temp-glass{{ loop.index0 }}").innerHTML = "";
-                 }
-
-            });
-        {% endif %}
-        {% endfor %}
-
-        {% if detections %}
-        generateDetectionTable({{ detections | tojson }});
-        generateAnnotationSettings({{ detections | tojson }});
-        var fileName = "{{ file_names[0].split('/')[-1] }}";
-        generateAnnotationsLayerTableForImage(fileName);
-        $('#aiOverlayCheckbox').prop('checked', false);
-        toggleLayerSettings(true);
-        {% endif %}
-    };
 
     //change css class of grad depending on selected option of ir-palette-chooser
     $("#ir-palette-chooser").change(function() {
@@ -1342,6 +1292,59 @@
     $("#ir-palette-chooser").val("grad-option{{ ir_settings.ir_color_scheme }}").change();
 
     {% endif %}
+
+    window.onload = function() {
+        {% for couple in slide_file_paths %}
+        {% if couple[1] != "" %}
+        var img = document.getElementById('image{{loop.index0}}');
+            img.addEventListener("mousemove", function(e) {
+                if($('#temperatureCheckbox').is(':checked')){
+
+                    var img = document.getElementById('image{{loop.index0}}');
+                    var canvas = document.createElement('canvas');
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    canvas.getContext('2d').drawImage(img, 0, 0, img.width, img.height);
+                    var p = canvas.getContext('2d').getImageData(e.offsetX, e.offsetY, 1, 1).data;
+                    var coord = "x: " + e.offsetX + " ,y: " + e.offsetY;
+                    // If transparency on the image
+                    if ((p[0] == 0) && (p[1] == 0) && (p[2] == 0) && (p[3] == 0)) {
+                        coord += " (Transparent color detected, cannot be converted to HEX)";
+                    }
+                    var hex = "#" + ("000000" + rgbToHex(p[0], p[1], p[2])).slice(-6);
+                    var clostestColorIndex = color_closest(p[0], p[1], p[2]);
+                    var temp = calc_temp_from_percentage(clostestColorIndex/gradient_lut.length);
+                    document.getElementById("temp-glass{{ loop.index0 }}").style.backgroundColor = hex;
+                    document.getElementById("temp-glass{{ loop.index0 }}").innerHTML = temp + "°C  " +clostestColorIndex + " " + coord + " " + p[0] + " " + p[1] + " " + p[2] + " " + p[3];
+
+                    $('#temp-glass{{ loop.index0 }}').css({
+                        left: e.offsetX + 20,
+                        top: e.offsetY + document.body.scrollTop
+                    });
+                    if ((p[0]*0.299 + p[1]*0.587 + p[3]*0.114) > 186){
+                        document.getElementById("temp-glass{{ loop.index0 }}").style.color = "#000000";
+                    } else {
+                        document.getElementById("temp-glass{{ loop.index0 }}").style.color = "#ffffff";
+                    }
+                 } else {
+                    document.getElementById("temp-glass{{ loop.index0 }}").style.backgroundColor = "transparent";
+                    document.getElementById("temp-glass{{ loop.index0 }}").innerHTML = "";
+                 }
+
+            });
+        {% endif %}
+        {% endfor %}
+
+        {% if detections %}
+        generateDetectionTable({{ detections | tojson }});
+        $('#initialDetectionsLoading').hide();
+        generateAnnotationSettings({{ detections | tojson }});
+        var fileName = "{{ file_names[0].split('/')[-1] }}";
+        generateAnnotationsLayerTableForImage(fileName);
+        $('#aiOverlayCheckbox').prop('checked', false);
+        toggleLayerSettings(true);
+        {% endif %}
+    };
 
 
     {% if slide_file_paths %}

@@ -389,8 +389,8 @@ if __name__ == '__main__':
     # Überall wo multiprocessing pool genutzt wird, vorher schauen, wie viel threads verfügbar sind
     # nach aufruf von start den browser öffnen
 
-
-
+#TODO Settings bei der Seite wo nur das preprocessing gemacht wird fixen
+# Automatisch zu IR Settings wechseln, wenn nur IR Bilder Ausgewählt werden in Galerie
 
 #Kill Process on port:
 #find pid
