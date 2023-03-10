@@ -62,6 +62,7 @@ def render_standard_report(report_id, thread = None, template = "concept.html"):
     if file_names_ir != []:
         has_ir = True
     maps = data["maps"]
+    print("maps during rendering: " + str(maps))
     detections_path = ""
     try:
         detections_path = data["annotation_file_path"]
@@ -161,6 +162,11 @@ def upload_image(report_id):
 @app.route('/<int:report_id>/process', methods=['POST', 'GET'])
 def process(report_id):
     if request.method == 'POST':
+        with_mapping = request.form.get('with_mapping')
+        if with_mapping == None:
+            with_mapping = False
+        else:
+            with_mapping = True
         with_ODM = request.form.get('with_odm')
         if with_ODM == None:
             with_ODM = False
@@ -171,6 +177,8 @@ def process(report_id):
             ai_detection = False
         else:
             ai_detection = True
+
+
 
         image_mapper = project_manager.get_image_mapper(report_id)
 
@@ -187,13 +195,14 @@ def process(report_id):
 
         file_names = project_manager.get_file_names(report_id)
 
+        print("with_mapping: ", with_mapping)
         print("with_ODM: ", with_ODM)
         print("ai_detection: ", ai_detection)
         print("map_resolution: ", map_resolution)
 
         image_mapper.set_processing_parameters(map_width_px=max_width,
                                                map_height_px=max_height, with_ODM=with_ODM)#, ai_detection=ai_detection)
-        thread = MapperThread(image_mapper, report_id, file_names)
+        thread = MapperThread(with_mapping, with_ODM, report_id, (max_width, max_height), file_names)
         threads.append(thread)
         thread.start()
         print("process started")
@@ -237,8 +246,6 @@ def send_next_map(report_id, map_index):
                 map = thread.get_maps()[map_index]
                 project_manager.update_maps(report_id, thread.get_maps())
                 #map["image_coordinates_json"] = jsonify(map["image_coordinates"])
-                if map_index == len(maps_done) - 1:
-                    threads.remove(thread)
                 map["file_url"] = url_for('static', filename=map["file"])
                 return jsonify(map)
 

@@ -254,7 +254,7 @@
             var categories = detections["categories"];
             //currentImageAnnotations = annotations;
 
-            annotationColorOffset = parseInt(360/categories.lengtableButtonth);
+            annotationColorOffset = parseInt(360/categories.length);
             filteredSelection = [];
 
             if(currentImageAnnotations == null){
@@ -335,17 +335,18 @@
                 var sliderValue = document.createElement("span");
                 sliderValue.id = "layer-threshold-" + category.name;
                 sliderValue.innerHTML = slider.value;
-                sliderValue.style = "min-width:42px;display:inline-block";
+                sliderValue.style = "min-width:20px;display:inline-block";
 
 
                 if(totalFoundObjects <= 0){
                     //lableSwitch.style = "opacity:0.5";
                     lableSwitch.style = "display: none";
                     color.style = "opacity:0.25";
-                    //slider.style = "opacity:0.5";
-                    slider.style = "display:none";
-                    //sliderValue.style = "opacity:0.5";
-                    sliderValue.style = "display:none";
+                    slider.style = "opacity: 0.0; cursor: default";
+                    slider.className = "";
+                    //slider.style = "display:none";
+                    sliderValue.style = "opacity:0.0";
+                    //sliderValue.style = "display:none";
                     categoryName.style = "opacity:0.5";
                     totalFoundObjectsSpan.style = "opacity:0.5";
                     displayedObjectsSpan.style = "opacity:0.5";

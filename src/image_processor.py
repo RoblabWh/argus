@@ -1,0 +1,188 @@
+import multiprocessing
+import os
+import sys
+
+from path_reader import PathReader
+from image import Image
+from infrared_rgb_sorter import InfraredRGBSorter
+from weather import Weather
+
+
+class ImageProcessor:
+    def __init__(self):
+        self.all_image_paths = []
+        self.all_images = []
+        self.all_sorted_images = []
+        self.all_panos = []
+        self.all_ir_images = []
+        self.all_rgb_images = []
+        self.couples_path_list = []
+        self.rgb_short_paths = []
+        self.ir_short_paths = []
+
+    @staticmethod
+    def generate_images(image_paths):
+        images = list()
+        for path in image_paths:
+            # print(path)
+            images.append(Image(path))
+        return images
+
+    def set_image_paths(self, image_paths):
+        self.all_image_paths = image_paths
+
+    def _chunks(self, lst, n):
+        """Yield successive n-sized chunks from lst."""
+        for i in range(0, len(lst), n):
+            yield lst[i:i + n]
+    def generate_images_from_paths(self):
+        image_paths = PathReader.read_selection('./static', self.all_image_paths, ("DJI"), (".JPG", ".jpg"), sort=False)
+        nmbr_of_processes = len(os.sched_getaffinity(0)) #6
+        print('number of processes: ', nmbr_of_processes)
+        if nmbr_of_processes < len(image_paths):
+            nmbr_of_processes = len(image_paths)
+        image_paths_list = list(self._chunks(image_paths, int(len(image_paths) / nmbr_of_processes) + 1))
+        pool = multiprocessing.Pool(nmbr_of_processes)
+        images_lists = pool.map(ImageProcessor.generate_images, image_paths_list)
+
+        images = []
+        for lst in images_lists:
+            images += (lst)
+
+        self.all_images = images
+
+    def sort_images(self):
+        self.all_images.sort(key=lambda x: x.get_exif_header().get_creation_time())
+
+    def filter_panos(self):
+        self.all_panos = []
+        print(self.all_images)
+        for image in self.all_images:
+            if image.get_exif_header().pano:
+                self.all_panos.append(image)
+                self.all_images.remove(image)
+        print('all panos: ', self.all_panos)
+        print('all images: ', self.all_images)
+
+    def get_panos(self):
+        panos = []
+        for pano in self.all_panos:
+            panos.append(pano.get_exif_header().pano_data)
+        return panos
+
+    def separate_ir_rgb(self):
+        sorter = InfraredRGBSorter()
+        self.all_ir_images, self.all_rgb_images = sorter.sort(self.all_images)
+        self.couples_path_list = sorter.build_couples_path_list_from_scratch(self.all_images)
+        self.rgb_short_paths = self._generate_short_paths_list(self.all_rgb_images)
+        self.ir_short_paths = self._generate_short_paths_list(self.all_ir_images)
+
+
+    def _generate_short_paths_list(self, images):
+        path_list = []
+        for image in images:
+            path_list.append(image.get_image_path().split("static/", 1)[1])
+        return path_list
+
+
+    def extract_flight_data(self):
+        #extract date, flight duration, location, number of total images, number of panos, average flight height, covered area
+
+        firstImage = self.all_images[0]
+        lastImage = self.all_images[-1]
+
+        date = str(firstImage.get_exif_header().get_creation_time_str())
+        flight_duration = str(lastImage.get_exif_header().get_creation_time() - firstImage.get_exif_header().get_creation_time())
+
+        try:
+            location = str(firstImage.get_exif_header().get_gps().get_address())
+        except:
+            location = str("N/A")
+
+        number_of_images = str(len(self.all_images))
+        number_of_panos = str(len(self.all_panos))
+        average_altitude = self._calculate_average_flight_height(self.all_images)
+        covered_area = self._calculate_covered_area(self.all_images)
+
+        flight_data = []
+        flight_data.append({"description": 'Date', "value": date})
+        flight_data.append({"description": 'Location', "value": location})
+        flight_data.append({"description": 'Area Covered', "value": covered_area})
+        flight_data.append({"description": 'Avg. Altitude', "value": average_altitude})
+        flight_data.append({"description": 'Flight duration', "value": flight_duration})
+        flight_data.append({"description": 'Images', "value": number_of_images})
+        flight_data.append({"description": 'Panoramas', "value": number_of_panos})
+
+        return flight_data
+
+    def _calculate_average_flight_height(self, images):
+        total_altitude = 0
+        for image in images:
+            try:
+                total_altitude += image.get_exif_header().get_gps().get_altitude()
+            except:
+                print("no altitude data on image: ", image.get_image_path())
+        return str(round(total_altitude / len(images), 2))
+
+    def _calculate_covered_area(self, images):
+        #TODO
+        return str("N/A")
+
+    def extract_camera_specs(self):
+        firstImage = self.all_images[0]
+
+        # extract camera model, focal length, horizontal_fov, vertical_fov, sensor size
+        camera_properties = firstImage.get_exif_header().get_camera_properties()
+        camera_model = camera_properties.get_model()
+        camera_focal_length = camera_properties.get_focal_length()
+        camera_fov = camera_properties.get_fov()
+        camera_vertical_fov = camera_properties.get_vertical_fov()
+        sensor_width, sensor_height = camera_properties.get_sensor_size()
+
+        camera_specs = []
+        camera_specs.append({"description": 'Camera Model', "value": camera_model})
+        camera_specs.append({"description": 'Focal Length', "value": camera_focal_length})
+        camera_specs.append({"description": 'Horizontal FOV', "value": camera_fov})
+        camera_specs.append({"description": 'Vertical FOV', "value": camera_vertical_fov})
+        camera_specs.append({"description": 'Sensor Size', "value": str(sensor_width) + " x " + str(sensor_height)})
+
+        return camera_specs
+
+
+    def load_weather_data(self):
+        firstImage = self.all_images[0]
+        temperature = "N/A"
+        humidity = "N/A"
+        altimeter = "N/A"
+        wind_speed = "N/A"
+        wind_dir_degrees = "N/A"
+        visibility = "N/A"
+
+
+        try:
+            actual_weather = Weather(firstImage.get_exif_header().get_gps().get_latitude(),
+                                     firstImage.get_exif_header().get_gps().get_longitude(),
+                                     "e9d56399575efd5b03354fa77ef54abb")
+            # print(weather_info_lst)
+            temperature = actual_weather.get_temperature()
+            humidity = actual_weather.get_humidity()
+            altimeter = actual_weather.get_altimeter()
+            wind_speed = actual_weather.get_wind_speed()
+            visibility = actual_weather.get_visibility()
+            wind_dir_degrees = actual_weather.get_wind_dir_degrees()
+        except:
+            print("-Ignoring weather details...")
+            print("--", sys.exc_info())
+            pass
+
+        weather_data = []
+        weather_data.append({"description": 'Temperature', "value": str(temperature) + "°C"})
+        weather_data.append({"description": 'Humidity', "value": str(humidity) + "%"})
+        weather_data.append({"description": 'Air Preasure', "value": str(altimeter) + "hPa"})
+        weather_data.append({"description": 'Wind Speed', "value": str(wind_speed) + "m/s"})
+        weather_data.append({"description": 'Wind Direction', "value": str(wind_dir_degrees) + "°"})
+        weather_data.append({"description": 'Visibility', "value": str(visibility) + "m"})
+
+        return weather_data
+
+

@@ -31,9 +31,13 @@ class InfraredRGBSorter(Sorter):
             if sorting_kriteria == width: 
                 images_1.append(image)
             else:
-                images_2.append(image)                      
-        
-        
+                images_2.append(image)
+
+        if len(images_1) == 0:
+            return ([], images_2)
+        elif len(images_2) == 0:
+            return ([], images_1)
+
         (width_1, height_1) = images_1[0].get_exif_header().get_image_size()
         (width_2, height_2) = images_2[0].get_exif_header().get_image_size()
         
@@ -44,12 +48,10 @@ class InfraredRGBSorter(Sorter):
 
         for i, infrared_image in enumerate(infrared_images):
             infrared_image.set_to_ir()
-            #infrared_image.set_rgb_counterpart_path(rgb_images[i].get_image_path())
-            #TODO ungleiche Anzahl an IR/ RGB Bildern verarbeiten können
-            
+
         return (infrared_images, rgb_images)
 
-    def build_couples_path_list(self, images):
+    def build_couples_path_list_from_scratch(self, images):
         couples_helper_list = list()
 
         (width, height) = images[0].get_exif_header().get_image_size()
@@ -69,8 +71,6 @@ class InfraredRGBSorter(Sorter):
         couples_path_list = list()
         index = 0
         while index < len(couples_helper_list):
-            print("index: ", index, "len: ", len(couples_helper_list))
-            #image path after "./static"
             image_path = couples_helper_list[index][0].get_image_path().split("static/")[1]
 
             if index + 1 < len(couples_helper_list):

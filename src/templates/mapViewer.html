@@ -122,8 +122,11 @@ function update{{map.name}}Map(map) {
     set{{map.name}}MapImage(map.file_url);
     set{{map.name}}Bounds(map.bounds);
     {% if not map.odm %}
-    coordinates{{map.name}} = map.image_coordinates
-    loadPolygons{{map.name}}(map.image_coordinates);
+    coordinates{{map.name}} = map.image_coordinates;
+    console.log(coordinates{{map.name}});
+    if(map.image_coordinates!= null) {
+        loadPolygons{{map.name}}(map.image_coordinates);
+    }
     {% endif %}
 }
 

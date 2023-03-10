@@ -189,6 +189,10 @@
                 if (progress_arr[0] == 100 && progress_arr[2] != "True") {
                     //if (all_maps_loaded() || maps_done_initilized()) {
                     console.log(progress_arr[3]);
+                    if (progress_arr[3] == "[]") {
+                        $.get( "/stop_mapping_thread/{{ id }}");
+                        window.clearInterval(intervalID);
+                    }
                     $.get('/get_map/{{ id }}/'+next_map, function(map) {
                         if(map.file != "empty"){
                             console.log(map);
@@ -275,22 +279,24 @@
             </form>
             <form method="post" action="/{{ id }}/process" style="width: 100%; ">
                 <div class="big_upload">
-                    <input type="checkbox" id="with_odm" name="with_odm" value="odm">
-                    <label for="with_odm"> Calc ODM orthophoto | </label>
-                    <input type="checkbox" id="ai_detection" name="ai_detection" value="ai">
-                    <label for="ai_detection"> Use AI object detection | </label>
+                    <input type="checkbox" id="with_mapping" name="with_mapping" value="mapping" checked>
+                    <label for="with_mapping"> fast orthophoto | </label>
                     <select name="map resolution" id="map_res">
                         <option value="low">low</option>
                         <option value="med">medium</option>
                         <option selected="selected" value="high">high</option>
                         <option value="ultra">ultra</option>
                     </select>
-                    <label for="map_res"> Map resolution </label>
+                    <label for="map_res"> fast orthophoto resolution | </label>
+                    <input type="checkbox" id="with_odm" name="with_odm" value="odm">
+                    <label for="with_odm"> ODM orthophoto </label>
+<!--                    <input type="checkbox" id="ai_detection" name="ai_detection" value="ai">-->
+<!--                    <label for="ai_detection"> Use AI object detection | </label>-->
                 </div>
                 {% if not file_names %}
-                <input class="big_button" type="submit" value="Process" disabled>
+                <input class="big_button" type="submit" value="Process Report" disabled>
                 {% else %}
-                <input class="big_button" type="submit" value="Process">
+                <input class="big_button" type="submit" value="Process Report">
                 {% endif %}
             </form>
 <!--            <form method="post" action="/{{ id }}/buildMap"><input class="big_button" value="makemap" type="submit"></form>-->
