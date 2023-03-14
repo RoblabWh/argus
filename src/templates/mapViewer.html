@@ -65,6 +65,7 @@
 var defaultZoom = {{maps[0].zoom}};
 var center = {{maps[0].center}}; //[51.57443888888889,7.028625]
 var map = L.map('map').setView(center, defaultZoom);
+var coordinatesNamesList = [];
 
 L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token={accessToken}',
     {
@@ -123,6 +124,7 @@ function update{{map.name}}Map(map) {
     set{{map.name}}Bounds(map.bounds);
     {% if not map.odm %}
     coordinates{{map.name}} = map.image_coordinates;
+    updateCoordinatesNamesList({{loop.index0}}, coordinates{{map.name}});
     console.log(coordinates{{map.name}});
     if(map.image_coordinates!= null) {
         loadPolygons{{map.name}}(map.image_coordinates);
@@ -203,6 +205,40 @@ function slide{{map.name}}(e) {
 }
 {% endif %}
 {% endfor %}
+
+function updateCoordinatesNamesList(index, coordinates){
+    var namesList = [];
+    for (var i = 0; i < coordinates.length; i++) {
+        namesList.push(coordinates[i].file_name);
+    }
+    if(coordinatesNamesList.length < index){
+        coordinatesNamesList[index] = namesList;
+    }
+    else{
+        coordinatesNamesList.push(namesList);
+    }
+}
+
+function isUsedInMap(index, displayingIR){
+    console.log("isUsedInMap ?");
+    var filename = "";
+    if (displayingIR){
+         filename = getFilePathBySlideIndex(index, 1);
+    }
+    else{
+         filename = getFilePathBySlideIndex(index, 0);
+    }
+
+    for (var i = 0; i < coordinatesNamesList.length; i++) {
+        list = coordinatesNamesList[i];
+        if(list.indexOf(filename) > -1){
+            console.log(filename + " isUsedInMap true");
+            return true;
+        }
+    }
+    console.log(filename + " isUsedInMap false");
+    return false;
+}
 
 var mapOverlayOpacity = 1;
 var threshold = 0.55;
@@ -308,6 +344,8 @@ marker{{ loop.index0  }}.addTo(map);
 {% if map.image_coordinates %}
 coordinates{{map.name}} = {{ map.image_coordinates|tojson }};
 loadPolygons{{map.name}}({{ map.image_coordinates|tojson }});
+updateCoordinatesNamesList({{loop.index0}}, coordinates{{map.name}});
+
 {% endif %}
 {% endif %}
 {% endfor %}

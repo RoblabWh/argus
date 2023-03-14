@@ -49,7 +49,6 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 def render_standard_report(report_id, thread = None, template = "concept.html"):
-    #check if process is running and if it is only preprocessing or calculating map
     data = project_manager.get_project(report_id)['data']
     flight_data = data["flight_data"]
     camera_specs = data["camera_specs"]
@@ -58,20 +57,18 @@ def render_standard_report(report_id, thread = None, template = "concept.html"):
     file_names_ir = data["file_names_ir"]
     panos = data["panos"]
     ir_settings = data["ir_settings"]
+    maps = data["maps"]
+
     has_ir = False
     if file_names_ir != []:
         has_ir = True
-    maps = data["maps"]
-    print("maps during rendering: " + str(maps))
-    detections_path = ""
+
     try:
         detections_path = data["annotation_file_path"]
-    except:
-        pass
-    if detections_path != "":
         detections = json.load(open(detections_path))
-    else:
+    except:
         detections = None
+
 
     slide_file_paths = []
     try:
@@ -79,12 +76,14 @@ def render_standard_report(report_id, thread = None, template = "concept.html"):
     except:
         pass
 
-
     message = None
     processing = False
     for thread in threads:
         if thread.report_id == report_id:
-            processing = True
+            if(thread.progress_mapping == 100):
+                processing = False
+            else:
+                processing = True
             message = thread.message
             break
 
@@ -110,15 +109,11 @@ def create_report():
     name = request.form.get("name")
     description = request.form.get("description")
     project_manager.create_project(name, description)
-    # project_manager.create_project("testname", "testdescription")
     projects_dict_list = project_manager.get_projects()
     return render_template('projectsOverview.html', projects=projects_dict_list)
 
 @app.route('/<int:report_id>')
 def upload_form(report_id):
-    #check if directory static/uploads/report_id exists
-    #if yes, load json file
-    #if not create it
     print("upload_form" + str(report_id))
     if(project_manager.has_project(report_id)):
         print("Directory exists")
@@ -151,13 +146,9 @@ def upload_image(report_id):
             flash('Allowed image types are -> png, jpg, jpeg, gif')
             return redirect(request.url)
     file_names = project_manager.update_file_names(report_id, file_names)
-    print(file_names)
-    project = {"id": report_id, "name": project_manager.get_project_name(report_id), "description": project_manager.get_project_description(report_id)}
     if not project_manager.get_project(report_id)['data']['flight_data']:
         return render_standard_report(report_id, template='startProcessing.html')
     return render_standard_report(report_id)
-    # return render_template('concept.html', id=report_id, file_names=file_names, flight_data=flight_data, camera_specs=camera_specs,
-    #                        weather=weather, map=map, project=project)
 
 @app.route('/<int:report_id>/process', methods=['POST', 'GET'])
 def process(report_id):
@@ -177,8 +168,6 @@ def process(report_id):
             ai_detection = False
         else:
             ai_detection = True
-
-
 
         image_mapper = project_manager.get_image_mapper(report_id)
 
@@ -210,8 +199,6 @@ def process(report_id):
 
 @app.route('/gradient_lut/<int:gradient_id>', methods=['GET', 'POST'])
 def send_gradient_lut(gradient_id):
-    #load json file from static/gradient_luts
-    #return json file
     lut = json.load(open("./static/default/gradient_luts/gradient_lut_" + str(gradient_id) + ".json"))
     return lut
 
@@ -227,11 +214,20 @@ def update_ir_settings(report_id, settings):
 def update_description(report_id):
     description = request.form.get('description')
     print("update_description for id"+ str(report_id) + " with: " + str(description))
-    old_description = project_manager.get_project_description(report_id)
     description = description.replace("\n", "")
     description = description.strip()
     description = description.replace("<br>", "\n")
     project_manager.update_description(report_id, description)
+    return "success"
+
+@app.route("/update_title/<int:report_id>", methods=['POST'])
+def update_title(report_id):
+    title = request.form.get('content')
+    print("update_title for id"+ str(report_id) + " with: " + str(title))
+    title = title.replace("\n", "")
+    title = title.strip()
+    title = title.replace("<br>", " ")
+    project_manager.update_title_name(report_id, title)
     return "success"
 
 @app.route('/get_map/<int:report_id>/<int:map_index>', methods=['GET', 'POST'])

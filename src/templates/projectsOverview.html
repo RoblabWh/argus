@@ -47,6 +47,14 @@
             cursor: pointer;
         }
 
+        .title-name{
+            padding: 8px;
+            width:75%;
+            margin: 0px;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            overflow: hidden;
+        }
 
         .description{
             float: left;
@@ -171,7 +179,7 @@
         <div class="oneLineWrapper">
             <div class="project" onclick="projectShow({{ project.id }});">
                 <div style="display: flex; justify-content: space-between; height: 40px; width: 100%; margin-bottom: 4px">
-                    <h2 style="padding: 8px; width:75%; margin: 0px"> {{ project.name }} </h2>
+                    <h2 class="title-name"> {{ project.name }} </h2>
                     {% if project.creation_time %}
                     <a style="float: right; margin: 8px; width: 20%; text-align: right; line-height: 30px"> {{ project.creation_time }}</a>
                     {% else %}

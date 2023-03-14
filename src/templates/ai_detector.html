@@ -263,7 +263,10 @@
                 cell.innerHTML = "No results found, please (re-)run the detection";
                 cell.setAttribute("colspan", "6");
                 tableContainer.appendChild(tbl);
-                $('#aiOverlayCheckbox').change();
+                if ($('#aiOverlayCheckbox').prop('checked')) {
+                    //$('#aiOverlayCheckbox').prop('checked', false);
+                    //$('#aiOverlayCheckbox').change();
+                }
                 return;
             }
 

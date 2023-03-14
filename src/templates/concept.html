@@ -21,7 +21,7 @@
             font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
         }
 
-        #edit-description-button{
+        .edit-text-button{
             font-size: 18px;
             height: fit-content;
             width: 18px;
@@ -33,7 +33,7 @@
             background-color: var(--bg-color-a);
         }
 
-        #edit-description-button:hover{
+        .edit-text-button:hover{
             background-color: var(--accent-color-interaction);
             color: var(--font-color-b);
         }
@@ -47,8 +47,18 @@
             background-color: transparent;
         }
 
-        #descriptionText.editable{
-            border-radius: 5px;
+        #title-name{
+            margin: 0px;
+            margin-left: -14px;
+            padding: 8px;
+            max-width: 95%;
+            border-radius: 6px;
+            border-style: solid;
+            border-color: transparent;
+        }
+
+        #descriptionText.editable, #title-name.editable{
+            border-radius: 6px;
             border-style: solid;
             border-color: var(--accent-color-interaction);
         }
@@ -151,7 +161,7 @@
         #myBar_a, #myBar_b {
           width: 1%;
           height: 30px;
-          background-color: #04AA6D;
+          background-color: var(--accent-color-green);
         }
 
 
@@ -190,6 +200,7 @@
                     //if (all_maps_loaded() || maps_done_initilized()) {
                     console.log(progress_arr[3]);
                     if (progress_arr[3] == "[]") {
+                        console.log("done");
                         $.get( "/stop_mapping_thread/{{ id }}");
                         window.clearInterval(intervalID);
                     }
@@ -209,8 +220,8 @@
                     });
                 }
                 if (parseInt(progress_arr[1]) == 100) {
-                    $.get( "/stop_mapping_thread/{{ id }}");
                     console.log("done");
+                    $.get( "/stop_mapping_thread/{{ id }}");
                     window.clearInterval(intervalID);
                 }
 
@@ -223,7 +234,28 @@
             remagnify();
         };
 
-        function toggleTextfield(){
+        function toggleTextfieldTitle(){
+            fakeButton = document.getElementById("edit-title-button");
+            toggleTextFiel("title-name", fakeButton, "update_title");
+        }
+
+        function toggleTextFiel(textfieldID, button, link){
+            var textfield = document.getElementById(textfieldID);
+            if (textfield.contentEditable == "true") {
+                textfield.contentEditable = false;
+                button.children[0].style.display = "inline-block";
+                button.children[1].style.display = "none";
+                $('#'+textfieldID).removeClass('editable');
+                $.post("/"+link+"/{{ id }}", {content: textfield.innerHTML});
+            } else {
+                textfield.contentEditable = "true";
+                $('#'+textfieldID).addClass('editable');
+                button.children[0].style.display = "none";
+                button.children[1].style.display = "inline-block";
+            }
+        }
+
+        function toggleTextFieldDescription(){
             description = document.getElementById("descriptionText");
             fakeButton = document.getElementById("edit-description-button");
             console.log(description.contentEditable);
@@ -254,8 +286,15 @@
         <br>
         <br>
         <br>
-        <h1>Flight Report</h1>
-        <h3>{{ project.name }} (ID:{{ id }})</h3>
+        <br>
+        <h4 style="margin-bottom: 2px;">Flight Report (ID:{{ id }})</h4>
+        <div style="width: 100%; display: flex;">
+            <h1 id="title-name">{{ project.name }}</h1>
+            <div id="edit-title-button" class="edit-text-button" style="margin: 12px; float:left" onclick="toggleTextfieldTitle()">
+                <span style="display: inline-block; transform: rotate(100deg); -ms-transform: rotate(100deg); -moz-transform: rotate(100deg); -webkit-transform: rotate(100deg);">&#x270E;</span>
+                <span style="display: none;">&check;</span>
+            </div>
+        </div>
 
         <div style="display: inline-flex; width:100% ">
             <div style="max-width: 97%; margin-right:10px">
@@ -266,7 +305,7 @@
                         {{project.description.splitlines()[-1]}}
                 </p>
             </div>
-            <div id="edit-description-button" onclick="toggleTextfield()">
+            <div id="edit-description-button" class="edit-text-button" onclick="toggleTextFieldDescription()">
                 <span style="display: inline-block; transform: rotate(100deg); -ms-transform: rotate(100deg); -moz-transform: rotate(100deg); -webkit-transform: rotate(100deg);">&#x270E;</span>
                 <span style="display: none;">&check;</span>
             </div>

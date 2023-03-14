@@ -122,6 +122,9 @@ class MapperThread(threading.Thread):
             print("mappeable: " + str(self.mappable))
             print("ir: " + str(self.ir))
 
+            if len(self.ir_short_paths) > 0:
+                self.ir_settings = self.image_mapper.get_ir_settings()
+
             maps = self.image_mapper.generate_placeholder_maps()
             self.maps_done = [False] * self.number_of_maps
 
@@ -135,13 +138,10 @@ class MapperThread(threading.Thread):
                 self.maps_placeholders.append(self.map_rgb)
                 if self.ir:
                     self.maps_placeholders.append(self.map_ir)
-                    self.ir_settings = self.image_mapper.get_ir_settings()
             if self.with_odm:
                 self.maps_placeholders.append(self.map_odm)
                 if self.ir:
                     self.maps_placeholders.append(self.map_odm_ir)
-                    if self.ir_settings is None:
-                        self.ir_settings = self.image_mapper.get_ir_settings()
 
         self.progress_preprocess = 100
 

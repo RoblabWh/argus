@@ -1,6 +1,9 @@
 :root {
   --accent-color-interaction: rgb(56, 152, 236);//rgb(56, 152, 236);
-  --accent-color-red: rgb(150, 80, 80);
+  --accent-color-red-values: 150, 80, 80;
+  --accent-color-red: rgb(var(--accent-color-red-values));
+  --accent-color-green-values: 4, 170, 109;
+  --accent-color-green: rgb(var(--accent-color-green-values));
   --bg-color-a: lightgrey;
   --bg-color-b: grey;
   --bg-color-c: black;

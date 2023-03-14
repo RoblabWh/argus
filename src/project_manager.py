@@ -126,6 +126,13 @@ class ProjectManager:
             json.dump(project, json_file)
         return project['description']
 
+    def update_title_name(self, id, title_name):
+        project = self.get_project(id)
+        project['name'] = title_name
+        with open(self.projects_path + str(id) + "/project.json", "w") as json_file:
+            json.dump(project, json_file)
+        return project['name']
+
     def update_flight_data(self, id, flight_data):
         return self.update_data_by_keyword(id, 'flight_data', flight_data)
 
@@ -200,7 +207,6 @@ class ProjectManager:
 
     def get_project_description(self, report_id):
         project = self.get_project(report_id)
-        # print("get project description", project['description'])
         return project['description']
 
     def get_project_creation_time(self, report_id):

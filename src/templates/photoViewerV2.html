@@ -450,7 +450,7 @@
         display: flex;
         width: 100%;
         box-sizing: border-box;
-        margin-bottom: 20px;
+        margin: 20px 0;
     }
 
    #layer-table-container{
@@ -476,6 +476,37 @@
         background-color: transparent;
         border-bottom: 2px solid var(--bg-color-a);
     }
+
+    .usedInMappingContainer{
+        display: inline-block;
+        float: right;
+        margin: 0 12px 12px 12px;
+        min-width: 25%;
+    }
+
+    .usedInMapping, .notUsedInMapping{
+        border-radius: 6px;
+        border-style: solid;
+        border-width: 2px;
+        height: 100%;
+        width: 100%;
+        padding: 4px;
+    }
+
+    .usedInMapping{
+        border-color: var(--accent-color-green);
+        background-color: rgba(var(--accent-color-green-values), 0.2);
+        color: var(--font-color-a);
+        display: flex;
+    }
+
+    .notUsedInMapping{
+        border-color: var(--accent-color-red);
+        background-color: rgba(var(--accent-color-red-values), 0.2);
+        color: var(--font-color-a);
+        display: none;
+    }
+
 
 
 
@@ -527,6 +558,7 @@
     }
 
     function showSlideByFilename(filename){
+        console.log("showSlideByFilename: " + filename);
         var slideIndex = getSlideIndexByFilename(filename, 0);
         if(slideIndex != -1){
             showSlide(slideIndex);
@@ -539,6 +571,7 @@
     }
 
     function showSlideByFilenameIR(filename){
+        console.log("showSlideByFilenameIR: " + filename);
         var slideIndex = getSlideIndexByFilename(filename, 1);
         if(slideIndex != -1){
             showSlideIR(slideIndex);
@@ -617,6 +650,16 @@
         if(checkbox.checked){
             magnify(slideIndex, zoomValue);
         }
+
+        {% if maps %}
+        if(isUsedInMap(slideIndex, displayingIR)){
+            x[slideIndex].getElementsByClassName("usedInMapping")[0].style.display = "flex";
+            x[slideIndex].getElementsByClassName("notUsedInMapping")[0].style.display = "none";
+        } else {
+            x[slideIndex].getElementsByClassName("usedInMapping")[0].style.display = "none";
+            x[slideIndex].getElementsByClassName("notUsedInMapping")[0].style.display = "flex";
+        }
+        {% endif %}
 
         if(lastSlide != slideIndex){
             if (detections != null){
@@ -762,8 +805,9 @@
         }
       }
 
-    function openSettingsEvent(evt, divName){
-        openSettings(evt.currentTarget, divName);
+    function openSettingsEvent(tablinkID, divName){
+        tablink = document.getElementById(tablinkID);
+        openSettings(tablink, divName);
     }
 
     function openSettings(selctedLink, divName) {
@@ -816,11 +860,17 @@
         return path.substring(path.lastIndexOf('/')+1);
     }
 
+    function getFilePathBySlideIndex(index, imagetype){
+        var path = slideshow_couples[index][imagetype];
+        return path;
+    }
+
 </script>
 </head>
 <body>
 <details id="gallery-details">
-    <summary>Photo Gallery</summary>
+    <summary>Photo Gallery </summary>
+    <div style="width: 100%; overflow: hidden;">
         <div id="slideshow-container">
             <a class="prev" onclick="plusSlides(-1)">❮</a>
             <a class="next" onclick="plusSlides(1)">❯</a>
@@ -828,14 +878,24 @@
             {% for couple in slide_file_paths %}
             <div class="mySlides" id="slide{{ loop.index0 }}">
                 {% if couple[0] != "" %}
-                <a>RGB: {{couple[0].split('/')[-1]}}</a>
+                <a style="display: inline-block; padding: 8px 0">RGB: {{couple[0].split('/')[-1]}}</a>
                 {% endif %}
                 {% if couple[1] != "" %}
-                <a>IR: {{couple[1].split('/')[-1]}}</a>
+                <a  style="display: inline-block; padding: 8px 0">IR: {{couple[1].split('/')[-1]}}</a>
                 {% endif %}
-                <div style="margin-bottom:7%;"></div>
-                <div style="position: relative;">
-                    <div style="position: absolute; top: -10%; left: 0px;">
+                <div class="usedInMappingContainer">
+                    <div class="usedInMapping">
+                        <a style="margin: 0 6px; float: left">&#10003</a>
+                        <a style="margin: auto">Used in map</a>
+                    </div>
+                    <div class="notUsedInMapping">
+                        <a style="margin: 0 6px; float: left">&#9888;</a>
+                        <a style="margin: auto">Not used in map</a>
+                    </div>
+                </div>
+<!--                <div style="margin-bottom:7%;"></div>-->
+                <div style="display: grid;place-items: center;grid-template-areas: 'inner-div';">
+                    <div style="grid-area: inner-div;">
                         <a>
                             {% if couple[0] != "" %}
                             <img id="baseImage{{couple[0].split('/')[-1]}}" src="{{ url_for('static', filename=couple[0]) }}" style="width:100%; height: 100%;">
@@ -844,12 +904,12 @@
                             {% endif %}
                         </a>
                     </div>
-                    <div style="position: absolute; top: -10%; left: 0px;">
+                    <div style="grid-area: inner-div;">
                         <a>
                             <canvas id="canvas{{couple[0].split('/')[-1]}}" class="annotaionsCanvas" width="100%" height="100%;"></canvas>
                         </a>
                     </div>
-                    <div class="ir-overlay" style="position: relative; top: 0; left: 10%; width:80%; height:80%">
+                    <div class="ir-overlay" style="width: 80%; opacity: 0; grid-area: inner-div;">
         <!--                <canvas style="width:100%; height: 100%;" id="canvas{{loop.index0}}"></canvas>-->
                         {% if couple[1] != "" %}
                         <img class="ir-image" id="image{{loop.index0}}" src="{{ url_for('static', filename=couple[1]) }}" style="width:100%; height: 100%;">
@@ -860,22 +920,22 @@
 
                     </div>
                 </div>
-                <div style="margin-bottom: 10%;"></div>
+<!--                <div style="margin-bottom: 10%;"></div>-->
 
             </div>
             {% endfor %}
             {% endif %}
 
         </div>
-
+    </div>
         <div id="slideshow-settings-tabs">
             <div id="slideshow-settings-tabs-links" class="tab-vertical">
-                <button class="tablink-vertical" onclick="openSettingsEvent(event, 'slideshow-settings-RGB')" id="defaultOpen">Magnifier</button>
+                <button id="slideshow-settings-magnifier-tablink" class="tablink-vertical" onclick="openSettingsEvent('slideshow-settings-magnifier-tablink', 'slideshow-settings-RGB')">Magnifier</button>
                 {% if has_ir %}
-                <button class="tablink-vertical" onclick="openSettingsEvent(event,'slideshow-settings-IR')">IR-Overlay</button>
+                <button id="slideshow-settings-ir-tablink" class="tablink-vertical" onclick="openSettingsEvent('slideshow-settings-ir-tablink','slideshow-settings-IR')">IR-Overlay</button>
                 {% endif %}
                 {% if detections %}
-                <button id="slideshow-settings-annotaions-tablink" class="tablink-vertical" onclick="openSettingsEvent(event,'slideshow-settings-Annotations')">AI-Overlays</button>
+                <button id="slideshow-settings-annotaions-tablink" class="tablink-vertical" onclick="openSettingsEvent('slideshow-settings-annotaions-tablink','slideshow-settings-Annotations')">AI-Overlays</button>
                 {% endif %}
             </div>
 
@@ -1214,6 +1274,7 @@
 
     function activateIR() {
         displayingIR = true;
+        $('#slideshow-settings-ir-tablink').click();
         $('#irOverlayCheckbox').prop('checked', true);
         $('#magnifierCheckbox').prop('checked', false);
         $('.setting-fade').map(function () {
@@ -1384,7 +1445,7 @@
         }
     }
 
-    document.getElementById("defaultOpen").click();
+    document.getElementById("slideshow-settings-magnifier-tablink").click();
 
 
 </script>
