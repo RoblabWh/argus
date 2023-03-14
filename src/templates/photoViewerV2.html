@@ -467,10 +467,10 @@
     }
 
     #layer-table-container tr {
-        background-color: rgb(230,230,230)
+        background-color: var(--bg-color-AILayer);
     }
     #layer-table-container tr:nth-child(even) {
-        background-color: rgb(230,230,230);
+        background-color: var(--bg-color-AILayer);
     }
     #layer-table-container tr:nth-child(1) {
         background-color: transparent;
@@ -870,7 +870,7 @@
 <body>
 <details id="gallery-details">
     <summary>Photo Gallery </summary>
-    <div style="width: 100%; overflow: hidden;">
+    <div style="width: 100%;">
         <div id="slideshow-container">
             <a class="prev" onclick="plusSlides(-1)">❮</a>
             <a class="next" onclick="plusSlides(1)">❯</a>
@@ -894,7 +894,7 @@
                     </div>
                 </div>
 <!--                <div style="margin-bottom:7%;"></div>-->
-                <div style="display: grid;place-items: center;grid-template-areas: 'inner-div';">
+                <div style="display: grid;place-items: center;grid-template-areas: 'inner-div'; width: 100%">
                     <div style="grid-area: inner-div;">
                         <a>
                             {% if couple[0] != "" %}

@@ -5,10 +5,12 @@ table {
 }
 
 td, th {
-  border: 1px solid var(--bg-color-a);
+  border: 0px solid var(--bg-color-a);
   text-align: left;
   padding: 8px;
 }
+
+
 
 tr:nth-child(even) {
   background-color: var(--bg-color-a);

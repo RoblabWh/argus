@@ -107,24 +107,30 @@
         }
 
         summary {
-          background-color: var(--bg-color-b);
+          background-color: var(--accent-color-interaction);
           color: var(--font-color-b);
-          font-weight: bold;
+          font-weight: medium;
           padding: 1rem;
           margin-bottom: 1rem;
           outline: none;
           border-radius: 4px;
           cursor: pointer;
           position: relative;
+          transition: 0.3s;
         }
 
         details[open]>summary{
-          background-color: var(--bg-color-c);
-          color: var(--font-color-b);
+          background-color: var(--bg-color-a);
+          color: var(--font-color-a);
+          border-style: solid;
+          border-radius: 6px;
+          border-width: 3px;
+          border-color: var(--accent-color-interaction);
         }
         details[open]>summary:hover, summary:hover {
           background-color: var(--accent-color-interaction);
           color: var(--font-color-a);
+          font-weight: bold;
         }
 
         details > summary::after {
@@ -202,6 +208,7 @@
                     if (progress_arr[3] == "[]") {
                         console.log("done");
                         $.get( "/stop_mapping_thread/{{ id }}");
+                        window.clearInterval(intervalID);
                         window.clearInterval(intervalID);
                     }
                     $.get('/get_map/{{ id }}/'+next_map, function(map) {
