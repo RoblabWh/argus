@@ -253,6 +253,7 @@ class DataHandler():
             for category in ann["categories"]:
                 category["sum"] = 0
                 category["lowest_score"] = 1
+                category["colorHSL"] = [(300 - int((category["id"]+1) / len(ann["categories"]) * 360 ))%360, 100, 50]
             # add an entry to each categorie that tells the sum of all its appearances in the annotations
             # also add an entry to each categorie that tells the lowest score of all its appearances in the annotations
             for image_id in ann["annotations"]:

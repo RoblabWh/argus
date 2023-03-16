@@ -76,6 +76,9 @@
         padding: 5px;
         opacity: 0;
         z-index: 20;
+        border-radius: 4px;
+        border-style: solid;
+        border-width: 2px;
     }
 
     #temp-glass p {
@@ -916,7 +919,7 @@
                         {% else %}
                         <img class="ir-image" src="{{ url_for('static', filename='default/missingCounterpartIR.JPG') }}" style="width:100%; height: 100%;">
                         {% endif %}
-                        <div class="temp-glass" id="temp-glass{{loop.index0}}"> <p>Temp:</p></div>
+                        <div class="temp-glass" id="temp-glass{{ loop.index0 }}"> <p>Temp:</p></div>
 
                     </div>
                 </div>
@@ -1373,19 +1376,21 @@
                         coord += " (Transparent color detected, cannot be converted to HEX)";
                     }
                     var hex = "#" + ("000000" + rgbToHex(p[0], p[1], p[2])).slice(-6);
-                    var clostestColorIndex = color_closest(p[0], p[1], p[2]);
-                    var temp = calc_temp_from_percentage(clostestColorIndex/gradient_lut.length);
+                    var closestColorIndex = color_closest(p[0], p[1], p[2]);
+                    var temp = calc_temp_from_percentage(closestColorIndex/gradient_lut.length);
                     document.getElementById("temp-glass{{ loop.index0 }}").style.backgroundColor = hex;
-                    document.getElementById("temp-glass{{ loop.index0 }}").innerHTML = temp + "°C  " +clostestColorIndex + " " + coord + " " + p[0] + " " + p[1] + " " + p[2] + " " + p[3];
+                    document.getElementById("temp-glass{{ loop.index0 }}").innerHTML = "  ~ " +temp + "°C  ";
 
                     $('#temp-glass{{ loop.index0 }}').css({
-                        left: e.offsetX + 20,
-                        top: e.offsetY + document.body.scrollTop
+                        left: e.offsetX + 20 + document.getElementById('image{{loop.index0}}').offsetLeft,
+                        top: e.offsetY + document.body.scrollTop +document.getElementById('image{{loop.index0}}').offsetTop,
                     });
                     if ((p[0]*0.299 + p[1]*0.587 + p[3]*0.114) > 186){
                         document.getElementById("temp-glass{{ loop.index0 }}").style.color = "#000000";
+                        document.getElementById("temp-glass{{ loop.index0 }}").style.borderColor = "#000000";
                     } else {
                         document.getElementById("temp-glass{{ loop.index0 }}").style.color = "#ffffff";
+                        document.getElementById("temp-glass{{ loop.index0 }}").style.borderColor = "#ffffff";
                     }
                  } else {
                     document.getElementById("temp-glass{{ loop.index0 }}").style.backgroundColor = "transparent";

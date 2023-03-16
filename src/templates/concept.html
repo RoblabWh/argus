@@ -243,10 +243,10 @@
 
         function toggleTextfieldTitle(){
             fakeButton = document.getElementById("edit-title-button");
-            toggleTextFiel("title-name", fakeButton, "update_title");
+            toggleTextField("title-name", fakeButton, "update_title");
         }
 
-        function toggleTextFiel(textfieldID, button, link){
+        function toggleTextField(textfieldID, button, link){
             var textfield = document.getElementById(textfieldID);
             if (textfield.contentEditable == "true") {
                 textfield.contentEditable = false;

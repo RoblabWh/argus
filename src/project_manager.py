@@ -254,3 +254,24 @@ class ProjectManager:
 
     def update_slide_file_paths(self, report_id, slide_file_paths):
         self.update_data_by_keyword(report_id, 'slide_file_paths', slide_file_paths)
+
+    def update_detections_colors(self, report_id, color, category_name):
+        #open detections json file defined in project.json
+        #update colors
+        #save file
+        project = self.get_project(report_id)
+        path = project['data']['annotation_file_path']
+
+        with open(path, "r") as json_file:
+            detections = json.load(json_file)
+            categories = detections['categories']
+
+            for i in range(len(categories)):
+                if(categories[i]['name'] == category_name):
+                    categories[i]['colorHSL'] = [float(color[0]), float(color[1]), float(color[2])]
+
+            detections['categories'] = categories
+
+        with open(path, "w") as json_file:
+            json.dump(detections, json_file)
+

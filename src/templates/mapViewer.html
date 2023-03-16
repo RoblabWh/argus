@@ -92,10 +92,10 @@ function changeMapStyle(styleID){ //streets-v9
 const mbAttr = 'Map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, Imagery © <a href="https://www.mapbox.com/">Mapbox</a>';
 const mbUrl = 'https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token=pk.eyJ1Ijoicm9ibGFidXNlcndocyIsImEiOiJja3VjaXF3d2MxMTN5Mm9tdmQzaGphdGU3In0.BhKF_054bVOPcviIq2yIKg';
 
-const streets = L.tileLayer(mbUrl, {id: 'mapbox/streets-v11', tileSize: 512, zoomOffset: -1, attribution: mbAttr});
+const streets = L.tileLayer(mbUrl, {maxZoom: 25, id: 'mapbox/streets-v11', tileSize: 512, zoomOffset: -1, attribution: mbAttr});
 
 const osm = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19,
+    maxZoom: 25,
     attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
 });
 
@@ -354,7 +354,7 @@ const baseLayers = {
 
 var layerControl = L.control.layers(baseLayers, layerswitcher,{}, {collapsed: false}).addTo(map);
 layerswitcher.{{maps[0].name}}_Map.addTo(map);
-const satellite = L.tileLayer(mbUrl, {id: 'mapbox/satellite-v9', tileSize: 512, zoomOffset: -1, attribution: mbAttr});
+const satellite = L.tileLayer(mbUrl, {maxZoom: 25, id: 'mapbox/satellite-v9', tileSize: 512, zoomOffset: -1, attribution: mbAttr});
 satellite.addTo(map)
 layerControl.addBaseLayer(satellite, 'Satellite');
 

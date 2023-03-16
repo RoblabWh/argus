@@ -338,6 +338,15 @@ def detect_objects(numbr_of_models, report_id):
     data_handler.save_results_in_json(bboxes)
     data_handler.structure_ann_by_images()
 
+@app.route('/update_detections_colors/<int:report_id>', methods=['POST'])
+def update_detections_colors(report_id):
+    color =[request.form.get('colorH'), request.form.get('colorS'), request.form.get('colorL')]
+    category_name = request.form.get('category_name')
+    print(request.form)
+    print("update_detections_colors for id"+ str(report_id) + " with: " + str(color) + " and category_name: " + str(category_name))
+    project_manager.update_detections_colors(report_id, color, category_name)
+    return "success"
+
 @app.route('/display/<filename>')
 def display_image(filename):
     # print('display_image filename: ' + filename)
@@ -399,3 +408,6 @@ if __name__ == '__main__':
 #find pid
 #   sudo lsof -i :5000
 # kill 1234
+
+#kill them all:
+#sudo fuser -k 5000/tcp
