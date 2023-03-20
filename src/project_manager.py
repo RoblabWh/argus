@@ -21,7 +21,6 @@ class ProjectManager:
         creation_time = datetime.now().strftime("%d.%m.%Y %H:%M:%S")
         project = ({'name': name, 'description': description, 'id': id, 'creation_time': creation_time, 'data': data})
         self.projects.append(project)
-        #save project to static/uploads/id/project.json
         with open(self.projects_path + str(id) + "/project.json", "w") as json_file:
             json.dump(project, json_file)
 
@@ -53,7 +52,6 @@ class ProjectManager:
         self.projects = sorted(self.projects, key=lambda d: d['id'], reverse=True)
 
     def get_project(self, id):
-        # print("getting project with id: " + str(id))
         for project in self.projects:
             if project['id'] == id:
                 return project
@@ -97,10 +95,7 @@ class ProjectManager:
         # append filenames to filenames inside of data of project with id
         project = self.get_project(id)
         data = project['data']
-        # print("filenames before: " + str(data['file_names']))
-        # print("filenames to add: " + str(file_names))
         data['file_names'] += file_names
-        #write updated data to project.json
         with open(self.projects_path + str(id) + "/project.json", "w") as json_file:
             json.dump(project, json_file)
 
@@ -113,7 +108,6 @@ class ProjectManager:
             data['file_names'] = file_names_rgb
         if file_names_ir != None:
             data['file_names_ir'] = file_names_ir
-        #write updated data to project.json
         with open(self.projects_path + str(id) + "/project.json", "w") as json_file:
             json.dump(project, json_file)
 
@@ -145,6 +139,9 @@ class ProjectManager:
     def update_maps(self, id, maps):
         return self.update_data_by_keyword(id, 'maps', maps)
 
+    def update_flight_trajectory(self, id, flight_trajectory):
+        return self.update_data_by_keyword(id, 'flight_trajectory', flight_trajectory)
+
     def update_ir_settings(self, id, ir_settings):
         return self.update_data_by_keyword(id, 'ir_settings', ir_settings)
 
@@ -166,7 +163,6 @@ class ProjectManager:
         project = self.get_project(id)
         if project != None:
             self.projects.remove(project)
-            #delete directory
             shutil.rmtree(self.projects_path + str(id), ignore_errors=True)
             #os.rmdir(self.projects_path + str(id))
             return True
@@ -195,6 +191,9 @@ class ProjectManager:
 
     def get_maps(self, id):
         return self.get_data_by_keyword(id, 'maps')
+
+    def get_flight_trajectory(self, id):
+        return self.get_data_by_keyword(id, 'flight_trajectory')
 
     def get_data_by_keyword(self, id, keyword):
         project = self.get_project(id)
@@ -256,9 +255,6 @@ class ProjectManager:
         self.update_data_by_keyword(report_id, 'slide_file_paths', slide_file_paths)
 
     def update_detections_colors(self, report_id, color, category_name):
-        #open detections json file defined in project.json
-        #update colors
-        #save file
         project = self.get_project(report_id)
         path = project['data']['annotation_file_path']
 

@@ -128,7 +128,6 @@
           border-color: var(--accent-color-interaction);
         }
         details[open]>summary:hover, summary:hover {
-          background-color: var(--accent-color-interaction);
           color: var(--font-color-a);
           font-weight: bold;
         }
@@ -246,6 +245,11 @@
             toggleTextField("title-name", fakeButton, "update_title");
         }
 
+        function toggleTextFieldDescription(){
+            fakeButton = document.getElementById("edit-description-button");
+            toggleTextField("descriptionText", fakeButton, "update_description");
+        }
+
         function toggleTextField(textfieldID, button, link){
             var textfield = document.getElementById(textfieldID);
             if (textfield.contentEditable == "true") {
@@ -262,7 +266,7 @@
             }
         }
 
-        function toggleTextFieldDescription(){
+        function toggleTextFieldDescriptionOld(){
             description = document.getElementById("descriptionText");
             fakeButton = document.getElementById("edit-description-button");
             console.log(description.contentEditable);

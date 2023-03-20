@@ -32,6 +32,7 @@ class MapperThread(threading.Thread):
         self.maps = []
         self.maps_placeholders = []
         self.maps_done = []
+        self.flight_trajectory = []
         self.number_of_maps = self.fast_mapping + self.with_odm + self.fast_mapping * self.ir + self.with_odm * self.ir
         self.map_rgb = None
         self.map_ir = None
@@ -93,6 +94,8 @@ class MapperThread(threading.Thread):
         self.progress_preprocess = 40
         processor.separate_ir_rgb()
         self.progress_preprocess = 50
+        processor.generate_flight_trajectory()
+        self.progress_preprocess = 55
 
         self.panos = processor.get_panos()
         self.couples_path_list = processor.couples_path_list
@@ -100,7 +103,9 @@ class MapperThread(threading.Thread):
         self.ir_images = processor.all_ir_images
         self.rgb_short_paths = processor.rgb_short_paths
         self.ir_short_paths = processor.ir_short_paths
-        self.progress_preprocess = 55
+        self.flight_trajectory = processor.flight_trajectory
+        print("flight trajectory: " + str(self.flight_trajectory))
+        self.progress_preprocess = 58
 
 
         #next step: calculate metadata for report
@@ -112,7 +117,6 @@ class MapperThread(threading.Thread):
         self.progress_preprocess = 90
 
         if self.fast_mapping or self.with_odm:
-            # dem imagemapper die bilder übergeben und filtern + map scaler erzeugen
 
             self.mappable = self.image_mapper.generate_map_elements_from_images(rgb_images=self.rgb_images, ir_images=self.ir_images)
             self.ir = self.image_mapper.has_ir
@@ -157,7 +161,7 @@ class MapperThread(threading.Thread):
 
     def get_results(self):
         return self.flight_data, self.camera_specs, self.weather_data, self.maps_placeholders, self.rgb_short_paths, \
-            self.ir_short_paths, self.ir_settings, self.panos, self.couples_path_list
+            self.ir_short_paths, self.ir_settings, self.panos, self.couples_path_list, self.flight_trajectory
 
     def get_mapper(self):
         return self.image_mapper

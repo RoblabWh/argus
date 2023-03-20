@@ -76,6 +76,12 @@ def render_standard_report(report_id, thread = None, template = "concept.html"):
     except:
         pass
 
+    flight_trajectory = []
+    try:
+        flight_trajectory = data["flight_trajectory"]
+    except:
+        pass
+
     message = None
     processing = False
     for thread in threads:
@@ -95,8 +101,9 @@ def render_standard_report(report_id, thread = None, template = "concept.html"):
                'creation_time': project_manager.get_project_creation_time(report_id)}
     return render_template(template, id=report_id, file_names=file_names, file_names_ir=file_names_ir,
                            panos=panos, has_ir=has_ir, flight_data=flight_data, slide_file_paths=slide_file_paths,
-                           camera_specs=camera_specs, weather=weather, maps=maps, project=project, message=message,
-                           processing=processing, gradient_lut=gradient_lut,ir_settings=ir_settings, detections=detections)
+                           camera_specs=camera_specs, weather=weather, flight_trajectory=flight_trajectory, maps=maps,
+                           project=project, message=message, processing=processing, gradient_lut=gradient_lut,
+                           ir_settings=ir_settings, detections=detections)
 
 
 @app.route('/')
@@ -212,7 +219,7 @@ def update_ir_settings(report_id, settings):
 
 @app.route("/update_description/<int:report_id>", methods=['POST'])
 def update_description(report_id):
-    description = request.form.get('description')
+    description = request.form.get('content')
     print("update_description for id"+ str(report_id) + " with: " + str(description))
     description = description.replace("\n", "")
     description = description.strip()
@@ -275,7 +282,8 @@ def check_preprocess_status(report_id):
             # print(progress_preprocessing, progress_mapping)
             maps_done = thread.get_maps_done()
             if progress_preprocessing == 100 and not thread.metadata_delivered:
-                flight_data, camera_specs, weather, maps, file_names_rgb, file_names_ir, ir_settings, panos, couples_path_list = thread.get_results()
+                flight_data, camera_specs, weather, maps, file_names_rgb, file_names_ir, ir_settings, panos, \
+                    couples_path_list, flight_trajectory = thread.get_results()
                 project_manager.update_flight_data(report_id, flight_data)
                 project_manager.update_camera_specs(report_id, camera_specs)
                 project_manager.update_weather(report_id, weather)
@@ -283,6 +291,7 @@ def check_preprocess_status(report_id):
                 project_manager.update_ir_settings(report_id, ir_settings)
                 project_manager.add_panos(report_id, panos)
                 project_manager.update_slide_file_paths(report_id, couples_path_list)
+                project_manager.update_flight_trajectory(report_id, flight_trajectory)
                 project_manager.overwrite_file_names_sorted(report_id, file_names_rgb= file_names_rgb, file_names_ir=file_names_ir)
                 redirect = True
                 thread.metadata_delivered = True

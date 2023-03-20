@@ -338,7 +338,7 @@
 
                 var sliderValue = document.createElement("span");
                 sliderValue.id = "layer-threshold-" + category.name;
-                sliderValue.innerHTML = slider.value;
+                sliderValue.innerHTML = parseFloat(slider.value).toFixed(2);
                 sliderValue.style = "min-width:20px;display:inline-block";
 
 
@@ -377,7 +377,7 @@
         function changeThreshold(category){
             var slider = document.getElementById("layer-threshold-slider-" + category);
             var sliderValue = document.getElementById("layer-threshold-" + category);
-            sliderValue.innerHTML = slider.value;
+            sliderValue.innerHTML = parseFloat(slider.value).toFixed(2);
             filterSelection();
             if(displayingAI){
                 drawAnnotationsOnCurrentSlide();

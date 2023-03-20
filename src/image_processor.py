@@ -186,3 +186,22 @@ class ImageProcessor:
         return weather_data
 
 
+    def generate_flight_trajectory(self):
+        coordinates = []
+        for image in self.all_images:
+            try:
+                coordinate = [image.get_exif_header().get_gps().get_latitude(),
+                                image.get_exif_header().get_gps().get_longitude()]
+                # if a coordinates is closer than 0.0001, to its previous one, it is not added to the list
+                if len(coordinates) == 0:
+                    coordinates.append(coordinate)
+                elif (abs(coordinates[-1][0] - coordinate[0]) > 0.00002 and
+                      abs(coordinates[-1][1] - coordinate[1]) > 0.00002):
+                    coordinates.append(coordinate)
+            except:
+                print("no gps data on image: ", image.get_image_path())
+
+        self.flight_trajectory = coordinates
+
+
+

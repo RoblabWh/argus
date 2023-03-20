@@ -17,7 +17,7 @@
             display: inline-block;
             position: relative;
             float: right;
-            padding: 8px 16px;
+            margin: 8px 16px;
         }
 
         .dropdown-settings button{
@@ -26,7 +26,7 @@
             padding:5px 10px;
             font-size:14px;
             cursor:pointer;
-            background-color: var(--bg-color-a);
+            background-color: var(--bg-color-page);
             color: var(--accent-color-interaction);
         }
 
@@ -113,7 +113,7 @@
                <a onclick="shutdownServer()">Shutdown Server</a>
             </div>
         </div>
-        <h3 class="header-title-name">Flight-Report: {{ project.name }}</h3>
+        <h3 class="header-title-name" onclick="window.location.href = '/{{id}}'">Flight-Report: {{ project.name }}</h3>
     </div>
 </body>
 </html>

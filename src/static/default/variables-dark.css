@@ -8,14 +8,28 @@
   //--font-color-a: white;
   //--font-color-b: black;
 
-  --accent-color-interaction: rgb(33, 200, 170);
+  //--accent-color-interaction: rgb(33, 200, 170);
+  //--accent-color-red-values: 247, 79, 79;
+  //--accent-color-red: rgb(var(--accent-color-red-values));
+  //--accent-color-green-values: 5, 213, 136;
+  //--accent-color-green: rgb(var(--accent-color-green-values));
+  //--bg-color-a: #1a1a1a;
+  //--bg-color-b: #9d9d9d;
+  //--bg-color-c: white;
+  //--bg-color-AILayer: rgb(35,35,35);
+  //--bg-color-page: #373737;
+  //--font-color-a: white;
+  //--font-color-b: black;
+
+
+  --accent-color-interaction: rgb(9, 161, 221);
   --accent-color-red-values: 247, 79, 79;
   --accent-color-red: rgb(var(--accent-color-red-values));
   --accent-color-green-values: 5, 213, 136;
   --accent-color-green: rgb(var(--accent-color-green-values));
-  --bg-color-a: #1a1a1a;
-  --bg-color-b: #9d9d9d;
-  --bg-color-c: white;
+  --bg-color-a: #595959;
+  --bg-color-b: #fff;
+  --bg-color-c: #df01ff;
   --bg-color-AILayer: rgb(35,35,35);
   --bg-color-page: #373737;
   --font-color-a: white;
