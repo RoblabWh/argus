@@ -74,6 +74,7 @@
           border-width: 1px;
         }
 
+
         .big_button{
           float:right;
           position: relative;
@@ -82,17 +83,20 @@
           background-color: var(--accent-color-interaction);
           color: var(--font-color-b);
           border-radius: 4px;
+          border-style: none;
           cursor: pointer;
+          transition: 0.3s;
+        }
+
+
+        .big_button:hover {
+          color: var(--font-color-a);
+          font-weight: bold;
         }
 
         .big_button:disabled{
           background-color: var(--bg-color-page);
           color: var(--bg-color-b);
-        }
-
-        #big_button_a{
-          width: 35%;
-          padding: 11px 0px;
         }
 
         .map_container {
@@ -415,7 +419,7 @@
 
         <div class="map_container">
             <h2> Map </h2>
-            {% include 'mapViewer.html' %}
+            {% include 'mapViewerV2.html' %}
         </div>
 
 

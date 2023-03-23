@@ -85,11 +85,13 @@ def render_standard_report(report_id, thread = None, template = "concept.html"):
     message = None
     processing = False
     for thread in threads:
+        processing = False
         if thread.report_id == report_id:
-            if(thread.progress_mapping == 100):
-                processing = False
-            else:
-                processing = True
+            processing = True
+            # if(thread.progress_mapping == 100):
+            #     processing = False
+            # else:
+            #     processing = True
             message = thread.message
             break
 
@@ -221,9 +223,7 @@ def update_ir_settings(report_id, settings):
 def update_description(report_id):
     description = request.form.get('content')
     print("update_description for id"+ str(report_id) + " with: " + str(description))
-    description = description.replace("\n", "")
-    description = description.strip()
-    description = description.replace("<br>", "\n")
+    description = process_html_strings(description)
     project_manager.update_description(report_id, description)
     return "success"
 
@@ -231,11 +231,19 @@ def update_description(report_id):
 def update_title(report_id):
     title = request.form.get('content')
     print("update_title for id"+ str(report_id) + " with: " + str(title))
-    title = title.replace("\n", "")
-    title = title.strip()
-    title = title.replace("<br>", " ")
+    title = process_html_strings(title, no_newline=True)
     project_manager.update_title_name(report_id, title)
     return "success"
+
+def process_html_strings(html_string, no_newline=False):
+    html_string = html_string.replace("\n", "")
+    html_string = html_string.strip()
+    if no_newline:
+        html_string = html_string.replace("<br>", "")
+    else:
+        html_string = html_string.replace("<br>", "\n")
+    html_string = html_string.replace("&amp;", "&")
+    return html_string
 
 @app.route('/get_map/<int:report_id>/<int:map_index>', methods=['GET', 'POST'])
 def send_next_map(report_id, map_index):

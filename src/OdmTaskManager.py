@@ -51,8 +51,8 @@ class OdmTaskManager:
     @staticmethod
     def scale_image(size, path):
         img = cv2.imread(os.path.abspath(path))
-        print("Scaling image", os.path.abspath(path))
-        print("Image size", img.shape)
+        # print("Scaling image", os.path.abspath(path))
+        # print("Image size", img.shape)
         scale_percent = size / img.shape[1]
         dim = (int(img.shape[1] * scale_percent), int(img.shape[0] * scale_percent))
         resized = cv2.resize(img, dim, interpolation=cv2.INTER_NEAREST)
@@ -76,13 +76,17 @@ class OdmTaskManager:
 
         print("Scaling images", image_paths)
         scaled_image_paths = []
-        #using multiprocessing to parallel scale down all images found in the list image_paths using openCV
-        pool = multiprocessing.Pool(processes=4)
+        nmbr_of_processes = len(os.sched_getaffinity(0))  # 6
+        print('number of processes: ', nmbr_of_processes)
+        if nmbr_of_processes < len(image_paths):
+            nmbr_of_processes = len(image_paths)
+        pool = multiprocessing.Pool(nmbr_of_processes)
         func = partial(OdmTaskManager.scale_image, self._image_size)
         scaled_image_paths = pool.map(func, self.image_paths)
         #scaled_image_paths = pool.map(OdmTaskManager.scale_image, zip(self.image_paths, len(self.image_paths) * [self._image_size]))
         pool.close()
         pool.join()
+        print("scaling done")
         return scaled_image_paths
 
     def run_task(self, options={'feature-quality': 'medium', 'fast-orthophoto': True, 'auto-boundary': True, 'pc-ept': True,'cog': True}):
