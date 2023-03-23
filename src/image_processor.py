@@ -57,10 +57,11 @@ class ImageProcessor:
     def filter_panos(self):
         self.all_panos = []
         print(self.all_images)
-        for image in self.all_images:
-            if image.get_exif_header().pano:
-                self.all_panos.append(image)
-                self.all_images.remove(image)
+
+        self.all_panos = [image for image in self.all_images if image.get_exif_header().pano]
+        for pano in self.all_panos:
+            self.all_images.remove(pano)
+
         print('all panos: ', self.all_panos)
         print('all images: ', self.all_images)
 

@@ -223,19 +223,31 @@
 
     #tab-link-1{
         border-top-left-radius: 6px;
-        {% if not has_ir and not panos %}
+        {% if not has_ir and not panos and not unprocessed_images %}
         border-top-right-radius: 6px;
         {% endif %}
     }
 
     #tab-link-2{
-        {% if not panos %}
+        {% if not has_rgb %}
+        border-top-left-radius: 6px;
+        {% endif %}
+        {% if not panos and not unprocessed_images %}
         border-top-right-radius: 6px;
         {% endif %}
     }
 
     #tab-link-3{
+        {% if not unprocessed_images %}
         border-top-right-radius: 6px;
+        {% endif %}
+    }
+
+    #tab-link-4{
+        border-top-right-radius: 6px;
+        {% if not has_ir and not panos and not has_rgb %}
+        border-top-left-radius: 6px;
+        {% endif %}
     }
 
     ul.tabs li:hover{
@@ -537,7 +549,7 @@
           showCurrentSlide();
         }
       } else {
-        if(slideshow_couples[slideIndex][0] == ""){
+        if(slideshow_couples[slideIndex][0] == "" && slideshow_couples[slideIndex][2] == null){
           plusSlides(n);
         }
         else{
@@ -570,6 +582,12 @@
             if(slideIndex != -1){
                 showSlideIR(slideIndex);
             }
+            else{
+                slideIndex = getSlideIndexByFilename(filename, 2);
+                if(slideIndex != -1){
+                    showSlide(slideIndex);
+                }
+            }
         }
     }
 
@@ -580,6 +598,7 @@
             showSlideIR(slideIndex);
         }
     }
+
 
     function showSlide(n) {
       var details = document.getElementById("gallery-details");
@@ -886,6 +905,9 @@
                 {% if couple[1] != "" %}
                 <a  style="display: inline-block; padding: 8px 0">IR: {{couple[1].split('/')[-1]}}</a>
                 {% endif %}
+                {% if couple[2] %}
+                <a  style="display: inline-block; padding: 8px 0">Unprocessed: {{couple[2].split('/')[-1]}}</a>
+                {% endif %}
                 <div class="usedInMappingContainer">
                     <div class="usedInMapping">
                         <a style="margin: 0 6px; float: left">&#10003</a>
@@ -902,6 +924,8 @@
                         <a>
                             {% if couple[0] != "" %}
                             <img id="baseImage{{couple[0].split('/')[-1]}}" src="{{ url_for('static', filename=couple[0]) }}" style="width:100%; height: 100%;">
+                            {% elif couple[2] %}
+                            <img id="baseImage{{couple[2].split('/')[-1]}}" src="{{ url_for('static', filename=couple[2]) }}" style="width:100%; height: 100%;">
                             {% else %}
                             <img src="{{ url_for('static', filename='default/missingCounterpartRGB.JPG') }}" style="width:100%; height: 100%; opacity: 50%">
                             {% endif %}
@@ -1060,16 +1084,40 @@
 <div class="container">
 
     <ul class="tabs">
+        {% if has_rgb %}
         <li id="tab-link-1" class="tab-link current" data-tab="tab-1">RGB Photos</li>
+        {% endif %}
+
         {% if has_ir %}
+        {% if not has_rgb %}
+        <li id="tab-link-2" class="tab-link current" data-tab="tab-2"> IR Photos</li>
+        {% else %}
         <li id="tab-link-2" class="tab-link" data-tab="tab-2"> IR Photos</li>
         {% endif %}
+        {% endif %}
+
         {% if panos %}
+        {% if not has_rgb and not has_ir%}
+        <li id="tab-link-3" class="tab-link current" data-tab="tab-3">Panoramas</li>
+        {% else %}
         <li id="tab-link-3" class="tab-link" data-tab="tab-3">Panoramas</li>
+        {% endif %}
+        {% endif %}
+
+        {%  if unprocessed_images %}
+        {% if not has_rgb and not has_ir and not panos %}
+        <li id="tab-link-4" class="tab-link current" data-tab="tab-4">Unprocessed</li>
+        {% else %}
+        <li id="tab-link-4" class="tab-link" data-tab="tab-4">Unprocessed</li>
+        {% endif %}
         {% endif %}
     </ul>
 
+    {% if has_rgb %}
     <div id="tab-1" class="tab-content_gallery current">
+    {% else %}
+    <div id="tab-1" class="tab-content_gallery">
+    {% endif %}
         {% if slide_file_paths %}
         {% for couple in slide_file_paths %}
         {% if couple[0] != "" %}
@@ -1080,7 +1128,11 @@
         {% endfor %}
         {% endif %}
     </div>
+    {% if not has_rgb and has_ir%}
+    <div id="tab-2" class="tab-content_gallery current">
+    {% else %}
     <div id="tab-2" class="tab-content_gallery">
+    {% endif %}
         <div style="width: 100%; height: 100%; overflow: auto;">
             {% if slide_file_paths %}
             {% for couple in slide_file_paths %}
@@ -1093,13 +1145,34 @@
             {% endif %}
         </div>
     </div>
+    {% if not has_rgb and not has_ir and panos%}
+    <div id="tab-3" class="tab-content_gallery current">
+    {% else %}
     <div id="tab-3" class="tab-content_gallery">
+    {% endif %}
         <div style="width: 100%; height: 100%; overflow: auto;">
             {% if panos %}
             {% for pano in panos %}
             <div style="float:left;width:20%; min-width:240px;">
                 <img src="{{ url_for('static', filename=pano.file) }}" style="padding: 5px;width:95%;cursor: pointer;" onclick="show_pano({{ loop.index0 }})">
             </div>
+            {% endfor %}
+            {% endif %}
+        </div>
+    </div>
+    {% if not has_rgb and not has_ir and not panos and unprocessed_images%}
+    <div id="tab-4" class="tab-content_gallery current">
+    {% else %}
+    <div id="tab-4" class="tab-content_gallery">
+    {% endif %}
+        <div style="width: 100%; height: 100%; overflow: auto;">
+            {% if slide_file_paths %}
+            {% for couple in slide_file_paths %}
+            {% if couple[2]%}
+            <div style="float:left;width:20%; min-width:240px;">
+                <img src="{{ url_for('static', filename=couple[2]) }}" style="padding: 5px;width:95%;cursor: pointer;" onclick="showSlideByFilename('{{ couple[2] }}')">
+            </div>
+            {% endif %}
             {% endfor %}
             {% endif %}
         </div>
@@ -1139,7 +1212,7 @@
     var slideIndex = 0;
     slideshow_couples = {{ slide_file_paths | tojson}};
     for (var i = 0; i < slideshow_couples.length; i++) {
-        if (slideshow_couples[i][0] != "") {
+        if (slideshow_couples[i][0] != "" ) {
             slideIndex = i;
             break;
         }

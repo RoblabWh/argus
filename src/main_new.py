@@ -82,6 +82,18 @@ def render_standard_report(report_id, thread = None, template = "concept.html"):
     except:
         pass
 
+    contains_unprocessed_images = False
+    try:
+        contains_unprocessed_images = data["contains_unprocessed_images"]
+    except:
+        pass
+
+    has_rgb = False
+    for slide in slide_file_paths:
+        if slide[0] != "":
+            has_rgb = True
+            break
+
     message = None
     processing = False
     for thread in threads:
@@ -102,10 +114,11 @@ def render_standard_report(report_id, thread = None, template = "concept.html"):
                "description": project_manager.get_project_description(report_id),
                'creation_time': project_manager.get_project_creation_time(report_id)}
     return render_template(template, id=report_id, file_names=file_names, file_names_ir=file_names_ir,
-                           panos=panos, has_ir=has_ir, flight_data=flight_data, slide_file_paths=slide_file_paths,
-                           camera_specs=camera_specs, weather=weather, flight_trajectory=flight_trajectory, maps=maps,
-                           project=project, message=message, processing=processing, gradient_lut=gradient_lut,
-                           ir_settings=ir_settings, detections=detections)
+                           panos=panos, has_rgb=has_rgb, has_ir=has_ir, flight_data=flight_data,
+                           slide_file_paths=slide_file_paths, camera_specs=camera_specs, weather=weather,
+                           flight_trajectory=flight_trajectory, maps=maps, project=project, message=message,
+                           processing=processing, gradient_lut=gradient_lut, ir_settings=ir_settings,
+                           detections=detections, unprocessed_images=contains_unprocessed_images)
 
 
 @app.route('/')
@@ -154,7 +167,9 @@ def upload_image(report_id):
         else:
             flash('Allowed image types are -> png, jpg, jpeg, gif')
             return redirect(request.url)
-    file_names = project_manager.update_file_names(report_id, file_names)
+    project_manager.update_file_names(report_id, file_names)
+    project_manager.append_unprocessed_images(report_id, file_names)
+    files = []
     if not project_manager.get_project(report_id)['data']['flight_data']:
         return render_standard_report(report_id, template='startProcessing.html')
     return render_standard_report(report_id)
@@ -301,6 +316,7 @@ def check_preprocess_status(report_id):
                 project_manager.update_slide_file_paths(report_id, couples_path_list)
                 project_manager.update_flight_trajectory(report_id, flight_trajectory)
                 project_manager.overwrite_file_names_sorted(report_id, file_names_rgb= file_names_rgb, file_names_ir=file_names_ir)
+                project_manager.update_contains_unprocessed_images(report_id, False)
                 redirect = True
                 thread.metadata_delivered = True
             elif progress_mapping == 100:

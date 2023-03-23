@@ -25,13 +25,17 @@ class Map:
     def create_map(self):
         map_creation_time_start = time.time()
         # self.load_images()
-        self.load_images_parallel()
+        self.chunk_size = 32
+        print('mapping: creating chunks of size: ', self.chunk_size)
+        map_elements_chunks = [self.map_elements[i:i + self.chunk_size] for i in range(0, len(self.map_elements), self.chunk_size)]
+
+        #self.load_images_parallel()
         # pool = multiprocessing.Pool(6)
         # self.map_elements = pool.map(Map.load_image, self.map_elements.copy())
         # pool.close()
         # pool.join()
         map_creation_time_loading = time.time()
-        self.add_images_to_map()
+        self.add_images_to_map(map_elements_chunks)
         map_creation_time_mapping = time.time()
         # self.crop_map()
         self.draw_flight_trajectorie()
@@ -46,30 +50,19 @@ class Map:
         #self.crop_map()
         return self.final_map
 
-    def load_images(self):
-        #average_color_map = 0
-        #j = 0
-        for map_element in self.map_elements:
-            image = map_element.get_image().get_matrix()
-            rotated_rectangle = map_element.get_rotated_rectangle()
-            (w, h) = rotated_rectangle.get_size()
-            h1,w1,c = image.shape
-            resized_image = cv2.resize(image, (w, h), cv2.INTER_NEAREST)
-            rotated_image = imutils.rotate_bound(resized_image, -rotated_rectangle.get_angle())
-            (h, w) = rotated_rectangle.get_shape()
-            rotated_image = cv2.resize(rotated_image, (int(w), int(h)), cv2.INTER_NEAREST)
-            map_element.get_image().set_matrix(rotated_image)            
 
-            #average_color_map = average_color_map + np.average(image)
-            #j = j + 1            
-        #average_color_map = int(average_color_map / len(self.map_elements))    
-        #self.final_map = self.final_map 
+    # def load_images_parallel(self):
+    #     pool = multiprocessing.Pool(6)
+    #     self.map_elements = pool.map(Map.load_image, self.map_elements.copy())
+    #     pool.close()
+    #     pool.join()
 
-    def load_images_parallel(self):
+    def load_images_parallel(self, map_elements):
         pool = multiprocessing.Pool(6)
-        self.map_elements = pool.map(Map.load_image, self.map_elements.copy())
+        map_elements = pool.map(Map.load_image, map_elements)
         pool.close()
         pool.join()
+        return map_elements
 
     @staticmethod
     def load_image(map_element):
@@ -85,53 +78,59 @@ class Map:
         map_element.get_image().set_matrix(rotated_image)
         return map_element
 
-    def add_images_to_map(self):
+    def add_images_to_map(self, map_elements_chunks):
         if self.optimize: #voronoi aenderung
-            self.write_out_image_px_centers_on_map_scaled(4)
-            self.closest_index_voronoi = self.generate_voronoi_indices_scaled(4)
+            performance_factor = 1
+            while True:
+                performance_factor *= 2
+                width = self.width / performance_factor
+                height = self.height / performance_factor
+                if width < 1000 and height < 1000:
+                    break
+
+            print("mapping: calculating voronoi with performance factor: ", performance_factor)
+            self.write_out_image_px_centers_on_map_scaled(performance_factor)
+            self.closest_index_voronoi = self.generate_voronoi_indices_scaled(performance_factor)
 
         try:
-            for i, map_element in enumerate(self.map_elements):
+            for j, elements in enumerate(map_elements_chunks):
+                print("mapping: working on chunk of size: ", len(elements))
 
-                image = map_element.get_image().get_matrix()
-                coordinate = map_element.get_rotated_rectangle().get_center()
-    
-                coordinate = (coordinate[0], self.height - coordinate[1])
-    
-                y_offset = int(coordinate[1] - image.shape[0]/2)
-                x_offset = int(coordinate[0] - image.shape[1]/2)
-                y1, y2 = y_offset, y_offset + image.shape[0]
-                x1, x2 = x_offset, x_offset + image.shape[1]
-                ###########################
-                #alpha = self.blending
-                #beta = 1.0 - alpha
-                #self.final_map = cv2.addWeighted(image, alpha, self.final_map, beta, 0.0)
-                #self.final_map = cv2.add(image, self.final_map)
-                ###########################
+                elements = self.load_images_parallel(elements)
 
-                if self.optimize:
-                    closest_in_aoi = self.closest_index_voronoi[y1:y2, x1:x2]
-                    closest_in_aoi = np.repeat(closest_in_aoi[:, :, np.newaxis], 4, axis=2)
-                    combined_image = self.final_map[y1:y2, x1:x2, :]
-                    combined_image = np.where(closest_in_aoi == i, image, combined_image)
+                for i, map_element in enumerate(elements):
 
-                    self.final_map[y1:y2, x1:x2, :] = combined_image
-                else:
-                    alpha_s = image[:, :, 3] / 255.0
-                    alpha_l = 1.0 - alpha_s
-                    alpha = self.blending
-                    beta = 1.0 - alpha
+                    image = map_element.get_image().get_matrix()
+                    coordinate = map_element.get_rotated_rectangle().get_center()
 
-                    for c in range(0, 4):
-                        a = alpha_s * image[:, :, c]
-                        #cv2.imshow('a'+str(c), a)
-                        #cv2.waitKey(0)
-                        b = alpha_l * self.final_map[y1:y2, x1:x2, c]
-                        #cv2.imshow('b'+str(c), b)
-                        #cv2.waitKey(0)
-                        alpha_image = ( a + b)
-                        #cv2.imshow('alpha_image'+str(c), alpha_image)
-                        self.final_map[y1:y2, x1:x2, c] = (alpha * alpha_image[:, :] + beta * self.final_map[y1:y2, x1:x2, c])
+                    coordinate = (coordinate[0], self.height - coordinate[1])
+
+                    y_offset = int(coordinate[1] - image.shape[0]/2)
+                    x_offset = int(coordinate[0] - image.shape[1]/2)
+                    y1, y2 = y_offset, y_offset + image.shape[0]
+                    x1, x2 = x_offset, x_offset + image.shape[1]
+
+
+                    if self.optimize:
+                        closest_in_aoi = self.closest_index_voronoi[y1:y2, x1:x2]
+                        closest_in_aoi = np.repeat(closest_in_aoi[:, :, np.newaxis], 4, axis=2)
+                        combined_image = self.final_map[y1:y2, x1:x2, :]
+                        combined_image = np.where(closest_in_aoi == i+(j*self.chunk_size), image, combined_image)
+
+                        self.final_map[y1:y2, x1:x2, :] = combined_image
+                    else:
+                        alpha_s = image[:, :, 3] / 255.0
+                        alpha_l = 1.0 - alpha_s
+                        alpha = self.blending
+                        beta = 1.0 - alpha
+
+                        for c in range(0, 4):
+                            a = alpha_s * image[:, :, c]
+                            b = alpha_l * self.final_map[y1:y2, x1:x2, c]
+                            alpha_image = ( a + b)
+                            self.final_map[y1:y2, x1:x2, c] = (alpha * alpha_image[:, :] + beta * self.final_map[y1:y2, x1:x2, c])
+
+                    map_element.get_image().set_matrix(None)
 
                 #for c in range(0, 2):
                 #    a =  0.5 * image[:, :, c]
@@ -165,6 +164,7 @@ class Map:
 
 
     def calculate_voronoi_diagram(self, width, height, centers_x, centers_y):
+        print("mapping:  calculating voronoi indices for width: ", width, " height: ", height)
         # Create grid containing all pixel locations in image
         x, y = np.meshgrid(np.arange(0, width), np.arange(0, height))
 

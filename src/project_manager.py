@@ -101,6 +101,26 @@ class ProjectManager:
 
         return data['file_names']
 
+    def append_unprocessed_images(self, id, file_names):
+        project = self.get_project(id)
+        data = project['data']
+
+        try:
+            couples = data['slide_file_paths']
+        except:
+            couples = []
+
+        for file_name in file_names:
+            couples.append(["", "", file_name])
+
+        data['slide_file_paths'] = couples
+        data['contains_unprocessed_images'] = True
+        print("appending unprocessed images to project with id: " + str(id))
+        with open(self.projects_path + str(id) + "/project.json", "w") as json_file:
+            json.dump(project, json_file)
+
+        return data['slide_file_paths']
+
     def overwrite_file_names_sorted(self, id, file_names_rgb=None, file_names_ir=None):
         project = self.get_project(id)
         data = project['data']
@@ -271,3 +291,5 @@ class ProjectManager:
         with open(path, "w") as json_file:
             json.dump(detections, json_file)
 
+    def update_contains_unprocessed_images(self, report_id, contains_unprocessed_images):
+        self.update_data_by_keyword(report_id, 'contains_unprocessed_images', contains_unprocessed_images)

@@ -1,4 +1,6 @@
 import threading
+import time
+
 from image_processor import ImageProcessor
 from src.image_mapper import ImageMapper
 
@@ -54,7 +56,7 @@ class MapperThread(threading.Thread):
                 if self.mappable:
                     self.map_rgb = self.image_mapper.calculate_map_RGB(self.report_id)
                 else:
-                    print("not mappable, creating Error Map!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+                    print("not mappable, creating Error Map!")
                     self.map_rgb = self.image_mapper.generate_error_map(self.rgb_images)
                 self.maps.append(self.map_rgb)
                 self.set_next_map_done()
@@ -97,6 +99,7 @@ class MapperThread(threading.Thread):
         self.progress_preprocess = 50
         processor.generate_flight_trajectory()
         self.progress_preprocess = 55
+
 
         self.panos = processor.get_panos()
         self.couples_path_list = processor.couples_path_list
