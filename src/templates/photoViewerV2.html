@@ -1154,7 +1154,7 @@
             {% if panos %}
             {% for pano in panos %}
             <div style="float:left;width:20%; min-width:240px;">
-                <img src="{{ url_for('static', filename=pano.file) }}" style="padding: 5px;width:95%;cursor: pointer;" onclick="show_pano({{ loop.index0 }})">
+                <img src="{{ url_for('static', filename=thumbnail_for(path=pano.file)) }}" style="padding: 5px;width:95%;cursor: pointer;" onclick="show_pano({{ loop.index0 }})">
             </div>
             {% endfor %}
             {% endif %}

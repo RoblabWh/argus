@@ -8,6 +8,8 @@ __maintainer__ = "Artur Leinweber"
 __email__ = "arturleinweber@live.de"
 __status__ = "Production"
 
+import os
+
 import cv2
 import imutils
 
@@ -27,6 +29,7 @@ class Image:
         
     def update_path(self, path):
         self.image_path = path
+        self.exif_header.update_path(path)
 
     def set_rgb_counterpart_path(self, path):
         self.rgb_counterpart_path = path
@@ -83,6 +86,25 @@ class Image:
         :return: int
         """
         return self.height
+
+    def generate_thumbnail(self):
+        """
+        Generate thumbnail of image and save it in a sub-folder in the same directory called 'thumbnails'
+
+        """
+        matrix = self.get_matrix()
+        scale_factor = 240 / matrix.shape[0]
+        new_size = (int(matrix.shape[1] * scale_factor), 240)
+        thumbnail = cv2.resize(matrix, new_size, interpolation=cv2.INTER_NEAREST)
+
+        #check if sub-folder 'thumbnails' exists
+        if not os.path.exists(os.path.join(os.path.dirname(self.image_path), 'thumbnails')):
+            os.makedirs(os.path.join(os.path.dirname(self.image_path), 'thumbnails'))
+
+        path = os.path.join(os.path.dirname(self.image_path), 'thumbnails', os.path.basename(self.image_path))
+        cv2.imwrite(path, thumbnail)
+        self.matrix = None
+
 
     @staticmethod
     def resize_image(matrix, width, height):

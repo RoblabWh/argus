@@ -103,7 +103,7 @@ class ExifHeader:
         try:
             # print(self.python_dict)
             projectionType = self._get_if_exist(self.python_dict, 'XMP:ProjectionType')
-            print(projectionType)
+            print("projectionType: " + projectionType)
 
             self.pano = True
 
@@ -224,3 +224,8 @@ class ExifHeader:
         else:
             msg = str(key) + " does not exist in EXIF-Header of input image: " + str(self.image_path)
             raise Exception(msg)
+
+    def update_path(self, path):
+        self.image_path = path
+        if self.pano:
+            self.pano_data['file'] = path[path.find("uploads"):]

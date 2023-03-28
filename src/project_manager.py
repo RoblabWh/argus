@@ -11,7 +11,7 @@ class ProjectManager:
         self.highest_id = -1
         self.current_project_id = None
         self.projects_path = path_to_images
-        self.image_mapper = {}
+        #self.image_mapper = {}
 
     def create_project(self, name, description):
         id = self.get_next_id()
@@ -235,14 +235,14 @@ class ProjectManager:
         except:
             return "no creation time found"
 
-    def get_image_mapper(self, report_id):
-        try:
-            mapper = self.image_mapper[str(report_id)]
-            return mapper
-        except:
-            mapper = ImageMapper(self.projects_path)
-            self.image_mapper[str(report_id)] = mapper
-            return mapper
+    # def get_image_mapper(self, report_id):
+    #     try:
+    #         mapper = self.image_mapper[str(report_id)]
+    #         return mapper
+    #     except:
+    #         mapper = ImageMapper(self.projects_path)
+    #         self.image_mapper[str(report_id)] = mapper
+    #         return mapper
 
     def update_ir_settings_from_website(self, report_id, settings):
         project = self.get_project(report_id)

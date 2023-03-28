@@ -1,5 +1,6 @@
 import multiprocessing
 import os
+import shutil
 import sys
 
 from path_reader import PathReader
@@ -58,12 +59,17 @@ class ImageProcessor:
         self.all_panos = []
         print(self.all_images)
 
+        print('all images before pano Filtering: ', len(self.all_images))
+
         self.all_panos = [image for image in self.all_images if image.get_exif_header().pano]
         for pano in self.all_panos:
             self.all_images.remove(pano)
+            self.move_image_to_subfolder(pano, 'panos')
+            pano.generate_thumbnail()
 
         print('all panos: ', self.all_panos)
-        print('all images: ', self.all_images)
+        print('all images after pano Filtering: ', len(self.all_images))
+        print('all images after pano Filtering: ', self.all_images)
 
     def get_panos(self):
         panos = []
@@ -203,6 +209,18 @@ class ImageProcessor:
                 print("no gps data on image: ", image.get_image_path())
 
         self.flight_trajectory = coordinates
+
+
+    def move_image_to_subfolder(self, image, subfolder):
+        subfolder_path = os.path.dirname(image.get_image_path())+"/"+subfolder
+        path = subfolder_path + "/" + os.path.basename(image.get_image_path())
+        if not os.path.exists(subfolder_path):
+            os.makedirs(subfolder_path)
+        shutil.move(image.get_image_path(), path)
+        image.update_path(path)
+
+
+
 
 
 

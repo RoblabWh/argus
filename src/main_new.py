@@ -193,7 +193,7 @@ def process(report_id):
         else:
             ai_detection = True
 
-        image_mapper = project_manager.get_image_mapper(report_id)
+        #image_mapper = project_manager.get_image_mapper(report_id)
 
         map_resolution = request.form.get('map resolution')
         max_width, max_height = 2048, 2048
@@ -213,8 +213,8 @@ def process(report_id):
         print("ai_detection: ", ai_detection)
         print("map_resolution: ", map_resolution)
 
-        image_mapper.set_processing_parameters(map_width_px=max_width,
-                                               map_height_px=max_height, with_ODM=with_ODM)#, ai_detection=ai_detection)
+        # image_mapper.set_processing_parameters(map_width_px=max_width,
+        #                                        map_height_px=max_height, with_ODM=with_ODM)#, ai_detection=ai_detection)
         thread = MapperThread(with_mapping, with_ODM, report_id, (max_width, max_height), file_names)
         threads.append(thread)
         thread.start()
@@ -386,6 +386,18 @@ def display_image(filename):
     return redirect(url_for('static', filename='uploads/' + filename), code=301)
 
 
+def thumbnail_for(path):
+    # insert a 'thumbnail/' after the last /
+    print('thumbnail_for path: ' + path)
+    path_thumbnail = path[:path.rindex('/') + 1] + 'thumbnails/' + path[path.rindex('/') + 1:]
+    print('thumbnail_for path_thumbnail: ' + path_thumbnail)
+    #check if file exists
+    if not os.path.isfile('./static/' + path_thumbnail):
+        path_thumbnail = path
+    # print('display_image filename: ' + filename)
+    return path_thumbnail
+
+
 @app.route('/idgenerator/<filename>')
 def generate_id_for_image(filename):
     #print('display_image filename: ' + filename)
@@ -412,6 +424,8 @@ def stop_server():
 if __name__ == '__main__':
     start = datetime.datetime.now().replace(microsecond=0)
     project_manager.initiate_project_list()
+
+    app.jinja_env.globals.update(thumbnail_for=thumbnail_for)
 
     app.run(host="0.0.0.0", port=5000, debug=True)
     #start_server()  # start server

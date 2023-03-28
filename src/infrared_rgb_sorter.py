@@ -12,6 +12,21 @@ from abc import ABC, abstractmethod
 from sorter import Sorter
 from re import search
 
+
+def list_All_widths_with_count(images):
+    widths = dict()
+    for image in images:
+        (width, height) = image.get_exif_header().get_image_size()
+        if width in widths:
+            widths[width] += 1
+        else:
+            widths[width] = 1
+
+    # sort by value of keys
+    widths = {k: v for k, v in sorted(widths.items(), key=lambda item: item[0], reverse=False)}
+    return widths
+
+
 class InfraredRGBSorter(Sorter):
 
     def __init__(self):
@@ -25,6 +40,12 @@ class InfraredRGBSorter(Sorter):
 
         (width, height) = images[0].get_exif_header().get_image_size()
         sorting_kriteria = width
+
+        found_widths = list_All_widths_with_count(images)
+        print('found_widths', found_widths)
+
+        if len(found_widths) > 2:
+            sorting_kriteria = list(found_widths.keys())[0]
         
         for image in images:
             (width, height) = image.get_exif_header().get_image_size()
@@ -57,6 +78,16 @@ class InfraredRGBSorter(Sorter):
         (width, height) = images[0].get_exif_header().get_image_size()
         sorting_kriteria = width
         other_value = 0
+        print(sorting_kriteria)
+
+        found_widths = list_All_widths_with_count(images)
+        print('found_widths', found_widths)
+
+        if len(found_widths) > 2:
+            sorting_kriteria = list(found_widths.keys())[0]
+
+        print('sorting_kriteria', sorting_kriteria)
+
 
         for image in images:
             (width, height) = image.get_exif_header().get_image_size()
