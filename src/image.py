@@ -93,8 +93,8 @@ class Image:
 
         """
         matrix = self.get_matrix()
-        scale_factor = 240 / matrix.shape[0]
-        new_size = (int(matrix.shape[1] * scale_factor), 240)
+        scale_factor = 300 / matrix.shape[1]
+        new_size = (300, int(matrix.shape[0] * scale_factor))
         thumbnail = cv2.resize(matrix, new_size, interpolation=cv2.INTER_NEAREST)
 
         #check if sub-folder 'thumbnails' exists

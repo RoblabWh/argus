@@ -156,9 +156,9 @@ class Map:
 
         factor = 1/n_times_smaller
 
-        indices_clostest = self.calculate_voronoi_diagram(self.width*factor, self.height*factor, self.centers_x, self.centers_y)
+        indices_clostest = self.calculate_voronoi_diagram(int(self.width*factor), int(self.height*factor), self.centers_x, self.centers_y)
         indices_clostest = cv2.resize(indices_clostest.astype(np.float32), (self.width, self.height),interpolation= cv2.INTER_NEAREST)
-        indices_clostest =indices_clostest.astype(np.uint64)
+        indices_clostest = indices_clostest.astype(np.uint64)
 
         return indices_clostest
 

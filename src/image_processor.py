@@ -79,6 +79,7 @@ class ImageProcessor:
 
     def separate_ir_rgb(self):
         sorter = InfraredRGBSorter()
+        print('all images before ir/rgb separation: ', len(self.all_images))
         self.all_ir_images, self.all_rgb_images = sorter.sort(self.all_images)
         self.couples_path_list = sorter.build_couples_path_list_from_scratch(self.all_images)
         self.rgb_short_paths = self._generate_short_paths_list(self.all_rgb_images)
