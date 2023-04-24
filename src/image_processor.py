@@ -65,7 +65,7 @@ class ImageProcessor:
         for pano in self.all_panos:
             self.all_images.remove(pano)
             self.move_image_to_subfolder(pano, 'panos')
-            pano.generate_thumbnail()
+            #pano.generate_thumbnail()
 
         print('all panos: ', self.all_panos)
         print('all images after pano Filtering: ', len(self.all_images))
@@ -81,6 +81,8 @@ class ImageProcessor:
         sorter = InfraredRGBSorter()
         print('all images before ir/rgb separation: ', len(self.all_images))
         self.all_ir_images, self.all_rgb_images = sorter.sort(self.all_images)
+        self.move_images_to_subfolder(self.all_rgb_images, 'rgb')
+        self.move_images_to_subfolder(self.all_ir_images, 'ir')
         self.couples_path_list = sorter.build_couples_path_list_from_scratch(self.all_images)
         self.rgb_short_paths = self._generate_short_paths_list(self.all_rgb_images)
         self.ir_short_paths = self._generate_short_paths_list(self.all_ir_images)
@@ -203,8 +205,8 @@ class ImageProcessor:
                 # if a coordinates is closer than 0.0001, to its previous one, it is not added to the list
                 if len(coordinates) == 0:
                     coordinates.append(coordinate)
-                elif (abs(coordinates[-1][0] - coordinate[0]) > 0.00002 and
-                      abs(coordinates[-1][1] - coordinate[1]) > 0.00002):
+                elif (abs(coordinates[-1][0] - coordinate[0]) > 0.000025 and
+                      abs(coordinates[-1][1] - coordinate[1]) > 0.000025):
                     coordinates.append(coordinate)
             except:
                 print("no gps data on image: ", image.get_image_path())
@@ -219,6 +221,23 @@ class ImageProcessor:
             os.makedirs(subfolder_path)
         shutil.move(image.get_image_path(), path)
         image.update_path(path)
+
+    def move_images_to_subfolder(self, images, subfolder):
+        for image in images:
+            last_folder = os.path.basename(os.path.dirname(image.get_image_path()))
+            print(last_folder)
+            if last_folder != subfolder:
+                self.move_image_to_subfolder(image, subfolder)
+
+    def generate_thumbnais(self):
+        for image in self.all_rgb_images:
+            image.generate_thumbnail()
+
+        for image in self.all_panos:
+            image.generate_thumbnail()
+
+        for image in self.all_ir_images:
+            image.generate_thumbnail()
 
 
 

@@ -521,9 +521,9 @@
         }
 
         function drawAnnotationsOnImage(filename){
-            var canvas = document.getElementById("canvas" + filename);
+            var canvas = document.getElementById("dynamic-canvas");
             var ctx = canvas.getContext("2d");
-            var img = document.getElementById("baseImage" + filename);
+            var img = document.getElementById("dynamic-image-RGB").getElementsByTagName("img")[0];
 
             //scale based on images source size and the current size of the image
             var scale = img.width/ img.naturalWidth;

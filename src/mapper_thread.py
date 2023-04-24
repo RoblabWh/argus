@@ -99,6 +99,7 @@ class MapperThread(threading.Thread):
         self.progress_preprocess = 50
         processor.generate_flight_trajectory()
         self.progress_preprocess = 55
+        processor.generate_thumbnais()
 
 
         self.panos = processor.get_panos()

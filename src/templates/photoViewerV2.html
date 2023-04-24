@@ -40,6 +40,15 @@
       background-color: var(--accent-color-interaction);
     }
 
+    .dynamic-images-rgb {
+        width: 100%;
+        height: 100%;
+    }
+
+    .ir-image{
+        width:100%;
+        height: 100%;
+    }
 
     .img-magnifier-glass {
       position: absolute;
@@ -75,7 +84,7 @@
         background-color: #ffffff;
         padding: 5px;
         opacity: 0;
-        z-index: 20;
+        z-index: 99;
         border-radius: 4px;
         border-style: solid;
         border-width: 2px;
@@ -533,6 +542,25 @@
     var displayingAI = false;
     var lastSlide = 0;
 
+    var slideshowCouples = {{ slide_file_paths | tojson}};
+
+    var ImageRGB_missingCounterpart = new Image();
+    ImageRGB_missingCounterpart.src = "{{ url_for('static', filename='default/missingCounterpartRGB.JPG') }}";
+    ImageRGB_missingCounterpart.className = "dynamic-images-rgb";
+    var ImageIR_missingCounterpart = new Image()
+    ImageIR_missingCounterpart.src = "{{ url_for('static', filename='default/missingCounterpartIR.JPG') }}";
+    ImageIR_missingCounterpart.className = "ir-image";
+
+    var allImages = [];
+
+    for(var i = 0; i < slideshowCouples.length; i++){
+        var imagePlacerholders = [];
+        for(var j = 0; j < slideshowCouples[i].length; j++){
+            imagePlacerholders.push(null);
+        }
+        allImages.push(imagePlacerholders);
+    }
+
     function plusSlides(n) {
       slideIndex += n;
       var slides = document.getElementsByClassName("mySlides");
@@ -542,14 +570,14 @@
         slideIndex = slides.length - 1;
       }
       if(displayingIR){
-        if(slideshow_couples[slideIndex][1] == ""){
+        if(slideshowCouples[slideIndex][1] == ""){
           plusSlides(n);
         }
         else{
           showCurrentSlide();
         }
       } else {
-        if(slideshow_couples[slideIndex][0] == "" && slideshow_couples[slideIndex][2] == null){
+        if(slideshowCouples[slideIndex][0] == "" && slideshowCouples[slideIndex][2] == null){
           plusSlides(n);
         }
         else{
@@ -601,28 +629,31 @@
 
 
     function showSlide(n) {
-      var details = document.getElementById("gallery-details");
-      if(!details.open){
-        details.open = true;
-      }
-      slideshowContainer.scrollIntoView({
-          behavior: "smooth",
-          block: "start",
-          inline: "nearest"
-      });
-      var slides = document.getElementsByClassName("mySlides");
-      if(n >= slides.length){
-        n = 0;
-      } else if (n < 0){
-        n = slides.length - 1;
-      }
-      console.log(n);
-      slideIndex = n
-      if(displayingIR){
-        deactivateIR();
-      }
-      displayingIR = false;
-      showCurrentSlide();
+        if(n >= slideshowCouples.length){
+            n = 0;
+        } else if (n < 0){
+            n = slideshowCouples.length - 1;
+        }
+        console.log(n);
+        slideIndex = n
+
+
+        var details = document.getElementById("gallery-details");
+        if(!details.open){
+            details.open = true;
+        }
+        slideshowContainer.scrollIntoView({
+            behavior: "smooth",
+            block: "start",
+            inline: "nearest"
+        });
+
+
+        if(displayingIR){
+            deactivateIR();
+        }
+        displayingIR = false;
+        showCurrentSlide();
     }
 
     function showSlideIR(n) {
@@ -656,32 +687,141 @@
         currentIROpacity = document.getElementById("irOpacityRange").value/100;
         applyOpacity(currentIROpacity);//checkIR();
         {% endif %}
+
         checkbox = document.getElementById("magnifierCheckbox");
         demagnify();
         console.log(slideIndex);
-        var i;
-        var x = document.getElementsByClassName("mySlides");
-        console.log(x);
-        if (slideIndex >= x.length) {slideIndex = 0}
-        if (slideIndex < 0) {slideIndex = x.length-1}
-        for (i = 0; i < x.length; i++) {
-            x[i].style.display = "none";
+
+        dynamicCanvas = document.getElementById("dynamic-canvas");
+
+        imageRGB = allImages[slideIndex][0];
+        imageIR = allImages[slideIndex][1];
+        imageUnprocessed = allImages[slideIndex][2];
+        currentImagePaths = slideshowCouples[slideIndex];
+
+        console.log(currentImagePaths);
+        console.log(currentImagePaths[0]);
+        console.log(imageRGB);
+
+        if(imageRGB == null){
+            if(currentImagePaths[0] != ""){
+                imageRGB = new Image();
+                imageRGB.onload = () => {
+                    //width of div of class container
+                    var body_width = document.getElementsByClassName("container")[0].offsetWidth;
+                    dynamicCanvas.width = body_width;
+                    dynamicCanvas.height = imageRGB.height * ( body_width/ imageRGB.width);
+
+                    if(displayingAI){
+                        toggleLayerSettings(false);
+                        drawAnnotationsOnCurrentSlide();
+                    } else{
+                        toggleLayerSettings(true);
+                        removeAnnotations();
+                    }
+                };
+                imageRGB.src = 'static/'+currentImagePaths[0];
+                imageRGB.classList.add("dynamic-images-rgb");
+                allImages[slideIndex][0] = imageRGB;
+            }
+            else{
+                imageRGB = ImageRGB_missingCounterpart;
+            }
         }
-        x[slideIndex].style.display = "block";
+
+        if(imageIR == null){
+            if(currentImagePaths[1] != ""){
+                imageIR = new Image();
+                imageIR.src = 'static/'+currentImagePaths[1];
+                imageIR.classList.add("ir-image");
+                allImages[slideIndex][1] = imageIR;
+
+                imageIR.addEventListener("mousemove", function(e) {
+                if($('#temperatureCheckbox').is(':checked')){
+                    var img = document.getElementById('dynamic-image-IR').getElementsByTagName('img')[0];
+                    var tempGlass = document.getElementById('dynamic-temp-glass');
+
+                    var canvas = document.createElement('canvas');
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    canvas.getContext('2d').drawImage(img, 0, 0, img.width, img.height);
+                    var p = canvas.getContext('2d').getImageData(e.offsetX, e.offsetY, 1, 1).data;
+                    var coord = "x: " + e.offsetX + " ,y: " + e.offsetY;
+                    // If transparency on the image
+                    if ((p[0] == 0) && (p[1] == 0) && (p[2] == 0) && (p[3] == 0)) {
+                        coord += " (Transparent color detected, cannot be converted to HEX)";
+                    }
+                    var hex = "#" + ("000000" + rgbToHex(p[0], p[1], p[2])).slice(-6);
+                    var closestColorIndex = color_closest(p[0], p[1], p[2]);
+                    var temp = calc_temp_from_percentage(closestColorIndex/gradient_lut.length);
+                    tempGlass.style.backgroundColor = hex;
+                    tempGlass.innerHTML = "  ~ " +temp + "°C  ";
+
+                    $('#dynamic-temp-glass').css({
+                        left: e.offsetX + 20 + img.offsetLeft,
+                        top: e.offsetY + document.body.scrollTop + img.offsetTop,
+                    });
+                    if ((p[0]*0.299 + p[1]*0.587 + p[3]*0.114) > 186){
+                        tempGlass.style.color = "#000000";
+                        tempGlass.style.borderColor = "#000000";
+                    } else {
+                        tempGlass.style.color = "#ffffff";
+                        tempGlass.style.borderColor = "#ffffff";
+                    }
+                 } else {
+                    this.style.backgroundColor = "transparent";
+                    this.innerHTML = "";
+                 }
+
+
+
+            });
+
+            }
+            else{
+                imageIR = ImageIR_missingCounterpart;
+            }
+        }
+
+        if(imageUnprocessed == null){
+            if(currentImagePaths[2] != "" && currentImagePaths[2] != null){
+                imageUnprocessed = new Image();
+                imageUnprocessed.src = currentImagePaths[2];
+                allImages[slideIndex][2] = imageUnprocessed;
+            }
+        }
+
+
+        a = document.getElementById("dynamic-image-RGB");
+        while (a.firstChild) {
+            a.removeChild(a.firstChild);
+        }
+        a.appendChild(imageRGB);
+
+
+        div = document.getElementById("dynamic-image-IR");
+        irImages = div.getElementsByClassName("ir-image");
+        for (var i = 0; i < irImages.length; i++) {
+            irImages[i].remove();
+        }
+        div.insertBefore(imageIR, div.childNodes[0]);
+
+
+
         zoomValue = document.getElementById("zoomRange").value/10;
         if(checkbox.checked){
             magnify(slideIndex, zoomValue);
         }
 
-        {% if maps %}
-        if(isUsedInMap(slideIndex, displayingIR)){
-            x[slideIndex].getElementsByClassName("usedInMapping")[0].style.display = "flex";
-            x[slideIndex].getElementsByClassName("notUsedInMapping")[0].style.display = "none";
-        } else {
-            x[slideIndex].getElementsByClassName("usedInMapping")[0].style.display = "none";
-            x[slideIndex].getElementsByClassName("notUsedInMapping")[0].style.display = "flex";
-        }
-        {% endif %}
+        //{% if maps %}
+        //if(isUsedInMap(slideIndex, displayingIR)){
+        //    x[slideIndex].getElementsByClassName("usedInMapping")[0].style.display = "flex";
+        //    x[slideIndex].getElementsByClassName("notUsedInMapping")[0].style.display = "none";
+        //} else {
+        //    x[slideIndex].getElementsByClassName("usedInMapping")[0].style.display = "none";
+        //    x[slideIndex].getElementsByClassName("notUsedInMapping")[0].style.display = "flex";
+        //}
+        //{% endif %}
 
         if(lastSlide != slideIndex){
             if (detections != null){
@@ -722,12 +862,8 @@
     }
 
     function applyOpacity(irOpacity) {
-        var irSlides = document.getElementsByClassName("ir-overlay");
-        if(irSlides.length == 0){
-            return; // no IR images
-        }
 
-        var currentIRSlide = document.getElementsByClassName("ir-overlay")[slideIndex];
+        var currentIRSlide = document.getElementById("dynamic-image-IR");
         if(displayingIR){
             //var currentIRSlideOpacity = document.getElementById("irOpacityRange").value/100;
             currentIRSlide.style.opacity = irOpacity;
@@ -846,12 +982,12 @@
       selctedLink.className += " active";
     }
 
-    var slideshow_couples = {{ slide_file_paths|tojson }};
+    var slideshowCouples = {{ slide_file_paths|tojson }};
 
     function getSlideIndexByFilename(filename, imagetype){
         var index = -1;
-        for(var i = 0; i < slideshow_couples.length; i++){
-            if(slideshow_couples[i][imagetype] == filename){
+        for(var i = 0; i < slideshowCouples.length; i++){
+            if(slideshowCouples[i][imagetype] == filename){
                 index = i;
                 break;
             }
@@ -878,12 +1014,12 @@
     }
 
     function getFilenameBySlideIndex(index, imagetype){
-        var path = slideshow_couples[index][imagetype];
+        var path = slideshowCouples[index][imagetype];
         return path.substring(path.lastIndexOf('/')+1);
     }
 
     function getFilePathBySlideIndex(index, imagetype){
-        var path = slideshow_couples[index][imagetype];
+        var path = slideshowCouples[index][imagetype];
         return path;
     }
 
@@ -897,6 +1033,39 @@
             <a class="prev" onclick="plusSlides(-1)">❮</a>
             <a class="next" onclick="plusSlides(1)">❯</a>
             {% if slide_file_paths %}
+            <div class="mySlides" id="dynamic-slide">
+                 <a id="dynamic-filename-RGB" style="display: inline-block; padding: 8px 0"> RGB: x.jpeg</a>
+                 <a id="dynamic-filename-IR" style="display: inline-block; padding: 8px 0"> IR: x.jpeg</a>
+                 <a id="dynamic-filename-Unprocessed" style="display: inline-block; padding: 8px 0"> Unprocessed: x.jpeg</a>
+                <div class="usedInMappingContainer">
+                    <div class="usedInMapping">
+                        <a style="margin: 0 6px; float: left">&#10003</a>
+                        <a style="margin: auto">Used in map</a>
+                    </div>
+                    <div class="notUsedInMapping">
+                        <a style="margin: 0 6px; float: left">&#9888;</a>
+                        <a style="margin: auto">Not used in map</a>
+                    </div>
+                </div>
+                <div style="display: grid;place-items: center;grid-template-areas: 'inner-div'; width: 100%; grid-template-columns: minmax(100px, 1fr);">
+                    <div style="grid-area: inner-div;">
+                        <a id="dynamic-image-RGB">
+                            <img src="{{ url_for('static', filename='default/missingCounterpartRGB.JPG') }}" loading="lazy" style="width:100%; height: 100%; opacity: 50%">
+                        </a>
+                    </div>
+                    <div style="grid-area: inner-div;">
+                        <a>
+                            <canvas id="dynamic-canvas" class="annotaionsCanvas" width="100%" height="100%;"></canvas>
+                        </a>
+                    </div>
+                    <div class="ir-overlay" style="width: 80%; opacity: 0; grid-area: inner-div;" id="dynamic-image-IR">
+                        <img class="ir-image" src="{{ url_for('static', filename='default/missingCounterpartIR.JPG') }}">
+                        <div class="temp-glass" id="dynamic-temp-glass"> <p>Temp:</p></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div>
             {% for couple in slide_file_paths %}
             <div class="mySlides" id="slide{{ loop.index0 }}">
                 {% if couple[0] != "" %}
@@ -923,11 +1092,11 @@
                     <div style="grid-area: inner-div;">
                         <a>
                             {% if couple[0] != "" %}
-                            <img id="baseImage{{couple[0].split('/')[-1]}}" src="{{ url_for('static', filename=couple[0]) }}" style="width:100%; height: 100%;">
+                            <img id="baseImage{{couple[0].split('/')[-1]}}" src="{{ url_for('static', filename=couple[0]) }}" loading="lazy" style="width:100%; height: 100%;">
                             {% elif couple[2] %}
-                            <img id="baseImage{{couple[2].split('/')[-1]}}" src="{{ url_for('static', filename=couple[2]) }}" style="width:100%; height: 100%;">
+                            <img id="baseImage{{couple[2].split('/')[-1]}}" src="{{ url_for('static', filename=couple[2]) }}" loading="lazy" style="width:100%; height: 100%;">
                             {% else %}
-                            <img src="{{ url_for('static', filename='default/missingCounterpartRGB.JPG') }}" style="width:100%; height: 100%; opacity: 50%">
+                            <img src="{{ url_for('static', filename='default/missingCounterpartRGB.JPG') }}" loading="lazy" style="width:100%; height: 100%; opacity: 50%">
                             {% endif %}
                         </a>
                     </div>
@@ -1122,7 +1291,7 @@
         {% for couple in slide_file_paths %}
         {% if couple[0] != "" %}
         <div style="float:left;width:20%; min-width:240px;">
-            <img id="galleryImage{{ couple[0].split('/')[-1] }}" src="{{ url_for('static', filename=couple[0]) }}" style="padding: 5px;width:95%;cursor: pointer;" onclick="showSlideByFilename('{{ couple[0] }}')">
+            <img id="galleryImage{{ couple[0].split('/')[-1] }}" src="{{ url_for('static', filename=thumbnail_for(path=couple[0])) }}" loading="lazy" style="padding: 5px;width:95%;cursor: pointer;" onclick="showSlideByFilename('{{ couple[0] }}')">
         </div>
         {% endif %}
         {% endfor %}
@@ -1138,7 +1307,7 @@
             {% for couple in slide_file_paths %}
             {% if couple[1] != "" %}
             <div style="float:left;width:20%; min-width:240px;">
-                <img src="{{ url_for('static', filename=couple[1]) }}" style="padding: 5px;width:95%;cursor: pointer;" onclick="showSlideByFilename('{{ couple[1] }}')">
+                <img src="{{ url_for('static', filename=thumbnail_for(path=couple[1])) }}" style="padding: 5px;width:95%;cursor: pointer;" onclick="showSlideByFilename('{{ couple[1] }}')">
             </div>
             {% endif %}
             {% endfor %}
@@ -1210,15 +1379,17 @@
 <script>
     var gradient_lut = {{ gradient_lut }};
     var slideIndex = 0;
-    slideshow_couples = {{ slide_file_paths | tojson}};
-    for (var i = 0; i < slideshow_couples.length; i++) {
-        if (slideshow_couples[i][0] != "" ) {
+
+    for (var i = 0; i < slideshowCouples.length; i++) {
+        if (slideshowCouples[i][0] != "" ) {
             slideIndex = i;
             break;
         }
     }
     showCurrentSlide(slideIndex);
     var slideshowContainer = document.getElementById("slideshow-container");
+    var dynamicSlide = document.getElementById("dynamic-slide");
+    dynamicSlide.style.display = "block";
 
 
     var checkbox = document.getElementById("magnifierCheckbox");
@@ -1238,7 +1409,6 @@
         magnify(slideIndex, this.value/10);
       }
     }
-
 
     checkbox.onchange = function() {
         if(this.checked){
@@ -1431,49 +1601,6 @@
     {% endif %}
 
     window.onload = function() {
-        {% for couple in slide_file_paths %}
-        {% if couple[1] != "" %}
-        var img = document.getElementById('image{{loop.index0}}');
-            img.addEventListener("mousemove", function(e) {
-                if($('#temperatureCheckbox').is(':checked')){
-
-                    var img = document.getElementById('image{{loop.index0}}');
-                    var canvas = document.createElement('canvas');
-                    canvas.width = img.width;
-                    canvas.height = img.height;
-                    canvas.getContext('2d').drawImage(img, 0, 0, img.width, img.height);
-                    var p = canvas.getContext('2d').getImageData(e.offsetX, e.offsetY, 1, 1).data;
-                    var coord = "x: " + e.offsetX + " ,y: " + e.offsetY;
-                    // If transparency on the image
-                    if ((p[0] == 0) && (p[1] == 0) && (p[2] == 0) && (p[3] == 0)) {
-                        coord += " (Transparent color detected, cannot be converted to HEX)";
-                    }
-                    var hex = "#" + ("000000" + rgbToHex(p[0], p[1], p[2])).slice(-6);
-                    var closestColorIndex = color_closest(p[0], p[1], p[2]);
-                    var temp = calc_temp_from_percentage(closestColorIndex/gradient_lut.length);
-                    document.getElementById("temp-glass{{ loop.index0 }}").style.backgroundColor = hex;
-                    document.getElementById("temp-glass{{ loop.index0 }}").innerHTML = "  ~ " +temp + "°C  ";
-
-                    $('#temp-glass{{ loop.index0 }}').css({
-                        left: e.offsetX + 20 + document.getElementById('image{{loop.index0}}').offsetLeft,
-                        top: e.offsetY + document.body.scrollTop +document.getElementById('image{{loop.index0}}').offsetTop,
-                    });
-                    if ((p[0]*0.299 + p[1]*0.587 + p[3]*0.114) > 186){
-                        document.getElementById("temp-glass{{ loop.index0 }}").style.color = "#000000";
-                        document.getElementById("temp-glass{{ loop.index0 }}").style.borderColor = "#000000";
-                    } else {
-                        document.getElementById("temp-glass{{ loop.index0 }}").style.color = "#ffffff";
-                        document.getElementById("temp-glass{{ loop.index0 }}").style.borderColor = "#ffffff";
-                    }
-                 } else {
-                    document.getElementById("temp-glass{{ loop.index0 }}").style.backgroundColor = "transparent";
-                    document.getElementById("temp-glass{{ loop.index0 }}").innerHTML = "";
-                 }
-
-            });
-        {% endif %}
-        {% endfor %}
-
         {% if detections %}
         generateDetectionTable({{ detections | tojson }});
         $('#initialDetectionsLoading').hide();
@@ -1485,31 +1612,28 @@
         {% endif %}
     };
 
-
     {% if slide_file_paths %}
-    {% for couple in slide_file_paths %}
-    {% if couple[0] != "" %}
-    canvas{{loop.index0}} = document.getElementById('canvas{{ couple[0].split('/')[-1] }}');
-    context{{loop.index0}} = canvas{{loop.index0}}.getContext('2d');
-    var img{{loop.index0}} = new Image();
-    img{{loop.index0}}.src = "{{ url_for('static', filename=couple[0]) }}";
-    img{{loop.index0}}.id = "image{{couple[0].split('/')[-1]}}";
-    img{{loop.index0}}.onload = () => {
+    {% if slide_file_paths[0][0] != "" %}
+
+    var dynamicCanvas = document.getElementById('dynamic-canvas');
+    context = dynamicCanvas.getContext('2d');
+    var imgA = new Image();
+    imgA.src = "{{ url_for('static', filename=slide_file_paths[0][0] ) }}";
+    imgA.onload = () => {
         //width of div of class container
         var body_width = document.getElementsByClassName("container")[0].offsetWidth;
-        canvas{{loop.index0}}.width = body_width;
-        canvas{{loop.index0}}.height = img{{loop.index0}}.height * ( body_width/ img{{loop.index0}}.width);
-    }
+        dynamicCanvas.width = body_width;
+        dynamicCanvas.height = imgA.height * ( body_width/ imgA.width);
+    };
+
     {% endif %}
-    {% endfor %}
     {% endif %}
 
     function resizeCanvas(){
         //get all objects with class "annotaionsCanvas"
         var canvases = document.getElementsByClassName("annotaionsCanvas");
-        var img = document.getElementById("baseImage" + canvases[slideIndex].id.split("canvas")[1]);
+        var img = document.getElementById("dynamic-image-RGB").getElementsByTagName("img")[0];
 
-        console.log("baseImage" + canvases[0].id.split("canvas")[1]);
 
         for (var i = 0; i < canvases.length; i++) {
             var canvas = canvases[i];
