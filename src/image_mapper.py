@@ -4,10 +4,12 @@ import cv2
 import time
 
 from map import Map
+from map_v2 import Map_v2
 from OdmTaskManager import OdmTaskManager
 from gps import GPS
 from src.gimbal_pitch_filter import GimbalPitchFilter
 from src.map_scaler import MapScaler
+from src.map_scaler_v2 import MapScalerv2
 
 
 class ImageMapper:
@@ -28,6 +30,7 @@ class ImageMapper:
 
         self.map_elements_IR = None
         self.map_elements_RGB = None
+        self.map_elements_debug = None
         self.map_scaler_IR = None
         self.map_scaler_RGB = None
         self.final_map = None
@@ -55,6 +58,7 @@ class ImageMapper:
     def generate_map_elements_from_images(self, rgb_images=None, ir_images=None):
         if rgb_images is not None:
             self.map_scaler_RGB, self.map_elements_RGB = self.generate_map_elements_and_scaler(rgb_images)
+            self.map_scaler_debug, self.map_elements_debug = self.generate_map_elements_and_scaler_debug(rgb_images)
         if ir_images is not None:
             self.map_scaler_IR, self.map_elements_IR = self.generate_map_elements_and_scaler(ir_images)
 
@@ -79,6 +83,14 @@ class ImageMapper:
         if len(filtered_images) < self.minimum_number_of_images:
             return None, []
         map_scaler = MapScaler(filtered_images, self.map_width_px, self.map_height_px)
+        map_elements = map_scaler.get_map_elements()
+        return map_scaler, map_elements
+
+    def generate_map_elements_and_scaler_debug(self, images):
+        filtered_images = GimbalPitchFilter(89 - self.max_gimbal_pitch_deviation).filter(images)
+        if len(filtered_images) < self.minimum_number_of_images:
+            return None, []
+        map_scaler = MapScalerv2(filtered_images, self.map_width_px, self.map_height_px)
         map_elements = map_scaler.get_map_elements()
         return map_scaler, map_elements
 
@@ -148,6 +160,13 @@ class ImageMapper:
         map_dict = self.process_map(self.map_scaler_RGB, self.map_elements_RGB, min_x, max_x, min_y, max_y, False)
         return map_dict
 
+    def calculate_map_debug(self, report_id):
+        (min_x, max_x, min_y, max_y), self.map_elements_debug = self.__calculate_map(self.map_scaler_debug,
+                                                                                   self.map_elements_debug)
+        map_dict = self.process_map(self.map_scaler_debug, self.map_elements_debug, min_x, max_x, min_y, max_y, False)
+        return map_dict
+
+
     def calculate_map_IR(self, report_id):
         (min_x, max_x, min_y, max_y), self.map_elements_IR = self.__calculate_map(self.map_scaler_IR,
                                                                                   self.map_elements_IR)
@@ -158,7 +177,7 @@ class ImageMapper:
         map_file_name = "map_rgb.png" if not ir else "map_ir.png"
         map_file_path = "uploads/" + str(self.report_id) + "/" + map_file_name
         self.__calculate_gps_for_mapbox_plugin(map_elements, map_scaler, min_x, max_x, min_y, max_y)
-        self.save_map(str(self.report_id) + '/', map_file_name)
+        self.save_map(self.cropped_map, str(self.report_id) + '/', map_file_name)
 
         map_size = [self.cropped_map.shape[1], self.cropped_map.shape[0]]
 
@@ -176,11 +195,18 @@ class ImageMapper:
             "file": map_file_path,
             "bounds": bounds,
             "size": map_size,
-            "image_coordinates": self.extract_coordinates(map_elements, map_size[1]),
+            # "image_coordinates": self.extract_coordinates(map_elements, map_size[1]),
+            "image_coordinates": self.extract_coordinates2(self.map_elements_debug, map_size[1]),
             "ir": ir,
             "odm": False,
             "name": "RGB" if not ir else "IR",
         }
+
+        map2 = Map_v2(self.map_elements_debug, self.map_width_px)
+        map_new = map2.generate_map()
+        map_file_name = "map_debug.png"
+        map_file_path = "uploads/" + str(self.report_id) + "/" + map_file_name
+        self.save_map(map_new, str(self.report_id) + '/', map_file_name)
 
         return map_dict
 
@@ -198,12 +224,15 @@ class ImageMapper:
         self.final_map = map_obj.create_map()
         self.cropped_map = map_obj.get_cropped_map()
         map_elements = map_obj.get_map_elements()
-        return map_obj.get_min_and_max_coords(), map_elements
 
-    def save_map(self, relative_path, file_name):
+        min_max_coords = map_obj.get_min_and_max_coords()
+
+        return min_max_coords, map_elements
+
+    def save_map(self, map, relative_path, file_name):
         msg_str = relative_path + file_name
         path = self.path_to_images
-        cv2.imwrite(path + msg_str, self.cropped_map)
+        cv2.imwrite(path + msg_str, map)
 
         print("-Saved map under ", path + msg_str)
 
@@ -286,6 +315,26 @@ class ImageMapper:
             for coordinate in coordinates:
                 x, y = coordinate
                 tmp_coordinates.append(str(int(x)) + " " + str(int(map_height - y)))
+
+            str_coordinates = ','.join(str(e) for e in tmp_coordinates)
+            coodinate = {"coordinates_string": str_coordinates,
+                         "file_name": map_element.get_image().get_image_path().split("static/")[1]}
+
+            new_coordinates.append(coodinate)
+        return new_coordinates
+
+    def extract_coordinates2(self, map_elements, map_height):
+        new_coordinates = list()
+        for map_element in map_elements:
+
+            # image = map_element.get_image().get_matrix()
+            coordinates = map_element.get_gps_corners()
+
+            tmp_coordinates = list()
+            for coordinate in coordinates:
+                x, y = coordinate.get_latitude(), coordinate.get_longitude()
+                tmp_coordinates.append(str(x) + " " + str(y))
+                print(str(x) + " " + str(y))
 
             str_coordinates = ','.join(str(e) for e in tmp_coordinates)
             coodinate = {"coordinates_string": str_coordinates,

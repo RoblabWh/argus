@@ -203,8 +203,8 @@ class ImageProcessor:
                 # if a coordinates is closer than 0.0001, to its previous one, it is not added to the list
                 if len(coordinates) == 0:
                     coordinates.append(coordinate)
-                elif (abs(coordinates[-1][0] - coordinate[0]) > 0.00002 and
-                      abs(coordinates[-1][1] - coordinate[1]) > 0.00002):
+                elif (abs(coordinates[-1][0] - coordinate[0]) > 0.000025 and
+                      abs(coordinates[-1][1] - coordinate[1]) > 0.000025):
                     coordinates.append(coordinate)
             except:
                 print("no gps data on image: ", image.get_image_path())

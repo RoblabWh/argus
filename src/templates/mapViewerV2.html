@@ -179,7 +179,7 @@ function loadPolygons{{map.name}}(coordinates) {
         var points = new Array();
         for (var j = 0; j < points_strings.length; j++) {
             var point = points_strings[j].split(' ');
-            points.push([parseInt(point[0]), parseInt(point[1])]);
+            points.push([parseFloat(point[0]), parseFloat(point[1])]);
         }
         if(typeof(mapSize{{map.name}}[0]) == 'string') {
             console.log('mapSize{{map.name}} was String');
@@ -197,6 +197,8 @@ function loadPolygons{{map.name}}(coordinates) {
         var pL3 = [p3[1] * lat1{{map.name}} + ((1 - p3[1]) * lat2{{map.name}}), p3[0] * long2{{map.name}} + ((1 - p3[0]) * long1{{map.name}})];
         var pL4 = [p4[1] * lat1{{map.name}} + ((1 - p4[1]) * lat2{{map.name}}), p4[0] * long2{{map.name}}+ ((1 - p4[0]) * long1{{map.name}})];
         var latlngs = [pL1,pL2,pL3,pL4];
+        //var latlngs = [points[0],points[1], points[2], points[3]];
+        //console.log(latlngs);
         //var center = [((pL1[0] + pL3[0]) / 2.0), ((pL1[1] + pL3[1]) / 2.0)];
         //centers{{map.name}}.push(center);
         var polygon = L.polygon(latlngs ,{ opacity: 0, fillOpacity: 0.0, fillColor: '#0000FF' });

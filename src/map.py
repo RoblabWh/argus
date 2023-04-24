@@ -21,12 +21,14 @@ class Map:
         #self.spreading_range = spreading_range
         self.cropped_map = None
         self.bounds = None
+        self.map = None
 
     def create_map(self):
         map_creation_time_start = time.time()
         # self.load_images()
         self.chunk_size = 32
         print('mapping: creating chunks of size: ', self.chunk_size)
+        self.plot_px_corners(self.map_elements)
         map_elements_chunks = [self.map_elements[i:i + self.chunk_size] for i in range(0, len(self.map_elements), self.chunk_size)]
 
         #self.load_images_parallel()
@@ -139,6 +141,8 @@ class Map:
                 #    self.final_map[y1:y2, x1:x2, c] = (0.5 * alpha_image[:, :] + 0.5 * self.final_map[y1:y2, x1:x2, c])
         except:
             pass
+
+        self.save_voronoi()
 
     def write_out_image_px_centers_on_map_scaled(self, n_times_smaller):
         centers_x = list()
@@ -284,6 +288,47 @@ class Map:
 
     def get_map_elements(self):
         return self.map_elements
+
+
+
+    def save_voronoi(self):
+        # the closest index voronoi is a 2d array with the index of the closest map element for each pixel
+        # before beeing saved its values need to be scaled between 0 and 255
+        # the voronoi is saved as a png image
+        voronoi = self.closest_index_voronoi
+        voronoi = voronoi.astype(np.float32)
+        voronoi = (voronoi - np.min(voronoi)) / (np.max(voronoi) - np.min(voronoi))
+        voronoi = voronoi * 255
+        voronoi = voronoi.astype(np.uint8)
+        cv2.imwrite("static/debug/voronoi_og.png", voronoi)
+
+
+    def plot_px_corners(self, map_elements):
+        import matplotlib.pyplot as plt
+        colors = ['r', 'g', 'b', 'c', 'm', 'y', 'k', 'w']
+        for i, element in enumerate(map_elements):
+            x=[]
+            y=[]
+
+            r = element.get_rotated_rectangle()
+            coords_lst = r.get_multipoint()
+            # print(coords_lst)
+            for coord in coords_lst.geoms:
+                cx, cy = coord.x, coord.y
+                x.append(cx)
+                y.append(cy)
+
+            x.append(x[0])
+            y.append(y[0])
+
+            #draw every element in a new color
+            color = colors[i % len(colors)]
+            plt.plot(x, y, color)
+            # also plot center
+            plt.plot(r.cx, r.cy, color + '.')
+
+        plt.savefig('static/debug/px_corners_og.png')
+        plt.close()
 
 
 

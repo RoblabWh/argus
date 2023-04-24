@@ -71,6 +71,9 @@ class Image:
 
     def set_matrix(self, matrix):
         self.matrix = matrix
+        if matrix is not None:
+            self.width = matrix.shape[1]
+            self.height = matrix.shape[0]
 
     def get_width(self):
         """

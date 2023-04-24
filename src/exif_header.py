@@ -35,8 +35,8 @@ class ExifHeader:
 
         self.read_gps_coordinate()
         self.read_xmp_metadata()
-        self.read_camera_properties()
         self.read_image_size()
+        self.read_camera_properties()
         self.read_creation_time()
         self.read_xmp_ir()
         self.read_xmp_projection_type()
@@ -134,13 +134,20 @@ class ExifHeader:
             fl = float(((self._get_if_exist(self.python_dict, 'EXIF:FocalLength').split())[0]))
 
         try:
+            fl35mm = self.get_data_from_camera_specs(camera_model_name, 'EXIF:FocalLengthIn35mmFormat')
+        except:
+            fl35mm = float(((self._get_if_exist(self.python_dict, 'EXIF:FocalLengthIn35mmFormat').split())[0]))
+
+        try:
             fov = self.get_data_from_camera_specs(camera_model_name,'Composite:FOV')
         except:
             fov = float(((self._get_if_exist(self.python_dict, 'Composite:FOV').split())[0]))
 
+        aspect_ratio = float(self.image_size[0]) / float(self.image_size[1])
+
         #print('fov: ' + str(fov), 'fl: ' + str(fl), 'camera_model_name: ' + camera_model_name)
 
-        self.camera_properties = CameraProperties(camera_model_name, fov, fl)
+        self.camera_properties = CameraProperties(camera_model_name, fov, fl, fl35mm, aspect_ratio)
 
 
     def enable_ir(self):
