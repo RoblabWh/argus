@@ -6,6 +6,7 @@ geopy
 Shapely
 descartes
 pyexifinfo
+piexif
 imutils
 Pillow
 weathercom

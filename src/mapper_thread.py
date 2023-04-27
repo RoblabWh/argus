@@ -2,7 +2,7 @@ import threading
 import time
 
 from image_processor import ImageProcessor
-from src.image_mapper import ImageMapper
+from image_mapper import ImageMapper
 
 
 class MapperThread(threading.Thread):

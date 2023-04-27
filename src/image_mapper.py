@@ -6,8 +6,8 @@ import time
 from map import Map
 from OdmTaskManager import OdmTaskManager
 from gps import GPS
-from src.gimbal_pitch_filter import GimbalPitchFilter
-from src.map_scaler import MapScaler
+from gimbal_pitch_filter import GimbalPitchFilter
+from map_scaler import MapScaler
 
 
 class ImageMapper:
