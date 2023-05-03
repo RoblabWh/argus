@@ -201,9 +201,11 @@ class ImageMapper:
         return map_obj.get_min_and_max_coords(), map_elements
 
     def save_map(self, relative_path, file_name):
+        print("-Start saving map under ", relative_path + file_name)
         msg_str = relative_path + file_name
         path = self.path_to_images
-        cv2.imwrite(path + msg_str, self.cropped_map, [cv2.IMWRITE_PNG_COMPRESSION, 9])
+        cv2.imwrite(path + msg_str, self.cropped_map)
+        # cv2.imwrite(path + msg_str, self.cropped_map, [cv2.IMWRITE_PNG_COMPRESSION, 9])
 
         print("-Saved map under ", path + msg_str)
 

@@ -388,9 +388,7 @@ def display_image(filename):
 
 def thumbnail_for(path):
     # insert a 'thumbnail/' after the last /
-    print('thumbnail_for path: ' + path)
     path_thumbnail = path[:path.rindex('/') + 1] + 'thumbnails/' + path[path.rindex('/') + 1:]
-    print('thumbnail_for path_thumbnail: ' + path_thumbnail)
     #check if file exists
     if not os.path.isfile('./static/' + path_thumbnail):
         path_thumbnail = path

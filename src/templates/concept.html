@@ -202,7 +202,7 @@
                 bar_mapping.style.width = progress_arr[1] + '%';
 
                 if (progress_arr[2] == "True") {
-                    location.href = "http://127.0.0.1:5000/{{ id }}";
+                    location.href = "/{{ id }}";
                 }
                 console.log(progress_arr);
                 if (progress_arr[0] == 100 && progress_arr[2] != "True") {

@@ -100,7 +100,7 @@
                 detections = data;
                 generateDetectionTable(data);
                 generateAnnotationSettings(data);
-                var currentImageName = document.getElementsByClassName("mySlides")[slideIndex].getElementsByTagName('a')[0].innerHTML.split(": ")[1];
+                var currentImageName = document.getElementById("dynamic-slide").getElementsByTagName('a')[0].innerHTML.split(": ")[1];
                 generateAnnotationsLayerTableForImage(currentImageName);
                 detections = data;
 
@@ -516,7 +516,7 @@
         }
 
         function drawAnnotationsOnCurrentSlide(){
-            var currentImageName = document.getElementsByClassName("mySlides")[slideIndex].getElementsByTagName('a')[0].innerHTML.split(": ")[1];
+            var currentImageName = document.getElementById("dynamic-slide").getElementsByTagName('a')[0].innerHTML.split(": ")[1];
             drawAnnotationsOnImage(currentImageName);
         }
 
@@ -557,7 +557,7 @@
         }
 
         function removeAnnotations(){
-            var canvas = document.getElementsByClassName("mySlides")[slideIndex].getElementsByTagName('canvas')[0];
+            var canvas = document.getElementById("dynamic-slide").getElementsByTagName('canvas')[0];
             var ctx = canvas.getContext("2d");
             ctx.clearRect(0, 0, canvas.width, canvas.height);
         }

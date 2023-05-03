@@ -5,4 +5,4 @@ if [ ! -d "data" ]; then
 fi
 
 docker build -t image_mapper .
-docker run -p 5000:5000 --rm -it -v /var/run/docker.sock:/var/run/docker.sock -v $(pwd)/data:/app/static/uploads image_mapper
+docker run -p 5000:5000 --rm -it -v /var/run/docker.sock:/var/run/docker.sock -v $(pwd)/data:/app/static/uploads -v image_mapper_model_weights:/app/detection/model_weights image_mapper

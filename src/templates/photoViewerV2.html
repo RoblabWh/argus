@@ -587,19 +587,7 @@
       }
     }
 
-<!--    function showSlideByID(id) {-->
-<!--        console.log(id);-->
-<!--        var i;-->
-<!--        var slides = document.getElementsByClassName("mySlides");-->
-<!--        console.log(slides.findIndex(x => x.id === id));-->
-<!--        for (i = 0; i < slides.length; i++) {-->
-<!--            console.log(slides[i].id +id);-->
-<!--            if (slides[i].id === id) {-->
-<!--                showSlide(i);-->
-<!--                break;-->
-<!--            }-->
-<!--        }-->
-<!--    }-->
+
 
     function showSlideByFilename(filename){
         console.log("showSlideByFilename: " + filename);
@@ -720,6 +708,12 @@
                     } else{
                         toggleLayerSettings(true);
                         removeAnnotations();
+                    }
+
+                    zoomValue = document.getElementById("zoomRange").value/10;
+                    checkbox = document.getElementById("magnifierCheckbox");
+                    if(checkbox.checked){
+                        magnify(slideIndex, zoomValue);
                     }
                 };
                 imageRGB.src = 'static/'+currentImagePaths[0];
@@ -1059,64 +1053,7 @@
                 </div>
             </div>
         </div>
-        <div>
-            {% for couple in slide_file_paths %}
-            <div class="mySlides" id="slide{{ loop.index0 }}">
-                {% if couple[0] != "" %}
-                <a style="display: inline-block; padding: 8px 0">RGB: {{couple[0].split('/')[-1]}}</a>
-                {% endif %}
-                {% if couple[1] != "" %}
-                <a  style="display: inline-block; padding: 8px 0">IR: {{couple[1].split('/')[-1]}}</a>
-                {% endif %}
-                {% if couple[2] %}
-                <a  style="display: inline-block; padding: 8px 0">Unprocessed: {{couple[2].split('/')[-1]}}</a>
-                {% endif %}
-                <div class="usedInMappingContainer">
-                    <div class="usedInMapping">
-                        <a style="margin: 0 6px; float: left">&#10003</a>
-                        <a style="margin: auto">Used in map</a>
-                    </div>
-                    <div class="notUsedInMapping">
-                        <a style="margin: 0 6px; float: left">&#9888;</a>
-                        <a style="margin: auto">Not used in map</a>
-                    </div>
-                </div>
-<!--                <div style="margin-bottom:7%;"></div>-->
-                <div style="display: grid;place-items: center;grid-template-areas: 'inner-div'; width: 100%; grid-template-columns: minmax(100px, 1fr);">
-                    <div style="grid-area: inner-div;">
-                        <a>
-                            {% if couple[0] != "" %}
-                            <img id="baseImage{{couple[0].split('/')[-1]}}" src="{{ url_for('static', filename=couple[0]) }}" loading="lazy" style="width:100%; height: 100%;">
-                            {% elif couple[2] %}
-                            <img id="baseImage{{couple[2].split('/')[-1]}}" src="{{ url_for('static', filename=couple[2]) }}" loading="lazy" style="width:100%; height: 100%;">
-                            {% else %}
-                            <img src="{{ url_for('static', filename='default/missingCounterpartRGB.JPG') }}" loading="lazy" style="width:100%; height: 100%; opacity: 50%">
-                            {% endif %}
-                        </a>
-                    </div>
-                    <div style="grid-area: inner-div;">
-                        <a>
-                            <canvas id="canvas{{couple[0].split('/')[-1]}}" class="annotaionsCanvas" width="100%" height="100%;"></canvas>
-                        </a>
-                    </div>
-                    <div class="ir-overlay" style="width: 80%; opacity: 0; grid-area: inner-div;">
-        <!--                <canvas style="width:100%; height: 100%;" id="canvas{{loop.index0}}"></canvas>-->
-                        {% if couple[1] != "" %}
-                        <img class="ir-image" id="image{{loop.index0}}" src="{{ url_for('static', filename=couple[1]) }}" style="width:100%; height: 100%;">
-                        {% else %}
-                        <img class="ir-image" src="{{ url_for('static', filename='default/missingCounterpartIR.JPG') }}" style="width:100%; height: 100%;">
-                        {% endif %}
-                        <div class="temp-glass" id="temp-glass{{ loop.index0 }}"> <p>Temp:</p></div>
-
-                    </div>
-                </div>
-<!--                <div style="margin-bottom: 10%;"></div>-->
-
-            </div>
-            {% endfor %}
             {% endif %}
-
-        </div>
     </div>
         <div id="slideshow-settings-tabs">
             <div id="slideshow-settings-tabs-links" class="tab-vertical">
@@ -1392,7 +1329,7 @@
     //document.getElementById("zoomValue").innerHTML = slider.value/10;
     output.innerHTML = slider.value;
 
-    document.getElementsByClassName("mySlides")[0].getElementsByTagName('img')[0].onload = function(){
+    document.getElementById("dynamic-slide").getElementsByTagName('img')[0].onload = function(){
         magnify(0,slider.value/10);
     }
 

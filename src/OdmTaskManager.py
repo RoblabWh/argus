@@ -71,8 +71,12 @@ class OdmTaskManager:
     def scale_images(self, image_paths):
         self.image_paths = image_paths
 
-        if not os.path.exists(self.path_to_image_folder + 'proxy/'):
-            os.mkdir(self.path_to_image_folder + 'proxy/')
+        if not os.path.exists(self.path_to_image_folder + 'rgb/proxy/'):
+            os.mkdir(self.path_to_image_folder + 'rgb/proxy/')
+        if os.path.exists(self.path_to_image_folder + 'ir/'):
+            if not os.path.exists(self.path_to_image_folder + 'ir/proxy/'):
+                os.mkdir(self.path_to_image_folder + 'ir/proxy/')
+
 
         print("Scaling images", image_paths)
         scaled_image_paths = []
