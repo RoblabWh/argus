@@ -141,6 +141,7 @@
         }
 
     </style>
+    <script src="{{url_for('static', filename='default/jquery-3.6.3.js') }}"></script>
     <script>
         function projectDelete(id){
             if(confirm("Are you sure you want to delete this report?")){
@@ -159,6 +160,7 @@
     </script>
 </head>
 <body>
+    {% include 'headerOverview.html' %}
     <div class="bodyDiv">
         <h1 onclick="projectShowAll();">All Reports</h1>
                 <!-- button to add a new report with the app.route / create -->

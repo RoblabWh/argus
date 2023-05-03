@@ -70,7 +70,6 @@
             var x = document.getElementById("galleryImage" + fileName);
             x.click();
             //generateAnnotationsLayerTableForImage(fileName);
-            //drawAnnotationsOnImage(fileName);
             $('#aiOverlayCheckbox').prop('checked', true);
             $('#aiOverlayCheckbox').change();
             openSettings(document.getElementById('slideshow-settings-annotaions-tablink'), 'slideshow-settings-Annotations');
@@ -515,12 +514,10 @@
             }
         }
 
-        function drawAnnotationsOnCurrentSlide(){
-            var currentImageName = document.getElementById("dynamic-slide").getElementsByTagName('a')[0].innerHTML.split(": ")[1];
-            drawAnnotationsOnImage(currentImageName);
-        }
 
-        function drawAnnotationsOnImage(filename){
+
+        function drawAnnotationsOnCurrentSlide(){
+            filename = currentImageName;
             var canvas = document.getElementById("dynamic-canvas");
             var ctx = canvas.getContext("2d");
             var img = document.getElementById("dynamic-image-RGB").getElementsByTagName("img")[0];

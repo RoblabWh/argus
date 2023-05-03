@@ -683,6 +683,7 @@
         console.log(slideIndex);
 
         dynamicCanvas = document.getElementById("dynamic-canvas");
+        currentImageName = slideshowCouples[slideIndex][0].substring(slideshowCouples[slideIndex][0].lastIndexOf('/') + 1);
 
         imageRGB = allImages[slideIndex][0];
         imageIR = allImages[slideIndex][1];
@@ -693,7 +694,10 @@
         console.log(currentImagePaths[0]);
         console.log(imageRGB);
 
+        var noRGBImageOnShow = false;
+
         if(imageRGB == null){
+            noRGBImageOnShow = true;
             if(currentImagePaths[0] != ""){
                 imageRGB = new Image();
                 imageRGB.onload = () => {
@@ -825,7 +829,9 @@
 
         if(displayingAI){
             toggleLayerSettings(false);
-            drawAnnotationsOnCurrentSlide();
+            if(!noRGBImageOnShow){
+                drawAnnotationsOnCurrentSlide();
+            }
         } else{
             toggleLayerSettings(true);
             removeAnnotations();
@@ -1310,6 +1316,8 @@
 <script>
     var gradient_lut = {{ gradient_lut }};
     var slideIndex = 0;
+    var currentImageName = slideshowCouples[slideIndex][0];
+    currentImageName = currentImageName.substring(currentImageName.lastIndexOf('/') + 1);
 
     for (var i = 0; i < slideshowCouples.length; i++) {
         if (slideshowCouples[i][0] != "" ) {
@@ -1572,9 +1580,8 @@
             canvas.height = img.height;
         }
 
-        //redraw the current canvas by calling drawAnnotationsOnImage(filename)
         if (displayingAI){
-            drawAnnotationsOnImage(img.id.split("baseImage")[1]);
+            drawAnnotationsOnCurrentSlide();
         }
     }
 

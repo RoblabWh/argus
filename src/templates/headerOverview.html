@@ -4,14 +4,7 @@
     <meta charset="UTF-8">
     <title>Title</title>
     <style>
-        .header{
-            width: 100%;
-            position: fixed;
-            background-color: var(--accent-color-interaction);
-            top: 0;
-            z-index:1500;
-            display: block;
-        }
+
 
         .dropdown-settings {
             display: inline-block;
@@ -28,6 +21,8 @@
             cursor:pointer;
             background-color: var(--bg-color-page);
             color: var(--accent-color-interaction);
+            margin-top: 55px;
+            transition: all 0.2s ease-in-out;
         }
 
         .dropdown-settings button:hover{
@@ -62,17 +57,57 @@
 
         }
 
+        .header{
+            width: 100%;
+            position: fixed;
+            //background-color: var(--bg-color-b);
+            background-color: var(--accent-color-interaction);
+            top: 0;
+            z-index:1500;
+            display: block;
+            transition: all 0.2s ease-in-out;
+        }
+
+        .header-scrolled{
+            background-color: var(--accent-color-interaction);
+        }
+
         .header-title-name{
             position: relative;
             width: 70%;
             float: left;
-            margin: 4px;
+            margin: 12px;
             color: var(--font-color-b);
-            font-size: 26px;
-            padding-top: 4px;
+            font-size: 52px;
+            padding-top: 15px;
             text-overflow: ellipsis;
             white-space: nowrap;
             overflow: hidden;
+            transition: all 0.2s ease-in-out;
+        }
+
+        .header-title-name-scrolled{
+            margin: 4px;
+            color: var(--font-color-b);
+            font-size: 26px;
+            padding-top: 5px;
+        }
+
+        .header-icon{
+            position: relative;
+            float: left;
+            margin: 12px;
+            padding: 0px;
+            padding-left: 10px;
+            width: 70px;
+            transition: all 0.2s ease-in-out;
+        }
+
+        .header-icon-scrolled{
+            margin: 4px;
+            padding: 0px;
+            padding-left: 10px;
+            width: 35px;
         }
     </style>
 
@@ -100,13 +135,26 @@
             }
             document.getElementsByTagName("head").item(0).replaceChild(newlink, oldLink);
         };
+
+        $(window).scroll(function() {
+            if ($(this).scrollTop() > 1){
+                $('.header').addClass("header-scrolled");
+                $('.header-icon').addClass("header-icon-scrolled");
+                $('.header-title-name').addClass("header-title-name-scrolled");
+                $('.dropdown-settings button').css('margin-top', '0px');
+            }
+            else{
+                $('.header').removeClass("header-scrolled");
+                $('.header-icon').removeClass("header-icon-scrolled");
+                $('.header-title-name').removeClass("header-title-name-scrolled");
+                $('.dropdown-settings button').css('margin-top', '55px');
+            }
+        });
+
     </script>
 </head>
 <body>
     <div class="header">
-        <a href="/" style="position: relative; float: left; margin: 4px; padding: 0; padding-left:10px; line-height: 1px">
-            <img src="{{ url_for('static', filename='default/Argus_icon_Light_crop.png') }}" width="35px" >
-        </a>
         <div class="dropdown-settings">
             <button>Settings</button>
             <div class="dropdown-settings-options">
@@ -115,7 +163,9 @@
                <a onclick="shutdownServer()">Shutdown Server</a>
             </div>
         </div>
-        <h3 class="header-title-name" onclick="window.location.href = '/{{id}}'">Flight-Report: {{ project.name }}</h3>
+        <img class="header-icon" src="{{ url_for('static', filename='default/Argus_icon_Light_crop.png') }}" width="70px" >
+        <h3 class="header-title-name" onclick="window.location.href = '/'">ARGUS</h3>
     </div>
+    <br><br><br><br><br><br><br>
 </body>
 </html>
