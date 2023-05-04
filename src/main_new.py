@@ -210,6 +210,8 @@ def process(report_id):
 
         file_names = project_manager.get_file_names(report_id)
 
+        data = project_manager.get_project(report_id)['data']
+
         print("with_mapping: ", with_mapping)
         print("with_ODM: ", with_ODM)
         print("ai_detection: ", ai_detection)
@@ -217,7 +219,7 @@ def process(report_id):
 
         # image_mapper.set_processing_parameters(map_width_px=max_width,
         #                                        map_height_px=max_height, with_ODM=with_ODM)#, ai_detection=ai_detection)
-        thread = MapperThread(with_mapping, with_ODM, report_id, (max_width, max_height), file_names)
+        thread = MapperThread(with_mapping, with_ODM, report_id, (max_width, max_height), file_names, data)
         threads.append(thread)
         thread.start()
         print("process started")

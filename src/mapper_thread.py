@@ -6,11 +6,12 @@ from image_mapper import ImageMapper
 
 
 class MapperThread(threading.Thread):
-    def __init__(self, fast_mapping, odm_mapping, report_id, map_resolution, file_names):
+    def __init__(self, fast_mapping, odm_mapping, report_id, map_resolution, file_names, data):
         self.fast_mapping = fast_mapping
         self.with_odm = odm_mapping
         self.report_id = report_id
         self.file_names = file_names
+        self.data = data
 
 
         self.progress_preprocess = 0
@@ -86,6 +87,13 @@ class MapperThread(threading.Thread):
 
 
     def preprocess(self):
+        flight_data = []
+        try:
+            flight_data = self.data['flight_data']
+        except:
+            pass
+
+
         self.progress_preprocess = 2
         processor = ImageProcessor()
         processor.set_image_paths(self.file_names)
@@ -114,7 +122,7 @@ class MapperThread(threading.Thread):
 
 
         #next step: calculate metadata for report
-        self.flight_data = processor.extract_flight_data()
+        self.flight_data = processor.extract_flight_data(flight_data)
         self.progress_preprocess = 70
         self.camera_specs = processor.extract_camera_specs()
         self.progress_preprocess = 80

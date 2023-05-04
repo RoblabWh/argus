@@ -77,8 +77,9 @@
             width: 70%;
             float: left;
             margin: 12px;
+            margin-bottom: 0px;
             color: var(--font-color-b);
-            font-size: 52px;
+            font-size: 60px;
             padding-top: 15px;
             text-overflow: ellipsis;
             white-space: nowrap;
@@ -97,9 +98,10 @@
             position: relative;
             float: left;
             margin: 12px;
+            margin-left: 4px;
             padding: 0px;
             padding-left: 10px;
-            width: 70px;
+            width: 80px;
             transition: all 0.2s ease-in-out;
         }
 
@@ -129,9 +131,13 @@
             if (x.innerHTML == "Dark Mode") {
                 x.innerHTML = "Light Mode";
                 newlink.setAttribute("href", "{{ url_for('static', filename='default/variables-dark.css') }}" );
+                img = document.getElementsByClassName("header-icon")[0];
+                img.src = "{{ url_for('static', filename='default/Argus_icon_Dark_crop.png') }}";
             } else {
                 x.innerHTML = "Dark Mode";
                 newlink.setAttribute("href", "{{ url_for('static', filename='default/variables-light.css') }}" );
+                img = document.getElementsByClassName("header-icon")[0];
+                img.src = "{{ url_for('static', filename='default/Argus_icon_Light_crop.png') }}";
             }
             document.getElementsByTagName("head").item(0).replaceChild(newlink, oldLink);
         };

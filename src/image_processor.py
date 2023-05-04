@@ -95,14 +95,23 @@ class ImageProcessor:
         return path_list
 
 
-    def extract_flight_data(self):
+    def extract_flight_data(self, flight_data=[]):
         #extract date, flight duration, location, number of total images, number of panos, average flight height, covered area
 
         firstImage = self.all_images[0]
         lastImage = self.all_images[-1]
 
         date = str(firstImage.get_exif_header().get_creation_time_str())
+        #date is in format yyyy:mm:dd hh:mm:ss but should be changed to dd.mm.yyyy hh:mm
+        date = date[8:10] + '.' + date[5:7] + '.' + date[0:4] + ' ' + date[11:16]
+
         flight_duration = str(lastImage.get_exif_header().get_creation_time() - firstImage.get_exif_header().get_creation_time())
+        #flight_duration is seconds but should be changed to hh:mm:ss
+        flight_duration_minutes = int(flight_duration) // 60
+        flight_duration_seconds = int(flight_duration) % 60
+        flight_duration_hours = flight_duration_minutes // 60
+        flight_duration_minutes = flight_duration_minutes % 60
+        flight_duration = "{:02d}".format(flight_duration_hours) + ':' + "{:02d}".format(flight_duration_minutes) + ':' + "{:02d}".format(flight_duration_seconds)
 
         try:
             location = str(firstImage.get_exif_header().get_gps().get_address())
@@ -113,6 +122,11 @@ class ImageProcessor:
         number_of_panos = str(len(self.all_panos))
         average_altitude = self._calculate_average_flight_height(self.all_images)
         covered_area = self._calculate_covered_area(self.all_images)
+
+        if len(flight_data) != 0:
+            for line in flight_data:
+                if line["description"] == 'Panoramas':
+                    number_of_panos = str(len(self.all_panos) + int(line["value"]))
 
         flight_data = []
         flight_data.append({"description": 'Date', "value": date})
