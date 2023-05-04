@@ -2,10 +2,12 @@ import json
 import datetime
 from argparse import Namespace
 
+from model_weights_downloader import ModelWeightsDownloader
 from project_manager import ProjectManager
 from mapper_thread import MapperThread
 from detection.datahandler import DataHandler
 from detection.InferenceEngine import InferenceEngine
+
 
 from flask import Flask, flash, request, redirect, url_for, render_template, jsonify
 import os
@@ -420,12 +422,16 @@ def stop_server():
 
 
 if __name__ == '__main__':
+    #execute the python program in file model_weights_downloader.py
+    model_weights_downloader = ModelWeightsDownloader()
+    model_weights_downloader.check_model_weights()
+
     start = datetime.datetime.now().replace(microsecond=0)
     project_manager.initiate_project_list()
 
     app.jinja_env.globals.update(thumbnail_for=thumbnail_for)
 
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    app.run(host="0.0.0.0", port=5000, debug=True, use_reloader=False)
     #start_server()  # start server
 
     #TODO List Report

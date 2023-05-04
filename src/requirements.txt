@@ -18,3 +18,4 @@ ipython
 docker == 6.0.0
 flask == 2.2.2
 pyodm == 1.5.10
+pyocclient
