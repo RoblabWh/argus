@@ -129,19 +129,22 @@ def calculate_order_based_on_flight_date(projects_dict_list):
     for project in projects_dict_list:
         try:
             time = datetime.datetime.strptime(project["data"]["flight_data"][0]["value"], '%d.%m.%Y %H:%M')
-            print('case a ', time)
+            print('case a', time)
         except:
             try:
                 time = datetime.datetime.strptime(project["data"]["flight_data"][0]["value"], '%Y:%m:%d %H:%M:%S')
                 print('case b', time)
             except:
-                time = datetime.date.today()
+                time = datetime.datetime.now()
                 print('case c', time)
 
         times += [time]
 
     # Get the indices of the projects sorted by creation time
-    indices = sorted(range(len(times)), key=lambda i: times[i])
+    indices = sorted(range(len(times)), key=lambda i: times[i], reverse=True)
+    date_order = [times[i] for i in indices]
+    print(date_order)
+    print(indices)
     return indices
 
 

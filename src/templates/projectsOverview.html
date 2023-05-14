@@ -173,27 +173,34 @@
           font-weight: bold;
           color: #333;
           cursor: pointer;
+          margin-bottom: 5px;
         }
 
         .sort-by__label {
           margin-right: 5px;
+          cursor: default;
         }
 
         .sort-by__value {
-          margin-right: 125px;
+          margin-right: 9%;
+          background-color: var(--accent-color-interaction);
+          color: white;
+          padding: 6px;
+          padding-bottom: 3px;
+          border-radius: 4px;
         }
 
         .sort-by__dropdown {
           position: absolute;
-
           z-index: 10;
           display: none;
           padding: 5px 0;
           background-color: #fff;
           border: 1px solid #ccc;
           border-top: none;
-          margin-right: 125px;
-          margin-top: 25px;
+          margin-right: 8.4%;
+          margin-top: 87px;
+          border-radius: 4px;
         }
 
         .sort-by__option {
@@ -205,11 +212,12 @@
           background-color: transparent;
           border: none;
           cursor: pointer;
-
+          position: relative;
         }
 
         .sort-by__option:hover {
-          background-color: #f7f7f7;
+          background-color: var(--accent-color-interaction);
+          color: white
         }
 
 
@@ -237,7 +245,17 @@
             projectDivs = document.getElementsByClassName("oneLineWrapper");
             switchDates(false);
             for (let i=0; i < projectDivs.length; i++){
-                projectDivs[i].style.order = flightDateOrder[i]
+
+                j = 0;
+                while(j < projectDivs.length){
+                    if (flightDateOrder[j] == i){
+                        break;
+                    } else{
+                        j++;
+                    }
+                }
+                projectDivs[i].style.order = j
+                //projectDivs[i].getElementsByClassName("description")[0].innerHTML = i+"";
             }
         }
 
@@ -337,9 +355,12 @@
 <script>
     const sortDropdown = document.getElementById('sort-by-dropdown');
     const sortValue = document.getElementById('sort-by-value');
+    sortDropdown.style.display = 'none';
+
 
     sortValue.addEventListener('click', function() {
       sortDropdown.style.display = sortDropdown.style.display == 'none' ? 'block' : 'none';
+      console.log(sortDropdown.style.display);
     });
 
     sortDropdown.addEventListener('click', function(e) {
