@@ -239,7 +239,7 @@ class ImageProcessor:
     def move_images_to_subfolder(self, images, subfolder):
         for image in images:
             last_folder = os.path.basename(os.path.dirname(image.get_image_path()))
-            print(last_folder)
+            #print(last_folder)
             if last_folder != subfolder:
                 self.move_image_to_subfolder(image, subfolder)
 

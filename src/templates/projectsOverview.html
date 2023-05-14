@@ -142,9 +142,82 @@
           border-style: none;
         }
 
+        .timestamp{
+            float: right;
+            margin: 8px;
+            width: 20%;
+            text-align: right;
+            line-height: 30px;
+        }
+
+        .timestamp.flight{
+        }
+
+        .timestamp.creation{
+        }
+
+        .hidden{
+            display: none;
+        }
+
+
+
+
+
+
+        .sort-by {
+          display: flex;
+          align-items: center;
+          justify-content: flex-end;
+          font-size: 16px;
+          font-weight: bold;
+          color: #333;
+          cursor: pointer;
+        }
+
+        .sort-by__label {
+          margin-right: 5px;
+        }
+
+        .sort-by__value {
+          margin-right: 125px;
+        }
+
+        .sort-by__dropdown {
+          position: absolute;
+
+          z-index: 10;
+          display: none;
+          padding: 5px 0;
+          background-color: #fff;
+          border: 1px solid #ccc;
+          border-top: none;
+          margin-right: 125px;
+          margin-top: 25px;
+        }
+
+        .sort-by__option {
+          display: block;
+          width: 100%;
+          padding: 5px 10px;
+          font-size: 14px;
+          color: #333;
+          background-color: transparent;
+          border: none;
+          cursor: pointer;
+
+        }
+
+        .sort-by__option:hover {
+          background-color: #f7f7f7;
+        }
+
+
     </style>
     <script src="{{url_for('static', filename='default/jquery-3.6.3.js') }}"></script>
     <script>
+        const flightDateOrder = {{ flightOrder }};
+
         function projectDelete(id){
             if(confirm("Are you sure you want to delete this report?")){
                 window.location.href = "/delete/" + id;
@@ -159,6 +232,42 @@
         function projectShowAll(){
             window.location.href = "/";
         }
+
+        function sortProjectsByFlightDate(){
+            projectDivs = document.getElementsByClassName("oneLineWrapper");
+            switchDates(false);
+            for (let i=0; i < projectDivs.length; i++){
+                projectDivs[i].style.order = flightDateOrder[i]
+            }
+        }
+
+        function sortProjectsByCreationDate(){
+            switchDates(true);
+            for (let i=0; i < projectDivs.length; i++){
+                projectDivs[i].style.order = i
+            }
+        }
+
+        function switchDates(toCreationTime){
+            creationTimestamps = document.getElementsByClassName("timestamp creation");
+            flightTimestamps = document.getElementsByClassName("timestamp flight");
+
+            activate = creationTimestamps;
+            deactivate = flightTimestamps;
+            if(!toCreationTime){
+                activate = flightTimestamps;
+                deactivate = creationTimestamps;
+            }
+
+
+            for (let i = 0; i < flightTimestamps.length; i++){
+                activate[i].classList.remove("hidden");
+                deactivate[i].classList.add("hidden");
+            }
+        }
+
+
+
     </script>
 </head>
 <body>
@@ -178,17 +287,34 @@
                 </form>
             </div>
         </details>
-        {% for project in projects %}
 
-        <div class="oneLineWrapper">
+        <div class="sort-by">
+          <span class="sort-by__label">Sorted by:</span>
+          <span class="sort-by__value" id="sort-by-value">Creation date</span>
+          <div class="sort-by__dropdown" id="sort-by-dropdown">
+            <button class="sort-by__option" data-value="creation-date">Creation date</button>
+            <button class="sort-by__option" data-value="flight-date">Flight date</button>
+          </div>
+        </div>
+
+        <div style="display: flex; flex-direction: column;">
+        {% for project in projects %}
+        <div class="oneLineWrapper" style="order: {{loop.index}}">
             <div class="project" onclick="projectShow({{ project.id }});">
                 <div style="display: flex; justify-content: space-between; height: 40px; width: 100%; margin-bottom: 4px">
                     <h2 class="title-name"> {{ project.name }} </h2>
                     {% if project.creation_time %}
-                    <a style="float: right; margin: 8px; width: 20%; text-align: right; line-height: 30px"> {{ project.creation_time }}</a>
+                    <a class="timestamp creation"> {{ project.creation_time }}</a>
                     {% else %}
-                    <a style="float: right; margin: 8px; width: 20%; text-align: right; line-height: 30px"> No creation time found</a>
+                    <a class="timestamp creation"> No creation time found</a>
                     {% endif %}
+                    {% if project.data.flight_data %}
+                    <a class="timestamp flight hidden"> {{ project.data.flight_data[0].value }}</a>
+                    {% else %}
+                    <a class="timestamp flight hidden"> No flight date found</a>
+                    {% endif %}
+
+
                 </div>
                 <a class="description">{{ project.description }}</a>
                 <a style="float: right; margin: 0px 8px; margin-top:4px; font-size: 12px;"> ID: {{ project.id }}</a>
@@ -199,6 +325,8 @@
         </div>
 
         {% endfor %}
+        </div>
+
 
         {% if message %}
         <p>{{ message }}</p>
@@ -206,5 +334,24 @@
     </div>
     <div></div>
 {% include 'footer.html' %}
+<script>
+    const sortDropdown = document.getElementById('sort-by-dropdown');
+    const sortValue = document.getElementById('sort-by-value');
+
+    sortValue.addEventListener('click', function() {
+      sortDropdown.style.display = sortDropdown.style.display == 'none' ? 'block' : 'none';
+    });
+
+    sortDropdown.addEventListener('click', function(e) {
+      if (e.target.dataset.value === 'creation-date') {
+        sortValue.textContent = 'Creation date';
+        sortProjectsByCreationDate();
+      } else if (e.target.dataset.value === 'flight-date') {
+        sortValue.textContent = 'Flight date';
+        sortProjectsByFlightDate();
+      }
+      sortDropdown.style.display = 'none';
+    });
+</script>
 </body>
 </html>

@@ -123,10 +123,34 @@ def render_standard_report(report_id, thread = None, template = "concept.html"):
                            detections=detections, unprocessed_images=contains_unprocessed_images)
 
 
+def calculate_order_based_on_flight_date(projects_dict_list):
+    # Convert the creation times to datetime objects
+    times = []
+    for project in projects_dict_list:
+        try:
+            time = datetime.datetime.strptime(project["data"]["flight_data"][0]["value"], '%d.%m.%Y %H:%M')
+            print('case a ', time)
+        except:
+            try:
+                time = datetime.datetime.strptime(project["data"]["flight_data"][0]["value"], '%Y:%m:%d %H:%M:%S')
+                print('case b', time)
+            except:
+                time = datetime.date.today()
+                print('case c', time)
+
+        times += [time]
+
+    # Get the indices of the projects sorted by creation time
+    indices = sorted(range(len(times)), key=lambda i: times[i])
+    return indices
+
+
+
 @app.route('/')
 def projects_overview():
     projects_dict_list = project_manager.get_projects()
-    return render_template('projectsOverview.html', projects=projects_dict_list )
+    order_by_filght_date = calculate_order_based_on_flight_date(projects_dict_list)
+    return render_template('projectsOverview.html', projects=projects_dict_list, flightOrder=order_by_filght_date )
 
 @app.route('/create', methods=['POST'])
 def create_report():
