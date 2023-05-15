@@ -293,3 +293,31 @@ class ProjectManager:
 
     def update_contains_unprocessed_images(self, report_id, contains_unprocessed_images):
         self.update_data_by_keyword(report_id, 'contains_unprocessed_images', contains_unprocessed_images)
+
+    def remove_from_file_names(self, report_id, file_path):
+        file_names = self.get_file_names(report_id)
+        file_names.remove(file_path)
+        self.overwrite_file_names_sorted(report_id, file_names_rgb=file_names)
+
+    def remove_from_unprocessed_images(self, report_id, file_path):
+        project = self.get_project(report_id)
+        data = project['data']
+
+        try:
+            couples = data['slide_file_paths']
+        except:
+            couples = []
+
+        for couple in couples:
+            if file_path in couple:
+                couples.remove(couple)
+                break
+
+        data['slide_file_paths'] = couples
+        if len(couples) == 0:
+            data['contains_unprocessed_images'] = False
+        else:
+            data['contains_unprocessed_images'] = True
+        with open(self.projects_path + str(report_id) + "/project.json", "w") as json_file:
+            json.dump(project, json_file)
+

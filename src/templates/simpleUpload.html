@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Upload</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='default/variables-light.css') }}" id="currentCss">
+    <style>
+        body{
+            margin-left: 0px;
+            margin-right: 0px;
+            margin-bottom: 0px;
+            background-color: var(--bg-color-page);
+            color: var(--font-color-a);
+        }
+
+        .bodyDiv {
+            min-height: 95vh;
+            width: 94%;
+            max-width: 1400px;
+            margin: 0 auto !important;
+            float: none !important;
+            font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+        }
+
+
+        .edit-text-button{
+            font-size: 18px;
+            height: fit-content;
+            width: 18px;
+            margin-top:5px;
+            border-radius: 5px;
+            border-style: solid;
+            border-color: var(--bg-color-b);
+            border-width: 1px;
+            background-color: var(--bg-color-a);
+        }
+
+        .edit-text-button:hover{
+            background-color: var(--accent-color-interaction);
+            color: var(--font-color-b);
+        }
+
+        #descriptionText{
+            margin: 0px;
+            padding: 8px;
+            border-radius: 5px;
+            border-style: solid;
+            border-color: transparent;
+            background-color: transparent;
+        }
+
+         #title-name{
+            margin: 0px;
+            margin-left: -14px;
+            padding: 8px;
+            max-width: 95%;
+            border-radius: 6px;
+            border-style: solid;
+            border-color: transparent;
+        }
+
+        #descriptionText.editable, #title-name.editable{
+            border-radius: 6px;
+            border-style: solid;
+            border-color: var(--accent-color-interaction);
+        }
+
+
+
+        .upload-area {
+          width: 90%;
+          margin: 50px auto;
+          padding: 20px 5%;
+          border: 2px dashed #ccc;
+          border-radius: 10px;
+          text-align: center;
+          cursor: pointer;
+        }
+
+        .upload-area__label {
+          font-size: 24px;
+          font-weight: bold;
+        }
+
+        .uploaded-images {
+          display: flex;
+          flex-wrap: wrap;
+          justify-content: center;
+          margin-top: 20px;
+        }
+
+        .uploaded-image {
+          position: relative;
+          width: 136px;
+          height: 136px;
+          margin: 10px;
+          background-color: var(--bg-color-a);
+          color: var(--font-color-a);
+          border: 1px solid #ccc;
+          border-radius: 4px;
+          overflow: hidden;
+        }
+
+        .uploaded-image:hover {
+          border: 1px solid var(--accent-color-interaction);
+        }
+
+        .uploaded-image img {
+          width: 100%;
+          height: 80%;
+          object-fit: cover;
+        }
+
+        .uploaded-image .loading-indicator {
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          background-color: rgba(255, 255, 255, 0.8);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .uploaded-image .delete-button {
+          position: absolute;
+          top: 5px;
+          right: 5px;
+          width: 25px;
+          height: 25px;
+          background-color:  var(--accent-color-red);
+          border: 1px solid #ccc;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          z-index: 50;
+        }
+
+        .uploaded-image .delete-button:hover {
+          background-color: rgb(255, 0, 0);;
+        }
+
+        .filename-text {
+          font-size: 14px;
+          margin-top: 0px;
+          //color: #333;
+        }
+
+
+
+        .settings {
+          width: 48%;
+          text-align: left;
+        }
+
+        .separator {
+          border: none;
+          border-top: 1px solid #ccc;
+          margin: 15px 0;
+        }
+
+        .option {
+          //display: flex;
+          //align-items: left;
+          //justify-content: center;
+          margin-bottom: 5px;
+          margin-left: 20px;
+        }
+
+        .option label {
+          margin-left: 5px;
+        }
+
+        .button-container {
+          width: 48%;
+          height: 100%;
+          position: absolute;
+          top: 0;
+          left: 52%;
+        }
+
+        button {
+          width: 100%;
+          height: 100%;
+          margin: auto;
+          display: block;
+          padding: 10px;
+          background-color: var(--accent-color-interaction);
+          color: var(--font-color-b);
+          font-size: 16px;
+          font-weight: bold;
+          border: none;
+          border-radius: 6px;
+          cursor: pointer;
+          transition: 0.3s ease;
+        }
+
+        .button_active:hover {
+          color: var(--font-color-a);
+          font-weight: bold;
+          font-size: 20px;
+        }
+
+
+
+
+    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src="{{url_for('static', filename='default/jquery-3.6.3.js') }}"></script>
+</head>
+<body>
+<script>
+    function toggleTextfieldTitle(){
+            fakeButton = document.getElementById("edit-title-button");
+            toggleTextField("title-name", fakeButton, "update_title");
+        }
+
+
+        function toggleTextFieldDescription(){
+            fakeButton = document.getElementById("edit-description-button");
+            toggleTextField("descriptionText", fakeButton, "update_description");
+        }
+
+        function toggleTextField(textfieldID, button, link){
+            var textfield = document.getElementById(textfieldID);
+            if (textfield.contentEditable == "true") {
+                textfield.contentEditable = false;
+                button.children[0].style.display = "inline-block";
+                button.children[1].style.display = "none";
+                $('#'+textfieldID).removeClass('editable');
+                $.post("/"+link+"/{{ id }}", {content: textfield.innerHTML});
+            } else {
+                textfield.contentEditable = "true";
+                $('#'+textfieldID).addClass('editable');
+                button.children[0].style.display = "none";
+                button.children[1].style.display = "inline-block";
+            }
+        }
+
+        function disableProcessButton(){
+            document.getElementById("startProcessingButton").disabled = true;
+            document.getElementById("startProcessingButton").style.backgroundColor = "var(--bg-color-b)";
+            document.getElementById("startProcessingButton").style.cursor = "not-allowed";
+            document.getElementById("startProcessingButton").classList.remove("button_active");
+        }
+
+        function enableProcessButton(){
+            document.getElementById("startProcessingButton").disabled = false;
+            document.getElementById("startProcessingButton").style.backgroundColor = "var(--accent-color-interaction)";
+            document.getElementById("startProcessingButton").style.cursor = "pointer";
+            document.getElementById("startProcessingButton").classList.add("button_active");
+        }
+</script>
+{% include 'headerReport.html' %}
+
+  <div class="bodyDiv">
+      <br>
+      <br>
+      <br>
+      <h4 style="margin-bottom: 2px;">Flight Report (ID:{{ id }})</h4>
+      <div style="width: 100%; display: flex;">
+          <h1 id="title-name">{{ project.name }}</h1>
+          <div id="edit-title-button" class="edit-text-button" style="margin: 12px; float:left"
+               onclick="toggleTextfieldTitle()">
+              <span style="display: inline-block; transform: rotate(100deg); -ms-transform: rotate(100deg); -moz-transform: rotate(100deg); -webkit-transform: rotate(100deg);">&#x270E;</span>
+              <span style="display: none;">&check;</span>
+          </div>
+      </div>
+      <div style="display: inline-flex; width:100% ">
+          <div style="max-width: 97%; margin-right:10px">
+              <p id="descriptionText">
+                  {% for line in project.description.splitlines()[:-1] %}
+                  {{line}}<br>
+                  {% endfor %}
+                  {{project.description.splitlines()[-1]}}
+              </p>
+          </div>
+          <div id="edit-description-button" class="edit-text-button" onclick="toggleTextFieldDescription()">
+              <span style="display: inline-block; transform: rotate(100deg); -ms-transform: rotate(100deg); -moz-transform: rotate(100deg); -webkit-transform: rotate(100deg);">&#x270E;</span>
+              <span style="display: none;">&check;</span>
+          </div>
+      </div>
+      <br>
+       <form style="position: relative" method="post" action="/{{ id }}/process" >
+      <div class="settings">
+          <hr class="separator">
+          <h3 >Settings</h3>
+
+          <div class="option">
+              <input type="checkbox" id="with_mapping" name="with_mapping" value="mapping" checked>
+              <label for="with_mapping">Fast Orthophoto</label>
+          </div>
+          <div class="option">
+              <select id="map_res" name="map resolution">
+                  <option value="low">Low</option>
+                  <option value="med">Medium</option>
+                  <option selected="selected" value="high" >High</option>
+                  <option value="ultra">Ultra</option>
+              </select>
+               <label for="map_res">Orthophoto Resolution</label>
+          </div>
+          <br>
+          <div class="option">
+              <input type="checkbox" id="with_odm" name="with_odm" value="odm">
+              <label for="with_odm">ODM Orthophoto</label>
+          </div>
+          <hr class="separator">
+
+
+      </div>
+      <div class="button-container">
+        <button id="startProcessingButton">Start Processing</button>
+      </div>
+      </form>
+
+
+      <div class="upload-area" id="upload-area">
+        <div class="upload-area__label" id="upload-label">Upload Images</div>
+        <br>
+        <a> Drag and drop images here or use the file browser to select your images.</a>
+        <br>
+        <a> Upload at least 5 images.</a>
+        <br>
+        <br>
+        <input type="file" id="file-input" multiple>
+        <div class="uploaded-images" id="uploaded-images"></div>
+      </div>
+  </div>
+
+<script>
+    // Get the necessary DOM elements
+    const uploadArea = document.getElementById('upload-area');
+    const uploadLabel = document.getElementById('upload-label');
+    const fileInput = document.getElementById('file-input');
+    const uploadedImages = document.getElementById('uploaded-images');
+
+
+
+    // Event listeners for file selection
+    fileInput.addEventListener('change', handleFileSelect);
+    uploadArea.addEventListener('drop', handleFileSelect);
+
+    // Prevent default behavior on dragover event to enable drop
+    uploadArea.addEventListener('dragover', function(event) {
+      event.preventDefault();
+    });
+
+    // Event listener for click on upload area
+    uploadArea.addEventListener('click', function() {
+      fileInput.click();
+    });
+
+
+    function uploadImage(file, uploadedImage) {
+      const formData = new FormData();
+      formData.append('image', file);
+
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', '/{{ id }}/uploadFile', true);
+
+      xhr.onreadystatechange = function() {
+        if (xhr.readyState === XMLHttpRequest.DONE) {
+          // Handle response from the server if needed
+          if (xhr.status === 200) {
+            console.log('Image uploaded successfully.');
+            uploadedImage.querySelector('.loading-indicator').style.display = 'none';
+            enableProcessButton();
+          } else {
+            console.error('Image upload failed:', xhr.status);
+          }
+        }
+      };
+
+      xhr.send(formData);
+    }
+
+    function deleteFile(filename, uploadedImage) {
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', '/{{ id }}/deleteFile', true);
+      xhr.setRequestHeader('Content-Type', 'application/json');
+
+      xhr.onreadystatechange = function() {
+        if (xhr.readyState === XMLHttpRequest.DONE) {
+          if (xhr.status === 200) {
+            console.log(xhr.responseText);
+            console.log('File deleted successfully.');
+            uploadedImage.remove();
+            allImages = document.querySelectorAll('.uploaded-image');
+            if (allImages.length < 5) {
+              disableProcessButton();
+            }
+          } else {
+            console.error('Failed to delete file:', xhr.status);
+          }
+        }
+      };
+
+      const data = JSON.stringify({ 'filename': filename });
+      xhr.send(data);
+    }
+
+    // Function to get the filename from the file path
+    function getFilenameFromPath(path) {
+        return path.split('\\').pop().split('/').pop();
+    }
+
+    // Function to handle file selection
+    function handleFileSelect(event) {
+      event.preventDefault();
+      const files = event.target.files || event.dataTransfer.files;
+
+      // Process each selected file
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const imageType = /^image\//;
+
+        // Check if the file is an image
+        if (!imageType.test(file.type)) {
+          continue;
+        }
+
+        const reader = new FileReader();
+
+        // Function to handle image loading
+        reader.onload = (function(imageFile) {
+          return function(e) {
+            // Create the image element
+            const img = document.createElement('img');
+            img.src = e.target.result;
+
+            // Open the image in big size on click
+            img.addEventListener('click', function(event) {
+              event.stopPropagation();
+              window.open(this.src);
+            });
+
+            // Create the uploaded image container
+            const uploadedImage = document.createElement('div');
+            uploadedImage.className = 'uploaded-image';
+
+            // Create the filename text element
+            const filenameText = document.createElement('div');
+            filenameText.className = 'filename-text';
+            filenameText.textContent = getFilenameFromPath(file.name);
+
+            // Create the loading indicator
+            const loadingIndicator = document.createElement('div');
+            loadingIndicator.className = 'loading-indicator';
+            loadingIndicator.textContent = 'Uploading...';
+
+            // Create the delete button
+            const deleteButton = document.createElement('div');
+            deleteButton.className = 'delete-button';
+            deleteButton.innerHTML = '<a style="font-size: 17px; margin-top: auto; color: var(--font-color-b);">✖</a>';
+
+            deleteButton.addEventListener('click', function(event) {
+              event.stopPropagation();
+              const uploadedImage = this.parentNode;
+              const img = uploadedImage.querySelector('img');
+              const filename = uploadedImage.querySelector('.filename-text').innerHTML;
+              console.log(filename);
+              deleteFile(filename, uploadedImage);
+            });
+
+            // Append elements to the uploaded image container
+            uploadedImage.appendChild(img);
+            uploadedImage.appendChild(loadingIndicator);
+            uploadedImage.appendChild(deleteButton);
+            uploadedImage.appendChild(filenameText);
+
+            // Append the uploaded image container to the uploaded images container
+            uploadedImages.appendChild(uploadedImage);
+
+            // Send the image file to the server
+            uploadImage(imageFile, uploadedImage);
+          };
+        })(file);
+
+        // Read the image file
+        reader.readAsDataURL(file);
+      }
+    }
+
+
+    const file_paths = {{ file_names|tojson }};
+    // Process each selected file and create an uploadImage
+    for (let i = 0; i < file_paths.length; i++){
+
+        const img = document.createElement('img');
+        img.src = "static/"+file_paths[i];
+        img.onload = function() {
+          // remove the loading indicator
+            const loadingIndicator = uploadedImage.querySelector('.loading-indicator');
+            loadingIndicator.style.display = 'none';
+        };
+
+
+        // Create the uploaded image container
+        const uploadedImage = document.createElement('div');
+        uploadedImage.className = 'uploaded-image';
+
+
+        // Open the image in big size on click
+        uploadedImage.addEventListener('click', function(event) {
+          event.stopPropagation();
+          image = this.querySelector('img').src;
+          window.open(image);
+        });
+
+        // Create the filename text element
+        const filenameText = document.createElement('div');
+        filenameText.className = 'filename-text';
+        filenameText.textContent = getFilenameFromPath(file_paths[i]);
+
+        // Create the loading indicator
+        const loadingIndicator = document.createElement('div');
+        loadingIndicator.className = 'loading-indicator';
+        loadingIndicator.textContent = 'Uploading...';
+
+        // Create the delete button
+        const deleteButton = document.createElement('div');
+        deleteButton.className = 'delete-button';
+        deleteButton.innerHTML = '<a style="font-size: 17px; margin-top: auto; color: var(--font-color-b);">✖</a>';
+
+        deleteButton.addEventListener('click', function(event) {
+          event.stopPropagation();
+          const uploadedImage = this.parentNode;
+          const img = uploadedImage.querySelector('img');
+          const filename = uploadedImage.querySelector('.filename-text').innerHTML;
+          console.log(filename);
+          deleteFile(filename, uploadedImage);
+        });
+
+        // Append elements to the uploaded image container
+        uploadedImage.appendChild(img);
+        uploadedImage.appendChild(loadingIndicator);
+        uploadedImage.appendChild(deleteButton);
+        uploadedImage.appendChild(filenameText);
+
+        // Append the uploaded image container to the uploaded images container
+        uploadedImages.appendChild(uploadedImage);
+
+    }
+
+    allImages = document.querySelectorAll('.uploaded-image');
+    if (allImages.length < 5) {
+        disableProcessButton();
+    } else {
+        enableProcessButton();
+    }
+
+
+</script>
+
+{% include 'footer.html' %}
+</body>
+</html>

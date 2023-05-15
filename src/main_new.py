@@ -161,7 +161,8 @@ def create_report():
     description = request.form.get("description")
     project_manager.create_project(name, description)
     projects_dict_list = project_manager.get_projects()
-    return render_template('projectsOverview.html', projects=projects_dict_list)
+    order_by_filght_date = calculate_order_based_on_flight_date(projects_dict_list)
+    return render_template('projectsOverview.html', projects=projects_dict_list, flightOrder=order_by_filght_date )
 
 @app.route('/<int:report_id>')
 def upload_form(report_id):
@@ -169,11 +170,14 @@ def upload_form(report_id):
     if(project_manager.has_project(report_id)):
         print("Directory exists")
         if not project_manager.get_project(report_id)['data']['flight_data']:
-            return render_standard_report(report_id, template='startProcessing.html')
+            # file_names = project_manager.get_project(report_id)['data']['file_names']
+            return render_standard_report(report_id, template='simpleUpload.html')
+            # return render_standard_report(report_id, template='startProcessing.html')
         return render_standard_report(report_id)
     else:
         projects_dict_list = project_manager.get_projects()
-        return render_template('projectsOverview.html', projects=projects_dict_list, message="Report does not exist")
+        order_by_filght_date = calculate_order_based_on_flight_date(projects_dict_list)
+        return render_template('projectsOverview.html', projects=projects_dict_list, message="Report does not exist", flightOrder=order_by_filght_date )
 
 @app.route('/delete/<int:report_id>')
 def delete_report(report_id):
@@ -200,8 +204,53 @@ def upload_image(report_id):
     project_manager.append_unprocessed_images(report_id, file_names)
     files = []
     if not project_manager.get_project(report_id)['data']['flight_data']:
-        return render_standard_report(report_id, template='startProcessing.html')
+           # file_names = project_manager.get_project(report_id)['data']['file_names']
+           return render_standard_report(report_id, template='simpleUpload.html')
+        #  return render_standard_report(report_id, template='startProcessing.html')
     return render_standard_report(report_id)
+
+
+@app.route('/<int:report_id>/uploadFile', methods=['POST'])
+def upload_image_file(report_id):
+    print("upload_image_file " + str(report_id))
+    if 'image' not in request.files:
+        print(request.files)
+        #flash('No file part')
+        return json.dumps({'success':False}), 418, {'ContentType':'application/json'}
+    file = request.files['image']
+    file_names = []
+
+    if file and allowed_file(file.filename):
+        filename = secure_filename(file.filename)
+        file_names.append("uploads/" + str(report_id) +"/" + filename)
+        file.save(os.path.join(app.config['UPLOAD_FOLDER']+str(report_id)+"/", filename))
+    else:
+        flash('Allowed image types are -> png, jpg, jpeg, gif')
+        return json.dumps({'success':False}), 415, {'ContentType':'application/json'}
+    project_manager.update_file_names(report_id, file_names)
+    project_manager.append_unprocessed_images(report_id, file_names)
+    files = []
+    return json.dumps({'success':True}), 200, {'ContentType':'application/json'}
+
+
+@app.route('/<int:report_id>/deleteFile', methods=['POST'])
+def delete_file(report_id):
+    data = request.get_json()
+    filename = data.get('filename')
+    if filename:
+        file_path = "uploads/" + str(report_id) +"/" + filename
+        print(file_path)
+        if os.path.exists('static/' + file_path):
+            print("File exists")
+            os.remove('static/' + file_path)
+            project_manager.remove_from_file_names(report_id, file_path)
+            project_manager.remove_from_unprocessed_images(report_id, file_path)
+            return 'File deleted successfully.'
+        else:
+            return 'File not found.'
+    else:
+        return 'Invalid request.'
+
 
 @app.route('/<int:report_id>/process', methods=['POST', 'GET'])
 def process(report_id):
