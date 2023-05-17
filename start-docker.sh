@@ -1,8 +1,14 @@
-#check if a directory called data exists in current directory
+#!/bin/bash
 
-if [ ! -d "data" ]; then
-  mkdir data
+APPNAME='argus'
+DATAPATH=~/$APPNAME/uploads
+
+# create directory if needed
+mkdir -p "$DATAPATH"
+
+# build image if not present
+if [ -z "$(docker images -q $APPNAME)" ]; then
+  docker build -t "$APPNAME" "${0%/*}"
 fi
-
-docker build -t image_mapper .
-docker run -p 5000:5000 --rm -it -v /var/run/docker.sock:/var/run/docker.sock -v $(pwd)/data:/app/static/uploads -v image_mapper_model_weights:/app/detection/model_weights image_mapper
+# run image
+docker run -p "5000:5000" --rm -it -v /var/run/docker.sock:/var/run/docker.sock -v "${DATAPATH}:/app/static/uploads" -v "${APPNAME}_model_weights:/app/detection/model_weights" "$APPNAME"
