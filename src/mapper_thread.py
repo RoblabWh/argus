@@ -35,6 +35,7 @@ class MapperThread(threading.Thread):
         self.maps = []
         self.maps_placeholders = []
         self.maps_done = []
+        self.maps_sent = []
         self.flight_trajectory = []
         self.number_of_maps = self.fast_mapping + self.with_odm + self.fast_mapping * self.ir + self.with_odm * self.ir
         self.map_rgb = None
@@ -144,6 +145,7 @@ class MapperThread(threading.Thread):
 
             maps = self.image_mapper.generate_placeholder_maps()
             self.maps_done = [False] * self.number_of_maps
+            self.maps_sent = [False] * self.number_of_maps
 
             self.map_rgb = maps[0]
             self.map_ir = maps[1]
@@ -205,6 +207,12 @@ class MapperThread(threading.Thread):
 
     def get_maps_done(self):
         return self.maps_done
+
+    def get_maps_sent(self):
+        return self.maps_sent
+
+    def update_maps_sent(self, index):
+        self.maps_sent[index] = True
 
 
 

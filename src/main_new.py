@@ -301,6 +301,56 @@ def process(report_id):
         print("process started")
         return render_standard_report(report_id, thread)
 
+
+@app.route('/<int:report_id>/processFromUpload', methods=['POST', 'GET'])
+def initial_proces(report_id):
+    if request.method == 'POST':
+        with_mapping = request.form.get('with_mapping')
+        if with_mapping == None:
+            with_mapping = False
+        else:
+            with_mapping = True
+        with_ODM = request.form.get('with_odm')
+        if with_ODM == None:
+            with_ODM = False
+        else:
+            with_ODM = True
+        ai_detection = request.form.get('ai_detection')
+        if ai_detection == None:
+            ai_detection = False
+        else:
+            ai_detection = True
+
+        #image_mapper = project_manager.get_image_mapper(report_id)
+
+        map_resolution = request.form.get('map resolution')
+        max_width, max_height = 2048, 2048
+        if map_resolution == 'low':
+            max_width, max_height = 1024, 1024
+        elif map_resolution == 'medium':
+            max_width, max_height = 2048, 2048
+        elif map_resolution == 'high':
+            max_width, max_height = 4096, 4096
+        elif map_resolution == 'ultra':
+            max_width, max_height = 6144, 6144
+
+        file_names = project_manager.get_file_names(report_id)
+
+        data = project_manager.get_project(report_id)['data']
+
+        print("with_mapping: ", with_mapping)
+        print("with_ODM: ", with_ODM)
+        print("ai_detection: ", ai_detection)
+        print("map_resolution: ", map_resolution)
+
+        # image_mapper.set_processing_parameters(map_width_px=max_width,
+        #                                        map_height_px=max_height, with_ODM=with_ODM)#, ai_detection=ai_detection)
+        thread = MapperThread(with_mapping, with_ODM, report_id, (max_width, max_height), file_names, data)
+        threads.append(thread)
+        thread.start()
+        print("process started")
+        return jsonify(thread.get_progress_preprocess())
+
 @app.route('/gradient_lut/<int:gradient_id>', methods=['GET', 'POST'])
 def send_gradient_lut(gradient_id):
     lut = json.load(open("./static/default/gradient_luts/gradient_lut_" + str(gradient_id) + ".json"))
@@ -351,6 +401,7 @@ def send_next_map(report_id, map_index):
             if maps_done[map_index]:
                 map = thread.get_maps()[map_index]
                 project_manager.update_maps(report_id, thread.get_maps())
+                thread.update_maps_sent(map_index)
                 #map["image_coordinates_json"] = jsonify(map["image_coordinates"])
                 map["file_url"] = url_for('static', filename=map["file"])
                 return jsonify(map)
@@ -372,18 +423,32 @@ def stop_thread(report_id):
 @app.route('/<int:report_id>/process_status', methods=['GET', 'POST'])
 def check_preprocess_status(report_id):
     print('asking for status of report ' + str(report_id))
-    progress_preprocessing = -1
     progress_mapping = -1
-    redirect = False
     maps_done = []
 
     for thread in threads:
         if thread.report_id == report_id:
             # print("check_preprocess_status" + str(report_id))
-            progress_preprocessing = thread.get_progress_preprocess()
             progress_mapping = thread.get_progress_mapping()
             # print(progress_preprocessing, progress_mapping)
             maps_done = thread.get_maps_done()
+            maps_sent = thread.get_maps_sent()
+            if progress_mapping == 100:
+                project_manager.update_maps(report_id, thread.get_maps())
+            break
+
+    progress_dict = {"percentage": progress_mapping, "maps_done": maps_done, "maps_loaded": maps_sent}
+    return jsonify(progress_dict)
+
+@app.route('/<int:report_id>/preprocessProgress', methods=['GET', 'POST'])
+def check_preprocess_progress(report_id):
+    print('asking for preprocessing progess of report ' + str(report_id))
+    progress_preprocessing = -1
+
+    for thread in threads:
+        if thread.report_id == report_id:
+            # print("check_preprocess_status" + str(report_id))
+            progress_preprocessing = thread.get_progress_preprocess()
             if progress_preprocessing == 100 and not thread.metadata_delivered:
                 flight_data, camera_specs, weather, maps, file_names_rgb, file_names_ir, ir_settings, panos, \
                     couples_path_list, flight_trajectory = thread.get_results()
@@ -395,14 +460,14 @@ def check_preprocess_status(report_id):
                 project_manager.add_panos(report_id, panos)
                 project_manager.update_slide_file_paths(report_id, couples_path_list)
                 project_manager.update_flight_trajectory(report_id, flight_trajectory)
-                project_manager.overwrite_file_names_sorted(report_id, file_names_rgb= file_names_rgb, file_names_ir=file_names_ir)
+                project_manager.overwrite_file_names_sorted(report_id, file_names_rgb=file_names_rgb, file_names_ir=file_names_ir)
                 project_manager.update_contains_unprocessed_images(report_id, False)
-                redirect = True
                 thread.metadata_delivered = True
-            elif progress_mapping == 100:
-                project_manager.update_maps(report_id, thread.get_maps())
+                return render_standard_report(report_id)
+            else:
+                return jsonify(progress_preprocessing)
             break
-    return str(progress_preprocessing) + ";" + str(progress_mapping) + ";" + str(redirect) + ";" + str(maps_done)
+    return jsonify(progress_preprocessing)
 
 
 @app.route("/run_detection/<int:report_id>", methods=['GET', 'POST'])

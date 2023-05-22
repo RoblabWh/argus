@@ -76,16 +76,17 @@
 
 
         .big_button{
-          float:right;
-          position: relative;
-          width: 33%;
-          padding: 11px 0px;
-          background-color: var(--accent-color-interaction);
-          color: var(--font-color-b);
-          border-radius: 4px;
-          border-style: none;
-          cursor: pointer;
-          transition: 0.3s;
+            width: 25%;
+            padding: 4px;
+            background-color: var(--accent-color-interaction);
+            color: var(--font-color-b);
+            border-radius: 4px;
+            border-style: none;
+            cursor: pointer;
+            transition: 0.3s;
+            position: absolute;
+            right: 0;
+            top: -4px;
         }
 
 
@@ -167,10 +168,31 @@
           background-color: #ddd;
         }
 
-        #myBar_a, #myBar_b {
-          width: 1%;
+        .progress-bar-container {
+          position: relative;
+          width: 100%;
           height: 30px;
+          background-color: var(--bg-color-a);
+          margin-bottom: 10px;
+          border-radius: 6px;
+        }
+
+        .progress-bar-container a{
+            position: absolute;
+            top: 4px;
+            font-size: 22px;
+            width: 100%;
+            text-align: center;
+            color: var(--font-color-b);
+            font-weight: bold;
+        }
+
+        #progress-bar {
+          height: 100%;
           background-color: var(--accent-color-green);
+          width: 0%;
+          transition: width 0.2s ease-in-out;
+          border-radius: 6px;
         }
 
 
@@ -195,44 +217,46 @@
         function check_progress(report_id) {
             console.log("check_progress on:" + report_id + " with: " + report_id + '/process_status');
             $.get('/{{ id }}/process_status', function(progress) {
-                var progress_arr = progress.split(";");
-                var bar_preprocess = document.getElementById("myBar_a");
-                var bar_mapping = document.getElementById("myBar_b");
-                bar_preprocess.style.width = progress_arr[0] + '%';
-                bar_mapping.style.width = progress_arr[1] + '%';
 
-                if (progress_arr[2] == "True") {
-                    location.href = "/{{ id }}";
-                }
-                console.log(progress_arr);
-                if (progress_arr[0] == 100 && progress_arr[2] != "True") {
-                    //if (all_maps_loaded() || maps_done_initilized()) {
-                    console.log(progress_arr[3]);
-                    if (progress_arr[3] == "[]") {
-                        console.log("done");
-                        $.get( "/stop_mapping_thread/{{ id }}");
-                        window.clearInterval(intervalID);
-                        window.clearInterval(intervalID);
-                    }
-                    $.get('/get_map/{{ id }}/'+next_map, function(map) {
-                        if(map.file != "empty"){
-                            console.log(map);
-                            loaded_maps[next_map] = true;
-                            switch(next_map){
-                            {% for map in maps %}
-                                case {{ loop.index0 }}:
-                                    update{{map.name}}Map(map);
-                                    break;
-                            {% endfor %}
-                            }
-                            next_map += 1;
-                        }
-                    });
-                }
-                if (parseInt(progress_arr[1]) == 100) {
+                // progress is a json object with first the progress in percentage (percentage) and second a list
+                // of boolean values for each map (maps_done) as well as a list of booleans which had been loaded
+                // yet (maps_loaded)
+
+                console.log(progress);
+
+                var progressPercentage = progress.percentage;
+                var maps_done = progress.maps_done;
+                var maps_loaded = progress.maps_loaded;
+
+                var bar_mapping = document.getElementById("progress-bar");
+                bar_mapping.style.width = progressPercentage + '%';
+
+
+
+
+                if (progressPercentage == 100) {
                     console.log("done");
                     $.get( "/stop_mapping_thread/{{ id }}");
                     window.clearInterval(intervalID);
+                }
+                // jetzt die Liste mit boolean durchgehen und bei jedem der true ist die karte laden.
+                for (var i = 0; i < maps_done.length; i++) {
+                    if(maps_done[i] && !maps_loaded[i]){
+                         var mapIndex = i;
+                         $.get('/get_map/{{ id }}/'+i, function(map) {
+                            if(map.file != "empty"){
+                                console.log(map);
+                                console.log(mapIndex);
+                                switch(mapIndex){
+                                {% for map in maps %}
+                                    case {{ loop.index0 }}:
+                                        update{{map.name}}Map(map);
+                                        break;
+                                {% endfor %}
+                                }
+                            }
+                         });
+                    }
                 }
 
             });
@@ -302,7 +326,10 @@
         <br>
         <br>
         <br>
-        <h4 style="margin-bottom: 2px;">Flight Report (ID:{{ id }})</h4>
+        <div style="position: relative;">
+            <h4 style="margin-bottom: 2px;">Flight Report (ID:{{ id }})</h4>
+            <button class="big_button"> Change settings and reprocess</button>
+        </div>
         <div style="width: 100%; display: flex;">
             <h1 id="title-name">{{ project.name }}</h1>
             <div id="edit-title-button" class="edit-text-button" style="margin: 12px; float:left" onclick="toggleTextfieldTitle()">
@@ -326,59 +353,14 @@
             </div>
         </div>
 
-        <div class="wrapper">
-            <form method="post" action="/{{ id }}/upload" enctype="multipart/form-data" style="width: 100%; ">
-                <input class="big_upload" type="file" name="files[]" multiple="true" autocomplete="off" required>
-                <input class="big_button" type="submit" value="Upload">
-            </form>
-            <form method="post" action="/{{ id }}/process" style="width: 100%; ">
-                <div class="big_upload">
-                    <input type="checkbox" id="with_mapping" name="with_mapping" value="mapping" checked>
-                    <label for="with_mapping"> fast orthophoto | </label>
-                    <select name="map resolution" id="map_res">
-                        <option value="low">low</option>
-                        <option value="med">medium</option>
-                        <option selected="selected" value="high">high</option>
-                        <option value="ultra">ultra</option>
-                    </select>
-                    <label for="map_res"> fast orthophoto resolution | </label>
-                    <input type="checkbox" id="with_odm" name="with_odm" value="odm">
-                    <label for="with_odm"> ODM orthophoto </label>
-<!--                    <input type="checkbox" id="ai_detection" name="ai_detection" value="ai">-->
-<!--                    <label for="ai_detection"> Use AI object detection | </label>-->
-                </div>
-                {% if not file_names %}
-                <input class="big_button" type="submit" value="Process Report" disabled>
-                {% else %}
-                <input class="big_button" type="submit" value="Process Report">
-                {% endif %}
-            </form>
-<!--            <form method="post" action="/{{ id }}/buildMap"><input class="big_button" value="makemap" type="submit"></form>-->
+    {% if processing %}
+    <div class="progress-bar-container">
+        <div id="progress-bar"></div>
+        <a> Mapping-Progress </a>
+    </div>
+    {% endif %}
 
-            <p>
-                {% with messages = get_flashed_messages() %}
-                {% if messages %}
-            <ul class=flashes>
-                {% for message in messages %}
-                <li>{{ message }}</li>
-                {% endfor %}
-            </ul>
-                {% endif %}
-                {% endwith %}
-            </p>
-            {% if processing %}
-            <div style="width: 100%;">
-                <p>Preprocessing</p>
-                <div class="Progress">
-                    <div id="myBar_a"></div>
-                </div>
-                <p>Mapping</p>
-                <div class="Progress">
-                    <div id="myBar_b"></div>
-                </div>
-            </div>
-            {% endif %}
-        </div>
+
 
         <details>
             <summary>Flight Data</summary>

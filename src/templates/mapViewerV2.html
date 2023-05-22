@@ -138,6 +138,7 @@ function set{{map.name}}MapImage(path) {
 }
 
 function update{{map.name}}Map(map) {
+    console.log("updating map {{map.name}}");
     mapSize{{map.name}} = map.size;
     center{{map.name}} = map.center;
     set{{map.name}}MapImage(map.file_url);

@@ -206,7 +206,32 @@
         }
 
 
+        .progress-bar-container {
+          position: relative;
+          width: 100%;
+          height: 30px;
+          background-color: var(--bg-color-a);
+          margin-bottom: 10px;
+          border-radius: 6px;
+        }
 
+        .progress-bar-container a{
+            position: absolute;
+            top: 4px;
+            font-size: 22px;
+            width: 100%;
+            text-align: center;
+            color: var(--font-color-b);
+            font-weight: bold;
+        }
+
+        .progress-bar {
+          height: 100%;
+          background-color: var(--accent-color-green);
+          width: 0%;
+          transition: width 0.2s ease-in-out;
+          border-radius: 6px;
+        }
 
     </style>
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -214,6 +239,11 @@
 </head>
 <body>
 <script>
+
+    ////////////////////////////////////////
+    //  Description and Title  editing
+    ////////////////////////////////////////
+
     function toggleTextfieldTitle(){
             fakeButton = document.getElementById("edit-title-button");
             toggleTextField("title-name", fakeButton, "update_title");
@@ -241,6 +271,11 @@
             }
         }
 
+
+        ////////////////////////////////////////
+        //  process Button de/activation
+        ////////////////////////////////////////
+
         function disableProcessButton(){
             document.getElementById("startProcessingButton").disabled = true;
             document.getElementById("startProcessingButton").style.backgroundColor = "var(--bg-color-b)";
@@ -254,6 +289,8 @@
             document.getElementById("startProcessingButton").style.cursor = "pointer";
             document.getElementById("startProcessingButton").classList.add("button_active");
         }
+
+
 </script>
 {% include 'headerReport.html' %}
 
@@ -261,7 +298,9 @@
       <br>
       <br>
       <br>
+
       <h4 style="margin-bottom: 2px;">Flight Report (ID:{{ id }})</h4>
+
       <div style="width: 100%; display: flex;">
           <h1 id="title-name">{{ project.name }}</h1>
           <div id="edit-title-button" class="edit-text-button" style="margin: 12px; float:left"
@@ -270,6 +309,7 @@
               <span style="display: none;">&check;</span>
           </div>
       </div>
+
       <div style="display: inline-flex; width:100% ">
           <div style="max-width: 97%; margin-right:10px">
               <p id="descriptionText">
@@ -284,61 +324,72 @@
               <span style="display: none;">&check;</span>
           </div>
       </div>
+
       <br>
-       <form style="position: relative" method="post" action="/{{ id }}/process" >
-      <div class="settings">
-          <hr class="separator">
-          <h3 >Settings</h3>
 
-          <div class="option">
-              <input type="checkbox" id="with_mapping" name="with_mapping" value="mapping" checked>
-              <label for="with_mapping">Fast Orthophoto</label>
-          </div>
-          <div class="option">
-              <select id="map_res" name="map resolution">
-                  <option value="low">Low</option>
-                  <option value="med">Medium</option>
-                  <option selected="selected" value="high" >High</option>
-                  <option value="ultra">Ultra</option>
-              </select>
-               <label for="map_res">Orthophoto Resolution</label>
-          </div>
-          <br>
-          <div class="option">
-              <input type="checkbox" id="with_odm" name="with_odm" value="odm">
-              <label for="with_odm">ODM Orthophoto</label>
-          </div>
-          <hr class="separator">
+      <form id='processingForm' style="position: relative" method="post" action="/{{ id }}/processFromUpload">
+          <div class="settings">
+              <hr class="separator">
+              <h3>Settings</h3>
 
+              <div class="option">
+                  <input type="checkbox" id="with_mapping" name="with_mapping" value="mapping" checked>
+                  <label for="with_mapping">Fast Orthophoto</label>
+              </div>
+              <div class="option">
+                  <select id="map_res" name="map resolution">
+                      <option value="low">Low</option>
+                      <option value="med">Medium</option>
+                      <option selected="selected" value="high">High</option>
+                      <option value="ultra">Ultra</option>
+                  </select>
+                  <label for="map_res">Orthophoto Resolution</label>
+              </div>
+              <br>
+              <div class="option">
+                  <input type="checkbox" id="with_odm" name="with_odm" value="odm">
+                  <label for="with_odm">ODM Orthophoto</label>
+              </div>
+              <hr class="separator">
+          </div>
 
-      </div>
-      <div class="button-container">
-        <button id="startProcessingButton">Start Processing</button>
-      </div>
+          <div class="button-container">
+              <button id="startProcessingButton">Start Processing</button>
+          </div>
       </form>
 
 
-      <div class="upload-area" id="upload-area">
-        <div class="upload-area__label" id="upload-label">Upload Images</div>
-        <br>
-        <a> Drag and drop images here or use the file browser to select your images.</a>
-        <br>
-        <a> Upload at least 5 images.</a>
-        <br>
-        <br>
-        <input type="file" id="file-input" multiple>
-        <div class="uploaded-images" id="uploaded-images"></div>
+      <div class="progress-bar-container">
+          <div id="progress-bar" class="progress-bar"></div>
+          <a> Preprocessing-Progress </a>
       </div>
+
+
+      <div class="upload-area" id="upload-area">
+          <div class="upload-area__label" id="upload-label">Upload Images</div>
+          <br>
+          <a> Drag and drop images here or use the file browser to select your images.</a>
+          <br>
+          <a> Upload at least 5 images.</a>
+          <br>
+          <br>
+          <input type="file" id="file-input" multiple>
+          <div class="uploaded-images" id="uploaded-images"></div>
+      </div>
+
   </div>
 
 <script>
+
+    ////////////////////////////////////////////
+    // Image upload
+    ////////////////////////////////////////////
+
     // Get the necessary DOM elements
     const uploadArea = document.getElementById('upload-area');
     const uploadLabel = document.getElementById('upload-label');
     const fileInput = document.getElementById('file-input');
     const uploadedImages = document.getElementById('uploaded-images');
-
-
 
     // Event listeners for file selection
     fileInput.addEventListener('change', handleFileSelect);
@@ -430,7 +481,11 @@
           return function(e) {
             // Create the image element
             const img = document.createElement('img');
+            img.onload = function() {
+              uploadImage(imageFile, uploadedImage);
+            };
             img.src = e.target.result;
+
 
             // Open the image in big size on click
             img.addEventListener('click', function(event) {
@@ -476,7 +531,6 @@
             uploadedImages.appendChild(uploadedImage);
 
             // Send the image file to the server
-            uploadImage(imageFile, uploadedImage);
           };
         })(file);
 
@@ -485,6 +539,10 @@
       }
     }
 
+
+    ////////////////////////////////////////////
+    // Image upload area if already uploaded
+    ////////////////////////////////////////////
 
     const file_paths = {{ file_names|tojson }};
     // Process each selected file and create an uploadImage
@@ -546,12 +604,91 @@
 
     }
 
+
+    ////////////////////////////////////////////
+    // Start Progress and process bar
+    ////////////////////////////////////////////
+
     allImages = document.querySelectorAll('.uploaded-image');
     if (allImages.length < 5) {
         disableProcessButton();
     } else {
         enableProcessButton();
     }
+
+    // Function to update the loading bar
+    function updateProgressBar(progress) {
+      const progressBar = document.getElementById('progress-bar');
+      progressBar.style.width = `${progress}%`;
+    }
+
+    // Function to check if progress is running
+    function checkProgress() {
+      // Make an AJAX request to the server to retrieve the progress value
+      const xhr = new XMLHttpRequest();
+      xhr.open('GET', '/{{ id }}/preprocessProgress', true);
+
+      xhr.onreadystatechange = function() {
+        if (xhr.readyState === XMLHttpRequest.DONE) {
+          if (xhr.status === 200) {
+            const progress = parseInt(xhr.responseText);
+            if (progress >= 0 && progress <= 100) {
+              updateProgressBar(progress);
+            }
+            if (progress >= 100) {
+              updateProgressBar(100);
+              stopCheckingProgress();
+              window.location.href = '/{{ id }}';
+            } else if (progress < 0) {
+              console.error('Invalid progress value:', progress);
+            }
+          } else {
+            console.error('Failed to retrieve progress:', xhr.status);
+          }
+        }
+      };
+
+      xhr.send();
+    }
+
+    // Store the interval ID globally
+    let progressInterval;
+
+    // Function to start checking progress
+    function startCheckingProgress() {
+      // Check progress initially when the page loads
+      checkProgress();
+
+      // Set an interval to check progress periodically (e.g., every 2 seconds)
+      progressInterval = setInterval(checkProgress, 1000);
+    }
+
+    // Function to stop checking progress
+    function stopCheckingProgress() {
+      clearInterval(progressInterval);
+    }
+
+    {% if processing %}
+    // Call startCheckingProgress to begin checking progress
+    startCheckingProgress();
+    {% endif %}
+
+
+    // Add event listener to form submission
+    const processingForm = document.getElementById('processingForm');
+    processingForm.addEventListener('submit', function(event) {
+      event.preventDefault(); // Prevent the form from being submitted
+
+      const formData = $(processingForm).serialize();
+
+      // Send the form data using $.post
+      $.post($(processingForm).attr('action'), formData, function(response) {
+        console.log(response);
+      });
+
+        // Call the startCheckingProgress function
+      startCheckingProgress();
+  });
 
 
 </script>
