@@ -74,7 +74,6 @@
           border: 2px dashed #ccc;
           border-radius: 10px;
           text-align: center;
-          cursor: pointer;
         }
 
         .upload-area__label {
@@ -150,6 +149,19 @@
           //color: #333;
         }
 
+        input[type="file"] {
+            display: none;
+        }
+
+        .custom-file-upload {
+            border-radius: 4px;
+            display: inline-block;
+            padding: 8px 12px;
+            cursor: pointer;
+            background-color: var(--accent-color-interaction);
+            color: var(--font-color-b);
+        }
+
 
 
         .settings {
@@ -207,6 +219,7 @@
 
 
         .progress-bar-container {
+          display: none;
           position: relative;
           width: 100%;
           height: 30px;
@@ -226,6 +239,7 @@
         }
 
         .progress-bar {
+          display: none;
           height: 100%;
           background-color: var(--accent-color-green);
           width: 0%;
@@ -361,7 +375,7 @@
 
       <div class="progress-bar-container">
           <div id="progress-bar" class="progress-bar"></div>
-          <a> Preprocessing-Progress </a>
+          <a id="progress-bar-label"> Preprocessing-Progress </a>
       </div>
 
 
@@ -373,6 +387,7 @@
           <a> Upload at least 5 images.</a>
           <br>
           <br>
+          <label for="file-input" class="custom-file-upload">Select Images</label>
           <input type="file" id="file-input" multiple>
           <div class="uploaded-images" id="uploaded-images"></div>
       </div>
@@ -384,6 +399,14 @@
     ////////////////////////////////////////////
     // Image upload
     ////////////////////////////////////////////
+
+    var numberOfImagesUploading = 0;
+    var numberOfImagesUploadedSuccessfully = 0;
+    {% if processing %};
+    var processing = true;
+    {% else %}
+    var processing = false;
+    {% endif %}
 
     // Get the necessary DOM elements
     const uploadArea = document.getElementById('upload-area');
@@ -401,9 +424,9 @@
     });
 
     // Event listener for click on upload area
-    uploadArea.addEventListener('click', function() {
-      fileInput.click();
-    });
+    //uploadArea.addEventListener('click', function() {
+    //  fileInput.click();
+    //});
 
 
     function uploadImage(file, uploadedImage) {
@@ -419,7 +442,9 @@
           if (xhr.status === 200) {
             console.log('Image uploaded successfully.');
             uploadedImage.querySelector('.loading-indicator').style.display = 'none';
-            enableProcessButton();
+            numberOfImagesUploadedSuccessfully++;
+            updateUploadProgress();
+            //enableProcessButton();
           } else {
             console.error('Image upload failed:', xhr.status);
           }
@@ -439,6 +464,14 @@
           if (xhr.status === 200) {
             console.log(xhr.responseText);
             console.log('File deleted successfully.');
+
+            if (uploadedImage.querySelector('.loading-indicator').style.display != 'none') {
+                numberOfImagesUploadedSuccessfully--;
+            }
+            numberOfImagesUploading--;
+            updateUploadProgress();
+
+
             uploadedImage.remove();
             allImages = document.querySelectorAll('.uploaded-image');
             if (allImages.length < 5) {
@@ -459,10 +492,18 @@
         return path.split('\\').pop().split('/').pop();
     }
 
+
     // Function to handle file selection
     function handleFileSelect(event) {
       event.preventDefault();
+      if(processing) {
+        return;
+      }
       const files = event.target.files || event.dataTransfer.files;
+
+      numberOfImagesUploading += files.length;
+      showProgressBar();
+      updateUploadProgress();
 
       // Process each selected file
       for (let i = 0; i < files.length; i++) {
@@ -538,6 +579,45 @@
         reader.readAsDataURL(file);
       }
     }
+
+    function updateUploadProgress(){
+        const progressBarLabel = document.getElementById('progress-bar-label');
+        var progress = Math.round((numberOfImagesUploadedSuccessfully/numberOfImagesUploading)*100);
+
+        progressBarLabel.innerHTML = 'UPLOADING...';
+        updateProgressBar(progress);
+
+        updateProcessButtonEnabling();
+
+        //showProgressBar();
+    }
+
+    function updateProcessButtonEnabling(){
+        if (numberOfImagesUploading < 5){
+            disableProcessButton();
+            return;
+        }
+        if (numberOfImagesUploadedSuccessfully < numberOfImagesUploading){
+            disableProcessButton();
+            return;
+        }
+        enableProcessButton();
+    }
+
+    function disableUpload(){
+        processing = true;
+        //disable upload button and deactivate the drag and drop for the upload area
+        var uploadButton = document.getElementsByClassName('custom-file-upload')[0];
+        uploadButton.style.cursor = 'not-allowed';
+        uploadButton.style.opacity = '0.5';
+
+        var inputFile = document.getElementById('file-input');
+        inputFile.disabled = true;
+
+        var uploadArea = document.getElementById('upload-area');
+        uploadArea.style.cursor = 'not-allowed';
+    }
+
 
 
     ////////////////////////////////////////////
@@ -656,6 +736,14 @@
 
     // Function to start checking progress
     function startCheckingProgress() {
+      //show the progress bar
+      var progressBarLabel = document.getElementById('progress-bar-label');
+      showProgressBar();
+
+      progressBarLabel.innerHTML = 'PREPROCESSING...';
+      updateProgressBar(0);
+      disableUpload();
+
       // Check progress initially when the page loads
       checkProgress();
 
@@ -686,9 +774,18 @@
         console.log(response);
       });
 
-        // Call the startCheckingProgress function
+      // Call the startCheckingProgress function
       startCheckingProgress();
   });
+
+  function showProgressBar(){
+    var progressBar = document.getElementById('progress-bar');
+    var progressBarContainer = document.getElementsByClassName('progress-bar-container')[0];
+    progressBar.style.display = 'block';
+    progressBarContainer.style.display = 'block';
+  }
+
+
 
 
 </script>
