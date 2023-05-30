@@ -570,8 +570,6 @@
 
             // Append the uploaded image container to the uploaded images container
             uploadedImages.appendChild(uploadedImage);
-
-            // Send the image file to the server
           };
         })(file);
 
@@ -625,15 +623,20 @@
     ////////////////////////////////////////////
 
     const file_paths = {{ file_names|tojson }};
+    const urls = [];
+    {% for file_name in file_names %}
+        urls.push("{{ url_for('static', filename='')}}" + "{{ file_name }}");
+    {% endfor %}
     // Process each selected file and create an uploadImage
     for (let i = 0; i < file_paths.length; i++){
-
+        numberOfImagesUploading++;
         const img = document.createElement('img');
-        img.src = "static/"+file_paths[i];
+        img.src = urls[i];
         img.onload = function() {
           // remove the loading indicator
             const loadingIndicator = uploadedImage.querySelector('.loading-indicator');
             loadingIndicator.style.display = 'none';
+            numberOfImagesUploadedSuccessfully++;
         };
 
 

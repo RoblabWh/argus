@@ -328,7 +328,7 @@
         <br>
         <div style="position: relative;">
             <h4 style="margin-bottom: 2px;">Flight Report (ID:{{ id }})</h4>
-            <button class="big_button"> Change settings and reprocess</button>
+            <button class="big_button" onClick="location.href = '/{{id}}/edit'"> Change settings and reprocess</button>
         </div>
         <div style="width: 100%; display: flex;">
             <h1 id="title-name">{{ project.name }}</h1>
@@ -379,7 +379,7 @@
         <details>
             <summary>UAV/ Camera Specs</summary>
             <div class="tab-content">
-                <p>Informattion about used camera/ UAV based on image metadata</p>
+                <p>Information about used camera/ UAV based on image metadata</p>
                 {% include 'cameraSpecs.html' %}
             </div>
         </details>

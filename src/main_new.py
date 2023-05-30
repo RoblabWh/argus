@@ -210,6 +210,19 @@ def upload_image(report_id):
     return render_standard_report(report_id)
 
 
+@app.route('/<int:report_id>/edit', methods=['POST', 'GET'])
+def edit_report(report_id):
+    print("editing report " + str(report_id))
+    if (project_manager.has_project(report_id)):
+        print("Directory exists")
+        return render_standard_report(report_id, template='simpleUpload.html')
+    else:
+        projects_dict_list = project_manager.get_projects()
+        order_by_filght_date = calculate_order_based_on_flight_date(projects_dict_list)
+        return render_template('projectsOverview.html', projects=projects_dict_list, message="Report does not exist",
+                               flightOrder=order_by_filght_date)
+
+
 @app.route('/<int:report_id>/uploadFile', methods=['POST'])
 def upload_image_file(report_id):
     print("upload_image_file " + str(report_id))
@@ -238,18 +251,32 @@ def delete_file(report_id):
     data = request.get_json()
     filename = data.get('filename')
     if filename:
-        file_path = "uploads/" + str(report_id) +"/" + filename
-        print(file_path)
-        if os.path.exists('static/' + file_path):
-            print("File exists")
-            os.remove('static/' + file_path)
-            project_manager.remove_from_file_names(report_id, file_path)
-            project_manager.remove_from_unprocessed_images(report_id, file_path)
+
+        if delete_file_in_folder(report_id, filename, "/"):
             return 'File deleted successfully.'
-        else:
-            return 'File not found.'
+
+        if delete_file_in_folder(report_id, filename, "/rgb/"):
+            return 'File deleted successfully.'
+
+        if delete_file_in_folder(report_id, filename, "/ir/"):
+            return 'File deleted successfully.'
+
+        return 'File not found.'
+
     else:
         return 'Invalid request.'
+
+def delete_file_in_folder(report_id, filename, subfolder, thumbnail=False):
+    file_path = "uploads/" + str(report_id) + subfolder + filename
+    print("trying to delete file in folder " + file_path)
+    if os.path.exists('static/' + file_path):
+        os.remove('static/' + file_path)
+        project_manager.remove_from_file_names(report_id, file_path)
+        project_manager.remove_from_unprocessed_images(report_id, file_path)
+        if not thumbnail:
+            delete_file_in_folder(report_id, filename, subfolder+"/thumbnails", thumbnail=True)
+        return True
+    return False
 
 
 @app.route('/<int:report_id>/process', methods=['POST', 'GET'])

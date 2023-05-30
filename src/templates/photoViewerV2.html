@@ -683,7 +683,34 @@
         console.log(slideIndex);
 
         dynamicCanvas = document.getElementById("dynamic-canvas");
+
         currentImageName = slideshowCouples[slideIndex][0].substring(slideshowCouples[slideIndex][0].lastIndexOf('/') + 1);
+        dynamicFilename = document.getElementById("dynamic-filename-RGB");
+        dynamicFilename.innerHTML = "RGB: " + currentImageName;
+
+        currentImageNameIR = slideshowCouples[slideIndex][1].substring(slideshowCouples[slideIndex][0].lastIndexOf('/') + 1);
+        dynamicFilenameIR = document.getElementById("dynamic-filename-IR");
+        dynamicFilenameIR.innerHTML = "IR: " + currentImageName;
+
+        dynamicFilenameUnprocessed = document.getElementById("dynamic-filename-Unprocessed");
+        dynamicFilenameUnprocessed.innerHTML = "Unprocessed: ";
+        try{
+            currentImageNameUnprocessed = slideshowCouples[slideIndex][2].substring(slideshowCouples[slideIndex][0].lastIndexOf('/') + 1);
+            dynamicFilenameUnprocessed.innerHTML = "Unprocessed: " + currentImageNameUnprocessed;
+        }
+        catch(err){
+            console.log("No unprocessed image");
+        }
+        if(dynamicFilenameUnprocessed.innerHTML != "Unprocessed: "){
+            dynamicFilenameUnprocessed.style.display = "inline-block";
+            dynamicFilename.style.display = "none";
+            dynamicFilenameIR.style.display = "none";
+        }
+        else{
+            dynamicFilenameUnprocessed.style.display = "none";
+            dynamicFilename.style.display = "inline-block";
+            dynamicFilenameIR.style.display = "inline-block";
+        }
 
         imageRGB = allImages[slideIndex][0];
         imageIR = allImages[slideIndex][1];
@@ -810,15 +837,15 @@
             magnify(slideIndex, zoomValue);
         }
 
-        //{% if maps %}
-        //if(isUsedInMap(slideIndex, displayingIR)){
-        //    x[slideIndex].getElementsByClassName("usedInMapping")[0].style.display = "flex";
-        //    x[slideIndex].getElementsByClassName("notUsedInMapping")[0].style.display = "none";
-        //} else {
-        //    x[slideIndex].getElementsByClassName("usedInMapping")[0].style.display = "none";
-        //    x[slideIndex].getElementsByClassName("notUsedInMapping")[0].style.display = "flex";
-        //}
-        //{% endif %}
+        {% if maps %}
+        if(isUsedInMap(slideIndex, displayingIR)){
+            details.getElementsByClassName("usedInMapping")[0].style.display = "flex";
+            details.getElementsByClassName("notUsedInMapping")[0].style.display = "none";
+        } else {
+            details.getElementsByClassName("usedInMapping")[0].style.display = "none";
+            details.getElementsByClassName("notUsedInMapping")[0].style.display = "flex";
+        }
+        {% endif %}
 
         if(lastSlide != slideIndex){
             if (detections != null){
@@ -1030,7 +1057,7 @@
             <div class="mySlides" id="dynamic-slide">
                 <a id="dynamic-filename-RGB" style="display: inline-block; padding: 8px 0"> RGB: x.jpeg</a>
                 <a id="dynamic-filename-IR" style="display: inline-block; padding: 8px 0"> IR: x.jpeg</a>
-                <a id="dynamic-filename-Unprocessed" style="display: inline-block; padding: 8px 0"> Unprocessed: x.jpeg</a>
+                <a id="dynamic-filename-Unprocessed" style="display: inline-block; padding: 8px 0"> Unprocessed: </a>
                 <div class="usedInMappingContainer">
                     <div class="usedInMapping">
                         <a style="margin: 0 6px; float: left">&#10003</a>
