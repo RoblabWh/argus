@@ -42,8 +42,9 @@ class OdmTaskManager:
         if DOCKER_ENV_KEY:
             # adress = self.get_host_ip()
             # print('program thinks, that this is out host adress:',adress)
-            self.address = '172.17.0.1'
-            #self.address = 'host.docker.internal'
+            # self.address = '172.17.0.1'
+            self.address = 'host.docker.internal'
+            #print('pinging host adress:', self.address, self.ping_address(self.address))
             print('using different ip to access localhost/ 127.0.0.1 because of running in a docker container, now using:', self.address)
 
 
@@ -79,6 +80,14 @@ class OdmTaskManager:
     #     client = docker.from_env()
     #     host_ip = client.containers.get('hostname').attrs['NetworkSettings']['IPAddress']
     #     return host_ip
+
+    def ping_address(self, address):
+        response = os.system("ping -c 1 " + address)
+        if response == 0:
+            pingstatus = "Network Active"
+        else:
+            pingstatus = "Network Error"
+        return pingstatus
 
     def check_connection(self, host, port, timeout=2):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # presumably

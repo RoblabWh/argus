@@ -84,7 +84,7 @@
             border-style: none;
             cursor: pointer;
             transition: 0.3s;
-            position: absolute;
+            position: relative;
             right: 0;
             top: -4px;
         }
@@ -328,7 +328,7 @@
         <br>
         <div style="position: relative;">
             <h4 style="margin-bottom: 2px;">Flight Report (ID:{{ id }})</h4>
-            <button class="big_button" onClick="location.href = '/{{id}}/edit'"> Change settings and reprocess</button>
+            <button style="position: absolute" class="big_button" onClick="location.href = '/{{id}}/edit'"> Change settings and reprocess</button>
         </div>
         <div style="width: 100%; display: flex;">
             <h1 id="title-name">{{ project.name }}</h1>
