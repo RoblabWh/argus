@@ -12,5 +12,7 @@ WORKDIR /app
 
 RUN pip install -r requirements.txt
 
+ENV AM_I_IN_A_DOCKER_CONTAINER Yes
+
 ENTRYPOINT ["python3", "main_new.py"]
 EXPOSE 5000

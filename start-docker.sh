@@ -6,9 +6,15 @@ DATAPATH=~/$APPNAME/uploads
 # create directory if needed
 mkdir -p "$DATAPATH"
 
+# check if rebuild flag is provided
+rebuild=false
+if [ "$1" == "--rebuild" ]; then
+  rebuild=true
+fi
+
 # build image if not present
-if [ -z "$(docker images -q $APPNAME)" ]; then
+if [ "$rebuild" == true ] || [ -z "$(docker images -q $APPNAME)" ]; then
   docker build -t "$APPNAME" "${0%/*}"
 fi
 # run image
-docker run -p "5000:5000" --rm -it -v /var/run/docker.sock:/var/run/docker.sock -v "${DATAPATH}:/app/static/uploads" -v "${APPNAME}_model_weights:/app/detection/model_weights" "$APPNAME"
+docker run -p "5000:5000" --rm -it -v /var/run/docker.sock:/var/run/docker.sock -v "${DATAPATH}:/app/static/uploads" -v "${APPNAME}_model_weights:/app/detection/model_weights" "$APPNAME" --add-host host.docker.internal:host-gateway

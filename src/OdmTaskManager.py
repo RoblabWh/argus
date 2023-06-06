@@ -18,6 +18,9 @@ from functools import partial
 import time
 import docker
 import cv2
+
+import socket
+
 from itertools import repeat
 
 
@@ -34,6 +37,15 @@ class OdmTaskManager:
         :param inputfolder: If image_paths are not provided search images in folder
         """
         self.path_to_image_folder = path_to_image_folder
+        self.address ='127.0.0.1'
+        DOCKER_ENV_KEY = os.environ.get('AM_I_IN_A_DOCKER_CONTAINER', False)
+        if DOCKER_ENV_KEY:
+            # adress = self.get_host_ip()
+            # print('program thinks, that this is out host adress:',adress)
+            self.address = '172.17.0.1'
+            #self.address = 'host.docker.internal'
+            print('using different ip to access localhost/ 127.0.0.1 because of running in a docker container, now using:', self.address)
+
 
         print("Establish client from environment variables")
         self.client = docker.from_env()
@@ -41,9 +53,11 @@ class OdmTaskManager:
         self.container = self.client.containers.run("opendronemap/nodeodm", stdin_open=True, tty=True,
                                                     ports={"3000": port}, detach=True)
         # professional (and now very cool) way to wait for container to be ready
-        time.sleep(5)
+        time.sleep(6)
 
-        self.node = Node('localhost', port)
+        self.check_connection(self.address, port)
+
+        self.node = Node(self.address, port)
         self.task = None
         self.task_complete = False
         self.console_output = []
@@ -60,6 +74,22 @@ class OdmTaskManager:
         cv2.imwrite(scaled_image_path, resized)
         os.system('exiftool -TagsFromFile ' + path + ' ' + scaled_image_path)
         return scaled_image_path
+
+    # def get_host_ip(self):
+    #     client = docker.from_env()
+    #     host_ip = client.containers.get('hostname').attrs['NetworkSettings']['IPAddress']
+    #     return host_ip
+
+    def check_connection(self, host, port, timeout=2):
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # presumably
+        sock.settimeout(timeout)
+        try:
+            sock.connect((host, port))
+        except:
+            print('ODM CONTAINER no connection')
+        else:
+            sock.close()
+            print('ODM CONTAINER connection successful')
 
     def set_images_scaled(self, image_paths, scaled_image_size=960):
         self._image_size = scaled_image_size
