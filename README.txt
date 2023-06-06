@@ -1,7 +1,7 @@
 README
 ======
 
-There are several ways to run the image Mapper WebApp.
+There are several ways to run the ARGUS WebApp.
 
 For Linux Users
 ===============
