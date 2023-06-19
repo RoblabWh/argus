@@ -1,6 +1,6 @@
 #!/bin/bash
 
-APPNAME='argus'
+APPNAME='ARGUS'
 DATAPATH=~/$APPNAME/uploads
 
 # create directory if needed

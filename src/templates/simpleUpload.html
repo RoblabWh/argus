@@ -465,7 +465,7 @@
             console.log(xhr.responseText);
             console.log('File deleted successfully.');
 
-            if (uploadedImage.querySelector('.loading-indicator').style.display != 'none') {
+            if (uploadedImage.querySelector('.loading-indicator').style.display == 'none') {
                 numberOfImagesUploadedSuccessfully--;
             }
             numberOfImagesUploading--;
@@ -703,6 +703,15 @@
     function updateProgressBar(progress) {
       const progressBar = document.getElementById('progress-bar');
       progressBar.style.width = `${progress}%`;
+      console.log(progress);
+      if (progress >= 99.9) {
+        progressBarLabel = document.getElementById('progress-bar-label');
+        progressBarLabel.innerHTML = 'DONE';
+        progressBar.style.backgroundColor = 'var(--bg-color-b)';
+      }
+      else {
+        progressBar.style.backgroundColor = 'var(--accent-color-green)';
+      }
     }
 
     // Function to check if progress is running
