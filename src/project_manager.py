@@ -10,6 +10,8 @@ class ProjectManager:
         self.projects = []
         self.highest_id = -1
         self.current_project_id = None
+        if not os.path.exists(path_to_images):
+            os.makedirs(path_to_images)
         self.projects_path = path_to_images
         #self.image_mapper = {}
 

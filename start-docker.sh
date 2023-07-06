@@ -1,6 +1,6 @@
 #!/bin/bash
 
-APPNAME='ARGUS'
+APPNAME='argus'
 DATAPATH=~/$APPNAME/uploads
 
 # create directory if needed
@@ -19,8 +19,6 @@ fi
 
 # run image
 docker run \
-    --gpus all \
-    --runtime=nvidia \
     --add-host host.docker.internal:host-gateway \
     -p "5000:5000" \
     --rm \

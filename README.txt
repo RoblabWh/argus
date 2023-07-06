@@ -27,3 +27,33 @@ The WebApp is typically running in port 5000.
 You can either use your loaclhost or the IP address of the machine running the WebApp (as long as you are using linux).
 
 
+
+conda env Vorgehen
+
+conda create --name argus python
+conda activate argus
+conda install pip (,üsste man eigentlich schon haben, aber nur zur Sicherheit)
+pip install numpy
+pip install vincenty
+pip install utm
+pip install geopy
+pip install shapely
+pip install descartes
+pip install pyexifinfo
+pip install imutils
+pip install Pillow (müsste dann eigneltich shco da sein)
+pip install requests
+pip install opencv-python
+pip install scipy
+pip install docker==6.0.0
+pip install flask==2.2.2
+pip install pyodm==1.5.10
+pip install pyocclient
+
+pip install --force-reinstall -v requests==2.28.0
+(Version 2.28.0 needed or docker error will occure)
+// matplotlib
+// piexif
+// weathercom
+// scikit_image
+// ipython

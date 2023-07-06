@@ -9,8 +9,10 @@ import time
 # check if src/detection/model_weights/ exists or if it is empty
 
 class ModelWeightsDownloader:
-    def __init__(self, weights_path="detection/model_weights/"):
+    def __init__(self, weights_path="./detection/model_weights/"):
         self.weight_path = weights_path
+        print("weights_path set to:", weights_path)
+
 
     def check_model_weights(self):
         if not self._has_model_weights():
@@ -22,6 +24,7 @@ class ModelWeightsDownloader:
 
     def _has_model_weights(self):
         if not os.path.exists(self.weight_path):
+            os.makedirs(self.weight_path)
             return False
         if not os.listdir(self.weight_path):
             return False
@@ -30,26 +33,6 @@ class ModelWeightsDownloader:
     def _download_model_weights(self):
         # download model weights from sciebo-link "https://w-hs.sciebo.de/s/dF2wQbFNW2zuCpK" with password "fire"
         # and save them to src/detection/model_weights/
-        #url = "https://w-hs.sciebo.de/s/dF2wQbFNW2zuCpK"
-        #password = "fire"
-        #destination = "src/detection/model_weights"
-
-        #pysciebo.download(url, password, destination)
-        #
-        # print("Downloading model weights from sciebo-link: ", url)
-        # headers = {'X-Requested-With': 'XMLHttpRequest'}
-        # response = requests.get(url, auth=(password,password), allow_redirects=True)
-        # print(response.content)
-        # with open(destination+'file.ext', 'wb') as f:
-        #     f.write(response.content)
-
-        # print(os.path.abspath(destination))
-        # web = Browser(downloadPath=destination)
-        # web.go_to(url+'/authenticate')
-        # web.type(password, into='password')
-        # web.click(id='password-submit')
-        # print("Downloading model weights from sciebo-link: ", url)
-        # web.go_to(url+'/download')
 
         destination = self.weight_path
         public_link = 'https://w-hs.sciebo.de/s/dF2wQbFNW2zuCpK'

@@ -40,11 +40,8 @@ class OdmTaskManager:
         self.address ='127.0.0.1'
         DOCKER_ENV_KEY = os.environ.get('AM_I_IN_A_DOCKER_CONTAINER', False)
         if DOCKER_ENV_KEY:
-            # adress = self.get_host_ip()
-            # print('program thinks, that this is out host adress:',adress)
             # self.address = '172.17.0.1'
             self.address = 'host.docker.internal'
-            #print('pinging host adress:', self.address, self.ping_address(self.address))
             print('using different ip to access localhost/ 127.0.0.1 because of running in a docker container, now using:', self.address)
 
 
