@@ -96,7 +96,7 @@
 
 
     .ir-overlay:hover .temp-glass{
-        opacity: 1;
+        //opacity: 1;
     }
 
 
@@ -767,7 +767,7 @@
                 if($('#temperatureCheckbox').is(':checked')){
                     var img = document.getElementById('dynamic-image-IR').getElementsByTagName('img')[0];
                     var tempGlass = document.getElementById('dynamic-temp-glass');
-
+                    tempGlass.style.opacity = 1.0;
                     var canvas = document.createElement('canvas');
                     canvas.width = img.width;
                     canvas.height = img.height;
@@ -796,6 +796,8 @@
                         tempGlass.style.borderColor = "#ffffff";
                     }
                  } else {
+                    var tempGlass = document.getElementById('dynamic-temp-glass');
+                    tempGlass.style.opacity = 0.0;
                     this.style.backgroundColor = "transparent";
                     this.innerHTML = "";
                  }

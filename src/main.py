@@ -9,8 +9,8 @@ def main():
     UPLOAD_FOLDER = './static/uploads/'
 
     #execute the python program in file model_weights_downloader.py
-    model_weights_downloader = ModelWeightsDownloader()
-    model_weights_downloader.check_model_weights()
+    # model_weights_downloader = ModelWeightsDownloader()
+    # model_weights_downloader.check_model_weights()
 
     start = datetime.datetime.now().replace(microsecond=0)
 
@@ -38,7 +38,6 @@ if __name__ == '__main__':
     # after closing a report during processing, and then reopening during processing, the unfinished maps do not load
     #   (until refresh)
     # if the IR colorscheme is not monochromatic, do estimate temperature vales, at pixels with only greyscale values
-    # Hide Temp glass on hover if not activated
 
 
 
