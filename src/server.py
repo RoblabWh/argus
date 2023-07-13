@@ -29,14 +29,7 @@ class ArgusServer:
         self.ALLOWED_EXTENSIONS = set(['png', 'jpg', 'jpeg', 'PNG', 'JPG', 'JPEG'])
 
         self.threads = []
-        self.file_names = []
-        self.flight_data = []
-        self.camera_specs = []
-        self.weather = []
-        self.map = {}
-
-        self.projects_dict_list = []
-
+        # self.map = {}
         self.project_manager = project_manager
 
         self.setup_routes()
@@ -146,6 +139,9 @@ class ArgusServer:
     def delete_file(self, report_id):
         data = request.get_json()
         filename = data.get('filename')
+        project = self.project_manager.get_project(report_id)
+        file_names = project['data']['file_names']
+        print("len of file_names: ", len(file_names))
         if filename:
 
             if self.delete_file_in_folder(report_id, filename, "/"):
@@ -155,6 +151,9 @@ class ArgusServer:
                 return 'File deleted successfully.'
 
             if self.delete_file_in_folder(report_id, filename, "/ir/"):
+                return 'File deleted successfully.'
+
+            if self.delete_file_in_folder(report_id, filename, "/panos/"):
                 return 'File deleted successfully.'
 
             return 'File not found.'
@@ -249,7 +248,8 @@ class ArgusServer:
         print("editing report " + str(report_id))
         if (self.project_manager.has_project(report_id)):
             print("Directory exists")
-            return self.render_standard_report(report_id, template='simpleUpload.html')
+            return self.render_upload_report(report_id)
+            #self.render_standard_report(report_id, template='simpleUpload.html')
         else:
             projects_dict_list = self.project_manager.get_projects()
             order_by_filght_date = self.calculate_order_based_on_flight_date(projects_dict_list)
@@ -427,16 +427,49 @@ class ArgusServer:
                                flight_trajectory=flight_trajectory, maps=maps, project=project, message=message,
                                processing=processing, gradient_lut=gradient_lut, ir_settings=ir_settings,
                                detections=detections, unprocessed_images=contains_unprocessed_images)
+    def render_upload_report(self, report_id, template="simpleUpload.html"):
+            data = self.project_manager.get_project(report_id)['data']
+            file_names_rgb = data["file_names"]
+            file_names_ir = data["file_names_ir"]
+            file_names_panos = [p['file'] for p in data["panos"]]
+            file_names_upload = file_names_rgb.copy() + file_names_ir.copy() + file_names_panos.copy()
+
+            has_ir = False
+            if file_names_ir != []:
+                has_ir = True
+
+            contains_unprocessed_images = False
+            try:
+                contains_unprocessed_images = data["contains_unprocessed_images"]
+            except:
+                pass
+
+            processing = False
+            for thread in self.threads:
+                processing = False
+                if thread.report_id == report_id:
+                    processing = True
+                    break
+
+
+            project = {"id": report_id, "name": self.project_manager.get_project_name(report_id),
+                       "description": self.project_manager.get_project_description(report_id),
+                       'creation_time': self.project_manager.get_project_creation_time(report_id)}
+            return render_template(template, id=report_id, project=project, file_names=file_names_upload,
+                                   processing=processing)
 
     def delete_file_in_folder(self, report_id, filename, subfolder, thumbnail=False):
         file_path = "uploads/" + str(report_id) + subfolder + filename
         print("trying to delete file in folder " + file_path)
         if os.path.exists('static/' + file_path):
             os.remove('static/' + file_path)
-            self.project_manager.remove_from_file_names(report_id, file_path)
-            self.project_manager.remove_from_unprocessed_images(report_id, file_path)
+            print("file deleted @" + file_path)
             if not thumbnail:
-                self.delete_file_in_folder(report_id, filename, subfolder + "/thumbnails", thumbnail=True)
+                self.project_manager.remove_from_file_names_rgb(report_id, file_path)
+                self.project_manager.remove_from_file_names_ir(report_id, file_path)
+                self.project_manager.remove_from_panos(report_id, file_path)
+                self.project_manager.remove_from_unprocessed_images(report_id, file_path)
+                self.delete_file_in_folder(report_id, filename, subfolder + "thumbnails/", thumbnail=True)
             return True
         return False
 

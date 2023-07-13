@@ -130,6 +130,7 @@ class ProjectManager:
             data['file_names'] = file_names_rgb
         if file_names_ir != None:
             data['file_names_ir'] = file_names_ir
+        print("len of file_names: " + str(len(data['file_names'])), "len of file_names_ir: " + str(len(data['file_names_ir'])))
         with open(self.projects_path + str(id) + "/project.json", "w") as json_file:
             json.dump(project, json_file)
 
@@ -173,6 +174,14 @@ class ProjectManager:
     def add_panos(self, id, panos):
         panos = self.get_panos(id) + panos
         self.update_data_by_keyword(id, 'panos', panos)
+
+    def remove_from_panos(self, id, pano_file):
+        panos = self.get_panos(id)
+        for p in panos:
+            if p['file'] == pano_file:
+                panos.remove(p)
+                self.update_data_by_keyword(id, 'panos', panos)
+                return True
 
     def update_data_by_keyword(self, id, keyword, data):
         project = self.get_project(id)
@@ -300,6 +309,18 @@ class ProjectManager:
         file_names = self.get_file_names(report_id)
         file_names.remove(file_path)
         self.overwrite_file_names_sorted(report_id, file_names_rgb=file_names)
+
+    def remove_from_file_names_rgb(self, report_id, file_path):
+        file_names = self.get_file_names_rgb(report_id)
+        if file_path in file_names:
+            file_names.remove(file_path)
+        self.overwrite_file_names_sorted(report_id, file_names_rgb=file_names)
+
+    def remove_from_file_names_ir(self, report_id, file_path):
+        file_names = self.get_file_names_ir(report_id)
+        if file_path in file_names:
+            file_names.remove(file_path)
+        self.overwrite_file_names_sorted(report_id, file_names_ir=file_names)
 
     def remove_from_unprocessed_images(self, report_id, file_path):
         project = self.get_project(report_id)

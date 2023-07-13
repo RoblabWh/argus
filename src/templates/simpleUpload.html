@@ -402,6 +402,7 @@
 
     var numberOfImagesUploading = 0;
     var numberOfImagesUploadedSuccessfully = 0;
+    var doubleNames = [];
     {% if processing %};
     var processing = true;
     {% else %}
@@ -495,24 +496,31 @@
 
     // Function to handle file selection
     function handleFileSelect(event) {
+      console.log('handleFileSelect');
       event.preventDefault();
       if(processing) {
         return;
       }
-      const files = event.target.files || event.dataTransfer.files;
 
-      numberOfImagesUploading += files.length;
       showProgressBar();
+
+      const files = event.target.files || event.dataTransfer.files;
+      numberOfImagesUploading += files.length;
+      doubleNames = [];
+
       updateUploadProgress();
+
 
       // Process each selected file
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
+        console.log(file);
         const imageType = /^image\//;
 
         // Check if the file is an image
         if (!imageType.test(file.type)) {
-          continue;
+            console.error('File', file.name, 'is not an image.');
+            continue;
         }
 
         const reader = new FileReader();
@@ -520,56 +528,64 @@
         // Function to handle image loading
         reader.onload = (function(imageFile) {
           return function(e) {
-            // Create the image element
-            const img = document.createElement('img');
-            img.onload = function() {
-              uploadImage(imageFile, uploadedImage);
-            };
-            img.src = e.target.result;
+            // Check if the filename is already uploaded
+            if(isFilenameAlreadyUploaded(imageFile.name)){
+                doubleNames.push(imageFile.name);
+                numberOfImagesUploading--;
+                updateUploadProgress();
+            }
+            else{
+                // Create the image element
+                const img = document.createElement('img');
+                img.onload = function() {
+                  uploadImage(imageFile, uploadedImage);
+                };
+                img.src = e.target.result;
 
 
-            // Open the image in big size on click
-            img.addEventListener('click', function(event) {
-              event.stopPropagation();
-              window.open(this.src);
-            });
+                // Open the image in big size on click
+                img.addEventListener('click', function(event) {
+                  event.stopPropagation();
+                  window.open(this.src);
+                });
 
-            // Create the uploaded image container
-            const uploadedImage = document.createElement('div');
-            uploadedImage.className = 'uploaded-image';
+                // Create the uploaded image container
+                const uploadedImage = document.createElement('div');
+                uploadedImage.className = 'uploaded-image';
 
-            // Create the filename text element
-            const filenameText = document.createElement('div');
-            filenameText.className = 'filename-text';
-            filenameText.textContent = getFilenameFromPath(file.name);
+                // Create the filename text element
+                const filenameText = document.createElement('div');
+                filenameText.className = 'filename-text';
+                filenameText.textContent = getFilenameFromPath(file.name);
 
-            // Create the loading indicator
-            const loadingIndicator = document.createElement('div');
-            loadingIndicator.className = 'loading-indicator';
-            loadingIndicator.textContent = 'Uploading...';
+                // Create the loading indicator
+                const loadingIndicator = document.createElement('div');
+                loadingIndicator.className = 'loading-indicator';
+                loadingIndicator.textContent = 'Uploading...';
 
-            // Create the delete button
-            const deleteButton = document.createElement('div');
-            deleteButton.className = 'delete-button';
-            deleteButton.innerHTML = '<a style="font-size: 17px; margin-top: auto; color: var(--font-color-b);">✖</a>';
+                // Create the delete button
+                const deleteButton = document.createElement('div');
+                deleteButton.className = 'delete-button';
+                deleteButton.innerHTML = '<a style="font-size: 17px; margin-top: auto; color: var(--font-color-b);">✖</a>';
 
-            deleteButton.addEventListener('click', function(event) {
-              event.stopPropagation();
-              const uploadedImage = this.parentNode;
-              const img = uploadedImage.querySelector('img');
-              const filename = uploadedImage.querySelector('.filename-text').innerHTML;
-              console.log(filename);
-              deleteFile(filename, uploadedImage);
-            });
+                deleteButton.addEventListener('click', function(event) {
+                  event.stopPropagation();
+                  const uploadedImage = this.parentNode;
+                  const img = uploadedImage.querySelector('img');
+                  const filename = uploadedImage.querySelector('.filename-text').innerHTML;
+                  console.log(filename);
+                  deleteFile(filename, uploadedImage);
+                });
 
-            // Append elements to the uploaded image container
-            uploadedImage.appendChild(img);
-            uploadedImage.appendChild(loadingIndicator);
-            uploadedImage.appendChild(deleteButton);
-            uploadedImage.appendChild(filenameText);
+                // Append elements to the uploaded image container
+                uploadedImage.appendChild(img);
+                uploadedImage.appendChild(loadingIndicator);
+                uploadedImage.appendChild(deleteButton);
+                uploadedImage.appendChild(filenameText);
 
-            // Append the uploaded image container to the uploaded images container
-            uploadedImages.appendChild(uploadedImage);
+                // Append the uploaded image container to the uploaded images container
+                uploadedImages.appendChild(uploadedImage);
+            }
           };
         })(file);
 
@@ -578,12 +594,31 @@
       }
     }
 
+    function isFilenameAlreadyUploaded(filename){
+        var uploadedImages = document.getElementsByClassName('uploaded-image');
+        for (let i = 0; i < uploadedImages.length; i++){
+            var uploadedFilename = uploadedImages[i].querySelector('.filename-text').innerHTML;
+            if (uploadedFilename == filename){
+                console.log("found duplicate with name " + filename + " and existing image " + uploadedFilename);
+                return true;
+            }
+        }
+        return false;
+    }
+
+
     function updateUploadProgress(){
         const progressBarLabel = document.getElementById('progress-bar-label');
         var progress = Math.round((numberOfImagesUploadedSuccessfully/numberOfImagesUploading)*100);
 
         progressBarLabel.innerHTML = 'UPLOADING...';
         updateProgressBar(progress);
+        if(progress > 99.9){
+          if(doubleNames.length > 0){
+            alert('The following images were not uploaded because they already exist: ' + doubleNames.join(', '));
+            doubleNames = [];
+           }
+        }
 
         updateProcessButtonEnabling();
 
@@ -623,15 +658,17 @@
     ////////////////////////////////////////////
 
     const file_paths = {{ file_names|tojson }};
+    const urls_thumbnails = [];
     const urls = [];
     {% for file_name in file_names %}
+        urls_thumbnails.push("{{ url_for('static', filename=thumbnail_for(path=file_name)) }}");
         urls.push("{{ url_for('static', filename='')}}" + "{{ file_name }}");
     {% endfor %}
     // Process each selected file and create an uploadImage
     for (let i = 0; i < file_paths.length; i++){
         numberOfImagesUploading++;
         const img = document.createElement('img');
-        img.src = urls[i];
+        img.src = urls_thumbnails[i];
         img.onload = function() {
           // remove the loading indicator
             const loadingIndicator = uploadedImage.querySelector('.loading-indicator');
@@ -643,12 +680,15 @@
         // Create the uploaded image container
         const uploadedImage = document.createElement('div');
         uploadedImage.className = 'uploaded-image';
+        a = document.createElement('a');
+        a.href = urls[i];
 
 
         // Open the image in big size on click
         uploadedImage.addEventListener('click', function(event) {
           event.stopPropagation();
-          image = this.querySelector('img').src;
+          image = this.querySelector('a');
+          console.log(image);
           window.open(image);
         });
 
@@ -678,6 +718,7 @@
 
         // Append elements to the uploaded image container
         uploadedImage.appendChild(img);
+        uploadedImage.appendChild(a);
         uploadedImage.appendChild(loadingIndicator);
         uploadedImage.appendChild(deleteButton);
         uploadedImage.appendChild(filenameText);
