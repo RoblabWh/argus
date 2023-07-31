@@ -128,8 +128,8 @@
 
             //create header
             var header = tbl.insertRow();
-            //create header cells for "category", "findings", "lowest confidence" and "images"
-            var headings = ["Category", "Findings", "Lowest Confidence", "Images"];
+            //create header cells for "category", "findings", "threshold" and "images"
+            var headings = ["Category", "Findings", "threshold", "Images"];
             for (let i = 0; i < headings.length; i++){
                 var h1 = document.createElement('th');
                 h1.innerHTML = headings[i];
@@ -152,7 +152,23 @@
                 row.insertCell().innerHTML=category.sum;
                 var a = document.createElement('a');
                 if(category.sum > 0){
-                    row.insertCell().innerHTML=category.lowest_score;
+                    slider = document.createElement('input');
+                    slider.setAttribute("type", "range");
+                    slider.setAttribute("id", "slider_" + category.name + "_global_threshold");
+                    slider.setAttribute("min", "0");
+                    slider.setAttribute("max", "1");
+                    slider.setAttribute("step", "0.01");
+                    slider.setAttribute("value", category.lowest_score);
+                    // on change update the subtable with the new threshold in an own method
+                    //slider.onchange = function() {
+                    //    updateSubTableThreshold(category.name, slider.value);
+                    //};
+                    (function(category, slider){
+                        slider.onchange = function(x) {
+                        updateSubTableThreshold(category.name, x.target.value);
+                        }
+                    })(category, slider);
+                    row.insertCell().append(slider);//category.lowest_score;
                     a.innerHTML = "&#x00A0; show &#x25BE; &#x00A0;";
                     a.setAttribute("class", "tableButton");
                 }else{
@@ -201,13 +217,49 @@
                 subTableCell.appendChild(subTable);
 
                 if(category.sum > 0){
-                    row.onclick = (function(opt) {return function(){
+                    row.cells[3].onclick = (function(opt) {return function(){
                         showTableByCategory(opt)
                         };
                     })(category.name);
                 }
             }
 
+        }
+
+        function updateSubTableThreshold(categoryName, threshold){
+            var subTable = document.getElementById("table" + categoryName);
+            var rows = subTable.rows;
+            categoryID = detections["categories"][detections["categories"].findIndex(x => x.name === categoryName)].id;
+            categorySum = 0;
+            for (let i = 1; i < rows.length; i++){
+                var row = rows[i];
+                var cells = row.cells;
+                imageName = cells[0].innerHTML;
+                imageID = detections["images"].findIndex(x => x.file_name === imageName);
+
+                annotations = detections["annotations"][imageID];
+                sum = 0;
+                for (let j = 0; j < annotations.length; j++){
+                    var annotation = annotations[j];
+                    if (annotation.category_id === categoryID){
+                        //console.log("annotation.score: " + annotation.score + " threshold: " + threshold + "categoryID: " + categoryID + "categoryName: " + categoryName);
+                        if (annotation.score < threshold){
+                            //noting to do
+                        }else{
+                            sum += 1;
+                        }
+                    }
+                }
+                var cell = cells[1];
+                cell.innerHTML = sum;
+                console.log("categoryID: " + categoryID + " categoryName: " + categoryName + " imageID: " + imageID + " imageName: " + imageName + " sum: " + sum);
+                categorySum += sum;
+            }
+            sumCell = document.getElementById("detectionTable").rows[categoryID*2].cells[1];
+            sumCell.innerHTML = categorySum;
+            image_slider = document.getElementById("layer-threshold-slider-" + categoryName);
+            image_slider.value = threshold;
+            $("#layer-threshold-slider-" + categoryName).trigger("input");
         }
 
         function generateAnnotationSettings(detectionData){
@@ -330,7 +382,7 @@
                 slider.min = 0.3;
                 slider.max = 1;
                 slider.step = 0.01;
-                slider.value = 0.3;
+                slider.value = document.getElementById("slider_" + category.name + "_global_threshold").value;
                 slider.id = "layer-threshold-slider-" + category.name;
                 slider.className = "slider";
                 slider.oninput = (function(opt) {return function(){
@@ -374,6 +426,7 @@
 
             }
             tableContainer.appendChild(tbl);
+            filterSelection();
         }
 
         function changeThreshold(category){
