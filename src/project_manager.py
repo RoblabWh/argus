@@ -302,6 +302,9 @@ class ProjectManager:
         with open(path, "w") as json_file:
             json.dump(detections, json_file)
 
+    def set_unprocessed_changes(self, report_id, unprocessed_changes):
+        self.update_data_by_keyword(report_id, 'unprocessed_changes', unprocessed_changes)
+
     def update_contains_unprocessed_images(self, report_id, contains_unprocessed_images):
         self.update_data_by_keyword(report_id, 'contains_unprocessed_images', contains_unprocessed_images)
 

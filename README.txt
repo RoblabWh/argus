@@ -57,3 +57,17 @@ pip install --force-reinstall -v requests==2.28.0
 // weathercom
 // scikit_image
 // ipython
+
+
+
+
+mmdet
+ins conda env gehen, dann:
+conda install pytorch torchvision torchaudio pytorch-cuda=11.8 -c pytorch -c nvidia
+git clone https://github.com/open-mmlab/mmdetection.git -b v2.28.1
+cd mmdetection/
+pip install -r requirements/build.txt
+pip install "git+https://github.com/open-mmlab/cocoapi.git#subdirectory=pycocotools"
+pip install -v -e .
+pip install mmcv-full==1.7.1
+pip install mmpycocotools==12.0.3

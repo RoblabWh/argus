@@ -21,6 +21,21 @@
             font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
         }
 
+        .alertBanner {
+            width: 100%;
+            padding: 10px;
+            background-color: var(--accent-color-red);
+            color: var(--font-color-b);
+
+        }
+
+        .alertBanner p{
+            color: var(--font-color-b);
+            width: 100%;
+            text-align: center;
+            font-weight: bold;
+        }
+
         .edit-text-button{
             font-size: 18px;
             height: fit-content;
@@ -320,11 +335,17 @@
 
     {% include 'headerReport.html' %}
 
+    <br>
+    <br>
+    <br>
+    {% if unprocessed_changes %}
+    <div class="alertBanner">
+        <p> THE REPORT HAS BEEN EDITED BUT NOT REPROCESSED YET! TO PREVENT ERRORS PLEASE REPROCESS THE REPORT</p>
+    </div>
+    {% endif %}
 
     <div class="bodyDiv">
-        <br>
-        <br>
-        <br>
+
         <br>
         <div style="position: relative;">
             <h4 style="margin-bottom: 2px;">Flight Report (ID:{{ id }})</h4>

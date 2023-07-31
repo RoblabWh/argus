@@ -5,8 +5,8 @@ from argparse import Namespace
 from model_weights_downloader import ModelWeightsDownloader
 from project_manager import ProjectManager
 from mapper_thread import MapperThread
-# from detection.datahandler import DataHandler
-# from detection.InferenceEngine import InferenceEngine
+from detection.datahandler import DataHandler
+from detection.InferenceEngine import InferenceEngine
 
 
 from flask import Flask, flash, request, redirect, url_for, render_template, jsonify
@@ -132,6 +132,7 @@ class ArgusServer:
             return json.dumps({'success': False}), 415, {'ContentType': 'application/json'}
 
         self.project_manager.update_file_names(report_id, file_names)
+        self.project_manager.set_unprocessed_changes(report_id, True)
         self.project_manager.append_unprocessed_images(report_id, file_names)
 
         return json.dumps({'success': True}), 200, {'ContentType': 'application/json'}
@@ -141,6 +142,7 @@ class ArgusServer:
         filename = data.get('filename')
         project = self.project_manager.get_project(report_id)
         file_names = project['data']['file_names']
+        self.project_manager.set_unprocessed_changes(report_id, True)
         print("len of file_names: ", len(file_names))
         if filename:
 
@@ -218,6 +220,7 @@ class ArgusServer:
                     self.project_manager.overwrite_file_names_sorted(report_id, file_names_rgb=file_names_rgb,
                                                                 file_names_ir=file_names_ir)
                     self.project_manager.update_contains_unprocessed_images(report_id, False)
+                    self.project_manager.set_unprocessed_changes(report_id, False)
                     thread.metadata_delivered = True
                     return self.render_standard_report(report_id)
                 else:
@@ -307,10 +310,59 @@ class ArgusServer:
 
 
     def run_detection(self, report_id):
-        return 'currently not implemented'
+        numbr_of_models = 2
+        models_setting = request.form.get('model_options')
+        if models_setting == "all":
+            numbr_of_models = 5
+        elif models_setting == "medium":
+            numbr_of_models = 3
+
+        self.detect_objects(numbr_of_models, report_id)
+        detections = json.load(open(self.project_manager.get_annotation_file_path(report_id)))
+
+        # return render_standard_report(report_id)
+        return detections
 
     def update_detections_colors(self, report_id):
-        return 'currently not implemented'
+        color = [request.form.get('colorH'), request.form.get('colorS'), request.form.get('colorL')]
+        category_name = request.form.get('category_name')
+        print(request.form)
+        print("update_detections_colors for id" + str(report_id) + " with: " + str(color) + " and category_name: " + str(
+                category_name))
+        self.project_manager.update_detections_colors(report_id, color, category_name)
+        return "success"
+
+    def detect_objects(self, numbr_of_models, report_id):
+        networks_weights_folder = "./detection/model_weights"
+        weights_paths_list = []
+
+        weights_paths_list.append(
+            networks_weights_folder + "/deformable_detr_twostage_refine_r50_16x2_50e_coco_fire_04")
+        weights_paths_list.append(networks_weights_folder + "/autoassign_r50_fpn_8x2_1x_coco_fire_0")
+        if numbr_of_models >= 3:
+            weights_paths_list.append(networks_weights_folder + "/tood_r101_fpn_dconv_c3-c5_mstrain_2x_coco_fire_5")
+            if numbr_of_models >= 4:
+                weights_paths_list.append(
+                    networks_weights_folder + "/vfnet_x101_32x4d_fpn_mdconv_c3-c5_mstrain_2x_coco_fire_1")
+                if numbr_of_models >= 5:
+                    weights_paths_list.append(networks_weights_folder + "/yolox_s_8x8_300e_coco_fire_300_4")
+
+        images_path_list = self.project_manager.get_file_names_rgb(report_id)
+        images_path_list = ["./static/" + path for path in images_path_list]
+        config_path = "detection/config/custom/config.py"
+        ann_path = self.project_manager.get_annotation_file_path(report_id)  # vom project manager geben lassen
+
+        data_handler = DataHandler(config_path, ann_path)
+        data_handler.set_image_paths(images_path_list, 2)
+        data_handler.create_empty_ann()
+
+        engine = InferenceEngine(network_folders=weights_paths_list)
+        results = engine.inference_all(data_handler, 0.3)
+        bboxes = data_handler.compare_results(results)
+        data_handler.create_coco()
+        # data_handler.save_images("result", bboxes, engine.models[0], 0.3)
+        data_handler.save_results_in_json(bboxes)
+        data_handler.structure_ann_by_images()
 
     def display_image(self, filename):
         return redirect(url_for('static', filename='uploads/' + filename), code=301)
@@ -397,6 +449,12 @@ class ArgusServer:
         except:
             pass
 
+        unprocessed_changes = False
+        try:
+            unprocessed_changes = data["unprocessed_changes"]
+        except:
+            pass
+
         has_rgb = False
         for slide in slide_file_paths:
             if slide[0] != "":
@@ -426,7 +484,8 @@ class ArgusServer:
                                slide_file_paths=slide_file_paths, camera_specs=camera_specs, weather=weather,
                                flight_trajectory=flight_trajectory, maps=maps, project=project, message=message,
                                processing=processing, gradient_lut=gradient_lut, ir_settings=ir_settings,
-                               detections=detections, unprocessed_images=contains_unprocessed_images)
+                               detections=detections, unprocessed_images=contains_unprocessed_images,
+                               unprocessed_changes=unprocessed_changes)
     def render_upload_report(self, report_id, template="simpleUpload.html"):
             data = self.project_manager.get_project(report_id)['data']
             file_names_rgb = data["file_names"]
@@ -443,6 +502,7 @@ class ArgusServer:
                 contains_unprocessed_images = data["contains_unprocessed_images"]
             except:
                 pass
+
 
             processing = False
             for thread in self.threads:
