@@ -257,9 +257,16 @@
             }
             sumCell = document.getElementById("detectionTable").rows[categoryID*2].cells[1];
             sumCell.innerHTML = categorySum;
-            image_slider = document.getElementById("layer-threshold-slider-" + categoryName);
-            image_slider.value = threshold;
-            $("#layer-threshold-slider-" + categoryName).trigger("input");
+            try{
+                var image_slider = document.getElementById("layer-threshold-slider-" + categoryName);
+                image_slider.value = threshold;
+                $("#layer-threshold-slider-" + categoryName).trigger("input");
+            }catch(err){
+                console.log("no slider found for category: " + categoryName);
+            }
+            //image_slider = document.getElementById("layer-threshold-slider-" + categoryName);
+            //image_slider.value = threshold;
+            //$("#layer-threshold-slider-" + categoryName).trigger("input");
         }
 
         function generateAnnotationSettings(detectionData){
@@ -382,7 +389,12 @@
                 slider.min = 0.3;
                 slider.max = 1;
                 slider.step = 0.01;
-                slider.value = document.getElementById("slider_" + category.name + "_global_threshold").value;
+                try{
+                    slider.value = document.getElementById("slider_" + category.name + "_global_threshold").value;
+                }catch(err){
+                    slider.value = 0.3;
+                }
+                //slider.value = document.getElementById("slider_" + category.name + "_global_threshold").value;
                 slider.id = "layer-threshold-slider-" + category.name;
                 slider.className = "slider";
                 slider.oninput = (function(opt) {return function(){
