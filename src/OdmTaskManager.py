@@ -18,6 +18,7 @@ from functools import partial
 import time
 import docker
 import cv2
+import psutil
 
 import socket
 
@@ -68,8 +69,10 @@ class OdmTaskManager:
         scale_percent = size / img.shape[1]
         dim = (int(img.shape[1] * scale_percent), int(img.shape[0] * scale_percent))
         resized = cv2.resize(img, dim, interpolation=cv2.INTER_NEAREST)
+        img = None
         scaled_image_path = os.path.dirname(path) + '/proxy/' + os.path.basename(path)
         cv2.imwrite(scaled_image_path, resized)
+        resized = None
         os.system('exiftool -TagsFromFile ' + path + ' ' + scaled_image_path)
         return scaled_image_path
 
@@ -116,7 +119,7 @@ class OdmTaskManager:
 
         print("Scaling images", image_paths)
         scaled_image_paths = []
-        nmbr_of_processes = len(os.sched_getaffinity(0))  # 6
+        nmbr_of_processes = self.calculate_number_of_safely_usable_processes(self.image_paths[0])
         print('number of processes: ', nmbr_of_processes)
         if nmbr_of_processes < len(image_paths):
             nmbr_of_processes = len(image_paths)
@@ -128,6 +131,39 @@ class OdmTaskManager:
         pool.join()
         print("scaling done")
         return scaled_image_paths
+
+    def get_image_memory_usage(self, image_path):
+        # Get memory usage before loading the image
+        initial_memory = psutil.virtual_memory().used
+
+        # Load the image
+        loaded_image = cv2.imread(image_path)
+
+        # Get memory usage after loading the image
+        final_memory = psutil.virtual_memory().used
+
+        # Calculate the memory used by the loaded image
+        image_memory_usage = final_memory - initial_memory
+
+        # Release the memory occupied by the loaded image
+        loaded_image = None
+
+        return image_memory_usage
+
+    def calculate_number_of_safely_usable_processes(self, example_image_path):
+        example_memory_usage = self.get_image_memory_usage(example_image_path)
+        print('example_memory_usage: ', example_memory_usage, 'of image: ', example_image_path)
+        available_memory = psutil.virtual_memory().available
+
+        # Calculate the number of processes based on memory usage
+        max_processes = multiprocessing.cpu_count()
+        if max_processes > 8:
+            max_processes = max_processes - 2
+        #len(os.sched_getaffinity(0))
+        safely_usable_processes = min(max_processes, int(available_memory / example_memory_usage))
+        print('safely_usable_processes: ', safely_usable_processes, 'with max_processes: ', max_processes, 'and available_memory: ', available_memory)
+        return safely_usable_processes
+
 
     def run_task(self, options={'feature-quality': 'medium', 'fast-orthophoto': True, 'auto-boundary': True, 'pc-ept': True,'cog': True}):
         """

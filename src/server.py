@@ -310,18 +310,22 @@ class ArgusServer:
 
 
     def run_detection(self, report_id):
-        numbr_of_models = 2
-        models_setting = request.form.get('model_options')
-        if models_setting == "all":
-            numbr_of_models = 5
-        elif models_setting == "medium":
-            numbr_of_models = 3
+        DOCKER_ENV_KEY = os.environ.get('AM_I_IN_A_DOCKER_CONTAINER', False)
+        if DOCKER_ENV_KEY:
+            print('currently not supported in Docker')
+        else:
+            numbr_of_models = 2
+            models_setting = request.form.get('model_options')
+            if models_setting == "all":
+                numbr_of_models = 5
+            elif models_setting == "medium":
+                numbr_of_models = 3
 
-        self.detect_objects(numbr_of_models, report_id)
-        detections = json.load(open(self.project_manager.get_annotation_file_path(report_id)))
+            self.detect_objects(numbr_of_models, report_id)
+            detections = json.load(open(self.project_manager.get_annotation_file_path(report_id)))
 
-        # return render_standard_report(report_id)
-        return detections
+            # return render_standard_report(report_id)
+            return detections
 
     def update_detections_colors(self, report_id):
         color = [request.form.get('colorH'), request.form.get('colorS'), request.form.get('colorL')]

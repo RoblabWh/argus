@@ -32,7 +32,7 @@ conda env Vorgehen
 
 conda create --name argus python
 conda activate argus
-conda install pip (,üsste man eigentlich schon haben, aber nur zur Sicherheit)
+conda install pip (,müsste man eigentlich schon haben, aber nur zur Sicherheit)
 pip install numpy
 pip install vincenty
 pip install utm
@@ -41,7 +41,7 @@ pip install shapely
 pip install descartes
 pip install pyexifinfo
 pip install imutils
-pip install Pillow (müsste dann eigneltich shco da sein)
+pip install Pillow (müsste dann eigentlich schon da sein)
 pip install requests
 pip install opencv-python
 pip install scipy
@@ -60,6 +60,7 @@ pip install --force-reinstall -v requests==2.28.0
 
 
 
+conda install pytorch torchvision -c pytorch
 
 mmdet
 ins conda env gehen, dann:
