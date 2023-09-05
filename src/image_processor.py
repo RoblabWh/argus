@@ -178,9 +178,12 @@ class ImageProcessor:
         temperature = "N/A"
         humidity = "N/A"
         altimeter = "N/A"
-        wind_speed = "N/A"
+        wind_speed_ms = "N/A"
+        wind_speed_kmh = "?"
+        wind_speed_knots = "?"
         wind_dir_degrees = "N/A"
         visibility = "N/A"
+        wind_dir_cardinal = "?"
 
 
         try:
@@ -191,9 +194,12 @@ class ImageProcessor:
             temperature = actual_weather.get_temperature()
             humidity = actual_weather.get_humidity()
             altimeter = actual_weather.get_altimeter()
-            wind_speed = actual_weather.get_wind_speed()
+            wind_speed_ms = actual_weather.get_wind_speed()
+            wind_speed_kmh = actual_weather.get_wind_speed_kmh()
+            wind_speed_knots = actual_weather.get_wind_speed_knots()
             visibility = actual_weather.get_visibility()
             wind_dir_degrees = actual_weather.get_wind_dir_degrees()
+            wind_dir_cardinal = actual_weather.get_wind_dir_cardinal()
         except:
             print("-Ignoring weather details...")
             print("--", sys.exc_info())
@@ -203,11 +209,14 @@ class ImageProcessor:
         weather_data.append({"description": 'Temperature', "value": str(temperature) + "°C"})
         weather_data.append({"description": 'Humidity', "value": str(humidity) + "%"})
         weather_data.append({"description": 'Air Preasure', "value": str(altimeter) + "hPa"})
-        weather_data.append({"description": 'Wind Speed', "value": str(wind_speed) + "m/s"})
-        weather_data.append({"description": 'Wind Direction', "value": str(wind_dir_degrees) + "°"})
+        weather_data.append({"description": 'Wind Speed', "value": str(wind_speed_ms) + "m/s" + " (" + str(wind_speed_kmh) + "km/h, " + str(wind_speed_knots) + "knots)"})
+        weather_data.append({"description": 'Wind Direction', "value": str(wind_dir_degrees) + "°  (" + str(wind_dir_cardinal) + ")"})
         weather_data.append({"description": 'Visibility', "value": str(visibility) + "m"})
 
         return weather_data
+
+
+
 
 
     def generate_flight_trajectory(self):

@@ -21,6 +21,9 @@ class ExifHeader:
         self.json_data = p.get_json(image_path)
         self.string = json.dumps(self.json_data, sort_keys=True, indent=4, separators=(',', ': '))
         self.python_dict = json.loads(self.string)[0]
+        ## save the python dict as json file for debugging as debugmetadta.json
+        # with open('debugmetadata.json', 'w') as outfile:
+        #     json.dump(self.python_dict, outfile, indent=4, separators=(',', ': '))
 
 
         self.gps_coordinate = None
@@ -99,11 +102,17 @@ class ExifHeader:
         except:
             return
 
-    def read_xmp_projection_type(self):
+    def read_xmp_projection_type(self, key='XMP:ProjectionType'):
+
         try:
             # print(self.python_dict)
-            projectionType = self._get_if_exist(self.python_dict, 'XMP:ProjectionType')
+            projectionType = self._get_if_exist(self.python_dict, key)
             print("projectionType: " + projectionType)
+            if projectionType == "pano":
+                projectionType = "equirectangular"
+
+            if projectionType != "equirectangular":
+                return
 
             self.pano = True
 
@@ -117,6 +126,8 @@ class ExifHeader:
             ])
             # print(self.pano)
         except:
+            if key == 'XMP:ProjectionType':
+                self.read_xmp_projection_type(key='EXIF:XPKeywords')
             return
 
     def read_camera_properties(self):

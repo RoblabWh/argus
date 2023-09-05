@@ -41,6 +41,9 @@ if __name__ == '__main__':
     # if the report gets edited but not reprocessed (maybe by going back one page), a waring asks for reprocessing
     # edit not possible while processing
     # checking what has changed before reprocessing everything (or at least before recalcuating the maps)
+    #TODO edit nur für geänderte inhalte
+
+    #TODO wetterstation ort
 
 
 
