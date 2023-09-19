@@ -55,6 +55,7 @@
         var detections = {{ detections | tojson }};
         var currentImageAnnotations = [];
         var filteredSelection = [];
+        var intervalIDDetection = null;
 
         function showTableByCategory(category) {
             var x = document.getElementById("table" + category);
@@ -94,21 +95,53 @@
             //create new div that sits in left to the button and contains the loading circle
             //button.innerHTML = ;
 
-            $.post("/run_detection/{{ id }}", {model_options: selectedValue}, function(data){
-                console.log("Data: " + data );
-                detections = data;
-                generateDetectionTable(data);
-                generateAnnotationSettings(data);
-                var currentImageName = document.getElementById("dynamic-slide").getElementsByTagName('a')[0].innerHTML.split(": ")[1];
-                generateAnnotationsLayerTableForImage(currentImageName);
-                detections = data;
+            $.post("/run_detection/{{ id }}", {model_options: selectedValue}, function(){
 
-                var button = document.getElementById("runDetectionButton");
-                button.disabled = false;
-                button.innerHTML = 'Re-Run Detection';
+                intervalIDDetection = window.setInterval(check_status_detection, 1500);
 
-                spinner = document.getElementById("detectionsRunningCircle");
-                spinner.style.display = "none";
+                //console.log("Data: " + data );
+                //detections = data;
+                //generateDetectionTable(data);
+                //generateAnnotationSettings(data);
+                //var currentImageName = document.getElementById("dynamic-slide").getElementsByTagName('a')[0].innerHTML.split(": ")[1];
+                //generateAnnotationsLayerTableForImage(currentImageName);
+                //detections = data;
+
+                //var button = document.getElementById("runDetectionButton");
+                //button.disabled = false;
+                //button.innerHTML = 'Re-Run Detection';
+
+                //spinner = document.getElementById("detectionsRunningCircle");
+                //spinner.style.display = "none";
+
+            });
+        }
+
+        function check_status_detection(){
+            $.post("/detection_status/{{ id }}", function(detection_status){
+                console.log("Progress: " + detection_status );
+                if(detection_status == "finished"){
+                    clearInterval(intervalIDDetection);
+
+                    //load data
+                    $.post("/load_detection_results/{{ id }}", function(data){
+                        detections = data;
+                        generateDetectionTable(data);
+                        generateAnnotationSettings(data);
+                        var currentImageName = document.getElementById("dynamic-slide").getElementsByTagName('a')[0].innerHTML.split(": ")[1];
+                        generateAnnotationsLayerTableForImage(currentImageName);
+                        detections = data;
+                    });
+
+                    var button = document.getElementById("runDetectionButton");
+                    button.disabled = false;
+                    button.innerHTML = 'Re-Run Detection';
+
+                    spinner = document.getElementById("detectionsRunningCircle");
+                    spinner.style.display = "none";
+
+
+                }
             });
         }
 

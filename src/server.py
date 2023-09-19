@@ -5,17 +5,30 @@ from argparse import Namespace
 from model_weights_downloader import ModelWeightsDownloader
 from project_manager import ProjectManager
 from mapper_thread import MapperThread
-from detection.datahandler import DataHandler
-from detection.InferenceEngine import InferenceEngine
+from detection.detection_thread import DetectionThread
 
-
+# from gunicorn.app.base import BaseApplication
 from flask import Flask, flash, request, redirect, url_for, render_template, jsonify
 import os
 import signal
 from werkzeug.utils import secure_filename
 
+
 import urllib.request
 
+# class FlaskApp(BaseApplication):
+#     def __init__(self, app, options=None):
+#         self.options = options or {}
+#         self.application = app
+#         super().__init__()
+#
+#     def load_config(self):
+#         for key, value in self.options.items():
+#             if key in self.cfg.settings and value is not None:
+#                 self.cfg.set(key.lower(), value)
+#
+#     def load(self):
+#         return self.application
 
 class ArgusServer:
     def __init__(self, upload_folder_path, project_manager):
@@ -29,6 +42,7 @@ class ArgusServer:
         self.ALLOWED_EXTENSIONS = set(['png', 'jpg', 'jpeg', 'PNG', 'JPG', 'JPEG'])
 
         self.threads = []
+        self.detection_threads = []
         # self.map = {}
         self.project_manager = project_manager
 
@@ -77,6 +91,10 @@ class ArgusServer:
                               view_func=self.generate_id_for_image)
         self.app.add_url_rule('/shutdown',
                               view_func=self.shutdown)
+        self.app.add_url_rule('/load_detection_results/<int:report_id>', methods=['GET', 'POST'],
+                                view_func=self.load_detection_results)
+        self.app.add_url_rule('/detection_status/<int:report_id>', methods=['GET', 'POST'],
+                                view_func=self.check_detection_status)
         # self.app.add_url_rule('/<int:report_id>/upload', methods=['POST'],
         #                       view_func=self.upload_image)
         # self.app.add_url_rule('/<int:report_id>/process', methods=['GET', 'POST'],
@@ -322,10 +340,10 @@ class ArgusServer:
                 numbr_of_models = 3
 
             self.detect_objects(numbr_of_models, report_id)
-            detections = json.load(open(self.project_manager.get_annotation_file_path(report_id)))
+            #detections = json.load(open(self.project_manager.get_annotation_file_path(report_id)))
 
             # return render_standard_report(report_id)
-            return detections
+            return jsonify("null") #detections
 
     def update_detections_colors(self, report_id):
         color = [request.form.get('colorH'), request.form.get('colorS'), request.form.get('colorL')]
@@ -337,36 +355,32 @@ class ArgusServer:
         return "success"
 
     def detect_objects(self, numbr_of_models, report_id):
-        networks_weights_folder = "./detection/model_weights"
-        weights_paths_list = []
+        #start docker container in own thread and start detection
+        thread = DetectionThread(report_id, self.project_manager.get_file_names ,self.project_manager.get_annotation_file_path(report_id), numbr_of_models)
+        self.detection_threads.append(thread)
+        thread.start()
+        #thread.join()
 
-        weights_paths_list.append(
-            networks_weights_folder + "/deformable_detr_twostage_refine_r50_16x2_50e_coco_fire_04")
-        weights_paths_list.append(networks_weights_folder + "/autoassign_r50_fpn_8x2_1x_coco_fire_0")
-        if numbr_of_models >= 3:
-            weights_paths_list.append(networks_weights_folder + "/tood_r101_fpn_dconv_c3-c5_mstrain_2x_coco_fire_5")
-            if numbr_of_models >= 4:
-                weights_paths_list.append(
-                    networks_weights_folder + "/vfnet_x101_32x4d_fpn_mdconv_c3-c5_mstrain_2x_coco_fire_1")
-                if numbr_of_models >= 5:
-                    weights_paths_list.append(networks_weights_folder + "/yolox_s_8x8_300e_coco_fire_300_4")
+    def check_detection_status(self, report_id):
+        print('asking for detection status of report ' + str(report_id) + " with " + str(len(self.detection_threads)) + " threads")
+        for thread in self.detection_threads:
+            if thread.report_id == report_id:
+                if thread.done:
+                    self.detection_threads.remove(thread)
+                    thread.join()
+                    return "finished"
+                else:
+                    return "running"
+        print("no thread found for report_id: " + str(report_id))
 
-        images_path_list = self.project_manager.get_file_names_rgb(report_id)
-        images_path_list = ["./static/" + path for path in images_path_list]
-        config_path = "detection/config/custom/config.py"
-        ann_path = self.project_manager.get_annotation_file_path(report_id)  # vom project manager geben lassen
-
-        data_handler = DataHandler(config_path, ann_path)
-        data_handler.set_image_paths(images_path_list, 2)
-        data_handler.create_empty_ann()
-
-        engine = InferenceEngine(network_folders=weights_paths_list)
-        results = engine.inference_all(data_handler, 0.3)
-        bboxes = data_handler.compare_results(results)
-        data_handler.create_coco()
-        # data_handler.save_images("result", bboxes, engine.models[0], 0.3)
-        data_handler.save_results_in_json(bboxes)
-        data_handler.structure_ann_by_images()
+    def load_detection_results(self, report_id):
+        #get path of projects annotation file
+        path = self.project_manager.get_annotation_file_path(report_id)
+        #load results from json file located under /detections/results
+        with open(path) as json_file:
+            data = json.load(json_file)
+            #print(data)
+            return jsonify(data)
 
     def display_image(self, filename):
         return redirect(url_for('static', filename='uploads/' + filename), code=301)
@@ -390,6 +404,11 @@ class ArgusServer:
 
     def run(self):
         self.app.run(host="0.0.0.0", port=5000, debug=True, use_reloader=False)
+        # options = {
+        #     'bind': '0.0.0.0:5000',
+        #     'workers': 4,  # Set the number of worker processes
+        # }
+        # FlaskApp(self.app, options).run()
 
     # Utulity functions:
 
@@ -414,7 +433,7 @@ class ArgusServer:
         indices = sorted(range(len(times)), key=lambda i: times[i], reverse=True)
         return indices
 
-    def render_standard_report(self, report_id, thread=None, template="concept.html"):
+    def render_standard_report(self, report_id, thread=None, template="base_report.html"):
         data = self.project_manager.get_project(report_id)['data']
         flight_data = data["flight_data"]
         camera_specs = data["camera_specs"]

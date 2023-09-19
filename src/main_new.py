@@ -50,7 +50,7 @@ project_manager = ProjectManager(path_to_images)
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-def render_standard_report(report_id, thread = None, template = "concept.html"):
+def render_standard_report(report_id, thread = None, template = "base_report.html"):
     data = project_manager.get_project(report_id)['data']
     flight_data = data["flight_data"]
     camera_specs = data["camera_specs"]

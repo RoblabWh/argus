@@ -1,22 +1,9 @@
-from mmdet.apis import init_detector, inference_detector
+from mmdet.apis import DetInferencer
+from mmengine import Config
 from pathlib import Path
 
 import sys
 import os
-
-
-def inference(model, batches):
-    """
-    Runs the inference on a batch of images.
-    :param batches:
-    :return:
-    """
-    results = []
-    for batch in batches:
-        result = inference_detector(model, batch)
-        for single in result:
-            results.append(single)
-    return results
 
 
 class InferenceEngine:
@@ -33,27 +20,31 @@ class InferenceEngine:
         """
 
         # number of networks to load
-        if network_folders is not None:
+        if type(network_folders) is not type(type):
             cnt_networks = len(network_folders) if (len(network_folders) > 0) else len(checkpoints)
         else:
-            cnt_networks = 0
+            cnt_networks = len(checkpoints)
         self.out_folders = []
         self.models = []
+        self.configs = []
+        self.device = device
 
         for loading_idx in range(cnt_networks):
             if out_folders:
                 self.out_folders.append(out_folders[loading_idx])
             else:
-                self.out_folders.append(None)
+                self.out_folders.append('')
 
             # build the model from a config file and a checkpoint file
-            if network_folders:
-                config, checkpoint = self.get_files(network_folders[loading_idx])
+            if type(network_folders) is not type(type):
+                config, checkpoint = self.get_files_(network_folders[loading_idx])
             else:
                 config = configs[loading_idx]
                 checkpoint = checkpoints[loading_idx]
 
-            self.models.append(init_detector(config, checkpoint, device=device))
+            # Build the model from a config file and a checkpoint file using the DetInferencer class
+            self.models.append(DetInferencer(model=config, weights=checkpoint, device=self.device))
+            self.configs.append(Config.fromfile(config))
 
     def add_model(self, network_folder, out_folder=None):
         """
@@ -62,8 +53,10 @@ class InferenceEngine:
         :param out_folder:
         :return:
         """
-        config, checkpoint = self.get_files(network_folder)
-        self.models.append(init_detector(config, checkpoint, device='cuda:0'))
+        config, checkpoint = self.get_files_(network_folder)
+        # Build the model from a config file and a checkpoint file using the DetInferencer class
+        self.models.append(DetInferencer(model=config, weights=checkpoint, device=self.device))
+        self.configs.append(Config.fromfile(config))
         self.out_folders.append(out_folder)
 
     def remove_model(self, network_folder):
@@ -72,14 +65,15 @@ class InferenceEngine:
         :param network_folder:
         :return:
         """
-        config, checkpoint = self.get_files(network_folder)
+        config, checkpoint = self.get_files_(network_folder)
         for i, model in enumerate(self.models):
             if model.cfg.filename == config:
                 self.models.pop(i)
+                self.configs.pop(i)
                 self.out_folders.pop(i)
                 break
 
-    def get_files(self, network_folder):
+    def get_files_(self, network_folder):
         """
         Returns the config and checkpoint file of a network folder.
         :param network_folder:
@@ -98,14 +92,14 @@ class InferenceEngine:
                     checkpoint.append(os.path.join(root, file))
 
         if len(config) > 1 or len(config) == 0:
-            print("Config file not found in %s" % str(network_folder))
+            print("Config file not found in %s. Maybe multiples?" % str(network_folder))
             sys.exit(1)
         if len(checkpoint) > 1 or len(checkpoint) == 0:
-            print("Checkpoint file not found in %s" % str(network_folder))
+            print("Checkpoint file not found in %s. Maybe multiples?" % str(network_folder))
             sys.exit(1)
         return config[0], checkpoint[0]
 
-    def inference_all(self, datahandler, score_thr):
+    def inference_all(self, data, score_thr, batch_size):
         """
         Runs the inference on a batch of images for all models loaded.
         :param batches:
@@ -114,9 +108,7 @@ class InferenceEngine:
 
         results = []
         for i, model in enumerate(self.models):
-            result = inference(model, datahandler.batches)
-            datahandler.apply_threshold_to_results([result], score_thr)
-            #datahandler.save_images(self.out_folders[i], result, model, score_thr)
+            result = model(data, batch_size=batch_size, return_datasample=True, no_save_vis=False, pred_score_thr=score_thr, out_dir=self.out_folders[i])
             results.append(result)
 
         return results

@@ -24,11 +24,11 @@ class Weather:
         url = "https://api.openweathermap.org/data/2.5/onecall?lat=%s&lon=%s&appid=%s&units=metric" % (lat, lon, api_key)
         response = requests.get(url)
         self.data = json.loads(response.text)
-        print("Weather data for request")
-        print(url)
-        print(":")
-        print(self.data)
-        print("weather data loaded")
+        # print("Weather data for request")
+        # print(url)
+        # print(":")
+        # print(self.data)
+        # print("weather data loaded")
 
     def get_temperature(self):
         return self.data["current"]["temp"]
