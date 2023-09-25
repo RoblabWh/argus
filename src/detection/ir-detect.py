@@ -4,6 +4,7 @@ from datahandler import DataHandler
 from annotationhandler import AnnotationHandler
 from inference_engine import InferenceEngine
 
+
 def main():
 
     parser = argparse.ArgumentParser(description='Inference for MMDetection')
@@ -31,7 +32,7 @@ def main():
 
     # Init DataHandler
     datahandler = DataHandler(args)
-    datahandler.preprocess()
+    #datahandler.preprocess()
     data = datahandler.get_image_paths_str()
 
     # No PyTorch DataLoader needed because MMDetection implements its own DataLoader
@@ -40,12 +41,13 @@ def main():
     # Inference, sometimes the matplotlib backend crashes, then saving won't work. Try again.
     results = engine.inference_all(data, score_thr=args.score_thr, batch_size=args.batch_size)
     #datahandler.postprocess_images(results=results)
+    results = datahandler.merge_bboxes(results=results)
 
     # Create AnnotationFile from Results
     if args.create_coco:
         annotationhandler = AnnotationHandler(args)
         annotationhandler.create_empty_ann(datahandler.image_paths)
-        annotationhandler.save_results_in_json(results[0])
+        annotationhandler.save_results_in_json(results)
 
 
 if __name__ == '__main__':

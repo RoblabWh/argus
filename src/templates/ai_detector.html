@@ -172,30 +172,49 @@
             //one line as a spacer
             tbl.insertRow().insertCell().innerHTML="";
 
+            //create a selection of all images that have detections by categrory
+            var imagesWithDetectionsByCategory = {};
+            //create an empy list for each category
+            for (let i = 0; i < detectionData["categories"].length; i++) {
+                var category = detectionData["categories"][i];
+                imagesWithDetectionsByCategory[category.name] = [];
+            }
+
+            for (let i = 0; i < detectionData["annotations"].length; i++) {
+                var annotation = detectionData["annotations"][i];
+                var category = detectionData["categories"][annotation.category_id]["name"];
+                var image_id = annotation["image_id"];
+
+
+                if (!imagesWithDetectionsByCategory[category].includes(image_id)) {
+                    imagesWithDetectionsByCategory[category].push(image_id);
+                }
+            }
+
+            console.log(imagesWithDetectionsByCategory);
+            
+
 
             //for every "category" in detection data create a row
             var categories = detectionData["categories"];
             for (let i = 0; i < categories.length; i++){
                 var category = categories[i];
                 var row = tbl.insertRow();
+                //console.log("category: " + category.name + " with a total of " + imagesWithDetectionsByCategory[category.name].length + " images");
 
                 subHeader = document.createElement('th');
                 subHeader.innerHTML = category.name;
                 row.append(subHeader);
-                row.insertCell().innerHTML=category.sum;
+                row.insertCell().innerHTML= imagesWithDetectionsByCategory[category.name].length;
                 var a = document.createElement('a');
-                if(category.sum > 0){
+                if(imagesWithDetectionsByCategory[category.name].length > 0){
                     slider = document.createElement('input');
                     slider.setAttribute("type", "range");
                     slider.setAttribute("id", "slider_" + category.name + "_global_threshold");
                     slider.setAttribute("min", "0");
                     slider.setAttribute("max", "1");
                     slider.setAttribute("step", "0.01");
-                    slider.setAttribute("value", category.lowest_score);
-                    // on change update the subtable with the new threshold in an own method
-                    //slider.onchange = function() {
-                    //    updateSubTableThreshold(category.name, slider.value);
-                    //};
+                    slider.setAttribute("value", 0.3);
                     (function(category, slider){
                         slider.onchange = function(x) {
                         updateSubTableThreshold(category.name, x.target.value);
@@ -230,31 +249,33 @@
 
                 //loop over all images in detectionData and add them to the table if the category matches
                 var images = detectionData["images"];
-                for (let j = 0; j < images.length; j++){
-                    var image = images[j];
-                    if (image.sum[i] > 0){
-                        var subTableRow = subTable.insertRow();
-                        var lineHeading = document.createElement('th');
-                        lineHeading.innerHTML = image.file_name;
-                        subTableRow.append(lineHeading);
+                var selectedImages = imagesWithDetectionsByCategory[category.name];
+                for (let j = 0; j < selectedImages.length; j++){
+                    var image = images[selectedImages[j]];
+                    
+                    var subTableRow = subTable.insertRow();
+                    var lineHeading = document.createElement('th');
+                    lineHeading.innerHTML = image.file_name;
+                    subTableRow.append(lineHeading);
 
-                        subTableRow.insertCell().innerHTML=image.sum[i];
-                        subTableRow.cells[0].setAttribute("class", "tableHyperlink");
-                        subTableRow.cells[0].onclick = (function(opt) {return function(){
-                            showImageByFileName(opt);
-                            };
-                        })(image.file_name);
-                    }
+                    subTableRow.insertCell().innerHTML=1;
+                    subTableRow.cells[0].setAttribute("class", "tableHyperlink");
+                    subTableRow.cells[0].onclick = (function(opt) {return function(){
+                        showImageByFileName(opt);
+                        };
+                    })(image.file_name);
+                    
                 }
 
                 subTableCell.appendChild(subTable);
 
-                if(category.sum > 0){
+                if(imagesWithDetectionsByCategory[category.name].length > 0){
                     row.cells[3].onclick = (function(opt) {return function(){
                         showTableByCategory(opt)
                         };
                     })(category.name);
                 }
+                updateSubTableThreshold(category.name, 0.3);
             }
 
         }
@@ -262,7 +283,7 @@
         function updateSubTableThreshold(categoryName, threshold){
             var subTable = document.getElementById("table" + categoryName);
             var rows = subTable.rows;
-            categoryID = detections["categories"][detections["categories"].findIndex(x => x.name === categoryName)].id;
+            categoryID = detections["categories"][detections["categories"].findIndex(x => x.name === categoryName)].id-1;
             categorySum = 0;
             for (let i = 1; i < rows.length; i++){
                 var row = rows[i];
@@ -270,16 +291,18 @@
                 imageName = cells[0].innerHTML;
                 imageID = detections["images"].findIndex(x => x.file_name === imageName);
 
-                annotations = detections["annotations"][imageID];
+                annotations = detections["annotations"];
                 sum = 0;
                 for (let j = 0; j < annotations.length; j++){
                     var annotation = annotations[j];
-                    if (annotation.category_id === categoryID){
-                        //console.log("annotation.score: " + annotation.score + " threshold: " + threshold + "categoryID: " + categoryID + "categoryName: " + categoryName);
-                        if (annotation.score < threshold){
-                            //noting to do
-                        }else{
-                            sum += 1;
+                    if (annotation.image_id === imageID){
+                        if (annotation.category_id === categoryID){
+                            //console.log("annotation.score: " + annotation.score + " threshold: " + threshold + "categoryID: " + categoryID + "categoryName: " + categoryName);
+                            if (annotation.score < threshold){
+                                //noting to do
+                            }else{
+                                sum += 1;
+                            }
                         }
                     }
                 }
@@ -288,7 +311,7 @@
                 console.log("categoryID: " + categoryID + " categoryName: " + categoryName + " imageID: " + imageID + " imageName: " + imageName + " sum: " + sum);
                 categorySum += sum;
             }
-            sumCell = document.getElementById("detectionTable").rows[categoryID*2].cells[1];
+            sumCell = document.getElementById("detectionTable").rows[(categoryID+1)*2].cells[1];
             sumCell.innerHTML = categorySum;
             try{
                 var image_slider = document.getElementById("layer-threshold-slider-" + categoryName);
@@ -344,7 +367,16 @@
                 return;
             }
 
-            currentImageAnnotations = detections["annotations"][getImageIndexByName(fileName)];
+            imageID = getImageIndexByName(fileName)
+            currentImageAnnotations = [];
+            for (let i = 0; i < detections["annotations"].length; i++){
+                if (detections["annotations"][i].image_id === imageID){
+                    currentImageAnnotations.push(detections["annotations"][i]);
+                }
+            }
+            console.log("currentImageAnnotations: " + currentImageAnnotations.length);
+            
+            //currentImageAnnotations = detections["annotations"][getImageIndexByName(fileName)];
             var categories = detections["categories"];
             //currentImageAnnotations = annotations;
 
@@ -372,7 +404,7 @@
 
                 for(let j = 0; j < currentImageAnnotations.length; j++){
                     var annotation = currentImageAnnotations[j];
-                    if(annotation.category_id == category.id){
+                    if(annotation.category_id === category.id-1){
                         totalFoundObjects++;
                         displayedObjects++;
                         filteredSelection.push(j);
@@ -497,7 +529,7 @@
                     var threshold = slider.value;
                     for(let j = 0; j < currentImageAnnotations.length; j++){
                         var annotation = currentImageAnnotations[j];
-                        if(annotation.category_id == category.id){
+                        if(annotation.category_id == category.id-1){
                             if (annotation.score >= threshold){
                                 filteredSelection.push(j);
                                 displayedObjects++;
@@ -545,7 +577,7 @@
             var images = detections["images"];
             for (let i = 0; i < images.length; i++){
                 if (images[i].file_name === filename){
-                    return i;
+                    return images[i].id;
                 }
             }
         }
@@ -634,7 +666,7 @@
             for (let i = 0; i < filteredSelection.length; i++){
                 var annotation = currentImageAnnotations[filteredSelection[i]];
                 var categoryID = annotation.category_id;
-                var category = detections["categories"][categoryID-1];
+                var category = detections["categories"][categoryID];
                 var color = document.getElementById("color" + category.name).value;
                 //if (annotation.image_id === imageIndex){
                     var x, y, w, h;

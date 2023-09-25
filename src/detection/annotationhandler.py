@@ -32,6 +32,7 @@ class AnnotationHandler:
 
         # Relevant config paths
         self.ann_path = "code/results/ann.json"
+        self.score_thr = args.score_thr
         # Just any config file will do
         self.config_path = './configs/rtmdet/rtmdet_x_8xb32-300e_coco.py'
         self.img_prefix = img_prefix
@@ -58,13 +59,6 @@ class AnnotationHandler:
 
         self.custom_coco = None
 
-    def create_coco(self):
-        """
-        Create a custom coco dataset from the config and load the annotations
-        :return:
-        """
-        self.custom_coco = CustomCOCO(ann_file=self.ann_path)
-
     def create_empty_ann(self, image_paths):
         """
         Create an empty annotation file with the same structure as COCO
@@ -82,7 +76,7 @@ class AnnotationHandler:
         with open(self.ann_path, 'w') as json_ann_file:
             json.dump(ann, json_ann_file, ensure_ascii=False, indent=4)
 
-        self.custom_coco = CustomCOCO(ann_file=self.ann_path)
+        self.custom_coco = CustomCOCO(ann_file=self.ann_path, score_thr=self.score_thr)
 
     def save_results_in_json(self, results):
         """

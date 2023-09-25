@@ -1,5 +1,6 @@
 import mmengine
 import numpy as np
+import torch
 from mmdet.registry import DATASETS
 from pathlib import Path
 
@@ -10,8 +11,9 @@ class CustomCOCO(COCO):
     CLASSES = ('fire', 'vehicle', 'human')
     PALETTE = [(220, 20, 60), (119, 11, 32), (0, 0, 142)]
 
-    def __init__(self, ann_file=None):
+    def __init__(self, ann_file=None, score_thr=0.3):
         super().__init__(annotation_file=ann_file)
+        self.score_thr = score_thr
 
     def results2json(self, results, outfile_prefix):
         """Dump the detection results to a COCO style json file.
@@ -69,13 +71,22 @@ class CustomCOCO(COCO):
         for image in self.dataset['images']:
             img_id = image['id']
             result_pred = results['predictions'][img_id]
-            assert (image['file_name'] == Path(result_pred.img_path).name), "Something wrong with the image path"
+            #assert (image['file_name'] == Path(result_pred.img_path).name), "Something wrong with the image path"
             pred_instances = result_pred.pred_instances
-            scores = np.array(result_pred.pred_instances.scores.cpu())
-            bboxes = np.array(result_pred.pred_instances.bboxes.cpu())
-            labels = np.array(result_pred.pred_instances.labels.cpu())
+            if isinstance(result_pred.pred_instances.scores, torch.Tensor):
+                scores = np.array(result_pred.pred_instances.scores.cpu())
+            else:
+                scores = np.array(result_pred.pred_instances.scores)
+            if isinstance(result_pred.pred_instances.bboxes, torch.Tensor):
+                bboxes = np.array(result_pred.pred_instances.bboxes.cpu())
+            else:
+                bboxes = np.array(result_pred.pred_instances.bboxes)
+            if isinstance(result_pred.pred_instances.labels, torch.Tensor):
+                labels = np.array(result_pred.pred_instances.labels.cpu())
+            else:
+                labels = np.array(result_pred.pred_instances.labels)
             for instance in range(len(pred_instances)):
-                if scores[instance] > 0.3:
+                if scores[instance] > self.score_thr:
                     data = dict()
                     data['id'] = id
                     id += 1

@@ -17,6 +17,7 @@ from os.path import isfile, join
 # [ ] Neue Gewichte herunterladen
 # [ ] Stiching der Ergebnisse -> Julien neue Klasse herunterladen
 # [ ] Beim Öffnen eines reports prüfen, ob eine detection thread aktiv ist und UI dann das anpassen  + Abfrage starten
+# [ ] Detection Thread nur neu starten, wenn kein tread für die ID noch existiert
 
 
 
@@ -87,6 +88,10 @@ class DetectionThread(threading.Thread):
         container_logs = container.logs()
         print('container finished. logs: \n', container_logs.decode())
 
+        container.stop()
+        container.remove()
+
+
         # load results from json file located under /detections/results
         path_to_json = path_to_code + '/results/ann.json'
         with open(path_to_json) as json_file:
@@ -99,12 +104,11 @@ class DetectionThread(threading.Thread):
 
 
         # To stop and remove the container when you're done
-        container.stop()
-        container.remove()
+
         self.done = True
         print("Detection finished")
 
-    def reformat_data(self, ann):
+    def reformat_data_old(self, ann):
         """
         opens the ann json file and structures it by images
         then saves as a new json file with the name suffix _structured
@@ -129,8 +133,8 @@ class DetectionThread(threading.Thread):
         # also add an entry to each categorie that tells the lowest score of all its appearances in the annotations
         for image_id in ann["annotations"]:
             for annotation in ann["annotations"][image_id]:
-                category_id = annotation["category_id"]
-                category = ann["categories"][category_id - 1]
+                category_index = annotation["category_id"]
+                category = ann["categories"][category_index-1]
                 category["sum"] += 1
                 if annotation["score"] < category["lowest_score"]:
                     category["lowest_score"] = annotation["score"]
@@ -143,6 +147,11 @@ class DetectionThread(threading.Thread):
                 category_id = annotation["category_id"]
                 image["sum"][category_id - 1] += 1
 
+        return ann
+
+    def reformat_data(self, ann):
+        for category in ann["categories"]:
+            category["colorHSL"] = [(300 - int((category["id"] + 1) / len(ann["categories"]) * 360)) % 360, 100, 50]
         return ann
 
     def save_detections(self, data, path):

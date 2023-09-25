@@ -7,11 +7,10 @@ from tqdm import tqdm
 import numpy as np
 from pathlib import Path
 import itertools
+from mmengine.structures import InstanceData
 import mmcv
 from argparse import Namespace
-
-
-# import utils as u
+import utils as u
 
 # New Imports
 from torch.utils.data import Dataset
@@ -200,20 +199,28 @@ class DataHandler(Dataset):
         # TODO Split images is problematic, because the ids are not the same as the original ones
 
         keys_to_add = []
+        last_net = len(results) - 1
 
-        for result in results:
+        for net_num, result in enumerate(results):
             delete_later = []
             result_pred = result['predictions']
             for key in self.split_images:
                 ids = list(self.split_images[key].keys())
                 # get bounding boxes of the pairs
                 bboxes = [np.array(result_pred[i].pred_instances.bboxes.cpu()) for i in ids]
+                labels = [np.array(result_pred[i].pred_instances.labels.cpu()) for i in ids]
+                scores = [np.array(result_pred[i].pred_instances.scores.cpu()) for i in ids]
                 # merge the results of the split images
-                merged_bbox = self.merge_results(key, bboxes, ids)
+                merged_bbox, merged_label, merged_score = self.merge_results(key, bboxes, labels, scores, ids)
                 # add the merged results to the original result
-                result_pred[ids[0]].pred_instances.bboxes = merged_bbox
-                keys_to_add.append(key)
+                new_instance = InstanceData()
+                new_instance.bboxes = merged_bbox
+                new_instance.labels = merged_label
+                new_instance.scores = merged_score
+                result_pred[ids[0]].pred_instances = new_instance
                 delete_later.append({'delete_ids': ids[1:]})
+                if net_num == last_net:
+                    keys_to_add.append(key)
 
             for i in reversed(range(len(delete_later))):
                 delete_ids = delete_later[i]['delete_ids']
@@ -234,7 +241,94 @@ class DataHandler(Dataset):
 
         return results
 
-    def merge_results(self, key, bboxes, ids):
+    def already_found(self, bbox, bboxes):
+        for idx, existing_bbox in enumerate(bboxes):
+            iou = u.calc_iou(bbox, existing_bbox)
+            if iou > 0.05:
+                return True, idx
+        return False, None
+
+    def merge_bboxes(self, results):
+        net_cnt = len(results)
+        num_images = len(results[0]['predictions'])
+        instances = []
+
+        if net_cnt == 1:
+            return results[0]
+
+        for img_idx in range(num_images):
+            bboxes = [results[net_idx]['predictions'][img_idx].pred_instances.bboxes for net_idx in range(net_cnt)]
+            labels = [results[net_idx]['predictions'][img_idx].pred_instances.labels for net_idx in range(net_cnt)]
+            scores = [results[net_idx]['predictions'][img_idx].pred_instances.scores for net_idx in range(net_cnt)]
+
+            merged_bboxes = []
+            merged_labels = []
+            merged_scores = []
+
+            for net_a, net_b in itertools.combinations(range(net_cnt), 2):
+                for idx_a, bbox_a in enumerate(bboxes[net_a]):
+                    for idx_b, bbox_b in enumerate(bboxes[net_b]):
+                        # Only merge if they belong to the same class
+                        if labels[net_a][idx_a] == labels[net_b][idx_b]:
+                            iou = u.calc_iou(bbox_a, bbox_b)
+                            if iou > 0.05:
+                                merged_bbox = (bbox_a + bbox_b) / 2
+                                found, _ = self.already_found(merged_bbox, merged_bboxes)
+                                if not found:
+                                    merged_bboxes.append(merged_bbox)
+                                    merged_labels.append(labels[net_a][idx_a])
+                                    merged_scores.append((scores[net_a][idx_a] + scores[net_b][idx_b]) / 2)
+
+            new_instance = InstanceData()
+            new_instance.bboxes = np.array(merged_bboxes)
+            new_instance.labels = np.array(merged_labels)
+            new_instance.scores = np.array(merged_scores)
+            instances.append(new_instance)
+
+        for img_idx in range(num_images):
+            results[0]['predictions'][img_idx].pred_instances = instances[img_idx]
+
+        return results[0]
+
+    def compare_results(self, results):
+        """
+        Calculates the IoU for all results and returns new bounding boxes where the bounding boxes match
+        :param results: results bounding boxes to calculate the IoU for
+        :return: new matching bounding boxes
+        """
+        net_cnt = len(results)
+        net_ids = list(range(net_cnt))
+        num_images = len(results[0])
+        num_classes = len(self.config.CLASSES)
+        new_results = [[] for _ in range(num_images)]
+        if net_cnt == 1:
+            return results[0]
+        # Iterate over all images
+        for img_idx in range(num_images):
+            # Get every bbox for this image
+            bboxes = [results[net_idx]['predictions'][img_idx].pred_instances.bboxes for net_idx in range(net_cnt)]
+            labels = [results[net_idx]['predictions'][img_idx].pred_instances.labels for net_idx in range(net_cnt)]
+            scores = [results[net_idx]['predictions'][img_idx].pred_instances.scores for net_idx in range(net_cnt)]
+            # Iterate over all classes
+            class_bboxes = [[bboxes[net_idx][class_idx] for net_idx in range(net_cnt)] for class_idx in range(num_classes)]
+            new_bboxes = [np.ndarray((0, 5)) for _ in range(num_classes)]
+            for net_a, net_b in itertools.combinations(net_ids, 2):
+                for class_idx in range(num_classes):
+                    for bbox_a in class_bboxes[class_idx][net_a]:
+                        for bbox_b in class_bboxes[class_idx][net_b]:
+                            iou = u.calc_iou(bbox_a, bbox_b)
+                            if iou > 0.1:
+                                # check if bbox allready found by other nets
+                                bbox = (bbox_a + bbox_b) / 2
+                                found, _idx = self.allready_found(bbox_a, new_bboxes[class_idx])
+                                # TODO maybe update bbox if it was found by other nets
+                                if not found:
+                                    # add new bbox
+                                    new_bboxes[class_idx] = np.append(new_bboxes[class_idx], [bbox], axis=0)
+            new_results[img_idx] = new_bboxes
+        return new_results
+
+    def merge_results(self, key, bboxes, labels, scores, ids):
         """
         Recursively merges the results of the split images into the original image.
         :param key: key of the original image
@@ -251,22 +345,32 @@ class DataHandler(Dataset):
         while len(pairs[0]) > 1:
             new_pairs = []
             new_bboxes = []
+            new_labels = []
+            new_scores = []
             collapse = []
             for i, pair in enumerate(pairs):
                 pairboxes = [bboxes[j] for j in id_pairs[i]]
+                pairlabels = [labels[j] for j in id_pairs[i]]
+                pairscores = [scores[j] for j in id_pairs[i]]
                 _bboxes = self.merge_results_of_four(key, pairboxes, pair)
+                _labels = np.concatenate((pairlabels[0], pairlabels[1], pairlabels[2], pairlabels[3]), axis=0)
+                _scores = np.concatenate((pairscores[0], pairscores[1], pairscores[2], pairscores[3]), axis=0)
                 new_bboxes.append(_bboxes)
+                new_labels.append(_labels)
+                new_scores.append(_scores)
                 new_pairs.append(i)
                 collapse.append(pair)
             pairs = [new_pairs[x:x+4] for x in range(0, len(new_pairs), 4)]
             bboxes = new_bboxes
+            labels = new_labels
+            scores = new_scores
             for i, pair in enumerate(collapse):
                 new_height = self.split_images[key][pair[0]][0] + self.split_images[key][pair[2]][0]
                 new_width = self.split_images[key][pair[0]][1] + self.split_images[key][pair[1]][1]
                 for j in pair:
                     self.split_images[key].pop(j)
                 self.split_images[key][i] = (new_height, new_width)
-        return bboxes[0]
+        return bboxes[0], labels[0], scores[0]
 
     def merge_results_of_four(self, key, bboxes, pair):
         """
@@ -280,31 +384,17 @@ class DataHandler(Dataset):
         w_offset = sizes[0][1]
         h_offset = sizes[0][0]
 
-        for class_bboxes in bboxes[1]:
-            for bbox in class_bboxes:
-                # bbox = x1, y1, x2, y2
-                bbox[0] += w_offset
-                bbox[2] += w_offset
+        # Modify bboxes[1]
+        bboxes[1][:, [0, 2]] += w_offset
 
-        new_bboxes = copy.deepcopy(bboxes[0])
-        new_bboxes = [np.concatenate((new_bboxes[i], bboxes[1][i]), axis=0) for i in range(len(bboxes[0]))] # horizontal merge
+        # Modify bboxes[2]
+        bboxes[2][:, [1, 3]] += h_offset
 
-        for class_bboxes in bboxes[2]:
-            for bbox in class_bboxes:
-                # bbox = x1, y1, x2, y2
-                bbox[1] += h_offset
-                bbox[3] += h_offset
+        # Modify bboxes[3]
+        bboxes[3][:, [0, 2]] += w_offset
+        bboxes[3][:, [1, 3]] += h_offset
 
-        new_bboxes = [np.concatenate((new_bboxes[i], bboxes[2][i]), axis=0) for i in range(len(bboxes[0]))] # vertical merge
-
-        for class_bboxes in bboxes[3]:
-            for bbox in class_bboxes:
-                # bbox = x1, y1, x2, y2
-                bbox[0] += w_offset
-                bbox[2] += w_offset
-                bbox[1] += h_offset
-                bbox[3] += h_offset
-
-        new_bboxes = [np.concatenate((new_bboxes[i], bboxes[3][i]), axis=0) for i in range(len(bboxes[0]))] # horizontal merge
+        # Concatenate bboxes
+        new_bboxes = np.concatenate((bboxes[0], bboxes[1], bboxes[2], bboxes[3]), axis=0)
 
         return new_bboxes

@@ -4,3 +4,4 @@ src/static/uploads
 data
 detection/model_weights
 
+/src/detection/results/
