@@ -83,9 +83,15 @@
         }
 
         function runAIDetection() {
-            var x = document.getElementById("ai_model_options");
-            var selectedValue = x.options[x.selectedIndex].value;
-            console.log(selectedValue);
+            var modelOptions = document.getElementById("ai_model_options");
+            var selectedModelOption = modelOptions.options[modelOptions.selectedIndex].value;
+
+            var processingOptions = document.getElementById("processing_options");
+            var selectedProcessingOption = processingOptions.options[processingOptions.selectedIndex].value;
+
+            console.log(selectedModelOption);
+            console.log(selectedProcessingOption);
+
             //disable button with id runDetectionButton and start loading circle animation
             var button = document.getElementById("runDetectionButton");
             button.disabled = true;
@@ -95,7 +101,7 @@
             //create new div that sits in left to the button and contains the loading circle
             //button.innerHTML = ;
 
-            $.post("/run_detection/{{ id }}", {model_options: selectedValue}, function(){
+            $.post("/run_detection/{{ id }}", {model_options: selectedModelOption, processing_options: selectedProcessingOption}, function(){
 
                 intervalIDDetection = window.setInterval(check_status_detection, 1500);
 
@@ -749,12 +755,17 @@
 </head>
 <body>
     <div style="display: flex; margin: 5px 0 15px 0">
-        <select name="Detection Quality" id="ai_model_options" style="margin: auto 0 auto 0">
-                        <option value="fast">quick (only two models)</option>
-                        <option value="medium">medium (more models, more potential detections)</option>
-                        <option selected="all" value="all">best (all models, but slowest)</option>
-                    </select>
-        <label for="ai_model_options" style="margin: auto auto auto 16px"> Detection Quality </label>
+        <select name="Detection Quality" id="ai_model_options" style="margin: auto 0 auto 0; display: none">
+            <option value="fast">quick (only two models)</option>
+            <option value="medium">medium (more models, more potential detections)</option>
+            <option selected="all" value="all">best (all models, but slowest)</option>
+        </select>
+        <label for="ai_model_options" style="margin: auto auto auto 16px; display: none"> Detection Quality </label>
+        <select name="Processing Options" id="processing_options" style="margin: auto 0 auto 0">
+            <option value="split">Split images (more precise but slower)</option>
+            <option selected="full">Full image (faster but less precise for smaller objects)</option>
+        </select>
+        <label for="processing_options" style="margin: auto auto auto 16px"> Processing Options </label>
         <div style="float: right; margin: auto 8px auto 0">
             <div id="detectionsRunningCircle" class="spinner-small" style="display: none;"></div>
         </div>

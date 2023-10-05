@@ -24,6 +24,8 @@ def main():
     parser.add_argument('--include_subdirs', default=False, help='Searches images additionally in all subdirs of input_folder (default: False)')
     parser.add_argument('--score_thr', default=0.5, help='Threshold for BBox Detection (default: 0.5)')
     parser.add_argument('--batch_size', default=5, help='Batch size for Model (default: 5)')
+    #parser.add_argument('--split_images', type=bool, default=False, help='Split images into tiles fore more precise detection (default: False)')
+    parser.add_argument('--split_images', action='store_true', help='Split images into tiles fore more precise detection (default: False)')
     args = parser.parse_args()
     u.assert_arguments(args)
 
@@ -32,7 +34,9 @@ def main():
 
     # Init DataHandler
     datahandler = DataHandler(args)
-    #datahandler.preprocess()
+    if args.split_images:
+        print("option --split_images is set, images will be split into tiles")
+        datahandler.preprocess()
     data = datahandler.get_image_paths_str()
 
     # No PyTorch DataLoader needed because MMDetection implements its own DataLoader
@@ -40,7 +44,8 @@ def main():
 
     # Inference, sometimes the matplotlib backend crashes, then saving won't work. Try again.
     results = engine.inference_all(data, score_thr=args.score_thr, batch_size=args.batch_size)
-    #datahandler.postprocess_images(results=results)
+    if args.split_images:
+        datahandler.postprocess_images(results=results)
     results = datahandler.merge_bboxes(results=results)
 
     # Create AnnotationFile from Results

@@ -329,6 +329,22 @@
             }
         };
 
+        function processInWebODM(){
+            //Deactivate button
+            document.getElementById("processInWebODMButton").disabled = true;
+            document.getElementById("processInWebODMButton").innerHTML = "Sending to WebODM...";
+            document.getElementById("processInWebODMButton").style.backgroundColor = "var(--bg-color-a)";
+            document.getElementById("processInWebODMButton").style.color = "var(--bg-color-b)";
+            document.getElementById("processInWebODMButton").style.cursor = "default";
+            console.log("process in webodm");
+
+            $.get('/process_in_webodm/{{ id }}', function(response) {
+                url = response.url;
+                console.log(response);
+                window.open(url, '_blank').focus();
+            });
+        }
+
 
 
     </script>
@@ -350,7 +366,9 @@
         <div style="position: relative;">
             <h4 style="margin-bottom: 2px;">Flight Report (ID:{{ id }})</h4>
             <button style="position: absolute" class="big_button" onClick="location.href = '/{{id}}/edit'"> Change settings and reprocess</button>
+            <button style="position: absolute; right: 25%; margin-right: 10px;" class="big_button" onClick="processInWebODM()" id="processInWebODMButton"> send to WebODM</button>
         </div>
+
         <div style="width: 100%; display: flex;">
             <h1 id="title-name">{{ project.name }}</h1>
             <div id="edit-title-button" class="edit-text-button" style="margin: 12px; float:left" onclick="toggleTextfieldTitle()">

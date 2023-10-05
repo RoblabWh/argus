@@ -46,8 +46,8 @@ def main():
     UPLOAD_FOLDER = './static/uploads/'
 
     #execute the python program in file model_weights_downloader.py
-    # model_weights_downloader = ModelWeightsDownloader()
-    # model_weights_downloader.check_model_weights()
+    model_weights_downloader = ModelWeightsDownloader()
+    model_weights_downloader.check_model_weights()
 
     #start_detection_container()
 

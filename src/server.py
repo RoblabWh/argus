@@ -6,6 +6,8 @@ from model_weights_downloader import ModelWeightsDownloader
 from project_manager import ProjectManager
 from mapper_thread import MapperThread
 from detection.detection_thread import DetectionThread
+from webODM.webODM_docker_manager import WebODMDockerManager
+from webODM.webODM_thread import WebODMThread
 
 # from gunicorn.app.base import BaseApplication
 from flask import Flask, flash, request, redirect, url_for, render_template, jsonify
@@ -45,6 +47,7 @@ class ArgusServer:
         self.detection_threads = []
         # self.map = {}
         self.project_manager = project_manager
+        self.webodm_manager = WebODMDockerManager(port=8000)
 
         self.setup_routes()
 
@@ -95,6 +98,10 @@ class ArgusServer:
                                 view_func=self.load_detection_results)
         self.app.add_url_rule('/detection_status/<int:report_id>', methods=['GET', 'POST'],
                                 view_func=self.check_detection_status)
+        self.app.add_url_rule('/process_in_webodm/<int:report_id>', methods=['GET', 'POST'],
+                                view_func=self.process_in_webodm)
+        self.app.add_url_rule('/open_webodm', methods=['GET', 'POST'],
+                                view_func=self.open_webodm)
         # self.app.add_url_rule('/<int:report_id>/upload', methods=['POST'],
         #                       view_func=self.upload_image)
         # self.app.add_url_rule('/<int:report_id>/process', methods=['GET', 'POST'],
@@ -328,22 +335,29 @@ class ArgusServer:
 
 
     def run_detection(self, report_id):
-        DOCKER_ENV_KEY = os.environ.get('AM_I_IN_A_DOCKER_CONTAINER', False)
-        if DOCKER_ENV_KEY:
-            print('currently not supported in Docker')
-        else:
-            numbr_of_models = 2
-            models_setting = request.form.get('model_options')
-            if models_setting == "all":
-                numbr_of_models = 5
-            elif models_setting == "medium":
-                numbr_of_models = 3
+        # DOCKER_ENV_KEY = os.environ.get('AM_I_IN_A_DOCKER_CONTAINER', False)
+        # if DOCKER_ENV_KEY:
+        #     print('currently not supported in Docker')
+        # else:
+        numbr_of_models = 2
+        models_setting = request.form.get('model_options')
+        if models_setting == "all":
+            numbr_of_models = 5
+        elif models_setting == "medium":
+            numbr_of_models = 3
 
-            self.detect_objects(numbr_of_models, report_id)
-            #detections = json.load(open(self.project_manager.get_annotation_file_path(report_id)))
+        processing_setting = request.form.get('processing_options')
+        print("run_detection for id" + str(report_id) + " with: " + str(numbr_of_models) + " models and " + str(processing_setting) + " processing")
+        split_images = False
+        if processing_setting == "split":
+            split_images = True
 
-            # return render_standard_report(report_id)
-            return jsonify("null") #detections
+
+        self.detect_objects(options={"numbr_of_models": numbr_of_models, "split_images": split_images}, report_id=report_id)
+        #detections = json.load(open(self.project_manager.get_annotation_file_path(report_id)))
+
+        # return render_standard_report(report_id)
+        return jsonify("null") #detections
 
     def update_detections_colors(self, report_id):
         color = [request.form.get('colorH'), request.form.get('colorS'), request.form.get('colorL')]
@@ -354,9 +368,9 @@ class ArgusServer:
         self.project_manager.update_detections_colors(report_id, color, category_name)
         return "success"
 
-    def detect_objects(self, numbr_of_models, report_id):
+    def detect_objects(self, options, report_id):
         #start docker container in own thread and start detection
-        thread = DetectionThread(report_id, self.project_manager.get_file_names ,self.project_manager.get_annotation_file_path(report_id), numbr_of_models)
+        thread = DetectionThread(report_id, self.project_manager.get_file_names, self.project_manager.get_annotation_file_path(report_id), options)
         self.detection_threads.append(thread)
         thread.start()
         #thread.join()
@@ -381,6 +395,34 @@ class ArgusServer:
             data = json.load(json_file)
             #print(data)
             return jsonify(data)
+
+    def process_in_webodm(self, report_id):
+        if not self.webodm_manager.is_webodm_container_running():
+            print("webodm container not running yet, starting now")
+            self.webodm_manager.start_webodm_container()
+        print("webodm container should be running")
+
+        webodm_url = 'http://localhost:'+str(self.webodm_manager.port)
+        images_dir = self.project_manager.get_project(report_id)['data']['file_names'][0]
+        images_dir = './static/' + images_dir[:images_dir.rindex('/') + 1]
+        report_name = self.project_manager.get_project_name(report_id)
+        report_description = self.project_manager.get_project_description(report_id)
+        odm_thread = WebODMThread(webodm_url, images_dir, report_id, report_name, report_description)
+        odm_thread.start()
+
+        return jsonify({"url": webodm_url})
+
+
+    def open_webodm(self):
+        if not self.webodm_manager.is_webodm_container_running():
+            self.webodm_manager.start_webodm_container()
+
+        print("webodm container should be running, now redirecting to webodm")
+
+        webodm_url = 'http://localhost:'+str(self.webodm_manager.port)
+        return redirect(webodm_url, code=301)
+
+
 
     def display_image(self, filename):
         return redirect(url_for('static', filename='uploads/' + filename), code=301)

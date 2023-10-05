@@ -43,7 +43,7 @@ class ModelWeightsDownloader:
         print("This may take a couple of minutes (file size approximately 1.6GB). The weights only need to be loaded once.")
 
         print("started download at", time.strftime('%H:%M:%S - %d/%m/%Y'))
-        oc.get_file('/model_weights.zip', destination+'model_weights.zip')
+        oc.get_file('/model_weights_mmdet3.zip', destination+'model_weights.zip')
         print("finished download at", time.strftime('%H:%M:%S - %d/%m/%Y'))
 
     def _unzip_model_weights(self, delete_zip=True):

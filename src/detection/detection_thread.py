@@ -14,25 +14,26 @@ from os.path import isfile, join
 # [x] Ergebnisse auf die Website laden
 # [ ] ann.json umbenennen, sodass mehrere Detections gleichzeitig laufen könnten
 # [x] Docker Container stoppen (?)
-# [ ] Neue Gewichte herunterladen
+# [x] Neue Gewichte herunterladen
 # [ ] Stiching der Ergebnisse -> Julien neue Klasse herunterladen
 # [ ] Beim Öffnen eines reports prüfen, ob eine detection thread aktiv ist und UI dann das anpassen  + Abfrage starten
-# [ ] Detection Thread nur neu starten, wenn kein tread für die ID noch existiert
+# [ ] Detection Thread nur neu starten, wenn kein thread für die ID noch existiert
 
 
 
 class DetectionThread(threading.Thread):
-    def __init__(self, report_id, image_list, ann_path, numbr_of_models):
+    def __init__(self, report_id, image_list, ann_path, options={}):
         self.report_id = report_id
         self.image_list = image_list
         self.ann_path = ann_path
-        self.numbr_of_models = numbr_of_models
+        self.options = options
+        self.numbr_of_models = options.get('numbr_of_models', 1)
+        self.split_images = options.get('split_images', False)
         self.done = False
         super().__init__()
 
     def run(self):
-        print("Detection started")
-        import docker
+        print("Detection started with options: ", self.options)
 
         # Create a Docker client
         client = docker.from_env()
@@ -65,7 +66,8 @@ class DetectionThread(threading.Thread):
         # python ./code/ir-detect.py --netfolders ./code/model_weights/rtmdet_x_8xb32-300e_coco/small_trained_correctbbx/ --inputfolder ./data --create_coco True
         script_to_run = 'ir-detect.py'
         used_model = 'model_weights/rtmdet_x_8xb32-300e_coco/small_trained_correctbbx/'
-        command_to_run = f'python ./code/{script_to_run} --netfolders {container_path_to_code}/{used_model} --inputfolder {container_path_to_images} --create_coco True'
+        split_images = '--split_images' if self.split_images else ''
+        command_to_run = f'python ./code/{script_to_run} --netfolders {container_path_to_code}/{used_model} --inputfolder {container_path_to_images} --create_coco True {split_images}'
 
         # Create a container with volume mounts
         # docker run --gpus all --shm-size=8g -it -v /detections/:/mmdetection/code object_detection_image
