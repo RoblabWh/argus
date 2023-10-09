@@ -44,6 +44,7 @@ class DataHandler(Dataset):
             self.input_path = Path(args.inputfolder)
 
         self.image_paths = self.get_image_paths()
+        self.image_paths.sort(key=lambda x: x.name)
 
         # For preprocessing
         self.overlap = 0
@@ -79,7 +80,6 @@ class DataHandler(Dataset):
         :param image_paths: list of image paths
         """
         self.image_paths = image_paths
-        # sort images by name
         self.image_paths.sort(key=lambda x: x.name)
         self.img_prefix = str(Path(image_paths[0]).expanduser().parent)
 
@@ -111,7 +111,6 @@ class DataHandler(Dataset):
         else:
             # Set/reset the image paths
             self.image_paths = self.get_image_paths()
-            # Sort by name
             self.image_paths.sort(key=lambda x: x.name)
 
     def preprocess_images(self):
@@ -146,17 +145,20 @@ class DataHandler(Dataset):
             if len(images) > 1:
                 ids = {}
                 for j, image in enumerate(images):
-                    new_image_path = self.preprocessed_img_folder / (image_path.stem + f'_{j}' + image_path.suffix)
+                    new_image_path = self.preprocessed_img_folder / (image_path.stem + f'_{j:02d}' + image_path.suffix)
                     self.remove_later.append(new_image_path)
                     mmcv.imwrite(image, new_image_path)
                     new_image_paths.append(new_image_path)
                     ids[splitted_images + j] = image.shape[:2]
+                    #print(f'Split image {image_path} into {new_image_path} with id {splitted_images + j} = {image.shape[:2]}')
 
                 self.split_images[image_path] = ids
+                #print(f'Split image {image_path} into {len(images)} smaller images with ids: {ids}')
             else:
                 new_image_paths.append(image_path)
 
         self.image_paths = new_image_paths
+        self.image_paths.sort(key=lambda x: x.name)
 
     def split_image(self, image):
         """
@@ -210,6 +212,8 @@ class DataHandler(Dataset):
                 bboxes = [np.array(result_pred[i].pred_instances.bboxes.cpu()) for i in ids]
                 labels = [np.array(result_pred[i].pred_instances.labels.cpu()) for i in ids]
                 scores = [np.array(result_pred[i].pred_instances.scores.cpu()) for i in ids]
+                # image_paths = [np.array(result_pred[i].img_path) for i in ids]
+                # print(f'merging {image_paths}')
                 # merge the results of the split images
                 merged_bbox, merged_label, merged_score = self.merge_results(key, bboxes, labels, scores, ids)
                 # add the merged results to the original result
@@ -236,7 +240,6 @@ class DataHandler(Dataset):
         for key in keys_to_add:
             new_image_paths.append(key)
         self.image_paths = new_image_paths
-        # sort images by name
         self.image_paths.sort(key=lambda x: x.name)
 
         return results
@@ -339,8 +342,8 @@ class DataHandler(Dataset):
 
         # split ids into pairs of four
         _ids = [i for i in range(len(ids))]
-        id_pairs = [_ids[x:x+4] for x in range(0, len(_ids), 4)]
-        pairs = [ids[x:x+4] for x in range(0, len(ids), 4)]
+        id_pairs = [_ids[x:x+4] for x in range(0, len(_ids), 4)] #[[0,1,2,3],[4,5,6,7], ...]
+        pairs = [ids[x:x+4] for x in range(0, len(ids), 4)] # [[16,17,18,19],[20,21,22,23], ...]
 
         while len(pairs[0]) > 1:
             new_pairs = []
