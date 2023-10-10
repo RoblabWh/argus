@@ -65,3 +65,7 @@ pip install --force-reinstall -v requests==2.28.0
 // scikit_image
 // ipython
 ```
+
+
+docker-compose.yml of webODm add _argus to all 4 every container names
+wehen first starting docker create account with name argus and password argus

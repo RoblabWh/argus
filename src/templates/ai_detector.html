@@ -84,7 +84,7 @@
 
         function runAIDetection() {
             var modelOptions = document.getElementById("ai_model_options");
-            var selectedModelOption = modelOptions.options[modelOptions.selectedIndex].value;
+            var selectedModelOption = modelOptions.value;//options[modelOptions.selectedIndex].value;
 
             var processingOptions = document.getElementById("processing_options");
             var selectedProcessingOption = processingOptions.options[processingOptions.selectedIndex].value;
@@ -762,8 +762,9 @@
         </select>
         <label for="ai_model_options" style="margin: auto auto auto 16px; display: none"> Detection Quality </label>
         <select name="Processing Options" id="processing_options" style="margin: auto 0 auto 0">
-            <option value="split">Split images (more precise but slower)</option>
-            <option selected="full">Full image (faster but less precise for smaller objects)</option>
+            <option selected="full" value="full">Full image (Faster but coarse analysis)</option>
+            <option value="one_split">Single split (Enhanced analysis)</option>
+            <option value="split">Multiple splits (Detailed analysis but slower)</option>
         </select>
         <label for="processing_options" style="margin: auto auto auto 16px"> Processing Options </label>
         <div style="float: right; margin: auto 8px auto 0">

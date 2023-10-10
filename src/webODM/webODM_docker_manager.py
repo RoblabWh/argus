@@ -2,6 +2,9 @@ import time
 import docker
 import subprocess
 
+import yaml
+
+
 class WebODMDockerManager:
     def __init__(self, port=8000):
         print("initializing webodm docker manager")
@@ -11,20 +14,55 @@ class WebODMDockerManager:
 
     def start_webodm_container(self):
         print("starting webodm container")
-        # Define the command to start the WebODM container in detached mode
-        docker_command = [
-            'docker',
-            'run',
-            '-d',  # Run in detached mode (in the background)
-            '-p', f'{self.port}:8000',  # Map port 8000 inside the container to port 8000 on the host
-            # '-v', '/path/to/your/input/images:/datasets:ro',  # Mount input images directory
-            # '-v', '/path/to/your/output/directory:/var/www/data:rw',  # Mount output directory
-            'opendronemap/webodm_webapp',  # WebODM Docker image name
-        ]
 
-        # Start the WebODM container in the background
-        subprocess.Popen(docker_command)
-        time.sleep(15)
+        #open ./webODM/submodule/docker-compose.yml and extend all "container_name" fields with _argus
+        filedata = None
+
+        with open('./webODM/submodule/docker-compose.yml', 'r') as file:
+            filedata = yaml.safe_load(file)
+
+        print(filedata)
+        print(filedata.keys())
+        keys = filedata['services'].keys()
+        for key in keys:
+            service = filedata['services'][key]
+            if '_argus' not in service['container_name']:
+                print(service['container_name'])
+                if 'argus' not in service['container_name']:
+                    service['container_name'] = service['container_name'] + '_argus'
+                    print(service['container_name'])
+
+        with open('./webODM/submodule/docker-compose.yml', 'w') as outfile:
+            yaml.dump(filedata, outfile)
+
+
+
+
+        try:
+            process = subprocess.Popen(['./webODM/submodule/webodm.sh', 'start'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+            # Optionally, you can capture and print the output if needed
+            # while True:
+            #     output = process.stdout.readline()
+            #     if not output:
+            #         break
+            #     print(output.decode('utf-8').strip())
+            #
+            # # Optionally, you can capture and print the error output if needed
+            # while True:
+            #     error_output = process.stderr.readline()
+            #     if not error_output:
+            #         break
+            #     print(error_output.decode('utf-8').strip())
+
+        except Exception as e:
+            print(f"Error starting WebODM: {e}")
+        while True:
+            time.sleep(20)
+            if self.is_webodm_container_running():
+                break
+            else:
+                print("waiting for webodm container to start")
 
     def is_webodm_container_running(self):
         print("checking if webodm container is running")
@@ -32,8 +70,9 @@ class WebODMDockerManager:
             # Initialize the Docker client
             client = docker.from_env()
 
-            # Check if the WebODM container is running
-            container = client.containers.get('opendronemap/webodm_webapp ')  # Replace with the actual container name or ID
+            print(str([container.name for container in client.containers.list()]))
+
+            container = client.containers.get('webapp_argus')  # Replace with the actual container name or ID
             print(container.status)
             return container.status == 'running'
         except docker.errors.NotFound:

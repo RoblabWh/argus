@@ -35,8 +35,8 @@ class WebODMThread(threading.Thread):
 
     def authenticate(self):
         res = requests.post('http://localhost:8000/api/token-auth/',
-                            data={'username': 'Benutzername',
-                                  'password': 'Passwort'}).json()
+                            data={'username': 'argus',
+                                  'password': 'argus'}).json()
         self.token = res['token']
 
     def list_projects(self):

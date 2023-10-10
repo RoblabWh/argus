@@ -26,6 +26,8 @@ def main():
     parser.add_argument('--batch_size', default=5, help='Batch size for Model (default: 5)')
     #parser.add_argument('--split_images', type=bool, default=False, help='Split images into tiles fore more precise detection (default: False)')
     parser.add_argument('--split_images', action='store_true', help='Split images into tiles fore more precise detection (default: False)')
+    parser.add_argument('--max_splitting_steps', default=1, help='Maximum number of splitting steps, splits into 4 images each time (default: 1)')
+
     args = parser.parse_args()
     u.assert_arguments(args)
 
@@ -36,7 +38,7 @@ def main():
     datahandler = DataHandler(args)
     if args.split_images:
         print("option --split_images is set, images will be split into tiles")
-        datahandler.preprocess()
+        datahandler.preprocess(int(args.max_splitting_steps))
     data = datahandler.get_image_paths_str()
 
     # No PyTorch DataLoader needed because MMDetection implements its own DataLoader

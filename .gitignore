@@ -1,7 +1,7 @@
 src/results
 src/env
 src/static/uploads
+src/webODM/submodule
+/src/detection/results/
 data
 detection/model_weights
-
-/src/detection/results/

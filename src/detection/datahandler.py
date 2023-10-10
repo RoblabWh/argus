@@ -99,7 +99,7 @@ class DataHandler(Dataset):
         return [path.__str__() for path in self.image_paths]
 
     ###### PREPROCESSING ######
-    def preprocess(self):
+    def preprocess(self, max_splitting_steps):
         """
         Preprocess or do not preprocess. Does not preprocess on first call.
         But initializes self.image_paths and self.batches.
@@ -107,13 +107,13 @@ class DataHandler(Dataset):
         """
         self.preprocess_ = not self.preprocess_
         if self.preprocess_:
-            self.preprocess_images()
+            self.preprocess_images(max_splitting_steps)
         else:
             # Set/reset the image paths
             self.image_paths = self.get_image_paths()
             self.image_paths.sort(key=lambda x: x.name)
 
-    def preprocess_images(self):
+    def preprocess_images(self, max_splitting_steps):
         """
         Preprocesses the images. This includes:
         - Splitting large images into smaller ones
@@ -141,7 +141,7 @@ class DataHandler(Dataset):
 
             # Split the image into smaller ones
             splitted_images += len(images)
-            images = self.split_image(img)
+            images = self.split_image(img, max_splitting_steps)
             if len(images) > 1:
                 ids = {}
                 for j, image in enumerate(images):
@@ -160,18 +160,20 @@ class DataHandler(Dataset):
         self.image_paths = new_image_paths
         self.image_paths.sort(key=lambda x: x.name)
 
-    def split_image(self, image):
+    def split_image(self, image, remaining_steps):
         """
         Splits the image if its too large, recursively checks if the new images are too large, too.
         :param image: image to split
         :return: list of images
         """
         h, w = image.shape[:2]
-        if h > 1200 or w > 1200:
+        if (h > 1200 or w > 1200) and remaining_steps > 0:
+            print(f'Slitting images with {remaining_steps} remaining steps')
+            remaining_steps -= 1
             images = self.split_image_into_four(image)
             new_images = []
             for image in images:
-                new_images.extend(self.split_image(image))
+                new_images.extend(self.split_image(image, remaining_steps))
             return new_images
         else:
             return [image]

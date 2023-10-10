@@ -29,6 +29,7 @@ class DetectionThread(threading.Thread):
         self.options = options
         self.numbr_of_models = options.get('numbr_of_models', 1)
         self.split_images = options.get('split_images', False)
+        self.max_splits = options.get('max_splits', 99)
         self.done = False
         super().__init__()
 
@@ -67,7 +68,8 @@ class DetectionThread(threading.Thread):
         script_to_run = 'ir-detect.py'
         used_model = 'model_weights/rtmdet_x_8xb32-300e_coco/small_trained_correctbbx/'
         split_images = '--split_images' if self.split_images else ''
-        command_to_run = f'python ./code/{script_to_run} --netfolders {container_path_to_code}/{used_model} --inputfolder {container_path_to_images} --create_coco True {split_images}'
+        max_splitting_steps = '--max_splitting_steps ' + str(self.max_splits) if self.split_images else ''
+        command_to_run = f'python ./code/{script_to_run} --netfolders {container_path_to_code}/{used_model} --inputfolder {container_path_to_images} --create_coco True {split_images} {max_splitting_steps}'
 
         # Create a container with volume mounts
         # docker run --gpus all --shm-size=8g -it -v /detections/:/mmdetection/code object_detection_image
