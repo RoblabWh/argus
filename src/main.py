@@ -1,8 +1,9 @@
 import datetime
-
+import sys
 from project_manager import ProjectManager
 from model_weights_downloader import ModelWeightsDownloader
 from server import ArgusServer
+import os
 import docker
 import urllib.request
 
@@ -42,7 +43,7 @@ import urllib.request
     # container.remove()
 
 
-def main():
+def main(system_code_path):
     UPLOAD_FOLDER = './static/uploads/'
 
     #execute the python program in file model_weights_downloader.py
@@ -56,14 +57,21 @@ def main():
     project_manager = ProjectManager(UPLOAD_FOLDER)
     project_manager.initiate_project_list()
 
-    server = ArgusServer(UPLOAD_FOLDER, project_manager)
+    server = ArgusServer(UPLOAD_FOLDER, project_manager, system_code_path)
     server.run()
 
 
 
 
 if __name__ == '__main__':
-    main()
+    DOCKER_ENV_KEY = os.environ.get('AM_I_IN_A_DOCKER_CONTAINER', False)
+    if DOCKER_ENV_KEY:
+        system_code_path = sys.argv[1] + '/src'
+        print('running insinde docker container, system_code_path is:', system_code_path)
+    else:
+        system_code_path = os.getcwd()
+        print('running outside docker container, system_code_path is:', system_code_path)
+    main(system_code_path)
 
 
 

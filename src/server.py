@@ -33,7 +33,7 @@ import urllib.request
 #         return self.application
 
 class ArgusServer:
-    def __init__(self, upload_folder_path, project_manager):
+    def __init__(self, upload_folder_path, project_manager, system_code_path):
         self.app = Flask(__name__)
         self.app.jinja_env.globals.update(thumbnail_for=self.thumbnail_for)
 
@@ -48,6 +48,7 @@ class ArgusServer:
         # self.map = {}
         self.project_manager = project_manager
         self.webodm_manager = WebODMDockerManager(port=8000)
+        self.system_code_path = system_code_path
 
         self.setup_routes()
 
@@ -374,7 +375,7 @@ class ArgusServer:
 
     def detect_objects(self, options, report_id):
         #start docker container in own thread and start detection
-        thread = DetectionThread(report_id, self.project_manager.get_file_names, self.project_manager.get_annotation_file_path(report_id), options)
+        thread = DetectionThread(report_id, self.project_manager.get_file_names, self.project_manager.get_annotation_file_path(report_id), self.system_code_path, options)
         self.detection_threads.append(thread)
         thread.start()
         #thread.join()

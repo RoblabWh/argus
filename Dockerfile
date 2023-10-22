@@ -12,5 +12,5 @@ RUN pip install -r requirements.txt
 
 ENV AM_I_IN_A_DOCKER_CONTAINER Yes
 
-ENTRYPOINT ["python3", "main.py"]
+ENTRYPOINT ["sh", "-c", "python3 main.py $0"]
 EXPOSE 5000

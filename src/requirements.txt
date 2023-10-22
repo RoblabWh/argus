@@ -20,3 +20,5 @@ flask == 2.2.2
 pyodm == 1.5.10
 pyocclient
 psutil
+pyyaml
+werkzeug == 2.2.2

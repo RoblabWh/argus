@@ -1,10 +1,15 @@
 #!/bin/bash
 
 APPNAME='argus'
-DATAPATH=~/$APPNAME/uploads
+DATAPATH=~/$APPNAME/static
 
 # create directory if needed
 mkdir -p "$DATAPATH"
+
+# Get the directory of the bash script
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+echo "Script directory: $SCRIPT_DIR"
 
 # check if rebuild flag is provided
 rebuild=false
@@ -24,6 +29,6 @@ docker run \
     --rm \
     -it \
     -v /var/run/docker.sock:/var/run/docker.sock \
-    -v "${DATAPATH}:/app/static/uploads" \
+    -v "${DATAPATH}:/app/static" \
     -v "${APPNAME}_model_weights:/app/detection/model_weights" \
-    "$APPNAME"
+    "$APPNAME" $SCRIPT_DIR

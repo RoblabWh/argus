@@ -22,10 +22,11 @@ from os.path import isfile, join
 
 
 class DetectionThread(threading.Thread):
-    def __init__(self, report_id, image_list, ann_path, options={}):
+    def __init__(self, report_id, image_list, ann_path, system_code_path, options={}):
         self.report_id = report_id
         self.image_list = image_list
         self.ann_path = ann_path
+        self.system_code_path = system_code_path
         self.options = options
         self.numbr_of_models = options.get('numbr_of_models', 1)
         self.split_images = options.get('split_images', False)
@@ -52,7 +53,7 @@ class DetectionThread(threading.Thread):
             print(f"Using existing image: {image_name}")
 
         # Define the paths to the local folders you want to mount
-        working_dir = os.getcwd()
+        working_dir = self.system_code_path #os.getcwd()
         path_to_images = working_dir + '/static/uploads/' + str(self.report_id) + '/rgb'
         path_to_code = working_dir + '/detection'
         #get the current working directory dynamically
@@ -86,6 +87,8 @@ class DetectionThread(threading.Thread):
         )
 
         print('container started: ' + str(container.status))
+        print(' --> mounted volumes: ', container.attrs['Mounts'])
+        print(' --> based on paths:', path_to_code, path_to_images)
 
         # Wait for the container to finish
         container.wait()
@@ -97,12 +100,12 @@ class DetectionThread(threading.Thread):
 
 
         # load results from json file located under /detections/results
-        path_to_json = path_to_code + '/results/ann.json'
+        path_to_json = './detection/results/ann.json'
         with open(path_to_json) as json_file:
             data = json.load(json_file)
             print('found', len(data["annotations"]), 'objects')
             reformatted_data = self.reformat_data(data)
-            save_path = working_dir + '/static/uploads/' + str(self.report_id)
+            save_path = './static/uploads/' + str(self.report_id)
             self.save_detections(reformatted_data, save_path)
 
 
