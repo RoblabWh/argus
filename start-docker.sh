@@ -1,7 +1,7 @@
 #!/bin/bash
 
 APPNAME='argus'
-DATAPATH=~/$APPNAME/static
+DATAPATH=~/$APPNAME/src/static
 
 # create directory if needed
 mkdir -p "$DATAPATH"
