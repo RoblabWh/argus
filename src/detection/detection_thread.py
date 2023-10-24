@@ -77,7 +77,7 @@ class DetectionThread(threading.Thread):
         container = client.containers.run(
             image=image_name,
             volumes=[
-                path_to_images + ':' + container_path_to_images,
+                path_to_images + ':' + container_path_to_images, #TODO FIX!!! Die Gewichte liegen da nciht wenn man nur den container startet, denn die sind nur in dem volume argus_model_weights
                 path_to_code + ':' + container_path_to_code
             ],
             detach=True,

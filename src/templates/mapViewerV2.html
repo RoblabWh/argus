@@ -223,6 +223,7 @@ function slide{{map.name}}(e) {
 
 
 
+
 // ============================================================================
 // Add the layer control to the map to switch between overlays and display them
 // ============================================================================
@@ -434,6 +435,120 @@ function isUsedInMap(index, displayingIR){
     }
     console.log(filename + " isUsedInMap false");
     return false;
+}
+
+function generateObjectDetectionLayer(objectDetectionData){
+    // generate a new layer
+    objectDetectionLayer = L.layerGroup();
+
+
+    //loop over all detections and collect found object types per image using image_id as key
+    foundObjectsByImageID = {};
+    for(var i=0; i< objectDetectionData.annotations.length; i++){
+        imageID = objectDetectionData.annotations[i].image_id;
+        categoryID = objectDetectionData.annotations[i].category_id + 1;
+        if(imageID in foundObjectsByImageID){
+            //check if categoryID is already in list
+            if(foundObjectsByImageID[imageID].indexOf(categoryID) > -1){
+                continue;
+            }
+            foundObjectsByImageID[imageID].push(categoryID);
+        }
+        else{
+            foundObjectsByImageID[imageID] = [categoryID];
+        }
+    }
+
+    //now loop over all images and add the fitting marker to the layer
+    for(var i=0; i< coordinatesRGB.length; i++){
+        let filename_long = coordinatesRGB[i].file_name;
+        filename = filename_long.split("/").pop();
+        let polygonString = coordinatesRGB[i].coordinates_string;
+        let points_strings = polygonString.split(',');
+        let points = new Array();
+        for (var j = 0; j < points_strings.length; j++) {
+            let point = points_strings[j].split(' ');
+            points.push([parseInt(point[0]), parseInt(point[1])]);
+            points[j][0] = (points[j][0] / mapSizeRGB[0] * long2RGB) + ((1 - points[j][0] / mapSizeRGB[0]) * long1RGB);
+            points[j][1] = (points[j][1] / mapSizeRGB[1] * lat1RGB) + ((1 - points[j][1] / mapSizeRGB[1]) * lat2RGB);
+            //Swap lat and long
+            let temp = points[j][0];
+            points[j][0] = points[j][1];
+            points[j][1] = temp;
+        }
+        console.log(polygonString);
+        console.log(points);
+        let center = [((points[0][0] + points[2][0]) / 2.0), ((points[0][1] + points[2][1]) / 2.0)];
+
+        let imageID = -1;
+        images = objectDetectionData.images;
+        //get image.id from images
+        for(var j=0; j< images.length; j++){
+            if(images[j].file_name == filename){
+                imageID = images[j].id;
+                break;
+            }
+        }
+        if(imageID == -1){
+            //add white circle as marker
+            marker = L.circle(center, {
+                color: 'white',
+                fillColor: 'white',
+                fillOpacity: 0.5,
+                radius: 2
+            }).addTo(map);
+
+            continue;
+        }
+        let icon_filename = ''
+        //add an image marker based on the found object categories
+        if(imageID in foundObjectsByImageID){
+            foundCategoriesInImage = foundObjectsByImageID[imageID];
+            if(foundCategoriesInImage.indexOf(1) > -1){
+                icon_filename = icon_filename + 'Brand';
+            }
+            if(foundCategoriesInImage.indexOf(2) > -1){
+                icon_filename = icon_filename + 'Fahrzeug';
+            }
+            if(foundCategoriesInImage.indexOf(3) > -1){
+                icon_filename = icon_filename + 'Person';
+            }
+        }
+        else{
+            //add white circle as marker
+            marker = L.circle(center, {
+                color: 'white',
+                fillColor: 'white',
+                fillOpacity: 0.5,
+                radius: 2
+            }).addTo(objectDetectionLayer);
+            continue;
+        }
+        //console.log("marker " + icon_filename + " at " + center + " for image " + filename + " with id " + imageID + " and found categories " + foundCategoriesInImage);
+        //L.circle(center, {
+        //    color: 'blue',
+        //    fillColor: 'blue',
+        //    fillOpacity: 0.5,
+        //    radius: 2
+        //}).addTo(objectDetectionLayer);
+        marker = L.marker(center, {
+            icon: L.icon({
+                iconUrl: '/static/default/signs/' + icon_filename + '.png',
+                iconSize: [30, 30],
+                iconAnchor: [15, 15],
+                popupAnchor: [0, 0],
+                shadowUrl: null,
+                shadowSize: null,
+                shadowAnchor: null
+            })
+        });
+        marker.on('click',	function(){showSlideByFilename(filename_long)});
+        marker.addTo(objectDetectionLayer);
+    }
+
+    //add layer to map
+    objectDetectionLayer.addTo(map);
+    layerControl.addOverlay(objectDetectionLayer , 'taktischeZeichen');
 }
 
 
