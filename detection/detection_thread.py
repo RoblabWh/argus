@@ -40,7 +40,7 @@ class DetectionThread(threading.Thread):
         # Create a Docker client
         client = docker.from_env()
 
-        image_name = 'object_detection_image'  # Choose a name for your image
+        image_name = 'argus_detection'  # Choose a name for your image
         #Check if the image with the specified tag exists
         existing_images = client.images.list(name=image_name)
 
@@ -79,6 +79,7 @@ class DetectionThread(threading.Thread):
             volumes=[
                 path_to_images + ':' + container_path_to_images, #TODO FIX!!! Die Gewichte liegen da nciht wenn man nur den container startet, denn die sind nur in dem volume argus_model_weights
                 path_to_code + ':' + container_path_to_code
+                'argus_model_weights:' + container_path_to_images
             ],
             detach=True,
             runtime="nvidia",  # Add this line for GPU support

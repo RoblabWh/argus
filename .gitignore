@@ -1,7 +1,7 @@
-src/results
-src/env
-src/static/uploads
-src/webODM/submodule
-/src/detection/results/
+results
+env
+projects
+submodule
+__pycache__
 data
-detection/model_weights
+model_weights

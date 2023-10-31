@@ -64,4 +64,6 @@ class ModelWeightsDownloader:
 
         print("finished unzipping model weights")
 
-
+if __name__ == "__main__":
+    model_weights_downloader = ModelWeightsDownloader()
+    model_weights_downloader.check_model_weights()

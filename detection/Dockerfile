@@ -37,5 +37,6 @@ RUN conda clean --all \
     && cd /mmdetection \
     && pip install --no-cache-dir -e .
 
-WORKDIR /mmdetection
+COPY . /detection
 
+WORKDIR /detection
