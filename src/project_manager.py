@@ -2,50 +2,49 @@ import os
 import json
 import shutil
 from datetime import datetime
-from image_mapper_for_falsk import ImageMapper
 
 
 class ProjectManager:
-    def __init__(self, path_to_images):
+    def __init__(self, projects_path):
         self.projects = []
         self.highest_id = -1
         self.current_project_id = None
-        if not os.path.exists(path_to_images):
-            os.makedirs(path_to_images)
-        self.projects_path = path_to_images
+        if not os.path.exists(projects_path):
+            os.makedirs(projects_path)
+        self.projects_path = projects_path
         #self.image_mapper = {}
 
     def create_project(self, name, description):
         id = self.get_next_id()
         print("creating project with id: " + str(id))
-        os.mkdir(self.projects_path + str(id))
+        os.mkdir(os.path.join(self.projects_path, str(id)))
         data = self.generate_empty_data_dict()
         creation_time = datetime.now().strftime("%d.%m.%Y %H:%M:%S")
         project = ({'name': name, 'description': description, 'id': id, 'creation_time': creation_time, 'data': data})
         self.projects.append(project)
-        with open(self.projects_path + str(id) + "/project.json", "w") as json_file:
+        with open(os.path.join(self.projects_path, str(id), "project.json"), "w") as json_file:
             json.dump(project, json_file)
 
         self.highest_id += 1
         self.projects = sorted(self.projects, key=lambda d: d['id'], reverse=True)
         return project
 
-    def load_project_from_directory(self, directory):
+    def load_project_from_directory(self, project_id):
         # load project.json from static/uploads/id
         # if no project.json exists, return None
         project = None
-        if os.path.isfile(self.projects_path + directory + "/project.json"):
-            print("loading project from directory: " + directory)
-            with open(self.projects_path + directory + "/project.json", "r") as json_file:
+        if os.path.isfile(os.path.join(self.projects_path, project_id, "project.json")):
+            print("loading project from directory: " + project_id)
+            with open(os.path.join(self.projects_path, project_id, "project.json"), "r") as json_file:
                 project = json.load(json_file)
         return project
 
     def initiate_project_list(self):
         # check for every directory in static/uploads/ if there is project.json
         # if yes, load project and add to project list
-        for directory in os.listdir(self.projects_path):
-            if os.path.isdir(self.projects_path + directory):
-                project = self.load_project_from_directory(directory)
+        for project in os.listdir(self.projects_path):
+            if os.path.isdir(os.path.join(self.projects_path, project)):
+                project = self.load_project_from_directory(project)
                 if project != None:
                     self.projects.append(project)
                     if project['id'] > self.highest_id:
@@ -98,7 +97,7 @@ class ProjectManager:
         project = self.get_project(id)
         data = project['data']
         data['file_names'] += file_names
-        with open(self.projects_path + str(id) + "/project.json", "w") as json_file:
+        with open(os.path.join(self.projects_path, str(id), "project.json"), "w") as json_file:
             json.dump(project, json_file)
 
         return data['file_names']
@@ -246,15 +245,6 @@ class ProjectManager:
         except:
             return "no creation time found"
 
-    # def get_image_mapper(self, report_id):
-    #     try:
-    #         mapper = self.image_mapper[str(report_id)]
-    #         return mapper
-    #     except:
-    #         mapper = ImageMapper(self.projects_path)
-    #         self.image_mapper[str(report_id)] = mapper
-    #         return mapper
-
     def update_ir_settings_from_website(self, report_id, settings):
         project = self.get_project(report_id)
         ir_settings = project['data']['ir_settings']
@@ -344,6 +334,5 @@ class ProjectManager:
             data['contains_unprocessed_images'] = False
         else:
             data['contains_unprocessed_images'] = True
-        with open(self.projects_path + str(report_id) + "/project.json", "w") as json_file:
+        with open(os.path.join(self.projects_path, str(report_id), "project.json"), "w") as json_file:
             json.dump(project, json_file)
-

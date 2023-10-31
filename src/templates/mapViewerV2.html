@@ -122,7 +122,7 @@ const baseLayers = {
 var imageBounds{{map.name}} = {{map.bounds}};
 var mapSize{{map.name}} = {{map.size}};
 var center{{map.name}} = {{map.center}};
-var imageOverlay{{map.name}} = L.imageOverlay('{{ url_for('static', filename=map.file) }}', imageBounds{{map.name}});
+var imageOverlay{{map.name}} = L.imageOverlay('{{ global_for(map.file) }}', imageBounds{{map.name}});
 var {{map.name}}Overlay = L.layerGroup([imageOverlay{{map.name}}]);
 
 var lat1{{map.name}} = imageBounds{{map.name}}[0][0];

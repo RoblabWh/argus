@@ -29,9 +29,9 @@ class ExifHeader:
         self.gps_coordinate = None
         self.xmp_metadata = None
         self.camera_properties = None
-        self.image_size = None 
+        self.image_size = None
         self.creation_time = None
-        self.creation_time_str = None       
+        self.creation_time_str = None
         self.ir = False
         self.pano = False
         self.pano_data = None
@@ -45,7 +45,7 @@ class ExifHeader:
         self.read_xmp_projection_type()
 
 
-        #print(self.python_dict)   
+        #print(self.python_dict)
 
     def read_creation_time(self):
         self.creation_time_str = (str(self._get_if_exist(self.python_dict, 'EXIF:CreateDate')))
@@ -55,7 +55,7 @@ class ExifHeader:
 
     def read_image_size(self):
         image_size = (str(self._get_if_exist(self.python_dict, 'Composite:ImageSize'))).split('x')
-        width =  int(image_size[0])        
+        width =  int(image_size[0])
         height = int(image_size[1])
         self.image_size = (width, height)
 
@@ -72,10 +72,10 @@ class ExifHeader:
         else:
             latitude = None
             longitude = None
-            # x, y = GPS.mercator_projection(latitude, longitude)                 
+            # x, y = GPS.mercator_projection(latitude, longitude)
         relative_height = float(self._get_if_exist(self.python_dict, 'XMP:RelativeAltitude'))
         self.gps_coordinate = GPS(relative_height, latitude, longitude)
-    
+
     def read_xmp_metadata(self):
         """
         Reading the xmp metadata of the image
@@ -206,7 +206,7 @@ class ExifHeader:
         :return: camera properties
         """
         return self.camera_properties
-    
+
     def get_image_size(self):
         return self.image_size
 
@@ -239,4 +239,4 @@ class ExifHeader:
     def update_path(self, path):
         self.image_path = path
         if self.pano:
-            self.pano_data['file'] = path[path.find("uploads"):]
+            self.pano_data['file'] = path

@@ -1,4 +1,5 @@
 import json
+import os.path as path
 
 import cv2
 import time
@@ -11,18 +12,16 @@ from map_scaler import MapScaler
 
 
 class ImageMapper:
-    def __init__(self, path_to_images, report_id, map_width_px=2048, map_height_px=2048, blending=0.7, optimize=True,
-                 max_gimbal_pitch_deviation=10, with_ODM=True):
-        if path_to_images[-1] != "/":
-            path_to_images += "/"
-        self.path_to_images = path_to_images
+    def __init__(self, project_manager, report_id, map_width_px=2048, map_height_px=2048, blending=0.7, optimize=True,
+                 max_gimbal_pitch_deviation=10, with_odm=True):
+        self.project_manager = project_manager
         self.report_id = report_id
         self.map_width_px = map_width_px
         self.map_height_px = map_height_px
         self.blending = blending
         self.optimize = optimize
         self.max_gimbal_pitch_deviation = max_gimbal_pitch_deviation
-        self.with_ODM = with_ODM
+        self.with_odm = with_odm
 
         self.minimum_number_of_images = 2
 
@@ -36,21 +35,6 @@ class ImageMapper:
         self.middle_gps = None
         self.placeholder_map = None
         self.has_ir = False
-
-    def set_processing_parameters(self, path_to_images=None, map_width_px=2048, map_height_px=2048, blending=0.7,
-                                  optimize=True, max_gimbal_pitch_deviation=10, with_odm=True):
-        if path_to_images is not None:
-            # print("old Path to images: ", self.path_to_images)
-            # print("new Path to images: ", path_to_images)
-            if path_to_images[-1] != "/":
-                path_to_images += "/"
-            self.path_to_images = path_to_images
-        self.map_width_px = map_width_px
-        self.map_height_px = map_height_px
-        self.blending = blending
-        self.optimize = optimize
-        self.max_gimbal_pitch_deviation = max_gimbal_pitch_deviation
-        self.with_ODM = with_odm
 
     def generate_map_elements_from_images(self, rgb_images=None, ir_images=None):
         if rgb_images is not None:
@@ -94,7 +78,7 @@ class ImageMapper:
         map_rgb = {
             "center": [latc, longc],
             "zoom": 18,
-            "file": "default/waiting.png",
+            "file": "./static/default/waiting.png",
             "bounds": bounds,
             "size": [1080, 1080],
             "image_coordinates": None,
@@ -106,7 +90,7 @@ class ImageMapper:
         map_ir = {
             "center": [latc, longc],
             "zoom": 18,
-            "file": "default/waiting.png",
+            "file": "./static/default/waiting.png",
             "bounds": bounds,
             "size": [1080, 1080],
             "image_coordinates": None,
@@ -118,7 +102,7 @@ class ImageMapper:
         map_rgb_odm = {
             "center": [latc, longc],
             "zoom": 18,
-            "file": "default/waiting.png",
+            "file": "./static/default/waiting.png",
             "bounds": bounds,
             "size": [1080, 1080],
             "image_coordinates": None,
@@ -130,7 +114,7 @@ class ImageMapper:
         map_ir_odm = {
             "center": [latc, longc],
             "zoom": 18,
-            "file": "default/waiting.png",
+            "file": "./static/default/waiting.png",
             "bounds": bounds,
             "size": [1080, 1080],
             "image_coordinates": None,
@@ -156,9 +140,9 @@ class ImageMapper:
 
     def process_map(self, map_scaler, map_elements, min_x, max_x, min_y, max_y, ir):
         map_file_name = "map_rgb.png" if not ir else "map_ir.png"
-        map_file_path = "uploads/" + str(self.report_id) + "/" + map_file_name
+        map_file_path = path.join(self.project_manager.projects_path, str(self.report_id), map_file_name)
         self.__calculate_gps_for_mapbox_plugin(map_elements, map_scaler, min_x, max_x, min_y, max_y)
-        self.save_map(str(self.report_id) + '/', map_file_name)
+        self.save_map(map_file_path)
 
         map_size = [self.cropped_map.shape[1], self.cropped_map.shape[0]]
 
@@ -200,14 +184,10 @@ class ImageMapper:
         map_elements = map_obj.get_map_elements()
         return map_obj.get_min_and_max_coords(), map_elements
 
-    def save_map(self, relative_path, file_name):
-        print("-Start saving map under ", relative_path + file_name)
-        msg_str = relative_path + file_name
-        path = self.path_to_images
-        cv2.imwrite(path + msg_str, self.cropped_map)
-        # cv2.imwrite(path + msg_str, self.cropped_map, [cv2.IMWRITE_PNG_COMPRESSION, 9])
-
-        print("-Saved map under ", path + msg_str)
+    def save_map(self, save_path):
+        print("-Start saving map under ", save_path)
+        cv2.imwrite(save_path, self.cropped_map)
+        print("-Saved map under ", save_path)
 
     def __calculate_gps_for_mapbox_plugin(self, map_elements, map_scaler, min_x, max_x, min_y, max_y):
         origin_gps = map_elements[0].get_image().get_exif_header().get_gps()
@@ -291,14 +271,14 @@ class ImageMapper:
 
             str_coordinates = ','.join(str(e) for e in tmp_coordinates)
             coodinate = {"coordinates_string": str_coordinates,
-                         "file_name": map_element.get_image().get_image_path().split("static/")[1]}
+                         "file_name": map_element.get_image().get_image_path()}
 
             new_coordinates.append(coodinate)
         return new_coordinates
 
     def generate_odm_orthophoto(self, container_port, filenames, image_size=0, ir=False):
         print("-Generating ODM orthophoto...")
-        if not self.with_ODM:
+        if not self.with_odm:
             print("Error: ODM is not enabled for this dataset!")
             return
 
@@ -311,7 +291,7 @@ class ImageMapper:
         for j, image in enumerate(image_list):
             image_list[j] = "static/" + image
         # print(image_list)
-        taskmanager = OdmTaskManager(self.path_to_images + str(self.report_id) + "/", container_port)
+        taskmanager = OdmTaskManager(path.join(self.project_manager.projects_path, str(self.report_id)), container_port)
 
         if image_size != 0:
             taskmanager.set_images_scaled(image_list, image_size)
@@ -341,10 +321,10 @@ class ImageMapper:
 
             im = cv2.imread("results/odm_orthophoto/odm_orthophoto.tif", cv2.IMREAD_UNCHANGED)
             map_size = [im.shape[1], im.shape[0]]
-            target_path = self.path_to_images + str(self.report_id) + "/"
             filename = "odm_map.png" if not ir else "odm_map_ir.png"
-            cv2.imwrite(target_path + filename, im)
-            print("Orthophoto saved under", target_path + filename)
+            save_path = path.join(self.project_manager.projects_path, str(self.report_id), filename)
+            cv2.imwrite(save_path, im)
+            print("Orthophoto saved under", save_path)
             taskmanager.close()
 
             map = {
@@ -458,4 +438,3 @@ class ImageMapper:
         except:
             print("Error: Fallback GPS failed!")
             return False
-

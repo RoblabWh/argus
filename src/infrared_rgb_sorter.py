@@ -31,7 +31,7 @@ class InfraredRGBSorter(Sorter):
 
     def __init__(self):
         super(InfraredRGBSorter, self).__init__()
-   
+
     def sort(self, images):
         images_1 = list()
         images_2 = list()
@@ -46,10 +46,10 @@ class InfraredRGBSorter(Sorter):
 
         if len(found_widths) > 2:
             sorting_kriteria = list(found_widths.keys())[0]
-        
+
         for image in images:
             (width, height) = image.get_exif_header().get_image_size()
-            if sorting_kriteria == width: 
+            if sorting_kriteria == width:
                 images_1.append(image)
             else:
                 images_2.append(image)
@@ -61,7 +61,7 @@ class InfraredRGBSorter(Sorter):
 
         (width_1, height_1) = images_1[0].get_exif_header().get_image_size()
         (width_2, height_2) = images_2[0].get_exif_header().get_image_size()
-        
+
         if width_1 < width_2:
             (infrared_images, rgb_images) = (images_1, images_2)
         else:
@@ -102,16 +102,16 @@ class InfraredRGBSorter(Sorter):
         couples_path_list = list()
         index = 0
         while index < len(couples_helper_list):
-            image_path = couples_helper_list[index][0].get_image_path().split("static/")[1]
+            image_path = couples_helper_list[index][0].get_image_path()
 
             if index + 1 < len(couples_helper_list):
                 if couples_helper_list[index][1] != couples_helper_list[index + 1][1]:
                     #check id they are created within +- 1 second
                     if abs(couples_helper_list[index][0].get_exif_header().get_creation_time() - couples_helper_list[index + 1][0].get_exif_header().get_creation_time()) <= 1:
                         if(couples_helper_list[index][1] != ir):
-                            couples_path_list.append([image_path, couples_helper_list[index + 1][0].get_image_path().split("static/")[1]])
+                            couples_path_list.append([image_path, couples_helper_list[index + 1][0].get_image_path()])
                         else:
-                            couples_path_list.append([couples_helper_list[index + 1][0].get_image_path().split("static/")[1], image_path])
+                            couples_path_list.append([couples_helper_list[index + 1][0].get_image_path(), image_path])
                         index += 2
                         if(index>=len(couples_helper_list)):
                             break
@@ -124,7 +124,3 @@ class InfraredRGBSorter(Sorter):
             index += 1
 
         return couples_path_list
-
-
-
-            

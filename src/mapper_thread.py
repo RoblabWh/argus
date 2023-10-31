@@ -1,12 +1,11 @@
 import threading
-import time
 
 from image_processor import ImageProcessor
 from image_mapper import ImageMapper
 
 
 class MapperThread(threading.Thread):
-    def __init__(self, fast_mapping, odm_mapping, report_id, map_resolution, file_names, data):
+    def __init__(self, project_manager, fast_mapping, odm_mapping, report_id, map_resolution, file_names, data):
         self.fast_mapping = fast_mapping
         self.with_odm = odm_mapping
         self.report_id = report_id
@@ -19,9 +18,8 @@ class MapperThread(threading.Thread):
         self.message = "Step 1/2: Preprocessing"
         self.mapping = False
         self.metadata_delivered = False
-        self.image_mapper = ImageMapper("./static/uploads/", report_id)
-        self.image_mapper.set_processing_parameters(map_width_px=map_resolution[0],
-                                               map_height_px=map_resolution[1], with_odm=odm_mapping)
+        self.image_mapper = ImageMapper(project_manager, report_id, map_width_px=map_resolution[0],
+                                            map_height_px=map_resolution[1], with_odm=odm_mapping)
         self.ir = False
         self.flight_data = None
         self.camera_specs = None
@@ -29,8 +27,6 @@ class MapperThread(threading.Thread):
         self.couples_path_list = []
         self.rgb_images = []
         self.ir_images = []
-        self.rgb_short_paths = []
-        self.ir_short_paths = []
         self.panos = []
         self.maps = []
         self.maps_placeholders = []
@@ -115,8 +111,6 @@ class MapperThread(threading.Thread):
         self.couples_path_list = processor.couples_path_list
         self.rgb_images = processor.all_rgb_images
         self.ir_images = processor.all_ir_images
-        self.rgb_short_paths = processor.rgb_short_paths
-        self.ir_short_paths = processor.ir_short_paths
         self.flight_trajectory = processor.flight_trajectory
         print("flight trajectory: " + str(self.flight_trajectory))
         self.progress_preprocess = 58
@@ -140,7 +134,7 @@ class MapperThread(threading.Thread):
             print("mappeable: " + str(self.mappable))
             print("ir: " + str(self.ir))
 
-            if len(self.ir_short_paths) > 0:
+            if len(self.ir_images) > 0:
                 self.ir_settings = self.image_mapper.get_ir_settings()
 
             maps = self.image_mapper.generate_placeholder_maps()
@@ -175,8 +169,8 @@ class MapperThread(threading.Thread):
         return self.progress_mapping
 
     def get_results(self):
-        return self.flight_data, self.camera_specs, self.weather_data, self.maps_placeholders, self.rgb_short_paths, \
-            self.ir_short_paths, self.ir_settings, self.panos, self.couples_path_list, self.flight_trajectory
+        return self.flight_data, self.camera_specs, self.weather_data, self.maps_placeholders, [image.get_image_path() for image in self.rgb_images], \
+            [image.get_image_path() for image in self.ir_images], self.ir_settings, self.panos, self.couples_path_list, self.flight_trajectory
 
     def get_mapper(self):
         return self.image_mapper
@@ -213,6 +207,3 @@ class MapperThread(threading.Thread):
 
     def update_maps_sent(self, index):
         self.maps_sent[index] = True
-
-
-

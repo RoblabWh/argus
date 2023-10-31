@@ -661,8 +661,8 @@
     const urls_thumbnails = [];
     const urls = [];
     {% for file_name in file_names %}
-        urls_thumbnails.push("{{ url_for('static', filename=thumbnail_for(path=file_name)) }}");
-        urls.push("{{ url_for('static', filename='')}}" + "{{ file_name }}");
+        urls_thumbnails.push("{{ global_for(thumbnail_for(file_name)) }}");
+        urls.push("{{ global_for(file_name) }}");
     {% endfor %}
     // Process each selected file and create an uploadImage
     for (let i = 0; i < file_paths.length; i++){

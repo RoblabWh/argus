@@ -748,7 +748,8 @@
                         magnify(slideIndex, zoomValue);
                     }
                 };
-                imageRGB.src = 'static/'+currentImagePaths[0];
+                //TODO use global_for ?
+                imageRGB.src = currentImagePaths[0];
                 imageRGB.classList.add("dynamic-images-rgb");
                 allImages[slideIndex][0] = imageRGB;
             }
@@ -760,7 +761,8 @@
         if(imageIR == null){
             if(currentImagePaths[1] != ""){
                 imageIR = new Image();
-                imageIR.src = 'static/'+currentImagePaths[1];
+                //TODO use global_for ?
+                imageIR.src = currentImagePaths[1];
                 imageIR.classList.add("ir-image");
                 allImages[slideIndex][1] = imageIR;
 
@@ -1258,7 +1260,7 @@
         {% for couple in slide_file_paths %}
         {% if couple[0] != "" %}
         <div style="float:left;width:20%; min-width:240px;">
-            <img id="galleryImage{{ couple[0].split('/')[-1] }}" src="{{ url_for('static', filename=thumbnail_for(path=couple[0])) }}" loading="lazy" style="padding: 5px;width:95%;cursor: pointer;" onclick="showSlideByFilename('{{ couple[0] }}')">
+            <img id="galleryImage{{ couple[0].split('/')[-1] }}" src="{{ global_for(thumbnail_for(couple[0])) }}" loading="lazy" style="padding: 5px;width:95%;cursor: pointer;" onclick="showSlideByFilename('{{ couple[0] }}')">
         </div>
         {% endif %}
         {% endfor %}
@@ -1274,7 +1276,7 @@
             {% for couple in slide_file_paths %}
             {% if couple[1] != "" %}
             <div style="float:left;width:20%; min-width:240px;">
-                <img src="{{ url_for('static', filename=thumbnail_for(path=couple[1])) }}" style="padding: 5px;width:95%;cursor: pointer;" onclick="showSlideByFilename('{{ couple[1] }}')">
+                <img src="{{ global_for(thumbnail_for(couple[1])) }}" style="padding: 5px;width:95%;cursor: pointer;" onclick="showSlideByFilename('{{ couple[1] }}')">
             </div>
             {% endif %}
             {% endfor %}
@@ -1290,7 +1292,7 @@
             {% if panos %}
             {% for pano in panos %}
             <div style="float:left;width:20%; min-width:240px;">
-                <img src="{{ url_for('static', filename=thumbnail_for(path=pano.file)) }}" style="padding: 5px;width:95%;cursor: pointer;" onclick="show_pano({{ loop.index0 }})">
+                <img src="{{ global_for(thumbnail_for(pano.file)) }}" style="padding: 5px;width:95%;cursor: pointer;" onclick="show_pano({{ loop.index0 }})">
             </div>
             {% endfor %}
             {% endif %}
@@ -1306,7 +1308,7 @@
             {% for couple in slide_file_paths %}
             {% if couple[2]%}
             <div style="float:left;width:20%; min-width:240px;">
-                <img src="{{ url_for('static', filename=couple[2]) }}" style="padding: 5px;width:95%;cursor: pointer;" onclick="showSlideByFilename('{{ couple[2] }}')">
+                <img src="{{ global_for(couple[2]) }}" style="padding: 5px;width:95%;cursor: pointer;" onclick="showSlideByFilename('{{ couple[2] }}')">
             </div>
             {% endif %}
             {% endfor %}
@@ -1587,7 +1589,7 @@
     var dynamicCanvas = document.getElementById('dynamic-canvas');
     context = dynamicCanvas.getContext('2d');
     var imgA = new Image();
-    imgA.src = "{{ url_for('static', filename=slide_file_paths[0][0] ) }}";
+    imgA.src = "{{ global_for(slide_file_paths[0][0]) }}";
     imgA.onload = () => {
         //width of div of class container
         var body_width = document.getElementsByClassName("container")[0].offsetWidth;

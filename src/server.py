@@ -1,11 +1,7 @@
 import json
 import datetime
-from argparse import Namespace
 
-from model_weights_downloader import ModelWeightsDownloader
-from project_manager import ProjectManager
 from mapper_thread import MapperThread
-from detection.detection_thread import DetectionThread
 from webODM.webODM_docker_manager import WebODMDockerManager
 from webODM.webODM_thread import WebODMThread
 
@@ -33,13 +29,13 @@ import urllib.request
 #         return self.application
 
 class ArgusServer:
-    def __init__(self, upload_folder_path, project_manager, system_code_path):
+    def __init__(self, project_manager):
         self.app = Flask(__name__)
+        self.app.jinja_env.globals.update(global_for=self.global_for)
         self.app.jinja_env.globals.update(thumbnail_for=self.thumbnail_for)
 
-        UPLOAD_FOLDER = upload_folder_path
         self.app.secret_key = "DasIstBlauesLicht-UndWasMachtEs?-EsLeuchtetBlau"
-        self.app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+        self.app.config['UPLOAD_FOLDER'] = project_manager.projects_path
         self.app.config['MAX_CONTENT_LENGTH'] = 500 * 10000 * 10000
         self.ALLOWED_EXTENSIONS = set(['png', 'jpg', 'jpeg', 'PNG', 'JPG', 'JPEG'])
 
@@ -48,7 +44,6 @@ class ArgusServer:
         # self.map = {}
         self.project_manager = project_manager
         self.webodm_manager = WebODMDockerManager(port=8000)
-        self.system_code_path = system_code_path
 
         self.setup_routes()
 
@@ -151,8 +146,9 @@ class ArgusServer:
 
         if file and self.allowed_file(file.filename):
             filename = secure_filename(file.filename)
-            file_names.append("uploads/" + str(report_id) + "/" + filename)
-            file.save(os.path.join(self.app.config['UPLOAD_FOLDER'] + str(report_id) + "/", filename))
+            save_path = os.path.join(self.project_manager.projects_path, str(report_id), filename)
+            file_names.append(save_path)
+            file.save(save_path)
         else:
             flash('Allowed image types are -> png, jpg, jpeg, gif')
             return json.dumps({'success': False}), 415, {'ContentType': 'application/json'}
@@ -217,7 +213,7 @@ class ArgusServer:
             print("initial_process " + str(report_id), "with_mapping: " + str(with_mapping), "with_odm: " + str(with_odm),
                     "ai_detection: " + str(ai_detection), "map_resolution: " + str(map_resolution))
 
-            thread = MapperThread(with_mapping, with_odm, report_id, (max_width, max_height), file_names, data)
+            thread = MapperThread(self.project_manager, with_mapping, with_odm, report_id, (max_width, max_height), file_names, data)
             self.threads.append(thread)
             thread.start()
             print("process started")
@@ -295,7 +291,7 @@ class ArgusServer:
                     map = thread.get_maps()[map_index]
                     self.project_manager.update_maps(report_id, thread.get_maps())
                     thread.update_maps_sent(map_index)
-                    map["file_url"] = url_for('static', filename=map["file"])
+                    map["file_url"] = map["file"]
                     return jsonify(map)
 
         return jsonify({"file": "empty"})
@@ -375,10 +371,8 @@ class ArgusServer:
 
     def detect_objects(self, options, report_id):
         #start docker container in own thread and start detection
-        thread = DetectionThread(report_id, self.project_manager.get_file_names, self.project_manager.get_annotation_file_path(report_id), self.system_code_path, options)
-        self.detection_threads.append(thread)
-        thread.start()
-        #thread.join()
+        #TODO rewrite to new server client arch
+        return True
 
     def check_detection_status(self, report_id):
         print('asking for detection status of report ' + str(report_id) + " with " + str(len(self.detection_threads)) + " threads")
@@ -430,16 +424,24 @@ class ArgusServer:
 
 
     def display_image(self, filename):
-        return redirect(url_for('static', filename='uploads/' + filename), code=301)
+        return redirect(url_for(self.project_manager.local_projects_path, filename=filename), code=301)
+
+    def global_for(self, path):
+        if path.startswith("./"):
+            return path[1:]
+        elif path.startswith("/"):
+            return path
+        else:
+            return "/" + path
 
     def thumbnail_for(self, path):
-        path_thumbnail = path[:path.rindex('/') + 1] + 'thumbnails/' + path[path.rindex('/') + 1:]
-        if not os.path.isfile('./static/' + path_thumbnail):
-            path_thumbnail = path
-        return path_thumbnail
+        thumbnail_path = os.path.join(os.path.dirname(path), 'thumbnails', os.path.basename(path))
+        if not os.path.isfile(thumbnail_path):
+            thumbnail_path = path
+        return thumbnail_path
 
     def generate_id_for_image(self, filename):
-        return redirect(url_for('static', filename='uploads/' + filename), code=301)
+        return redirect(url_for(self.project_manager.local_projects_path, filename=filename), code=301)
 
     def shutdown(self):
         print("Server shutting down...")
@@ -589,17 +591,17 @@ class ArgusServer:
                                    processing=processing)
 
     def delete_file_in_folder(self, report_id, filename, subfolder, thumbnail=False):
-        file_path = "uploads/" + str(report_id) + subfolder + filename
+        file_path = os.path.join(self.project_manager.local_projects_path, str(report_id), subfolder, filename)
         print("trying to delete file in folder " + file_path)
-        if os.path.exists('static/' + file_path):
-            os.remove('static/' + file_path)
+        if os.path.exists(file_path):
+            os.remove(file_path)
             print("file deleted @" + file_path)
             if not thumbnail:
                 self.project_manager.remove_from_file_names_rgb(report_id, file_path)
                 self.project_manager.remove_from_file_names_ir(report_id, file_path)
                 self.project_manager.remove_from_panos(report_id, file_path)
                 self.project_manager.remove_from_unprocessed_images(report_id, file_path)
-                self.delete_file_in_folder(report_id, filename, subfolder + "thumbnails/", thumbnail=True)
+                self.delete_file_in_folder(report_id, filename, subfolder + "thumbnails", thumbnail=True)
             return True
         return False
 
@@ -615,4 +617,3 @@ class ArgusServer:
 
     def allowed_file(self, filename):
         return '.' in filename and filename.rsplit('.', 1)[1].lower() in self.ALLOWED_EXTENSIONS
-

@@ -18,8 +18,6 @@ class ImageProcessor:
         self.all_ir_images = []
         self.all_rgb_images = []
         self.couples_path_list = []
-        self.rgb_short_paths = []
-        self.ir_short_paths = []
 
     @staticmethod
     def generate_images(image_paths):
@@ -37,12 +35,11 @@ class ImageProcessor:
         for i in range(0, len(lst), n):
             yield lst[i:i + n]
     def generate_images_from_paths(self):
-        image_paths = PathReader.read_selection('./static', self.all_image_paths, ("DJI"), (".JPG", ".jpg"), sort=False)
         nmbr_of_processes = len(os.sched_getaffinity(0)) #6
         print('number of processes: ', nmbr_of_processes)
-        if nmbr_of_processes < len(image_paths):
-            nmbr_of_processes = len(image_paths)
-        image_paths_list = list(self._chunks(image_paths, int(len(image_paths) / nmbr_of_processes) + 1))
+        if nmbr_of_processes < len(self.all_image_paths):
+            nmbr_of_processes = len(self.all_image_paths)
+        image_paths_list = list(self._chunks(self.all_image_paths, int(len(self.all_image_paths) / nmbr_of_processes) + 1))
         pool = multiprocessing.Pool(nmbr_of_processes)
         images_lists = pool.map(ImageProcessor.generate_images, image_paths_list)
 
@@ -84,15 +81,6 @@ class ImageProcessor:
         self.move_images_to_subfolder(self.all_rgb_images, 'rgb')
         self.move_images_to_subfolder(self.all_ir_images, 'ir')
         self.couples_path_list = sorter.build_couples_path_list_from_scratch(self.all_images)
-        self.rgb_short_paths = self._generate_short_paths_list(self.all_rgb_images)
-        self.ir_short_paths = self._generate_short_paths_list(self.all_ir_images)
-
-
-    def _generate_short_paths_list(self, images):
-        path_list = []
-        for image in images:
-            path_list.append(image.get_image_path().split("static/", 1)[1])
-        return path_list
 
 
     def extract_flight_data(self, flight_data=[]):
@@ -238,12 +226,12 @@ class ImageProcessor:
 
 
     def move_image_to_subfolder(self, image, subfolder):
-        subfolder_path = os.path.dirname(image.get_image_path())+"/"+subfolder
-        path = subfolder_path + "/" + os.path.basename(image.get_image_path())
+        subfolder_path = os.path.join(os.path.dirname(image.get_image_path()), subfolder)
+        image_path = os.path.join(subfolder_path, os.path.basename(image.get_image_path()))
         if not os.path.exists(subfolder_path):
             os.makedirs(subfolder_path)
-        shutil.move(image.get_image_path(), path)
-        image.update_path(path)
+        shutil.move(image.get_image_path(), image_path)
+        image.update_path(image_path)
 
     def move_images_to_subfolder(self, images, subfolder):
         for image in images:
@@ -261,9 +249,3 @@ class ImageProcessor:
 
         for image in self.all_ir_images:
             image.generate_thumbnail()
-
-
-
-
-
-
