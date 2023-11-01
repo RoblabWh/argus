@@ -3,7 +3,6 @@ import os
 import shutil
 import sys
 
-from path_reader import PathReader
 from image import Image
 from infrared_rgb_sorter import InfraredRGBSorter
 from weather import Weather
