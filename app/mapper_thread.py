@@ -5,7 +5,7 @@ from image_mapper import ImageMapper
 
 
 class MapperThread(threading.Thread):
-    def __init__(self, project_manager, fast_mapping, odm_mapping, report_id, map_resolution, file_names, data):
+    def __init__(self, project_manager, nodeodm_manager, fast_mapping, odm_mapping, report_id, map_resolution, file_names, data):
         self.fast_mapping = fast_mapping
         self.with_odm = odm_mapping
         self.report_id = report_id
@@ -18,7 +18,7 @@ class MapperThread(threading.Thread):
         self.message = "Step 1/2: Preprocessing"
         self.mapping = False
         self.metadata_delivered = False
-        self.image_mapper = ImageMapper(project_manager, report_id, map_width_px=map_resolution[0],
+        self.image_mapper = ImageMapper(project_manager, nodeodm_manager, report_id, map_width_px=map_resolution[0],
                                             map_height_px=map_resolution[1], with_odm=odm_mapping)
         self.ir = False
         self.flight_data = None
@@ -70,12 +70,14 @@ class MapperThread(threading.Thread):
             if self.with_odm:
                 self.mapping = True
                 self.progress_mapping += 4 / self.number_of_maps
-                self.map_odm = self.image_mapper.generate_odm_orthophoto(3001, self.rgb_short_paths,840)
+                print("RGB_PATHS: " + str([image.get_image_path() for image in self.rgb_images]))
+                self.map_odm = self.image_mapper.generate_odm_orthophoto([image.get_image_path() for image in self.rgb_images],840)
                 self.maps.append(self.map_odm)
                 self.set_next_map_done()
                 self.progress_mapping += 96 / self.number_of_maps
                 if self.ir:
-                    self.map_odm_ir = self.image_mapper.generate_odm_orthophoto(3001, self.ir_short_paths, ir=True)
+                    print("IR_PATHS: " + str([image.get_image_path() for image in self.ir_images]))
+                    self.map_odm_ir = self.image_mapper.generate_odm_orthophoto([image.get_image_path() for image in self.ir_images], ir=True)
                     self.maps.append(self.map_odm_ir)
                     self.set_next_map_done()
                     self.progress_mapping += 100 / self.number_of_maps

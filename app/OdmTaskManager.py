@@ -15,51 +15,26 @@ from pathlib import Path
 import re
 import multiprocessing
 from functools import partial
-import time
-import docker
 import cv2
 import psutil
 
 import socket
 
-from itertools import repeat
 
 
 
-
-
-class OdmTaskManager:
+class nodeodm_manager:
 
     _image_size = 960
 
-    def __init__(self, path_to_image_folder, port=3000):
+    def __init__(self, address='127.0.0.1', port=3000):
         """
         :param image_paths: List of Strings of Paths to input_images
         :param inputfolder: If image_paths are not provided search images in folder
         """
-        self.path_to_image_folder = path_to_image_folder
-        self.address ='127.0.0.1'
-        DOCKER_ENV_KEY = os.environ.get('AM_I_IN_A_DOCKER_CONTAINER', False)
-        if DOCKER_ENV_KEY:
-            # self.address = '172.17.0.1'
-            self.address = 'host.docker.internal'
-            print('using different ip to access localhost/ 127.0.0.1 because of running in a docker container, now using:', self.address)
 
-
-        print("Establish client from environment variables")
-        self.client = docker.from_env()
-        print("Create container")
-        self.container = self.client.containers.run("opendronemap/nodeodm", stdin_open=True, tty=True,
-                                                    ports={"3000": port}, detach=True)
-        # professional (and now very cool) way to wait for container to be ready
-        time.sleep(6)
-
-        self.check_connection(self.address, port)
-
-        self.node = Node(self.address, port)
-        self.task = None
-        self.task_complete = False
-        self.console_output = []
+        # self.check_connection(address, port)
+        self.node = Node(address, port)
 
     @staticmethod
     def scale_image(size, path):
@@ -70,7 +45,7 @@ class OdmTaskManager:
         dim = (int(img.shape[1] * scale_percent), int(img.shape[0] * scale_percent))
         resized = cv2.resize(img, dim, interpolation=cv2.INTER_NEAREST)
         img = None
-        scaled_image_path = os.path.dirname(path) + '/proxy/' + os.path.basename(path)
+        scaled_image_path = os.path.join(os.path.dirname(path), 'proxy', os.path.basename(path))
         cv2.imwrite(scaled_image_path, resized)
         resized = None
         os.system('exiftool -TagsFromFile ' + path + ' ' + scaled_image_path)
@@ -100,33 +75,20 @@ class OdmTaskManager:
             sock.close()
             print('ODM CONTAINER connection successful')
 
-    def set_images_scaled(self, image_paths, scaled_image_size=960):
-        self._image_size = scaled_image_size
-        self.set_images(self.scale_images(image_paths))
-
-    def set_images(self, image_paths):
-        self.image_paths = image_paths
-
-    def scale_images(self, image_paths):
-        self.image_paths = image_paths
-
-        if not os.path.exists(self.path_to_image_folder + 'rgb/proxy/'):
-            os.mkdir(self.path_to_image_folder + 'rgb/proxy/')
-        if os.path.exists(self.path_to_image_folder + 'ir/'):
-            if not os.path.exists(self.path_to_image_folder + 'ir/proxy/'):
-                os.mkdir(self.path_to_image_folder + 'ir/proxy/')
-
+    def scale_images(self, image_paths, image_size):
+        proxy_path = os.path.join(os.path.dirname(image_paths[0]), 'proxy')
+        if not os.path.exists(proxy_path):
+            os.mkdir(proxy_path)
 
         print("Scaling images", image_paths)
         scaled_image_paths = []
-        nmbr_of_processes = self.calculate_number_of_safely_usable_processes(self.image_paths[0])
+        nmbr_of_processes = self.calculate_number_of_safely_usable_processes(image_paths[0])
         print('number of processes: ', nmbr_of_processes)
         if nmbr_of_processes < len(image_paths):
             nmbr_of_processes = len(image_paths)
         pool = multiprocessing.Pool(nmbr_of_processes)
-        func = partial(OdmTaskManager.scale_image, self._image_size)
-        scaled_image_paths = pool.map(func, self.image_paths)
-        #scaled_image_paths = pool.map(OdmTaskManager.scale_image, zip(self.image_paths, len(self.image_paths) * [self._image_size]))
+        func = partial(nodeodm_manager.scale_image, image_size)
+        scaled_image_paths = pool.map(func, image_paths)
         pool.close()
         pool.join()
         print("scaling done")
@@ -165,12 +127,13 @@ class OdmTaskManager:
         return safely_usable_processes
 
 
-    def run_task(self, options={'feature-quality': 'medium', 'fast-orthophoto': True, 'auto-boundary': True, 'pc-ept': True,'cog': True}):
+    def run_task(self, image_paths, options={'feature-quality': 'medium', 'fast-orthophoto': True, 'auto-boundary': True, 'pc-ept': True,'cog': True}):
         """
         :param options: Dictionary with ODM flags
         """
-        self.task = self.node.create_task(self.image_paths, options)
-        print(self.task.info())
+        task = self.node.create_task(image_paths, options)
+        print(task.info())
+        return task
         # self.task.wait_for_completion(status_callback=self.console_out, interval=5)
         # self.task.download_assets('results')
         #feature-quality medium --fast-orthophoto --auto-boundary --pc-ept --cog --project-path /var/www/data 6349880b-4228-4218-87a7-ff63b4ec2fef
@@ -192,57 +155,32 @@ class OdmTaskManager:
                     if root == inputfolder:
                         yield Path(os.path.join(root, file))
 
-    def console_out(self, task_info):
-        for item in self.task.output(-200):
-            if item not in self.console_output:
-                print(item)
-                self.console_output.append(item)
-
-    def task_running(self):
-        case = self.task.info().status
+    def task_running(self, task):
+        case = task.info().status
         if case == TaskStatus.RUNNING:
-            #self.console_out(None)
-            return True
+            return (True, False)
         elif case == TaskStatus.FAILED:
-            print("Task has failed for some reason. Check console output for information")
-            self.clean_up()
-            return False
+            print("Task has failed for some reason. Check console output for information", flush=True)
+            return (False, False)
         elif case == TaskStatus.CANCELED:
-            print("Task was cancelled by user. What are you doing?!")
-            self.clean_up()
-            return False
+            print("Task was cancelled by user. What are you doing?!", flush=True)
+            return (False, False)
         elif case == TaskStatus.COMPLETED:
-            print("Task completed")
-            self.task.download_assets('results')
-            self.task_complete = True
-            self.clean_up()
-            return False
+            print("Task completed", flush=True)
+            task.download_assets('results')
+            return (False, True)
         else:
             print("not defined case in OdmTaskManager.check_task()")
-            return False
+            return (False, False)
 
-    def clean_up(self):
-        self.task.remove()
+    def clean_up(self, task, image_paths):
+        task.remove()
 
-        folder = self.path_to_image_folder + 'proxy'
-
-        if os.path.exists(folder):
-            for filename in os.listdir(folder):
-                file_path = os.path.join(folder, filename)
-                try:
-                    if os.path.isfile(file_path) or os.path.islink(file_path):
-                        os.unlink(file_path)
-                    elif os.path.isdir(file_path):
-                        print("Directory found", file_path)
-                except Exception as e:
-                    print('Failed to delete %s. Reason: %s' % (file_path, e))
-
-    def close(self):
-        self.container.stop()
-        self.container.remove()
-
-
-
-
-
-
+        for filename in image_paths:
+            try:
+                if os.path.isfile(filename) or os.path.islink(filename):
+                    os.unlink(filename)
+                elif os.path.isdir(filename):
+                    print("Directory found", filename)
+            except Exception as e:
+                print('Failed to delete %s. Reason: %s' % (filename, e))

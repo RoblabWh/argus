@@ -4,6 +4,7 @@ import datetime
 from mapper_thread import MapperThread
 from webODM.webODM_docker_manager import WebODMDockerManager
 from webODM.webODM_thread import WebODMThread
+from OdmTaskManager import nodeodm_manager
 
 # from gunicorn.app.base import BaseApplication
 from flask import Flask, flash, request, redirect, url_for, render_template, jsonify
@@ -43,7 +44,9 @@ class ArgusServer:
         self.detection_threads = []
         # self.map = {}
         self.project_manager = project_manager
-        self.webodm_manager = WebODMDockerManager(port=8000)
+        self.nodeodm_manager = nodeodm_manager('nodeodm', 3000)
+        # self.webodm_manager = webodm_manager('webodm', )
+        # self.detection_manager = detection_manager('argus_detection', 4000)
 
         self.setup_routes()
 
@@ -213,7 +216,7 @@ class ArgusServer:
             print("initial_process " + str(report_id), "with_mapping: " + str(with_mapping), "with_odm: " + str(with_odm),
                     "ai_detection: " + str(ai_detection), "map_resolution: " + str(map_resolution))
 
-            thread = MapperThread(self.project_manager, with_mapping, with_odm, report_id, (max_width, max_height), file_names, data)
+            thread = MapperThread(self.project_manager, self.nodeodm_manager, with_mapping, with_odm, report_id, (max_width, max_height), file_names, data)
             self.threads.append(thread)
             thread.start()
             print("process started")
@@ -591,7 +594,7 @@ class ArgusServer:
                                    processing=processing)
 
     def delete_file_in_folder(self, report_id, filename, subfolder, thumbnail=False):
-        file_path = os.path.join(self.project_manager.local_projects_path, str(report_id), subfolder, filename)
+        file_path = os.path.join(self.project_manager.project_path(report_id), subfolder, filename)
         print("trying to delete file in folder " + file_path)
         if os.path.exists(file_path):
             os.remove(file_path)

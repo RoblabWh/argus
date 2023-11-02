@@ -58,6 +58,9 @@ class ProjectManager:
                 return project
         return None
 
+    def project_path(self, project_id):
+        return os.path.join(self.projects_path, str(project_id))
+
     def get_projects(self):
         if self.projects == []:
             self.initiate_project_list()
@@ -185,7 +188,7 @@ class ProjectManager:
     def update_data_by_keyword(self, id, keyword, data):
         project = self.get_project(id)
         project['data'][keyword] = data
-        with open(self.projects_path + str(id) + "/project.json", "w") as json_file:
+        with open(os.path.join(self.projects_path, str(id), "project.json"), "w") as json_file:
             json.dump(project, json_file)
         return project['data'][keyword]
 

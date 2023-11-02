@@ -5,16 +5,16 @@ import cv2
 import time
 
 from map import Map
-from OdmTaskManager import OdmTaskManager
 from gps import GPS
 from gimbal_pitch_filter import GimbalPitchFilter
 from map_scaler import MapScaler
 
 
 class ImageMapper:
-    def __init__(self, project_manager, report_id, map_width_px=2048, map_height_px=2048, blending=0.7, optimize=True,
+    def __init__(self, project_manager, nodeodm_manager, report_id, map_width_px=2048, map_height_px=2048, blending=0.7, optimize=True,
                  max_gimbal_pitch_deviation=10, with_odm=True):
         self.project_manager = project_manager
+        self.nodeodm_manager = nodeodm_manager
         self.report_id = report_id
         self.map_width_px = map_width_px
         self.map_height_px = map_height_px
@@ -276,7 +276,7 @@ class ImageMapper:
             new_coordinates.append(coodinate)
         return new_coordinates
 
-    def generate_odm_orthophoto(self, container_port, filenames, image_size=0, ir=False):
+    def generate_odm_orthophoto(self, filenames, image_size=0, ir=False):
         print("-Generating ODM orthophoto...")
         if not self.with_odm:
             print("Error: ODM is not enabled for this dataset!")
@@ -287,25 +287,23 @@ class ImageMapper:
         if ir:
             options = {'feature-quality': 'high', 'fast-orthophoto': True, 'auto-boundary': True, 'pc-ept': True,
                        'cog': True}
-        image_list = filenames.copy()  # self.filenames_rgb.copy() if not ir else self.filenames_ir.copy()
-        for j, image in enumerate(image_list):
-            image_list[j] = "static/" + image
-        # print(image_list)
-        taskmanager = OdmTaskManager(path.join(self.project_manager.projects_path, str(self.report_id)), container_port)
 
+        tmp_filenames = list()
         if image_size != 0:
-            taskmanager.set_images_scaled(image_list, image_size)
-        else:
-            taskmanager.set_images(image_list)
+            filenames = self.nodeodm_manager.scale_images(filenames, image_size)
+            tmp_filenames = filenames
 
-        taskmanager.run_task(options)
+        task = self.nodeodm_manager.run_task(filenames, options)
 
         while True:
-            if not taskmanager.task_running():
+            running, complete = self.nodeodm_manager.task_running(task)
+            if not running:
                 break
             time.sleep(1)
 
-        if taskmanager.task_complete:
+        self.nodeodm_manager.clean_up(task, tmp_filenames)
+
+        if complete:
             bounds = None
             middle_gps = None
             with open('results/odm_georeferencing/odm_georeferenced_model.info.json', 'r') as j:
@@ -325,12 +323,11 @@ class ImageMapper:
             save_path = path.join(self.project_manager.projects_path, str(self.report_id), filename)
             cv2.imwrite(save_path, im)
             print("Orthophoto saved under", save_path)
-            taskmanager.close()
 
             map = {
                 "center": middle_gps,
                 "zoom": 18,
-                "file": 'uploads/' + str(self.report_id) + "/" + filename,
+                "file":  save_path,
                 "bounds": bounds,
                 "size": map_size,
                 "image_coordinates": None,
@@ -340,8 +337,6 @@ class ImageMapper:
             }
 
         else:
-            taskmanager.close()
-
             lat1 = self.corner_gps_left_bottom.get_latitude()
             long1 = self.corner_gps_left_bottom.get_longitude()
             lat2 = self.corner_gps_right_top.get_latitude()
@@ -353,7 +348,7 @@ class ImageMapper:
             map = {
                 "center": [latc, longc],
                 "zoom": 18,
-                "file": "default/ODMFehler.png",
+                "file": "./static/default/ODMFehler.png",
                 "bounds": bounds,
                 "size": [1080, 1080],
                 "image_coordinates": None,

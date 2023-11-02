@@ -251,6 +251,7 @@
 
                 if (progressPercentage == 100) {
                     console.log("done");
+                    document.getElementById("progress-bar-text").innerHTML = "DONE";
                     $.get( "/stop_mapping_thread/{{ id }}");
                     window.clearInterval(intervalID);
                 }
@@ -395,7 +396,7 @@
     {% if processing %}
     <div class="progress-bar-container">
         <div id="progress-bar"></div>
-        <a> MAPPING... </a>
+        <a id="progress-bar-text"> MAPPING... </a>
     </div>
     {% endif %}
 
