@@ -4,7 +4,7 @@ import datetime
 from mapper_thread import MapperThread
 from webODM.webODM_docker_manager import WebODMDockerManager
 from webODM.webODM_thread import WebODMThread
-from OdmTaskManager import nodeodm_manager
+from app.nodeodm_manager import nodeodm_manager
 
 # from gunicorn.app.base import BaseApplication
 from flask import Flask, flash, request, redirect, url_for, render_template, jsonify
