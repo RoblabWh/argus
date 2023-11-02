@@ -482,7 +482,7 @@ class ArgusServer:
         indices = sorted(range(len(times)), key=lambda i: times[i], reverse=True)
         return indices
 
-    def render_standard_report(self, report_id, thread=None, template="base_report.html"):
+    def render_standard_report(self, report_id, thread=None, template="baseReport.html"):
         data = self.project_manager.get_project(report_id)['data']
         flight_data = data["flight_data"]
         camera_specs = data["camera_specs"]

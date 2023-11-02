@@ -22,7 +22,7 @@
       width: auto;
       padding: 16px;
       margin-top: -22px;
-      color: white;
+      color: var(--font-color-b);
       font-weight: bold;
       font-size: 32px;
       transition: 0.3s ease;
@@ -40,15 +40,6 @@
       background-color: var(--accent-color-interaction);
     }
 
-    .dynamic-images-rgb {
-        width: 100%;
-        height: 100%;
-    }
-
-    .ir-image{
-        width:100%;
-        height: 100%;
-    }
 
     .img-magnifier-glass {
       position: absolute;
@@ -84,10 +75,7 @@
         background-color: #ffffff;
         padding: 5px;
         opacity: 0;
-        z-index: 99;
-        border-radius: 4px;
-        border-style: solid;
-        border-width: 2px;
+        z-index: 20;
     }
 
     #temp-glass p {
@@ -96,7 +84,7 @@
 
 
     .ir-overlay:hover .temp-glass{
-        //opacity: 1;
+        opacity: 1;
     }
 
 
@@ -232,31 +220,19 @@
 
     #tab-link-1{
         border-top-left-radius: 6px;
-        {% if not has_ir and not panos and not unprocessed_images %}
+        {% if not has_ir and not panos %}
         border-top-right-radius: 6px;
         {% endif %}
     }
 
     #tab-link-2{
-        {% if not has_rgb %}
-        border-top-left-radius: 6px;
-        {% endif %}
-        {% if not panos and not unprocessed_images %}
+        {% if not panos %}
         border-top-right-radius: 6px;
         {% endif %}
     }
 
     #tab-link-3{
-        {% if not unprocessed_images %}
         border-top-right-radius: 6px;
-        {% endif %}
-    }
-
-    #tab-link-4{
-        border-top-right-radius: 6px;
-        {% if not has_ir and not panos and not has_rgb %}
-        border-top-left-radius: 6px;
-        {% endif %}
     }
 
     ul.tabs li:hover{
@@ -284,7 +260,7 @@
     }
 
 
-    .slideshow-settings-container {
+    .slideshow-settings-container {;
         width-no:100%;
         min-width: 300px;
         margin: auto;
@@ -474,7 +450,7 @@
         display: flex;
         width: 100%;
         box-sizing: border-box;
-        margin: 20px 0;
+        margin-bottom: 20px;
     }
 
    #layer-table-container{
@@ -491,46 +467,15 @@
     }
 
     #layer-table-container tr {
-        background-color: var(--bg-color-AILayer);
+        background-color: rgb(230,230,230)
     }
     #layer-table-container tr:nth-child(even) {
-        background-color: var(--bg-color-AILayer);
+        background-color: rgb(230,230,230);
     }
     #layer-table-container tr:nth-child(1) {
         background-color: transparent;
         border-bottom: 2px solid var(--bg-color-a);
     }
-
-    .usedInMappingContainer{
-        display: inline-block;
-        float: right;
-        margin: 0 12px 12px 12px;
-        min-width: 25%;
-    }
-
-    .usedInMapping, .notUsedInMapping{
-        border-radius: 6px;
-        border-style: solid;
-        border-width: 2px;
-        height: 100%;
-        width: 100%;
-        padding: 4px;
-    }
-
-    .usedInMapping{
-        border-color: var(--accent-color-green);
-        background-color: rgba(var(--accent-color-green-values), 0.2);
-        color: var(--font-color-a);
-        display: flex;
-    }
-
-    .notUsedInMapping{
-        border-color: var(--accent-color-red);
-        background-color: rgba(var(--accent-color-red-values), 0.2);
-        color: var(--font-color-a);
-        display: none;
-    }
-
 
 
 
@@ -542,110 +487,55 @@
     var displayingAI = false;
     var lastSlide = 0;
 
-    var slideshowCouples = {{ slide_file_paths | tojson}};
-
-    var ImageRGB_missingCounterpart = new Image();
-    ImageRGB_missingCounterpart.src = "{{ url_for('static', filename='default/missingCounterpartRGB.JPG') }}";
-    ImageRGB_missingCounterpart.className = "dynamic-images-rgb";
-    var ImageIR_missingCounterpart = new Image()
-    ImageIR_missingCounterpart.src = "{{ url_for('static', filename='default/missingCounterpartIR.JPG') }}";
-    ImageIR_missingCounterpart.className = "ir-image";
-
-    var allImages = [];
-
-    for(var i = 0; i < slideshowCouples.length; i++){
-        var imagePlacerholders = [];
-        for(var j = 0; j < slideshowCouples[i].length; j++){
-            imagePlacerholders.push(null);
-        }
-        allImages.push(imagePlacerholders);
-    }
-
     function plusSlides(n) {
       slideIndex += n;
-      console.log("slideIndex: " + slideIndex + " slideshowCouples.length: " + slideshowCouples.length + " n: " + n);
-      if(slideIndex >= slideshowCouples.length){
+      var slides = document.getElementsByClassName("mySlides");
+      if(slideIndex >= slides.length){
         slideIndex = 0;
       } else if (slideIndex < 0){
-        slideIndex = slideshowCouples.length - 1;
+        slideIndex = slides.length - 1;
       }
-      console.log(slideIndex);
-      if(displayingIR){
-        if(slideshowCouples[slideIndex][1] == ""){
-          plusSlides(n);
-        }
-        else{
-          showCurrentSlide();
-        }
-      } else {
-        if(slideshowCouples[slideIndex][0] == "" && slideshowCouples[slideIndex][2] == null){
-          plusSlides(n);
-        }
-        else{
-          showCurrentSlide();
-        }
-      }
+      showCurrentSlide();
     }
 
-
-
-    function showSlideByFilename(filename){
-        console.log("showSlideByFilename: " + filename);
-        var slideIndex = getSlideIndexByFilename(filename, 0);
-        if(slideIndex != -1){
-            showSlide(slideIndex);
-        } else {
-            slideIndex = getSlideIndexByFilename(filename, 1);
-            if(slideIndex != -1){
-                showSlideIR(slideIndex);
-            }
-            else{
-                slideIndex = getSlideIndexByFilename(filename, 2);
-                if(slideIndex != -1){
-                    showSlide(slideIndex);
-                }
+    function showSlideByID(id) {
+        console.log(id);
+        var i;
+        var slides = document.getElementsByClassName("mySlides");
+        console.log(slides.findIndex(x => x.id === id));
+        for (i = 0; i < slides.length; i++) {
+            console.log(slides[i].id +id);
+            if (slides[i].id === id) {
+                showSlide(i);
+                break;
             }
         }
     }
-
-    function showSlideByFilenameIR(filename){
-        console.log("showSlideByFilenameIR: " + filename);
-        var slideIndex = getSlideIndexByFilename(filename, 1);
-        if(slideIndex != -1){
-            showSlideIR(slideIndex);
-        }
-    }
-
 
     function showSlide(n) {
-        console.log("showSlide: " + n);
-        if(n >= slideshowCouples.length){
-            n = 0;
-        } else if (n < 0){
-            n = slideshowCouples.length - 1;
-        }
-        console.log(n);
-        slideIndex = n
-
-
-        var details = document.getElementById("gallery-details");
-        if(!details.open){
-            details.open = true;
-        }
-        slideshowContainer.scrollIntoView({
-            behavior: "smooth",
-            block: "start",
-            inline: "nearest"
-        });
-
-
-        if(displayingIR){
-            deactivateIR();
-        }
-        displayingIR = false;
-        showCurrentSlide();
+      var details = document.getElementById("gallery-details");
+      if(!details.open){
+        details.open = true;
+      }
+      slideshowContainer.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+          inline: "nearest"
+      });
+      var slides = document.getElementsByClassName("mySlides");
+      if(n >= slides.length){
+        n = 0;
+      } else if (n < 0){
+        n = slides.length - 1;
+      }
+      console.log(n);
+      slideIndex = n
+      if(displayingIR){
+        deactivateIR();
+      }
+      displayingIR = false;
+      showCurrentSlide();
     }
-
 
     function showSlideIR(n) {
       var details = document.getElementById("gallery-details");
@@ -657,17 +547,17 @@
           block: "start",
           inline: "nearest"
       });
-      if(n >= slideshowCouples.length){
+      var slides = document.getElementsByClassName("mySlides");
+      if(n >= slides.length){
         n = 0;
       } else if (n < 0){
-        n = slideshowCouples.length - 1;
+        n = slides.length - 1;
       }
       console.log(n);
       slideIndex = n
       activateIR();
       showCurrentSlide();
     }
-
 
     function showCurrentSlide() {
         var details = document.getElementById("gallery-details");
@@ -678,192 +568,31 @@
         currentIROpacity = document.getElementById("irOpacityRange").value/100;
         applyOpacity(currentIROpacity);//checkIR();
         {% endif %}
-
         checkbox = document.getElementById("magnifierCheckbox");
         demagnify();
         console.log(slideIndex);
-
-        dynamicCanvas = document.getElementById("dynamic-canvas");
-
-        currentImageName = slideshowCouples[slideIndex][0].substring(slideshowCouples[slideIndex][0].lastIndexOf('/') + 1);
-        dynamicFilename = document.getElementById("dynamic-filename-RGB");
-        dynamicFilename.innerHTML = "RGB: " + currentImageName;
-
-        currentImageNameIR = slideshowCouples[slideIndex][1].substring(slideshowCouples[slideIndex][0].lastIndexOf('/') + 1);
-        dynamicFilenameIR = document.getElementById("dynamic-filename-IR");
-        dynamicFilenameIR.innerHTML = "IR: " + currentImageName;
-
-        dynamicFilenameUnprocessed = document.getElementById("dynamic-filename-Unprocessed");
-        dynamicFilenameUnprocessed.innerHTML = "Unprocessed: ";
-        try{
-            currentImageNameUnprocessed = slideshowCouples[slideIndex][2].substring(slideshowCouples[slideIndex][0].lastIndexOf('/') + 1);
-            dynamicFilenameUnprocessed.innerHTML = "Unprocessed: " + currentImageNameUnprocessed;
+        var i;
+        var x = document.getElementsByClassName("mySlides");
+        console.log(x);
+        if (slideIndex >= x.length) {slideIndex = 0}
+        if (slideIndex < 0) {slideIndex = x.length-1}
+        for (i = 0; i < x.length; i++) {
+            x[i].style.display = "none";
         }
-        catch(err){
-            console.log("No unprocessed image");
-        }
-        if(dynamicFilenameUnprocessed.innerHTML != "Unprocessed: "){
-            dynamicFilenameUnprocessed.style.display = "inline-block";
-            dynamicFilename.style.display = "none";
-            dynamicFilenameIR.style.display = "none";
-        }
-        else{
-            dynamicFilenameUnprocessed.style.display = "none";
-            dynamicFilename.style.display = "inline-block";
-            dynamicFilenameIR.style.display = "inline-block";
-        }
-
-        imageRGB = allImages[slideIndex][0];
-        imageIR = allImages[slideIndex][1];
-        imageUnprocessed = allImages[slideIndex][2];
-        currentImagePaths = slideshowCouples[slideIndex];
-
-        console.log(currentImagePaths);
-        console.log(currentImagePaths[0]);
-        console.log(imageRGB);
-
-        var noRGBImageOnShow = false;
-
-        if(imageRGB == null){
-            noRGBImageOnShow = true;
-            if(currentImagePaths[0] != ""){
-                imageRGB = new Image();
-                imageRGB.onload = () => {
-                    //width of div of class container
-                    var body_width = document.getElementsByClassName("container")[0].offsetWidth;
-                    dynamicCanvas.width = body_width;
-                    dynamicCanvas.height = imageRGB.height * ( body_width/ imageRGB.width);
-
-                    if(displayingAI){
-                        toggleLayerSettings(false);
-                        drawAnnotationsOnCurrentSlide();
-                    } else{
-                        toggleLayerSettings(true);
-                        removeAnnotations();
-                    }
-
-                    zoomValue = document.getElementById("zoomRange").value/10;
-                    checkbox = document.getElementById("magnifierCheckbox");
-                    if(checkbox.checked){
-                        magnify(slideIndex, zoomValue);
-                    }
-                };
-                //TODO use global_for ?
-                imageRGB.src = currentImagePaths[0];
-                imageRGB.classList.add("dynamic-images-rgb");
-                allImages[slideIndex][0] = imageRGB;
-            }
-            else{
-                imageRGB = ImageRGB_missingCounterpart;
-            }
-        }
-
-        if(imageIR == null){
-            if(currentImagePaths[1] != ""){
-                imageIR = new Image();
-                //TODO use global_for ?
-                imageIR.src = currentImagePaths[1];
-                imageIR.classList.add("ir-image");
-                allImages[slideIndex][1] = imageIR;
-
-                imageIR.addEventListener("mousemove", function(e) {
-                if($('#temperatureCheckbox').is(':checked')){
-                    var img = document.getElementById('dynamic-image-IR').getElementsByTagName('img')[0];
-                    var tempGlass = document.getElementById('dynamic-temp-glass');
-                    tempGlass.style.opacity = 1.0;
-                    var canvas = document.createElement('canvas');
-                    canvas.width = img.width;
-                    canvas.height = img.height;
-                    canvas.getContext('2d').drawImage(img, 0, 0, img.width, img.height);
-                    var p = canvas.getContext('2d').getImageData(e.offsetX, e.offsetY, 1, 1).data;
-                    var coord = "x: " + e.offsetX + " ,y: " + e.offsetY;
-                    // If transparency on the image
-                    if ((p[0] == 0) && (p[1] == 0) && (p[2] == 0) && (p[3] == 0)) {
-                        coord += " (Transparent color detected, cannot be converted to HEX)";
-                    }
-                    var hex = "#" + ("000000" + rgbToHex(p[0], p[1], p[2])).slice(-6);
-                    var closestColorIndex = color_closest(p[0], p[1], p[2]);
-                    var temp = calc_temp_from_percentage(closestColorIndex/gradient_lut.length);
-                    tempGlass.style.backgroundColor = hex;
-                    tempGlass.innerHTML = "  ~ " +temp + "°C  ";
-
-                    $('#dynamic-temp-glass').css({
-                        left: e.offsetX + 20 + img.offsetLeft,
-                        top: e.offsetY + document.body.scrollTop + img.offsetTop,
-                    });
-                    if ((p[0]*0.299 + p[1]*0.587 + p[3]*0.114) > 186){
-                        tempGlass.style.color = "#000000";
-                        tempGlass.style.borderColor = "#000000";
-                    } else {
-                        tempGlass.style.color = "#ffffff";
-                        tempGlass.style.borderColor = "#ffffff";
-                    }
-                 } else {
-                    var tempGlass = document.getElementById('dynamic-temp-glass');
-                    tempGlass.style.opacity = 0.0;
-                    this.style.backgroundColor = "transparent";
-                    this.innerHTML = "";
-                 }
-            });
-
-            }
-            else{
-                imageIR = ImageIR_missingCounterpart;
-            }
-        }
-
-        if(imageUnprocessed == null){
-            if(currentImagePaths[2] != "" && currentImagePaths[2] != null){
-                imageUnprocessed = new Image();
-                imageUnprocessed.src = currentImagePaths[2];
-                allImages[slideIndex][2] = imageUnprocessed;
-            }
-        }
-
-
-        a = document.getElementById("dynamic-image-RGB");
-        while (a.firstChild) {
-            a.removeChild(a.firstChild);
-        }
-        a.appendChild(imageRGB);
-
-
-        div = document.getElementById("dynamic-image-IR");
-        irImages = div.getElementsByClassName("ir-image");
-        for (var i = 0; i < irImages.length; i++) {
-            irImages[i].remove();
-        }
-        div.insertBefore(imageIR, div.childNodes[0]);
-
-
-
+        x[slideIndex].style.display = "block";
         zoomValue = document.getElementById("zoomRange").value/10;
         if(checkbox.checked){
             magnify(slideIndex, zoomValue);
         }
 
-        {% if maps %}
-        if(isUsedInMap(slideIndex, displayingIR)){
-            details.getElementsByClassName("usedInMapping")[0].style.display = "flex";
-            details.getElementsByClassName("notUsedInMapping")[0].style.display = "none";
-        } else {
-            details.getElementsByClassName("usedInMapping")[0].style.display = "none";
-            details.getElementsByClassName("notUsedInMapping")[0].style.display = "flex";
-        }
-        {% endif %}
-
         if(lastSlide != slideIndex){
-            if (detections != null){
-                filenameOfSlide = getFilenameBySlideIndex(slideIndex, 0);
-                generateAnnotationsLayerTableForImage(filenameOfSlide);
-            }
+            filenameOfSlide = x[slideIndex].getElementsByTagName("a")[0].innerHTML;
+            generateAnnotationsLayerTableForImage(filenameOfSlide);
         }
 
         if(displayingAI){
             toggleLayerSettings(false);
-            if(!noRGBImageOnShow){
-                drawAnnotationsOnCurrentSlide();
-            }
+            drawAnnotationsOnCurrentSlide();
         } else{
             toggleLayerSettings(true);
             removeAnnotations();
@@ -893,8 +622,12 @@
     }
 
     function applyOpacity(irOpacity) {
+        var irSlides = document.getElementsByClassName("ir-overlay");
+        if(irSlides.length == 0){
+            return; // no IR images
+        }
 
-        var currentIRSlide = document.getElementById("dynamic-image-IR");
+        var currentIRSlide = document.getElementsByClassName("ir-overlay")[slideIndex];
         if(displayingIR){
             //var currentIRSlideOpacity = document.getElementById("irOpacityRange").value/100;
             currentIRSlide.style.opacity = irOpacity;
@@ -910,10 +643,13 @@
     function magnify(imgNbr, zoom) {
       var img, glass, w, h, bw, annotationCanvas;
       demagnify();
-
-      img = document.getElementById("dynamic-slide").getElementsByTagName('img')[0];
-      annotationCanvas = document.getElementById("dynamic-slide").getElementsByTagName('canvas')[0];
-
+      //img = document.getElementById(imgID);
+      img = document.getElementsByClassName("mySlides")[imgNbr].getElementsByTagName('a')[1].getElementsByTagName('img')[0];
+      annotationCanvas = document.getElementsByClassName("mySlides")[imgNbr].getElementsByTagName('a')[2].getElementsByTagName('canvas')[0];
+      //substring after finding canvas
+      //realImgID ="image" + img.id.substring(img.id.indexOf("canvas")+6);
+      //console.log("Real Image ID: " + realImgID);
+      //realImg = document.getElementById(realImgID);
       /*create magnifier glass:*/
       glass = document.createElement("DIV");
       glass.setAttribute("class", "img-magnifier-glass");
@@ -928,15 +664,13 @@
       bw = 3;
       w = glass.offsetWidth / 2;
       h = glass.offsetHeight / 2;
-
       /*execute a function when someone moves the magnifier glass over the image:*/
       glass.addEventListener("mousemove", moveMagnifier);
       annotationCanvas.addEventListener("mousemove", moveMagnifier);
       img.addEventListener("mousemove", moveMagnifier);
-
       /*and also for touch screens:*/
       glass.addEventListener("touchmove", moveMagnifier);
-      annotationCanvas.addEventListener("touchmove", moveMagnifier);
+        annotationCanvas.addEventListener("touchmove", moveMagnifier);
       img.addEventListener("touchmove", moveMagnifier);
       function moveMagnifier(e) {
         var pos, x, y;
@@ -947,16 +681,18 @@
         x = pos.x;
         y = pos.y;
         /*prevent the magnifier glass from being positioned outside the image:*/
+        //if (x > img.width - (w / zoom)) {x = img.width - (w / zoom);}
+        //if (x < w / zoom) {x = w / zoom;}
+        //if (y > img.height - (h / zoom)) {y = img.height - (h / zoom);}
+        //if (y < h / zoom) {y = h / zoom;}
         if (x > img.width - (w / zoom) || x < (w / zoom) || y > img.height - (h / zoom) || y < (h / zoom)) {
             glass.setAttribute("class", "img-magnifier-hide");
         } else {
             glass.setAttribute("class", "img-magnifier-glass");
         }
-
         /*set the position of the magnifier glass:*/
         glass.style.left = (x - w) + "px";
         glass.style.top = (y - h) + "px";
-
         /*display what the magnifier glass "sees":*/
         glass.style.backgroundPosition = "-" + ((x * zoom) - w + bw) + "px -" + ((y * zoom) - h + bw) + "px";
       }
@@ -989,9 +725,8 @@
         }
       }
 
-    function openSettingsEvent(tablinkID, divName){
-        tablink = document.getElementById(tablinkID);
-        openSettings(tablink, divName);
+    function openSettingsEvent(evt, divName){
+        openSettings(evt.currentTarget, divName);
     }
 
     function openSettings(selctedLink, divName) {
@@ -1008,99 +743,69 @@
       selctedLink.className += " active";
     }
 
-    var slideshowCouples = {{ slide_file_paths|tojson }};
-
-    function getSlideIndexByFilename(filename, imagetype){
-        var index = -1;
-        for(var i = 0; i < slideshowCouples.length; i++){
-            if(slideshowCouples[i][imagetype] == filename){
-                index = i;
-                break;
-            }
-        }
-        return index;
-    }
-
-    function getSlideByFilenameRGB(filename){
-        var index = getSlideIndexByFilename(filename, 0);
-        if(index != -1){
-            var slide = document.getElementById("slide" + index);
-            return slide;
-        }
-        return null;
-    }
-
-    function getSLideByFilenameIR(filename){
-        var index = getSlideIndexByFilename(filename, 1);
-        if(index != -1){
-            var slide = document.getElementById("slide" + index);
-            return slide;
-        }
-        return null;
-    }
-
-    function getFilenameBySlideIndex(index, imagetype){
-        var path = slideshowCouples[index][imagetype];
-        return path.substring(path.lastIndexOf('/')+1);
-    }
-
-    function getFilePathBySlideIndex(index, imagetype){
-        var path = slideshowCouples[index][imagetype];
-        return path;
-    }
-
 </script>
 </head>
 <body>
 <details id="gallery-details">
-    <summary>Photo Gallery </summary>
-    <div style="width: 100%;">
+    <summary>Photo Gallery</summary>
         <div id="slideshow-container">
             <a class="prev" onclick="plusSlides(-1)">❮</a>
             <a class="next" onclick="plusSlides(1)">❯</a>
-            {% if slide_file_paths %}
-            <div class="mySlides" id="dynamic-slide">
-                <a id="dynamic-filename-RGB" style="display: inline-block; padding: 8px 0"> RGB: x.jpeg</a>
-                <a id="dynamic-filename-IR" style="display: inline-block; padding: 8px 0"> IR: x.jpeg</a>
-                <a id="dynamic-filename-Unprocessed" style="display: inline-block; padding: 8px 0"> Unprocessed: </a>
-                <div class="usedInMappingContainer">
-                    <div class="usedInMapping">
-                        <a style="margin: 0 6px; float: left">&#10003</a>
-                        <a style="margin: auto">Used in map</a>
-                    </div>
-                    <div class="notUsedInMapping">
-                        <a style="margin: 0 6px; float: left">&#9888;</a>
-                        <a style="margin: auto">Not used in map</a>
-                    </div>
-                </div>
-                <div style="display: grid;place-items: center;grid-template-areas: 'inner-div'; width: 100%; grid-template-columns: minmax(100px, 1fr);">
-                    <div style="grid-area: inner-div;">
-                        <a id="dynamic-image-RGB">
-                            <img src="{{ url_for('static', filename='default/missingCounterpartRGB.JPG') }}" loading="lazy" style="width:100%; height: 100%; opacity: 50%">
-                        </a>
-                    </div>
-                    <div style="grid-area: inner-div;">
+            {% if file_names %}
+            {% for filename in file_names %}
+            <div class="mySlides">
+                <a>{{filename.split('/')[-1]}}</a>
+                {% if has_ir %}
+                <div style="margin-bottom:7%;"></div>
+                <div style="position: relative;">
+                    <div style="position: absolute; top: -10%; left: 0px;">
                         <a>
-                            <canvas id="dynamic-canvas" class="annotaionsCanvas" width="100%" height="100%;"></canvas>
+                            <img id="baseImage{{filename.split('/')[-1]}}" src="{{ url_for('static', filename=filename) }}" style="width:100%; height: 100%;">
                         </a>
                     </div>
-                    <div class="ir-overlay" style="width: 80%; opacity: 0; grid-area: inner-div;" id="dynamic-image-IR">
-                        <img class="ir-image" src="{{ url_for('static', filename='default/missingCounterpartIR.JPG') }}">
-                        <div class="temp-glass" id="dynamic-temp-glass"> <p>Temp:</p></div>
+                    <div style="position: absolute; top: -10%; left: 0px;">
+                        <a>
+                            <canvas id="canvas{{filename.split('/')[-1]}}" class="annotaionsCanvas" width="100%" height="100%;"></canvas>
+                        </a>
+                    </div>
+                    <div class="ir-overlay" style="position: relative; top: 0; left: 10%; width:80%; height:80%">
+        <!--                <canvas style="width:100%; height: 100%;" id="canvas{{loop.index0}}"></canvas>-->
+                        <img class="ir-image" id="image{{loop.index0}}" src="{{ url_for('static', filename=file_names_ir[loop.index0]) }}" style="width:100%; height: 100%;">
+                        <div class="temp-glass" id="temp-glass{{loop.index0}}"> <p>Temp:</p></div>
+
                     </div>
                 </div>
+                <div style="margin-bottom: 10%;"></div>
+
+                {% else %}
+                <div style="position: inherent;">
+                    <div style="position: relative; top: 0; left: 0;">
+                        <a>
+                            <img id="baseImage{filename.split('/')[-1]}}"  src="{{ url_for('static', filename=filename) }}" style="width:100%; height: 100%;">
+                        </a>
+                    </div>
+                    <div style="position: absolute; top: 18px; left: 0;">
+                        <a>
+                            <canvas id="canvas{{filename.split('/')[-1]}}" class="annotaionsCanvas" width="100%" height="100%;"></canvas>
+                        </a>
+                    </div>
+
+                </div>
+                {% endif %}
             </div>
-        </div>
+            {% endfor %}
             {% endif %}
-    </div>
+
+        </div>
+
         <div id="slideshow-settings-tabs">
             <div id="slideshow-settings-tabs-links" class="tab-vertical">
-                <button id="slideshow-settings-magnifier-tablink" class="tablink-vertical" onclick="openSettingsEvent('slideshow-settings-magnifier-tablink', 'slideshow-settings-RGB')">Magnifier</button>
+                <button class="tablink-vertical" onclick="openSettingsEvent(event, 'slideshow-settings-RGB')" id="defaultOpen">Magnifier</button>
                 {% if has_ir %}
-                <button id="slideshow-settings-ir-tablink" class="tablink-vertical" onclick="openSettingsEvent('slideshow-settings-ir-tablink','slideshow-settings-IR')">IR-Overlay</button>
+                <button class="tablink-vertical" onclick="openSettingsEvent(event,'slideshow-settings-IR')">IR-Overlay</button>
                 {% endif %}
                 {% if detections %}
-                <button id="slideshow-settings-annotaions-tablink" class="tablink-vertical" onclick="openSettingsEvent('slideshow-settings-annotaions-tablink','slideshow-settings-Annotations')">AI-Overlays</button>
+                <button id="slideshow-settings-annotaions-tablink" class="tablink-vertical" onclick="openSettingsEvent(event,'slideshow-settings-Annotations')">AI-Overlays</button>
                 {% endif %}
             </div>
 
@@ -1222,95 +927,42 @@
 <div class="container">
 
     <ul class="tabs">
-        {% if has_rgb %}
-        <li id="tab-link-1" class="tab-link current" data-tab="tab-1">RGB Photos</li>
-        {% endif %}
-
+        <li id="tab-link-1" class="tab-link current" data-tab="tab-1">Unprocessed Photos</li>
         {% if has_ir %}
-        {% if not has_rgb %}
-        <li id="tab-link-2" class="tab-link current" data-tab="tab-2"> IR Photos</li>
-        {% else %}
         <li id="tab-link-2" class="tab-link" data-tab="tab-2"> IR Photos</li>
         {% endif %}
-        {% endif %}
-
         {% if panos %}
-        {% if not has_rgb and not has_ir%}
-        <li id="tab-link-3" class="tab-link current" data-tab="tab-3">Panoramas</li>
-        {% else %}
         <li id="tab-link-3" class="tab-link" data-tab="tab-3">Panoramas</li>
-        {% endif %}
-        {% endif %}
-
-        {%  if unprocessed_images %}
-        {% if not has_rgb and not has_ir and not panos %}
-        <li id="tab-link-4" class="tab-link current" data-tab="tab-4">Unprocessed</li>
-        {% else %}
-        <li id="tab-link-4" class="tab-link" data-tab="tab-4">Unprocessed</li>
-        {% endif %}
         {% endif %}
     </ul>
 
-    {% if has_rgb %}
     <div id="tab-1" class="tab-content_gallery current">
-    {% else %}
-    <div id="tab-1" class="tab-content_gallery">
-    {% endif %}
-        {% if slide_file_paths %}
-        {% for couple in slide_file_paths %}
-        {% if couple[0] != "" %}
+        {% if file_names %}
+        {% for filename in file_names %}
         <div style="float:left;width:20%; min-width:240px;">
-            <img id="galleryImage{{ couple[0].split('/')[-1] }}" src="{{ global_for(thumbnail_for(couple[0])) }}" loading="lazy" style="padding: 5px;width:95%;cursor: pointer;" onclick="showSlideByFilename('{{ couple[0] }}')">
+            <img id="galleryImage{{filename.split('/')[-1]}}" src="{{ url_for('static', filename=filename) }}" style="padding: 5px;width:95%;cursor: pointer;" onclick="showSlide({{loop.index0}})">
         </div>
-        {% endif %}
         {% endfor %}
         {% endif %}
     </div>
-    {% if not has_rgb and has_ir%}
-    <div id="tab-2" class="tab-content_gallery current">
-    {% else %}
     <div id="tab-2" class="tab-content_gallery">
-    {% endif %}
         <div style="width: 100%; height: 100%; overflow: auto;">
-            {% if slide_file_paths %}
-            {% for couple in slide_file_paths %}
-            {% if couple[1] != "" %}
+            {% if file_names_ir %}
+            {% for filename in file_names_ir %}
             <div style="float:left;width:20%; min-width:240px;">
-                <img src="{{ global_for(thumbnail_for(couple[1])) }}" style="padding: 5px;width:95%;cursor: pointer;" onclick="showSlideByFilename('{{ couple[1] }}')">
+                <img src="{{ url_for('static', filename=filename) }}" style="padding: 5px;width:95%;cursor: pointer;" onclick="showSlideIR({{loop.index0}})">
             </div>
-            {% endif %}
             {% endfor %}
             {% endif %}
         </div>
     </div>
-    {% if not has_rgb and not has_ir and panos%}
-    <div id="tab-3" class="tab-content_gallery current">
-    {% else %}
     <div id="tab-3" class="tab-content_gallery">
-    {% endif %}
         <div style="width: 100%; height: 100%; overflow: auto;">
             {% if panos %}
             {% for pano in panos %}
             <div style="float:left;width:20%; min-width:240px;">
-                <img src="{{ global_for(thumbnail_for(pano.file)) }}" style="padding: 5px;width:95%;cursor: pointer;" onclick="show_pano({{ loop.index0 }})">
+                <img src="{{ url_for('static', filename=pano.file) }}" style="padding: 5px;width:95%;cursor: pointer;" onclick="show_pano({{ loop.index0 }})">
             </div>
-            {% endfor %}
-            {% endif %}
-        </div>
-    </div>
-    {% if not has_rgb and not has_ir and not panos and unprocessed_images%}
-    <div id="tab-4" class="tab-content_gallery current">
-    {% else %}
-    <div id="tab-4" class="tab-content_gallery">
-    {% endif %}
-        <div style="width: 100%; height: 100%; overflow: auto;">
-            {% if slide_file_paths %}
-            {% for couple in slide_file_paths %}
-            {% if couple[2]%}
-            <div style="float:left;width:20%; min-width:240px;">
-                <img src="{{ global_for(couple[2]) }}" style="padding: 5px;width:95%;cursor: pointer;" onclick="showSlideByFilename('{{ couple[2] }}')">
-            </div>
-            {% endif %}
             {% endfor %}
             {% endif %}
         </div>
@@ -1348,19 +1000,8 @@
 <script>
     var gradient_lut = {{ gradient_lut }};
     var slideIndex = 0;
-    var currentImageName = slideshowCouples[slideIndex][0];
-    currentImageName = currentImageName.substring(currentImageName.lastIndexOf('/') + 1);
-
-    for (var i = 0; i < slideshowCouples.length; i++) {
-        if (slideshowCouples[i][0] != "" ) {
-            slideIndex = i;
-            break;
-        }
-    }
     showCurrentSlide(slideIndex);
     var slideshowContainer = document.getElementById("slideshow-container");
-    var dynamicSlide = document.getElementById("dynamic-slide");
-    dynamicSlide.style.display = "block";
 
 
     var checkbox = document.getElementById("magnifierCheckbox");
@@ -1369,7 +1010,7 @@
     //document.getElementById("zoomValue").innerHTML = slider.value/10;
     output.innerHTML = slider.value;
 
-    document.getElementById("dynamic-slide").getElementsByTagName('img')[0].onload = function(){
+    document.getElementsByClassName("mySlides")[0].getElementsByTagName('a')[1].getElementsByTagName('img')[0].onload = function(){
         magnify(0,slider.value/10);
     }
 
@@ -1380,6 +1021,7 @@
         magnify(slideIndex, this.value/10);
       }
     }
+
 
     checkbox.onchange = function() {
         if(this.checked){
@@ -1446,7 +1088,7 @@
                 displayingAI = true;
                 toggleLayerSettings(false);
                 showCurrentSlide();
-                filenameOfSlide = getFilenameBySlideIndex(slideIndex,0);
+                filenameOfSlide = x[slideIndex].getElementsByTagName("a")[0].innerHTML;
                 generateAnnotationsLayerTableForImage(filenameOfSlide);
             }else{
                 displayingAI = false;
@@ -1491,7 +1133,6 @@
 
     function activateIR() {
         displayingIR = true;
-        $('#slideshow-settings-ir-tablink').click();
         $('#irOverlayCheckbox').prop('checked', true);
         $('#magnifierCheckbox').prop('checked', false);
         $('.setting-fade').map(function () {
@@ -1519,7 +1160,55 @@
     $('#irOpacityRange').change();
 
 
+    window.onload = function() {
+        {% for filename_ir in file_names_ir %}
+        var img = document.getElementById('image{{loop.index0}}');
+            img.addEventListener("mousemove", function(e) {
+                if($('#temperatureCheckbox').is(':checked')){
 
+                    var img = document.getElementById('image{{loop.index0}}');
+                    var canvas = document.createElement('canvas');
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    canvas.getContext('2d').drawImage(img, 0, 0, img.width, img.height);
+                    var p = canvas.getContext('2d').getImageData(e.offsetX, e.offsetY, 1, 1).data;
+                    var coord = "x: " + e.offsetX + " ,y: " + e.offsetY;
+                    // If transparency on the image
+                    if ((p[0] == 0) && (p[1] == 0) && (p[2] == 0) && (p[3] == 0)) {
+                        coord += " (Transparent color detected, cannot be converted to HEX)";
+                    }
+                    var hex = "#" + ("000000" + rgbToHex(p[0], p[1], p[2])).slice(-6);
+                    var clostestColorIndex = color_closest(p[0], p[1], p[2]);
+                    var temp = calc_temp_from_percentage(clostestColorIndex/gradient_lut.length);
+                    document.getElementById("temp-glass{{ loop.index0 }}").style.backgroundColor = hex;
+                    document.getElementById("temp-glass{{ loop.index0 }}").innerHTML = temp + "°C  " +clostestColorIndex + " " + coord + " " + p[0] + " " + p[1] + " " + p[2] + " " + p[3];
+
+                    $('#temp-glass{{ loop.index0 }}').css({
+                        left: e.offsetX + 20,
+                        top: e.offsetY + document.body.scrollTop
+                    });
+                    if ((p[0]*0.299 + p[1]*0.587 + p[3]*0.114) > 186){
+                        document.getElementById("temp-glass{{ loop.index0 }}").style.color = "#000000";
+                    } else {
+                        document.getElementById("temp-glass{{ loop.index0 }}").style.color = "#ffffff";
+                    }
+                 } else {
+                    document.getElementById("temp-glass{{ loop.index0 }}").style.backgroundColor = "transparent";
+                    document.getElementById("temp-glass{{ loop.index0 }}").innerHTML = "";
+                 }
+
+            });
+        {% endfor %}
+
+        {% if detections %}
+        generateDetectionTable({{ detections | tojson }});
+        generateAnnotationSettings({{ detections | tojson }});
+        var fileName = "{{ file_names[0].split('/')[-1] }}";
+        generateAnnotationsLayerTableForImage(fileName);
+        $('#aiOverlayCheckbox').prop('checked', false);
+        toggleLayerSettings(true);
+        {% endif %}
+    };
 
     //change css class of grad depending on selected option of ir-palette-chooser
     $("#ir-palette-chooser").change(function() {
@@ -1571,40 +1260,30 @@
 
     {% endif %}
 
-    window.onload = function() {
-        {% if detections %}
-        generateDetectionTable({{ detections | tojson }});
-        $('#initialDetectionsLoading').hide();
-        generateAnnotationSettings({{ detections | tojson }});
-        var fileName = "{{ file_names[0].split('/')[-1] }}";
-        generateAnnotationsLayerTableForImage(fileName);
-        $('#aiOverlayCheckbox').prop('checked', false);
-        toggleLayerSettings(true);
-        {% endif %}
-    };
 
-    {% if slide_file_paths %}
-    {% if slide_file_paths[0][0] != "" %}
-
-    var dynamicCanvas = document.getElementById('dynamic-canvas');
-    context = dynamicCanvas.getContext('2d');
-    var imgA = new Image();
-    imgA.src = "{{ global_for(slide_file_paths[0][0]) }}";
-    imgA.onload = () => {
+    {% if file_names %}
+    {% for filename in file_names %}
+    canvas{{loop.index0}} = document.getElementById('canvas{{filename.split('/')[-1]}}');
+    context{{loop.index0}} = canvas{{loop.index0}}.getContext('2d');
+    var img{{loop.index0}} = new Image();
+    img{{loop.index0}}.src = "{{ url_for('static', filename=filename) }}";
+    img{{loop.index0}}.id = "image{{filename.split('/')[-1]}}";
+    img{{loop.index0}}.onload = () => {
         //width of div of class container
         var body_width = document.getElementsByClassName("container")[0].offsetWidth;
-        dynamicCanvas.width = body_width;
-        dynamicCanvas.height = imgA.height * ( body_width/ imgA.width);
-    };
+        canvas{{loop.index0}}.width = body_width;
+        canvas{{loop.index0}}.height = img{{loop.index0}}.height * ( body_width/ img{{loop.index0}}.width);
+    }
 
-    {% endif %}
+    {% endfor %}
     {% endif %}
 
     function resizeCanvas(){
         //get all objects with class "annotaionsCanvas"
         var canvases = document.getElementsByClassName("annotaionsCanvas");
-        var img = document.getElementById("dynamic-image-RGB").getElementsByTagName("img")[0];
+        var img = document.getElementById("baseImage" + canvases[slideIndex].id.split("canvas")[1]);
 
+        console.log("baseImage" + canvases[0].id.split("canvas")[1]);
 
         for (var i = 0; i < canvases.length; i++) {
             var canvas = canvases[i];
@@ -1612,12 +1291,13 @@
             canvas.height = img.height;
         }
 
+        //redraw the current canvas by calling drawAnnotationsOnImage(filename)
         if (displayingAI){
-            drawAnnotationsOnCurrentSlide();
+            drawAnnotationsOnImage(img.id.split("baseImage")[1]);
         }
     }
 
-    document.getElementById("slideshow-settings-magnifier-tablink").click();
+    document.getElementById("defaultOpen").click();
 
 
 </script>

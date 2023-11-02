@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Map</title>
+    <!-- adds leaflet -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"
+          integrity="sha512-xodZBNTC5n17Xt2atTPuE1HxjVMSvLVW9ocqUKLsCC5CXdbqCmblAshOMAS6/keqq/sMZMZ19scR4PsZChSR7A=="
+          crossorigin=""/>
+    <!-- Make sure you put this AFTER Leaflet's CSS -->
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"
+            integrity="sha512-XQoYMqMTK8LvdxXYG3nZ448hOEQiglfqkJs1NOQV44cWnUrBc8PkAOcXy20w0vlaXaVUearIOBhiXZ5V3ynxwA=="
+            crossorigin=""></script>
+    <!-- adds leaflet -->
+    <style>
+        #map-with-overlay-container {
+            width: 100%;
+            position: relative;
+            height: 900px;
+            max-height: 85vh;
+            padding-top:30px;
+        }
+
+        #map {
+            height: 900px;
+            max-height: 85vh;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            margin: 0 auto;
+
+            position: absolute;
+            top: 0;
+            bottom: 0;
+        }
+
+        #map-overlay-slider {
+            position: absolute;
+            bottom: 40px;
+            left: 25%;
+            width: 50%;
+            padding: 10px;
+            z-index: 1000;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 4px;
+            align-items: center;
+        }
+    </style>
+</head>
+<body>
+{% if maps %}
+<div id="map-with-overlay-container">
+    <div id="map"></div>
+    <div id="map-overlay-slider">
+        <a>
+            <label for="mapOverlayOpacityRange" style="margin: 0 0 0 10px; color: var(--font-color-b);">Overlay Opacity</label>
+            <input type="range" min="0" max="100" value="100" class="slider" id="mapOverlayOpacityRange" style="margin: 0px 10px; width:75%;">
+        </a>
+    </div>
+</div>
+
+
+<script>
+
+var defaultZoom = {{maps[0].zoom}};
+var centerA = {{maps[0].center}}; //[51.57443888888889,7.028625]
+var map = L.map('map').setView(centerA, defaultZoom);
+var coordinatesNamesList = [];
+
+//var titleLayer = L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token={accessToken}',
+//    {
+//        attribution: '',
+//        maxZoom: 25,
+//        id: 'mapbox/satellite-v9',
+//        tileSize: 512,
+//        zoomOffset: -1,
+//        accessToken: 'pk.eyJ1Ijoicm9ibGFidXNlcndocyIsImEiOiJja3VjaXF3d2MxMTN5Mm9tdmQzaGphdGU3In0.BhKF_054bVOPcviIq2yIKg'
+//    }).addTo(map);
+
+function changeMapStyle(styleID){ //streets-v9
+    L.tileLayer('https://api.mapbox.com/styles/v1/mapbox/{id}/tiles/{z}/{x}/{y}?access_token={accessToken}',
+    {
+        attribution: '',
+        maxZoom: 25,
+        id: styleID,
+        tileSize: 512,
+        zoomOffset: -1,
+        accessToken: 'pk.eyJ1Ijoicm9ibGFidXNlcndocyIsImEiOiJja3VjaXF3d2MxMTN5Mm9tdmQzaGphdGU3In0.BhKF_054bVOPcviIq2yIKg'
+    }).addTo(map);
+}
+
+const mbAttr = 'Map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, Imagery © <a href="https://www.mapbox.com/">Mapbox</a>';
+const mbUrl = 'https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token=pk.eyJ1Ijoicm9ibGFidXNlcndocyIsImEiOiJja3VjaXF3d2MxMTN5Mm9tdmQzaGphdGU3In0.BhKF_054bVOPcviIq2yIKg';
+
+const streets = L.tileLayer(mbUrl, {maxZoom: 25, id: 'mapbox/streets-v11', tileSize: 512, zoomOffset: -1, attribution: mbAttr});
+
+const osm = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 25,
+    attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+});
+
+{% if maps[0].size %}
+//var mapSize={{ maps[0].size|tojson }};
+{% else %}
+//var mapSize=[2000,2000];
+{% endif %}
+
+
+
+//console.log(mapSize);
+
+//var	imageBounds = {{maps[0].bounds}};
+//var mapImage = L.imageOverlay('{{ url_for('static', filename=maps[0].file) }}', imageBounds);
+//var mapOverlay = L.layerGroup([mapImage]);
+
+//var lat1 = imageBounds[0][0];
+//var long1 = imageBounds[0][1];
+//var lat2 = imageBounds[1][0];
+//var long2 = imageBounds[1][1];
+
+
+{% for map in maps %}
+
+var imageBounds{{map.name}} = {{map.bounds}};
+var mapSize{{map.name}} = {{map.size}};
+var center{{map.name}} = {{map.center}};
+var imageOverlay{{map.name}} = L.imageOverlay('{{ url_for('static', filename=map.file) }}', imageBounds{{map.name}});
+var {{map.name}}Overlay = L.layerGroup([imageOverlay{{map.name}}]);
+
+var lat1{{map.name}} = imageBounds{{map.name}}[0][0];
+var long1{{map.name}} = imageBounds{{map.name}}[0][1];
+var lat2{{map.name}} = imageBounds{{map.name}}[1][0];
+var long2{{map.name}} = imageBounds{{map.name}}[1][1];
+{% if not map.odm %}
+var coordinates{{map.name}} = {{map.image_coordinates | tojson}};
+{% endif %}
+
+function set{{map.name}}MapImage(path) {
+    imageOverlay{{map.name}}.setUrl(path);
+}
+
+function update{{map.name}}Map(map) {
+    mapSize{{map.name}} = map.size;
+    center{{map.name}} = map.center;
+    set{{map.name}}MapImage(map.file_url);
+    set{{map.name}}Bounds(map.bounds);
+    {% if not map.odm %}
+    coordinates{{map.name}} = map.image_coordinates;
+
+    console.log(coordinates{{map.name}});
+    if(map.image_coordinates!= null) {
+        updateCoordinatesNamesList({{loop.index0}}, coordinates{{map.name}});
+        loadPolygons{{map.name}}(map.image_coordinates);
+    }
+    {% endif %}
+    showCurrentSlide();
+}
+
+function set{{map.name}}Bounds(bounds) {
+    imageOverlay{{map.name}}.setBounds(bounds);
+    var imageBounds{{map.name}} = bounds;
+    lat1{{map.name}} = imageBounds{{map.name}}[0][0];
+    long1{{map.name}} = imageBounds{{map.name}}[0][1];
+    lat2{{map.name}} = imageBounds{{map.name}}[1][0];
+    long2{{map.name}} = imageBounds{{map.name}}[1][1];
+}
+
+
+{% if not map.odm %}
+var polygons{{map.name}};
+function loadPolygons{{map.name}}(coordinates) {
+    console.log("loading polygons");
+    polygons{{map.name}} = new Array();
+    //var centers{{map.name}} = new Array();
+    for (var i = 0; i < coordinates.length; i++) {
+        var polygonString = coordinates[i].coordinates_string;
+        if(polygonString =="") {
+            continue;
+        }
+        var points_strings = polygonString.split(',');
+        var points = new Array();
+        for (var j = 0; j < points_strings.length; j++) {
+            var point = points_strings[j].split(' ');
+            points.push([parseInt(point[0]), parseInt(point[1])]);
+        }
+        if(typeof(mapSize{{map.name}}[0]) == 'string') {
+            console.log('mapSize{{map.name}} was String');
+            var arr = new Array();
+            arr.push(parseInt(mapSize{{map.name}}[0]));
+            arr.push(parseInt(mapSize{{map.name}}[1]));
+            mapSize{{map.name}} = arr;
+        }
+        var p1=[points[0][0]/mapSize{{map.name}}[0],points[0][1]/mapSize{{map.name}}[1]];
+        var p2=[points[1][0]/mapSize{{map.name}}[0],points[1][1]/mapSize{{map.name}}[1]];
+        var p3=[points[2][0]/mapSize{{map.name}}[0],points[2][1]/mapSize{{map.name}}[1]];
+        var p4=[points[3][0]/mapSize{{map.name}}[0],points[3][1]/mapSize{{map.name}}[1]];
+        var pL1 = [p1[1] * lat1{{map.name}} + ((1 - p1[1]) * lat2{{map.name}}), p1[0] * long2{{map.name}} + ((1 - p1[0]) * long1{{map.name}})];
+        var pL2 = [p2[1] * lat1{{map.name}} + ((1 - p2[1]) * lat2{{map.name}}), p2[0] * long2{{map.name}} + ((1 - p2[0]) * long1{{map.name}})];
+        var pL3 = [p3[1] * lat1{{map.name}} + ((1 - p3[1]) * lat2{{map.name}}), p3[0] * long2{{map.name}} + ((1 - p3[0]) * long1{{map.name}})];
+        var pL4 = [p4[1] * lat1{{map.name}} + ((1 - p4[1]) * lat2{{map.name}}), p4[0] * long2{{map.name}}+ ((1 - p4[0]) * long1{{map.name}})];
+        var latlngs = [pL1,pL2,pL3,pL4];
+        //var center = [((pL1[0] + pL3[0]) / 2.0), ((pL1[1] + pL3[1]) / 2.0)];
+        //centers{{map.name}}.push(center);
+        var polygon = L.polygon(latlngs ,{ opacity: 0, fillOpacity: 0.0, fillColor: '#0000FF' });
+        polygon.on('mouseover', highlightFeature);
+        polygon.on('mouseout', resetHighlight);
+        polygon.on('click',	slide{{map.name}});
+        {{map.name}}Overlay.addLayer(polygon);
+
+        polygons{{map.name}}.push(polygon);
+    }
+
+}
+function slide{{map.name}}(e) {
+	var i = polygons{{ map.name }}.indexOf(e.target);
+	filename = coordinates{{ map.name }}[i].file_name;
+	showSlideByFilename(filename);
+}
+{% endif %}
+{% endfor %}
+
+function drawFlightTrajectory(coordinates){
+    var latlngs = [];
+    for (var i = 0; i < coordinates.length; i++) {
+        latlngs.push([parseFloat(coordinates[i][0]), parseFloat(coordinates[i][1])]);
+    }
+    //var polyline = L.polyline(latlngs, {color: 'red'}).addTo(map);
+    //map.fitBounds(polyline.getBounds());
+
+    trajectory = L.polyline(latlngs, {color: 'fuchsia'}).addTo(map);
+    var overlay = {
+        'Gpx': trajectory
+    };
+    var gpxLayer = L.control.layers(null, overlay, {
+        collapsed: false,
+        position: 'topleft'
+    });
+    layerControl.addOverlay(trajectory, 'Trajectory');
+}
+
+function updateCoordinatesNamesList(index, coordinates){
+    var namesList = [];
+    for (var i = 0; i < coordinates.length; i++) {
+        namesList.push(coordinates[i].file_name);
+    }
+    if(coordinatesNamesList.length < index){
+        coordinatesNamesList[index] = namesList;
+    }
+    else{
+        coordinatesNamesList.push(namesList);
+    }
+}
+
+function isUsedInMap(index, displayingIR){
+    console.log("isUsedInMap ?");
+    var filename = "";
+    if (displayingIR){
+         filename = getFilePathBySlideIndex(index, 1);
+    }
+    else{
+         filename = getFilePathBySlideIndex(index, 0);
+    }
+
+    for (var i = 0; i < coordinatesNamesList.length; i++) {
+        list = coordinatesNamesList[i];
+        if(list.indexOf(filename) > -1){
+            console.log(filename + " isUsedInMap true");
+            return true;
+        }
+    }
+    console.log(filename + " isUsedInMap false");
+    return false;
+}
+
+var mapOverlayOpacity = 1;
+var threshold = 0.55;
+
+function highlightFeature(e) {
+	if(mapOverlayOpacity > threshold) {
+		var layer = e.target;
+		layer.setStyle({
+			fillOpacity: 0.7
+		});
+	}
+}
+
+function resetHighlight(e) {
+	var layer = e.target;
+
+	layer.setStyle({
+		fillOpacity: 0.0
+	});
+}
+
+
+
+{% if maps[1] %}
+function slideIR(e) {
+	var i = polygons{{maps[1].name}}.indexOf(e.target);
+	showSlideIR(i);
+}
+{% endif %}
+
+function changeAlpha(value) {
+    {% for map in maps %}
+    imageOverlay{{map.name}}.setOpacity(value/100);
+    {% endfor %}
+
+    //mapImage.setOpacity(value/100);
+    {% if has_ir %}
+    //IR.setOpacity(value/100);
+    {% endif %}
+    mapOverlayOpacity = value/100;
+}
+<!-- home button functionality -->
+L.Control.zoomHome = L.Control.extend({
+    options: {
+        position: 'topleft',
+        zoomHomeText: '&#9873;',
+        zoomHomeTitle: 'Zoom home'
+    },
+    onAdd: function (map) {
+        var controlName = 'gin-control-zoom',
+        container = L.DomUtil.create('div', controlName + ' leaflet-bar'),
+        options = this.options;
+        //container.innerHTML
+        this._zoomHomeButton = this._createButton(options.zoomHomeText, options.zoomHomeTitle,
+        controlName + '-home', container, this._zoomHome);
+        return container;
+    },
+    onRemove: function (map) {
+    },
+    _zoomHome: function (e) {
+        map.flyTo(centerA, defaultZoom);
+    },
+    _createButton: function (html, title, className, container, fn) {
+        var link = L.DomUtil.create('a', className, container);
+        link.innerHTML = html;
+        link.href = '#';
+        link.title = title;
+        link.role = "button";
+        L.DomEvent
+            .on(link, 'click', fn, this)
+            .on(link, 'click', L.DomEvent.stop)
+            .on(link, 'click', this._refocusOnMap, this);;
+        return link;
+    },
+});
+var zoomHome = new L.Control.zoomHome();
+zoomHome.addTo(map);
+
+<!-- home button functionality -->
+var layerswitcher = {
+    {% for map in maps %}
+    '{{map.name}}_Map': {{map.name}}Overlay,
+    {% endfor %}
+};
+
+const baseLayers = {
+    'OpenStreetMap': osm,
+    'Streets': streets
+};
+
+var layerControl = L.control.layers(baseLayers, layerswitcher,{}, {collapsed: false}).addTo(map);
+layerswitcher.{{maps[0].name}}_Map.addTo(map);
+const satellite = L.tileLayer(mbUrl, {maxZoom: 25, id: 'mapbox/satellite-v9', tileSize: 512, zoomOffset: -1, attribution: mbAttr});
+satellite.addTo(map)
+layerControl.addBaseLayer(satellite, 'Satellite');
+
+{% if panos %}
+{% for pano in panos %}
+{% if pano.coordinates %}
+
+marker{{ loop.index0  }} = L.marker({{pano.coordinates}}, {clickable: true});
+marker{{ loop.index0  }}.on("click", function(e) { show_pano({{ loop.index0 }}); });
+marker{{ loop.index0  }}.addTo(map);
+{% endif %}
+{% endfor %}
+{% endif %}
+
+
+{% for map in maps %}
+{% if not map.odm %}
+{% if map.image_coordinates %}
+coordinates{{map.name}} = {{ map.image_coordinates|tojson }};
+loadPolygons{{map.name}}({{ map.image_coordinates|tojson }});
+updateCoordinatesNamesList({{loop.index0}}, coordinates{{map.name}});
+
+{% endif %}
+{% endif %}
+{% endfor %}
+drawFlightTrajectory({{ flight_trajectory |tojson }});
+
+$('#mapOverlayOpacityRange').on('input', function() {
+    changeAlpha($(this).val());
+});
+
+console.log("map loaded");
+
+</script>
+{% endif %}
+</body>
+</html>
