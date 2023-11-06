@@ -2,9 +2,6 @@ import json
 import datetime
 
 from mapper_thread import MapperThread
-from webODM.webODM_docker_manager import WebODMDockerManager
-from webODM.webODM_thread import WebODMThread
-from app.nodeodm_manager import nodeodm_manager
 
 # from gunicorn.app.base import BaseApplication
 from flask import Flask, flash, request, redirect, url_for, render_template, jsonify
@@ -30,7 +27,7 @@ import urllib.request
 #         return self.application
 
 class ArgusServer:
-    def __init__(self, project_manager):
+    def __init__(self, address, port, project_manager, nodeodm_manager, webodm_manager, detection_manager):
         self.app = Flask(__name__)
         self.app.jinja_env.globals.update(global_for=self.global_for)
         self.app.jinja_env.globals.update(thumbnail_for=self.thumbnail_for)
@@ -43,10 +40,13 @@ class ArgusServer:
         self.threads = []
         self.detection_threads = []
         # self.map = {}
+
+        self.address = address
+        self.port = port
         self.project_manager = project_manager
-        self.nodeodm_manager = nodeodm_manager('nodeodm', 3000)
-        # self.webodm_manager = webodm_manager('webodm', )
-        # self.detection_manager = detection_manager('argus_detection', 4000)
+        self.nodeodm_manager = nodeodm_manager
+        self.webodm_manager = webodm_manager
+        self.detection_manager = detection_manager
 
         self.setup_routes()
 
@@ -99,8 +99,8 @@ class ArgusServer:
                                 view_func=self.check_detection_status)
         self.app.add_url_rule('/process_in_webodm/<int:report_id>', methods=['GET', 'POST'],
                                 view_func=self.process_in_webodm)
-        self.app.add_url_rule('/open_webodm', methods=['GET', 'POST'],
-                                view_func=self.open_webodm)
+        self.app.add_url_rule('/get_webodm_port', methods=['GET', 'POST'],
+                                view_func=self.get_webodm_port)
         # self.app.add_url_rule('/<int:report_id>/upload', methods=['POST'],
         #                       view_func=self.upload_image)
         # self.app.add_url_rule('/<int:report_id>/process', methods=['GET', 'POST'],
@@ -335,10 +335,6 @@ class ArgusServer:
 
 
     def run_detection(self, report_id):
-        # DOCKER_ENV_KEY = os.environ.get('AM_I_IN_A_DOCKER_CONTAINER', False)
-        # if DOCKER_ENV_KEY:
-        #     print('currently not supported in Docker')
-        # else:
         numbr_of_models = 2
         models_setting = request.form.get('model_options')
         if models_setting == "all":
@@ -399,32 +395,21 @@ class ArgusServer:
             return jsonify(data)
 
     def process_in_webodm(self, report_id):
-        if not self.webodm_manager.is_webodm_container_running():
-            print("webodm container not running yet, starting now")
-            self.webodm_manager.start_webodm_container()
-        print("webodm container should be running")
+        token = self.webodm_manager.authenticate()
+        if token is None:
+            return jsonify({"success": False})
+        wo_project_id = self.webodm_manager.get_project_id(token, self.project_manager.get_project_name(report_id), self.project_manager.get_project_description(report_id))
+        if wo_project_id is None:
+            wo_project_id = self.webodm_manager.create_project(token, self.project_manager.get_project_name(report_id), self.project_manager.get_project_description(report_id))
+        if wo_project_id is not None:
+            self.webodm_manager.upload_and_process_images(token, wo_project_id, self.project_manager.get_file_names_rgb(report_id))
+            return jsonify({"success": True, "port": self.webodm_manager.public_port})
+        else:
+            print("Failed to create a webodm project with name {}".format(self.project_manager.get_project_name(report_id)), flush=True)
+            return jsonify({"success": False})
 
-        webodm_url = 'http://localhost:'+str(self.webodm_manager.port)
-        images_dir = self.project_manager.get_project(report_id)['data']['file_names'][0]
-        images_dir = './static/' + images_dir[:images_dir.rindex('/') + 1]
-        report_name = self.project_manager.get_project_name(report_id)
-        report_description = self.project_manager.get_project_description(report_id)
-        odm_thread = WebODMThread(webodm_url, images_dir, report_id, report_name, report_description)
-        odm_thread.start()
-
-        return jsonify({"url": webodm_url})
-
-
-    def open_webodm(self):
-        if not self.webodm_manager.is_webodm_container_running():
-            self.webodm_manager.start_webodm_container()
-
-        print("webodm container should be running, now redirecting to webodm")
-
-        webodm_url = 'http://localhost:'+str(self.webodm_manager.port)
-        return redirect(webodm_url, code=301)
-
-
+    def get_webodm_port(self):
+        return jsonify({"port": self.webodm_manager.public_port})
 
     def display_image(self, filename):
         return redirect(url_for(self.project_manager.local_projects_path, filename=filename), code=301)
@@ -455,12 +440,7 @@ class ArgusServer:
         os.kill(os.getpid(), signal.SIGINT)
 
     def run(self):
-        self.app.run(host="0.0.0.0", port=5000, debug=True, use_reloader=False)
-        # options = {
-        #     'bind': '0.0.0.0:5000',
-        #     'workers': 4,  # Set the number of worker processes
-        # }
-        # FlaskApp(self.app, options).run()
+        self.app.run(host=self.address, port=self.port, debug=True, use_reloader=False)
 
     # Utulity functions:
 

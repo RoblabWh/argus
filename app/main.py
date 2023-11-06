@@ -1,50 +1,24 @@
-import datetime
+import os
 from project_manager import ProjectManager
+from nodeodm_manager import NodeodmManager
+from webodm_manager import WebodmManager
+# from detection_manager import DetectionManager
 from server import ArgusServer
-
-# def start_detection_container():
-#     client = docker.from_env()
-#
-#     # Define the image tag
-#     image_tag = "object_detection_image"
-#
-#     # Check if the image with the specified tag exists
-#     existing_images = client.images.list(name=image_tag)
-#     existing_images = False
-#
-#     if not existing_images:
-#         # The image does not exist, so build it
-#         dockerfile_path = "./detection/Dockerfile"
-#         context_path = "./"
-#         image, build_logs = client.images.build(path=context_path, dockerfile=dockerfile_path, tag=image_tag)
-#     else:
-#         print(f"Using existing image: {image_tag}")
-#
-#     # Start the Docker container
-#     container = client.containers.run(
-#         image=image_tag,
-#         detach=True,
-#         ports={"5005/tcp": 5005},
-#     )
-
-
-
-
-    # # Wait for the container to finish (if needed)
-    # container.wait()
-    #
-    # # Stop and remove the container when done (if needed)
-    # container.stop()
-    # container.remove()
-
 
 def main():
     PROJECTS_PATH = './static/projects/'
 
     project_manager = ProjectManager(PROJECTS_PATH)
     project_manager.initiate_project_list()
+    nodeodm_manager = NodeodmManager('nodeodm', 3000)
+    webodm_manager = WebodmManager('webodm', 8000, os.environ['ARGUS_WEBODM_PORT'], os.environ['ARGUS_WEBODM_USERNAME'], os.environ['ARGUS_WEBODM_PASSWORD'])
+    token = webodm_manager.authenticate()
+    if token is not None:
+        webodm_manager.configure_node(token, nodeodm_manager.address, nodeodm_manager.port)
+    detection_manager = None
+    # detection_manager = detection_manager('argus_detection', 5000)
 
-    server = ArgusServer(project_manager)
+    server = ArgusServer("0.0.0.0", 5000, project_manager, nodeodm_manager, webodm_manager, detection_manager)
     server.run()
 
 

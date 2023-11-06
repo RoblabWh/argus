@@ -23,17 +23,13 @@ import socket
 
 
 
-class nodeodm_manager:
+class NodeodmManager:
 
     _image_size = 960
 
     def __init__(self, address='127.0.0.1', port=3000):
-        """
-        :param image_paths: List of Strings of Paths to input_images
-        :param inputfolder: If image_paths are not provided search images in folder
-        """
-
-        # self.check_connection(address, port)
+        self.address = address
+        self.port = port
         self.node = Node(address, port)
 
     @staticmethod
@@ -87,7 +83,7 @@ class nodeodm_manager:
         if nmbr_of_processes < len(image_paths):
             nmbr_of_processes = len(image_paths)
         pool = multiprocessing.Pool(nmbr_of_processes)
-        func = partial(nodeodm_manager.scale_image, image_size)
+        func = partial(NodeodmManager.scale_image, image_size)
         scaled_image_paths = pool.map(func, image_paths)
         pool.close()
         pool.join()
