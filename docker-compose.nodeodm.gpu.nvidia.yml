@@ -1,0 +1,10 @@
+services:
+  nodeodm:
+    image: opendronemap/nodeodm:gpu
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]

@@ -1,0 +1,8 @@
+services:
+  nodeodm:
+    image: opendronemap/nodeodm
+    container_name: argus_nodeodm
+    expose:
+      - 3000
+    restart: unless-stopped
+    oom_score_adj: 500

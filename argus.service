@@ -1,0 +1,10 @@
+[Unit]
+Description=ARGUS Server
+
+[Service]
+Type=simple
+ExecStart=argus up
+ExecStop=argus down
+
+[Install]
+WantedBy=multi-user.target

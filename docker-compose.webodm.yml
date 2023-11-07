@@ -1,0 +1,58 @@
+services:
+  db:
+    image: opendronemap/webodm_db
+    container_name: argus_db
+    expose:
+      - 5432
+    volumes:
+      - ${ARGUS_DB}:/var/lib/postgresql/data:Z
+    restart: unless-stopped
+    oom_score_adj: -100
+  webodm:
+    image: opendronemap/webodm_webapp
+    container_name: argus_webodm
+    entrypoint: /bin/bash -c "chmod +x /webodm/*.sh && /bin/bash -c \"/webodm/wait-for-postgres.sh db /webodm/wait-for-it.sh -t 0 broker:6379 -- /webodm/start.sh\""
+    volumes:
+      - ${ARGUS_MEDIA}:/webodm/app/media:z
+    expose:
+      - 8000
+    ports:
+      - ${ARGUS_WEBODM_PORT}:8000
+    links:
+      - nodeodm
+    depends_on:
+      - db
+      - broker
+      - worker
+      - nodeodm
+    environment:
+      - WO_HOST=localhost
+      - WO_PORT=${ARGUS_WEBODM_PORT}
+      - WO_BROKER=redis://broker
+      - WO_DEBUG=NO
+      - WO_DEV=NO
+    restart: unless-stopped
+    oom_score_adj: 0
+  broker:
+    image: redis:7.0.10
+    container_name: argus_broker
+    restart: unless-stopped
+    oom_score_adj: -500
+  worker:
+    image: opendronemap/webodm_webapp
+    container_name: argus_worker
+    entrypoint: /bin/bash -c "/webodm/wait-for-postgres.sh db /webodm/wait-for-it.sh -t 0 broker:6379 -- /webodm/wait-for-it.sh -t 0 webodm:8000 -- /webodm/worker.sh start"
+    volumes:
+      - ${ARGUS_MEDIA}:/webodm/app/media:z
+    depends_on:
+      - db
+      - broker
+    environment:
+      - WO_BROKER=redis://broker
+      - WO_DEBUG=NO
+    restart: unless-stopped
+    oom_score_adj: 250
+
+volumes:
+  db:
+  media:
