@@ -31,7 +31,7 @@ class AnnotationHandler:
                 img_prefix = None
 
         # Relevant config paths
-        self.ann_path = "code/results/ann.json"
+        self.ann_path = args.ann_path #"code/results/ann.json"
         self.score_thr = args.score_thr
         # Just any config file will do
         self.config_path = './configs/rtmdet/rtmdet_x_8xb32-300e_coco.py'
@@ -78,14 +78,13 @@ class AnnotationHandler:
 
         self.custom_coco = CustomCOCO(ann_file=self.ann_path, score_thr=self.score_thr)
 
-    def save_results_in_json(self, results):
+    def save_results_in_json(self, results, out_folder='.'):
         """
         Save the results in a json file
-        :param out_folder: folder where to save the json file
         :param results: results to save
+        :param out_folder: folder where to save the json file
         :return:
         """
-        out_folder = '.'
         outpath = str(Path(out_folder).expanduser() / "result.json")
         self.custom_coco.results2json(results, outpath)
         outpath = str(Path(out_folder).expanduser() / "result.json.bbox.json")

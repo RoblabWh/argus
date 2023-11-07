@@ -1,0 +1,6 @@
+numpy
+requests==2.28.0
+flask == 2.2.2
+psutil
+pyyaml
+werkzeug == 2.2.2

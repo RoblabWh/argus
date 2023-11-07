@@ -7,6 +7,7 @@ from mapper_thread import MapperThread
 from flask import Flask, flash, request, redirect, url_for, render_template, jsonify
 import os
 import signal
+import requests
 from werkzeug.utils import secure_filename
 
 
@@ -353,10 +354,11 @@ class ArgusServer:
                 max_splits = 1
 
 
-        self.detect_objects(options={"numbr_of_models": numbr_of_models, "split_images": split_images, "max_splits": max_splits}, report_id=report_id)
-        #detections = json.load(open(self.project_manager.get_annotation_file_path(report_id)))
+        self.detection_manager.detect_objects(options={"numbr_of_models": numbr_of_models, "split_images": split_images, "max_splits": max_splits},
+                            report_id=report_id,
+                            image_folder=self.project_manager.project_path(report_id),
+                            ann_path=self.project_manager.get_annotation_file_path(report_id))
 
-        # return render_standard_report(report_id)
         return jsonify("null") #detections
 
     def update_detections_colors(self, report_id):
@@ -368,22 +370,12 @@ class ArgusServer:
         self.project_manager.update_detections_colors(report_id, color, category_name)
         return "success"
 
-    def detect_objects(self, options, report_id):
-        #start docker container in own thread and start detection
-        #TODO rewrite to new server client arch
-        return True
+
 
     def check_detection_status(self, report_id):
         print('asking for detection status of report ' + str(report_id) + " with " + str(len(self.detection_threads)) + " threads")
-        for thread in self.detection_threads:
-            if thread.report_id == report_id:
-                if thread.done:
-                    self.detection_threads.remove(thread)
-                    thread.join()
-                    return "finished"
-                else:
-                    return "running"
-        print("no thread found for report_id: " + str(report_id))
+        return self.detection_manager.get_detection_status(report_id)
+
 
     def load_detection_results(self, report_id):
         #get path of projects annotation file

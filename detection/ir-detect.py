@@ -7,6 +7,7 @@ from inference_engine import InferenceEngine
 
 def main():
 
+
     parser = argparse.ArgumentParser(description='Inference for MMDetection')
     # Single Image, if --img is None, the input folder is used and searched for images
     parser.add_argument('--img', default=None, help='Input Image Path')

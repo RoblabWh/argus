@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Detection status</title>
+</head>
+<body>
+<h1>Object detection status</h1>
+<button onclick="window.location.reload();">Refresh</button>
+{% for detection_thread in detection_threads %}
+    <h3>Detection for Report {{detection_thread.report_id}} </h3>
+    <p>Status started: {{ detection_thread.started }}</p>
+    <p>Status done: {{ detection_thread.done }}</p>
+{% endfor %}
+</body>
+</html>

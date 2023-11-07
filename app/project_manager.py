@@ -14,6 +14,7 @@ class ProjectManager:
         self.projects_path = projects_path
         #self.image_mapper = {}
 
+
     def create_project(self, name, description):
         id = self.get_next_id()
         print("creating project with id: " + str(id))

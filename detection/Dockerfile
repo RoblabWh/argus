@@ -31,11 +31,11 @@ RUN apt-get update \
 
 # Install MMEngine and MMCV
 RUN pip install openmim && \
-    mim install "mmengine>=0.7.1" "mmcv>=2.0.0rc4"
+    mim install "mmengine==0.8.4" "mmcv==2.0.0"
 
 # Install MMDetection
 RUN conda clean --all \
-    && git clone https://github.com/open-mmlab/mmdetection.git /mmdetection \
+    && git clone -b v3.1.0 https://github.com/open-mmlab/mmdetection.git /mmdetection \
     && cd /mmdetection \
     && pip install --no-cache-dir -e .
 
@@ -45,6 +45,13 @@ RUN curl -u "dF2wQbFNW2zuCpK:fire" "https://w-hs.sciebo.de/public.php/webdav/${M
     mkdir /detection && \
     mv "${MODEL_WEIGHTS_FILE}" "/detection/model_weights"
 
-COPY . /detection
+COPY requirements.txt /detection/requirements.txt
 
 WORKDIR /detection
+
+RUN pip install -r requirements.txt
+
+COPY . /detection
+
+ENTRYPOINT python3 main.py
+EXPOSE 6000
