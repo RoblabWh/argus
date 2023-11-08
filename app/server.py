@@ -346,15 +346,15 @@ class ArgusServer:
         processing_setting = request.form.get('processing_options')
         print("run_detection for id" + str(report_id) + " with: " + str(numbr_of_models) + " models and " + str(processing_setting) + " processing")
         split_images = False
-        max_splits = 99
+        max_splits = 0
         print(f'processing_setting: {processing_setting}')
         if processing_setting != "full":
-            split_images = True
+            max_splits = 99
             if processing_setting == "one_split":
                 max_splits = 1
 
 
-        self.detection_manager.detect_objects(options={"numbr_of_models": numbr_of_models, "split_images": split_images, "max_splits": max_splits},
+        self.detection_manager.detect_objects(options={"numbr_of_models": numbr_of_models, "max_splits": max_splits},
                             report_id=report_id,
                             image_folder=self.project_manager.project_path(report_id),
                             ann_path=self.project_manager.get_annotation_file_path(report_id))

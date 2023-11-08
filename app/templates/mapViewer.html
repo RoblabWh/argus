@@ -54,12 +54,21 @@
     <div id="map-overlay-slider">
         <a>
             <label for="mapOverlayOpacityRange" style="margin: 0 0 0 10px; color: var(--font-color-b);">Overlay Opacity</label>
-            <input type="range" min="0" max="100" value="100" class="slider" id="mapOverlayOpacityRange" style="margin: 0px 10px; width:75%;">
+            <input type="range" min="0" max="100" value="100" class="slider" id="mapOverlayOpacityRange" style="margin: 0px 10px; width:35%;">
+            <div style="float: right">
+                <label style="margin: 0 0 0 10px; color: var(--font-color-b);"> Detections: tactical sign</label>
+                <label class="switch">
+                    <input type="checkbox" id="mapOverlayStyleCheckbox" checked="checked">
+                    <span class="switch-slider round"></span>
+                </label>
+                <label style="margin: 0 0 0 10px; color: var(--font-color-b);">icon</label>
+            </div>
         </a>
     </div>
 </div>
 
 
+{% endif %}
 <script>
 
 // ===========
@@ -69,7 +78,7 @@
 var map = L.map('map')
 var coordinatesNamesList = [];
 
-
+var objectDetectionLayer = null;
 
 
 
@@ -437,16 +446,37 @@ function isUsedInMap(index, displayingIR){
     return false;
 }
 
+$('#mapOverlayStyleCheckbox').change(function(){
+    if (detections != null){
+        generateObjectDetectionLayer(detections);
+    }
+});
+
 function generateObjectDetectionLayer(objectDetectionData){
+    //check if Layer already exists
+    if(objectDetectionLayer != null){
+        map.removeLayer(objectDetectionLayer);
+        layerControl.removeLayer(objectDetectionLayer);
+    }
+
     // generate a new layer
     objectDetectionLayer = L.layerGroup();
 
 
     //loop over all detections and collect found object types per image using image_id as key
     foundObjectsByImageID = {};
+
     for(var i=0; i< objectDetectionData.annotations.length; i++){
         imageID = objectDetectionData.annotations[i].image_id;
         categoryID = objectDetectionData.annotations[i].category_id + 1;
+        score = objectDetectionData.annotations[i].score;
+        category = objectDetectionData.categories[categoryID - 1];
+        var slider = document.getElementById("slider_" + category.name + "_global_threshold");
+        var threshold = slider.value;
+        if(score < threshold){
+            continue;
+        }
+
         if(imageID in foundObjectsByImageID){
             //check if categoryID is already in list
             if(foundObjectsByImageID[imageID].indexOf(categoryID) > -1){
@@ -524,18 +554,22 @@ function generateObjectDetectionLayer(objectDetectionData){
             }).addTo(objectDetectionLayer);
             continue;
         }
-        //console.log("marker " + icon_filename + " at " + center + " for image " + filename + " with id " + imageID + " and found categories " + foundCategoriesInImage);
-        //L.circle(center, {
-        //    color: 'blue',
-        //    fillColor: 'blue',
-        //    fillOpacity: 0.5,
-        //    radius: 2
-        //}).addTo(objectDetectionLayer);
+
+        checkbox = document.getElementById("mapOverlayStyleCheckbox");
+        if(checkbox.checked){
+            detectionIconStyleSetting = 'icon'; //'taktischeZeichen' or 'icon'
+            detectionIconSize = 50;
+        }
+        else{
+            detectionIconStyleSetting = 'taktischeZeichen'; //'taktischeZeichen' or 'icon'
+            detectionIconSize = 40;
+        }
+
         marker = L.marker(center, {
             icon: L.icon({
-                iconUrl: '/static/default/signs/' + icon_filename + '.png',
-                iconSize: [30, 30],
-                iconAnchor: [15, 15],
+                iconUrl: '/static/default/signs/' + detectionIconStyleSetting + '/' + icon_filename + '.png',
+                iconSize: [detectionIconSize, detectionIconSize],
+                iconAnchor: [detectionIconSize/2, detectionIconSize/2],
                 popupAnchor: [0, 0],
                 shadowUrl: null,
                 shadowSize: null,
@@ -553,6 +587,5 @@ function generateObjectDetectionLayer(objectDetectionData){
 
 
 </script>
-{% endif %}
 </body>
 </html>
