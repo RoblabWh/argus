@@ -24,7 +24,7 @@ class DetectionManager:
         for process in all_processes:
             if process['report_id'] == report_id:
                 if process['done']:
-                    response = requests.get(self.url + '/remove_thread/' + report_id)
+                    response = requests.get(self.url + '/remove_thread/' + str(report_id))
                     return "finished"
                 else:
                     return "running"
