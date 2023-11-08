@@ -34,7 +34,7 @@ class AnnotationHandler:
         self.ann_path = args.ann_path #"code/results/ann.json"
         self.score_thr = args.score_thr
         # Just any config file will do
-        self.config_path = './configs/rtmdet/rtmdet_x_8xb32-300e_coco.py'
+        self.config_path = '/detection/model_weights/rtmdet_x_8xb32-300e_coco/small_trained_correctbbx/rtmdet_x_8xb32-300e_coco.py'
         self.img_prefix = img_prefix
 
         # Load the config

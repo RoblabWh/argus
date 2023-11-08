@@ -446,6 +446,13 @@
             numberOfImagesUploadedSuccessfully++;
             updateUploadProgress();
             //enableProcessButton();
+
+            //on click on uploaded image open the image in a new tab
+            response = JSON.parse(xhr.responseText);
+            console.log(response.path);
+            path = response.path;
+            uploadedImage.querySelector('a').href = path;
+
           } else {
             console.error('Image upload failed:', xhr.status);
           }
@@ -541,17 +548,20 @@
                   uploadImage(imageFile, uploadedImage);
                 };
                 img.src = e.target.result;
-
-
-                // Open the image in big size on click
-                img.addEventListener('click', function(event) {
-                  event.stopPropagation();
-                  window.open(this.src);
-                });
-
-                // Create the uploaded image container
+                 // Create the uploaded image container
                 const uploadedImage = document.createElement('div');
                 uploadedImage.className = 'uploaded-image';
+                a = document.createElement('a');
+
+                // Open the image in big size on click
+                uploadedImage.addEventListener('click', function(event) {
+                  event.stopPropagation();
+                  image = this.querySelector('a');
+                  console.log(image);
+                  window.open(image);
+                });
+
+
 
                 // Create the filename text element
                 const filenameText = document.createElement('div');
@@ -579,9 +589,11 @@
 
                 // Append elements to the uploaded image container
                 uploadedImage.appendChild(img);
+                uploadedImage.appendChild(a);
                 uploadedImage.appendChild(loadingIndicator);
                 uploadedImage.appendChild(deleteButton);
                 uploadedImage.appendChild(filenameText);
+
 
                 // Append the uploaded image container to the uploaded images container
                 uploadedImages.appendChild(uploadedImage);

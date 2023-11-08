@@ -29,6 +29,7 @@ class InferenceEngine:
         self.configs = []
         self.device = device
 
+
         for loading_idx in range(cnt_networks):
             if out_folders:
                 self.out_folders.append(out_folders[loading_idx])
@@ -45,6 +46,7 @@ class InferenceEngine:
             # Build the model from a config file and a checkpoint file using the DetInferencer class
             self.models.append(DetInferencer(model=config, weights=checkpoint, device=self.device))
             self.configs.append(Config.fromfile(config))
+        print("InferenceEngine initialized", flush=True)
 
     def add_model(self, network_folder, out_folder=None):
         """

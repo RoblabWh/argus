@@ -161,7 +161,7 @@ class ArgusServer:
         self.project_manager.set_unprocessed_changes(report_id, True)
         self.project_manager.append_unprocessed_images(report_id, file_names)
 
-        return json.dumps({'success': True}), 200, {'ContentType': 'application/json'}
+        return json.dumps({'success': True, 'path': save_path}), 200, {'ContentType': 'application/json'}
 
     def delete_file(self, report_id):
         data = request.get_json()
@@ -404,7 +404,8 @@ class ArgusServer:
         return jsonify({"port": self.webodm_manager.public_port})
 
     def display_image(self, filename):
-        return redirect(url_for(self.project_manager.local_projects_path, filename=filename), code=301)
+        # return redirect(url_for(self.project_manager.local_projects_path, filename=filename), code=301)
+        return redirect(self.global_for(filename), code=301)
 
     def global_for(self, path):
         if path.startswith("./"):

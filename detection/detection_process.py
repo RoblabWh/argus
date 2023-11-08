@@ -22,20 +22,22 @@ class DetectionProcess(threading.Thread):
     def run(self):
         self.started = True
         args = Namespace(
+            img=None,
             out_file='result.jpg',
             create_coco=True,
             netfolders=self.netfolders,
             configs="",
             checkpoints="",
             inputfolder=self.image_folder,
-            outfolders="",
+            outfolders=[],
+            ann_path=self.ann_path,
             extensions=['.jpg', '.png'],
             pattern='.',
             include_subdirs=False,
             score_thr=0.3,
             batch_size=5,
             split_images=True,
-            max_splittin_steps=self.max_splits)
+            max_splitting_steps=self.max_splits)
         print("args: ", str(args), flush=True)
         u.assert_arguments(args)
 
@@ -75,9 +77,14 @@ class DetectionProcess(threading.Thread):
         return models
 
     def reformat_ann(self):
-        with open(self.ann_path, 'w') as json_file:
+        print('reformatting ann', self.ann_path, flush=True)
+        data = None
+        with open(self.ann_path, 'r') as json_file:
             data = json.load(json_file)
-            print('found', len(data["annotations"]), 'objects')
-            for category in data["categories"]:
-                category["colorHSL"] = [(300 - int((category["id"] + 1) / len(data["categories"]) * 360)) % 360, 100, 50]
+
+        print('found', len(data["annotations"]), 'objects')
+        for category in data["categories"]:
+            category["colorHSL"] = [(300 - int((category["id"] + 1) / len(data["categories"]) * 360)) % 360, 100, 50]
+
+        with open(self.ann_path, 'w') as json_file:
             json.dump(data, json_file)
