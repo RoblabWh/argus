@@ -1,6 +1,10 @@
+import hashlib
 import os
 import json
+import time
 import shutil
+import uuid
+import zipfile
 from datetime import datetime
 
 
@@ -16,7 +20,8 @@ class ProjectManager:
 
 
     def create_project(self, name, description):
-        id = self.get_next_id()
+        #id = self.get_next_id()
+        id = self.generate_project_id()
         print("creating project with id: " + str(id))
         os.mkdir(os.path.join(self.projects_path, str(id)))
         data = self.generate_empty_data_dict()
@@ -55,6 +60,7 @@ class ProjectManager:
 
     def get_project(self, id):
         for project in self.projects:
+            print("project id: " + str(project['id']), "id: " + str(id), flush=True)
             if project['id'] == id:
                 return project
         return None
@@ -78,6 +84,28 @@ class ProjectManager:
 
     def get_next_id(self):
         return self.highest_id + 1
+
+    def generate_project_id(self):
+        #generate int id with date,time hhmmss and a 4 digit hash based on the systems name
+
+        timestamp = datetime.now().strftime("%y%m%d%H%M%S")
+
+        #get system name
+        system_name = os.uname().nodename
+        print("system name: " + system_name)
+
+        #generate int hash
+        hash = int(hashlib.sha256(system_name.encode('utf-8')).hexdigest(), 16) % 10**4
+        print("hash: " + str(hash))
+
+        #cast to string and concatenate
+        project_id = int(timestamp + str(hash))
+        #cast to int
+        project_id = int(project_id)
+
+        print("generated project id: " + str(project_id))
+
+        return project_id
 
     def load_data(self, id):
         project = self.get_project(id)
@@ -340,3 +368,31 @@ class ProjectManager:
             data['contains_unprocessed_images'] = True
         with open(os.path.join(self.projects_path, str(report_id), "project.json"), "w") as json_file:
             json.dump(project, json_file)
+
+    def generate_project_zip(self, report_id):
+        path = self.projects_path + str(report_id)
+        shutil.make_archive(path, 'zip', path)
+        return path + ".zip"
+
+    def generate_maps_zip(self, report_id):
+        maps = self.get_maps(report_id)
+        maps_paths = []
+        for map in maps:
+            maps_paths.append(map['file'])
+
+        # zip files under project path with name maps.zip
+        path = self.projects_path + str(report_id) + "/maps"
+
+        #shutil.make_archive(path, 'zip', *maps_paths)
+        self.zip_files(path + ".zip", maps_paths)
+        return path + ".zip"
+
+    def zip_files(self, output_zip, files):
+        with zipfile.ZipFile(output_zip, 'w') as zipf:
+            for file in files:
+                # Add each file to the zip archive with its relative path
+                #zipf.write(file, os.path.relpath(file))
+                # Add each file to the zip archive without its relative path
+                zipf.write(file, os.path.basename(file))
+
+

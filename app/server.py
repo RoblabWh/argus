@@ -4,11 +4,12 @@ import datetime
 from mapper_thread import MapperThread
 
 # from gunicorn.app.base import BaseApplication
-from flask import Flask, flash, request, redirect, url_for, render_template, jsonify
+from flask import Flask, flash, request, redirect, url_for, render_template, jsonify, send_file
 import os
 import signal
 import requests
 from werkzeug.utils import secure_filename
+
 
 
 import urllib.request
@@ -102,6 +103,8 @@ class ArgusServer:
                                 view_func=self.process_in_webodm)
         self.app.add_url_rule('/get_webodm_port', methods=['GET', 'POST'],
                                 view_func=self.get_webodm_port)
+        self.app.add_url_rule('/<int:report_id>/download', methods=['GET', 'POST'],
+                              view_func=self.download_project)
         # self.app.add_url_rule('/<int:report_id>/upload', methods=['POST'],
         #                       view_func=self.upload_image)
         # self.app.add_url_rule('/<int:report_id>/process', methods=['GET', 'POST'],
@@ -125,7 +128,7 @@ class ArgusServer:
         return self.projects_overview()
 
     def render_report(self, report_id):
-        print("upload_form" + str(report_id))
+        print("upload_form for id: " + str(report_id), flush=True)
         if (self.project_manager.has_project(report_id)):
             if not self.project_manager.get_project(report_id)['data']['flight_data']:
                 # file_names = project_manager.get_project(report_id)['data']['file_names']
@@ -402,6 +405,32 @@ class ArgusServer:
 
     def get_webodm_port(self):
         return jsonify({"port": self.webodm_manager.public_port})
+
+    def download_project(self, report_id):
+        #get requested download packedge from request
+        download_package = request.form.get('export-chooser')
+        print("download_package: " + str(download_package), flush=True)
+        print(request.form, flush=True)
+        zip_name = None
+        zip_path = None
+
+        if download_package == 'project_export':
+            #send the whole project folder as a zip file
+            zip_path = self.project_manager.generate_project_zip(report_id)
+            zip_name = os.path.basename(zip_path)
+            print("zip_path: " + str(zip_path), flush=True)
+        elif download_package == 'maps':
+            zip_path = self.project_manager.generate_maps_zip(report_id)
+            zip_name = os.path.basename(zip_path)
+        elif download_package == 'pdf':
+            #TODO: generate pdf
+            pass
+
+        if zip_path is not None:
+            print("zip_name: " + str(zip_name) + " - zip_path: " + str(zip_path), flush=True)
+            return send_file(zip_path, as_attachment=True, download_name=zip_name)
+        else:
+            return "error"
 
     def display_image(self, filename):
         return redirect(self.global_for(filename), code=301)

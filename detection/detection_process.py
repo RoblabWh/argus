@@ -74,7 +74,8 @@ class DetectionProcess(threading.Thread):
     def build_model_paths_list(self, models):
         # TODO use models from args
         # return [f'./model_weights/{model}' for model in models]
-        models = ['/detection/model_weights/rtmdet_x_8xb32-300e_coco/small_trained_correctbbx/']
+        # models = ['/detection/model_weights/rtmdet_x_8xb32-300e_coco/small_trained_correctbbx/']
+        models = ['/detection/model_weights/original/defor-detr/best/']
         return models
 
     def reformat_ann(self):

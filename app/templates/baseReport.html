@@ -330,6 +330,20 @@
             }
         };
 
+        function exportReport(){
+            console.log("downloading project as zip");
+            //send request data with variable download_package and value project_export
+            $.get('/{{ id }}/download', {download_package: "project_export"}, function(response) {
+                console.log(response);
+                if (response.success) {
+                    console.log("download started");
+                    window.open(response.url, '_blank').focus();
+                } else {
+                    console.log("download failed");
+                }
+            });
+        }
+
         function processInWebODM(){
             //Deactivate button
             document.getElementById("processInWebODMButton").disabled = true;
@@ -372,6 +386,15 @@
             <h4 style="margin-bottom: 2px;">Flight Report (ID:{{ id }})</h4>
             <button style="position: absolute" class="big_button" onClick="location.href = '/{{id}}/edit'"> Change settings and reprocess</button>
             <button style="position: absolute; right: 25%; margin-right: 10px;" class="big_button" onClick="processInWebODM()" id="processInWebODMButton"> Send to WebODM</button>
+            <form action="/{{ id }}/download" method="post">
+                <label>Export:</label>
+                <select id="export-chooser" name="export-chooser" style="width: auto">
+                    <option value="project_export">Project</option>
+                    <option value="maps">Maps</option>
+                    <option value="project_export">PDF</option>
+                </select>
+                <button type="submit">Download Zip</button>
+            </form>
         </div>
 
         <div style="width: 100%; display: flex;">

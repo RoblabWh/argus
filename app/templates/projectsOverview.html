@@ -62,7 +62,7 @@
             float: left;
             margin: 0px 8px 0px 8px;
             text-overflow: ellipsis;
-            width: 85%;
+            width: 70%;
             max-height: 1em;
             white-space: nowrap;
             overflow: hidden;
@@ -336,7 +336,7 @@
 
                 </div>
                 <a class="description">{{ project.description }}</a>
-                <a style="float: right; margin: 0px 8px; margin-top:4px; font-size: 12px;"> ID: {{ project.id }}</a>
+                <a style="float: right; margin: 0px 8px; margin-top:4px; font-size: 12px;text-overflow: ellipsis; white-space: nowrap; overflow: hidden;"> ID: {{ project.id }}</a>
             </div>
             <div class="deleteProject" onclick="projectDelete({{ project.id }});">
                 <a onclick="location.href ='/delete/{{ project.id }}'"> {{ "✖" }} </a>
