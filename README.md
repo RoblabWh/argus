@@ -1,15 +1,38 @@
-README
-======
+# ARGUS
 
 The ARGUS WebApp is still in development.
-The object detection is currently not working inside the docker container.
 
-Running with Docker
-===================
-You will need to have Docker installed.
-Make sure to also install the NVIDIA Container Toolkit
-https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html#docker
+# Dependencies
+- Linux
+- [Docker & Docker Compose](https://docs.docker.com/engine/install/)
+- (Optional) [Nvidia Docker](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html)
 
+## Installing
+1. clone repo
+2. run repo/install.sh
+
+## Running with installation
+1. argus up
+
+## Running without installation
+
+1. clone repo
+2. cd argus
+3. ./argus up --build
+
+## Utilising the systemd service
+- systemctl enable argus
+
+
+## Uninstalling
+
+### Without removing images and userdata
+ /opt/argus/uninstall.sh
+
+### With removing images and userdata
+ /opt/argus/uninstall.sh all
+
+## In Prosa und alt
 Run the start-docker.sh script.
 This will build the image and run the container.
 Once build the script will only run the container.
@@ -21,51 +44,7 @@ Currently, it is not easily possible to run the WebApp without Docker.
 Accessing the WebApp from another computer on the same network is currently only possible with a linux system.
 
 
-Accessing the WebApp
-====================
+## Accessing the WebApp
+
 The WebApp is typically running in port 5000.
-You can either use your loaclhost or the IP address of the machine running the WebApp (as long as you are using linux).
-
-
-
-Installation  using Conda
-=========================
-Install exiftool and ffmpeg 
-
-then create the following conda env:
-```
-conda create --name argus python
-conda activate argus
-conda install pip 
-pip install numpy
-pip install vincenty
-pip install utm
-pip install geopy
-pip install shapely
-pip install descartes
-pip install pyexifinfo
-pip install imutils
-pip install Pillow 
-pip install requests
-pip install opencv-python
-pip install scipy
-pip install docker==6.0.0
-pip install flask==2.2.2
-pip install pyodm==1.5.10
-pip install pyocclient
-```
-
-Other stuff (once needed but above should be enough)
-```
-pip install --force-reinstall -v requests==2.28.0
-(Version 2.28.0 needed or docker error will occure)
-// matplotlib
-// piexif
-// weathercom
-// scikit_image
-// ipython
-```
-
-
-docker-compose.yml of webODm add _argus to all 4 every container names
-wehen first starting docker create account with name argus and password argus
+You can either use your loaclhost or the IP address of the machine running the WebApp.
