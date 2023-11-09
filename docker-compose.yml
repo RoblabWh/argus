@@ -21,8 +21,6 @@ services:
       - webodm
     environment:
       - ARGUS_WEBODM_PORT
-      - ARGUS_WEBODM_USERNAME
-      - ARGUS_WEBODM_PASSWORD
     restart: unless-stopped
   detection:
     image: argus_mmdetection
@@ -30,8 +28,6 @@ services:
     container_name: argus_detection
     expose:
       - 6000
-    #ports:
-    #  - 5001:6000
     volumes:
       - ${ARGUS_PROJECTS}:/detection/static/projects:rw
     #restart: unless-stopped

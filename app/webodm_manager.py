@@ -4,7 +4,7 @@ import requests
 import time
 
 class WebodmManager():
-    def __init__(self, address="127.0.0.1", internal_port="8000", public_port="8000", username="argus", password="argus"):
+    def __init__(self, address="127.0.0.1", internal_port="8000", public_port="8000", username="admin", password="admin"):
         self.address = address
         self.port = internal_port
         self.public_port = public_port
@@ -14,7 +14,7 @@ class WebodmManager():
 
     def authenticate(self):
         try_count = 0
-        while try_count < 10:
+        while try_count < 30:
             try:
                 response = requests.post('{}/api/token-auth/'.format(self.url),
                                 data={'username': self.username, 'password': self.username})
@@ -24,10 +24,11 @@ class WebodmManager():
                 pass
             try_count += 1
             time.sleep(1)
+
         if try_count == 10:
             print('Failed to connect to WebODM Server "{}", timeout exceeded'.format(self.url))
         else:
-            print('Failed to connect to WebODM Server "{}", with htt error code {}'.format(self.url, response.status_code))
+            print('Failed to connect to WebODM Server "{}", with http status code {}'.format(self.url, response.status_code))
 
     def configure_node(self, token, address, port):
         response = requests.get('{}/api/processingnodes/'.format(self.url),
@@ -48,7 +49,6 @@ class WebodmManager():
         for project in response:
             if project['name'] == name and project['description'] == description:
                 return project['id']
-
 
     def create_project(self, token, name, description):
         response = requests.post('{}/api/projects/'.format(self.url),

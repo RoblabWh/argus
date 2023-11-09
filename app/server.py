@@ -404,7 +404,6 @@ class ArgusServer:
         return jsonify({"port": self.webodm_manager.public_port})
 
     def display_image(self, filename):
-        # return redirect(url_for(self.project_manager.local_projects_path, filename=filename), code=301)
         return redirect(self.global_for(filename), code=301)
 
     def global_for(self, path):

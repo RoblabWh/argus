@@ -14,6 +14,7 @@ services:
     entrypoint: /bin/bash -c "chmod +x /webodm/*.sh && /bin/bash -c \"/webodm/wait-for-postgres.sh db /webodm/wait-for-it.sh -t 0 broker:6379 -- /webodm/start.sh\""
     volumes:
       - ${ARGUS_MEDIA}:/webodm/app/media:z
+      - ./webodm_settings.py:/webodm/webodm/settings_override.py:ro
     expose:
       - 8000
     ports:

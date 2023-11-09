@@ -11,7 +11,7 @@ def main():
     project_manager = ProjectManager(PROJECTS_PATH)
     project_manager.initiate_project_list()
     nodeodm_manager = NodeodmManager('nodeodm', 3000)
-    webodm_manager = WebodmManager('webodm', 8000, os.environ['ARGUS_WEBODM_PORT'], os.environ['ARGUS_WEBODM_USERNAME'], os.environ['ARGUS_WEBODM_PASSWORD'])
+    webodm_manager = WebodmManager('webodm', 8000, os.environ['ARGUS_WEBODM_PORT'], "admin", "admin")
     token = webodm_manager.authenticate()
     if token is not None:
         webodm_manager.configure_node(token, nodeodm_manager.address, nodeodm_manager.port)
