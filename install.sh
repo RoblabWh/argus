@@ -14,7 +14,7 @@ sudo -v
 
 # install argus to known global path
 sudo mkdir -p "$ARGUS_INSTALL_PATH"
-sudo cp -r "$ARGUS_PATH/argus.sh" "$ARGUS_PATH"/docker-compose*.yml "$ARGUS_PATH/uninstall.sh" "$ARGUS_INSTALL_PATH"
+sudo cp -r "$ARGUS_PATH/argus.sh" "$ARGUS_PATH"/docker-compose*.yml "$ARGUS_PATH/webodm_settings.py" "$ARGUS_PATH/uninstall.sh" "$ARGUS_INSTALL_PATH"
 sudo ln -sf "$ARGUS_INSTALL_PATH/argus.sh" /usr/local/bin/argus
 
 # write env to file

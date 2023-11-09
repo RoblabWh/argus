@@ -42,16 +42,16 @@ set -e
 # add docker compose overlay yml for gpu if detected
 docker_compose="docker compose -f $ARGUS_PATH/docker-compose.yml"
 if $ARGUS_GPU_NVIDIA; then
-	echo "Using NVIDIA GPU for NodeODM"
-	docker_compose="$docker_compose -f $ARGUS_PATH/docker-compose.nodeodm.gpu.nvidia.yml"
+	echo "Using NVIDIA GPU"
+	docker_compose="$docker_compose -f $ARGUS_PATH/docker-compose.gpu.nvidia.yml"
 elif $ARGUS_GPU_INTEL; then
-	echo "Using INTEL GPU for NodeODM"
-	docker_compose="$docker_compose -f $ARGUS_PATH/docker-compose.nodeodm.gpu.intel.yml"
+	echo "Using INTEL GPU"
+	docker_compose="$docker_compose -f $ARGUS_PATH/docker-compose.gpu.intel.yml"
 elif $ARGUS_GPU_AMD; then
-	echo "Using AMD GPU for NodeODM"
+	echo "Using AMD GPU"
 	echo "NodeODM has no support for AMD GPU at the moment, falling back to CPU"
 else
-	echo "Using CPU for NodeODM"
+	echo "Using CPU"
 fi
 
 # run docker compose with provided arguments

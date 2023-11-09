@@ -4,13 +4,14 @@ from flask import Flask, flash, request, redirect, url_for, render_template, jso
 from detection_process import DetectionProcess
 
 class DetectionServer:
-    def __init__(self, address, port):
+    def __init__(self, address, port, device):
         self.app = Flask(__name__)
 
         self.app.secret_key = "WasIstDennMitKarsten?-LosDasSiehtAberGarNichtGutAus"
         self.threads = []
         self.address = address
         self.port = port
+        self.device = device
 
         self.setup_routes()
 
@@ -37,7 +38,7 @@ class DetectionServer:
         ann_path = data['ann_path']
 
 
-        process = DetectionProcess(report_id, models, max_splits, image_folder, ann_path)
+        process = DetectionProcess(report_id, models, max_splits, image_folder, ann_path, self.device)
         self.threads.append(process)
 
         if(len(self.threads) == 1):
@@ -69,4 +70,3 @@ class DetectionServer:
 
     def run(self):
         self.app.run(host=self.address, port=self.port, debug=True, use_reloader=False)
-

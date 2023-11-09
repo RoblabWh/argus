@@ -30,14 +30,11 @@ services:
       - 6000
     volumes:
       - ${ARGUS_PROJECTS}:/detection/static/projects:rw
-    #restart: unless-stopped
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [ gpu ]
+    environment:
+      - ARGUS_GPU_NVIDIA
+      - ARGUS_GPU_INTEL
+      - ARGUS_GPU_AMD
+    restart: unless-stopped
 
 volumes:
   projects:

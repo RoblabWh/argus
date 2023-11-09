@@ -9,7 +9,8 @@ from inference_engine import InferenceEngine
 
 class DetectionProcess(threading.Thread):
 
-    def __init__(self, report_id, models, max_splits, image_folder, ann_path):
+    def __init__(self, report_id, models, max_splits, image_folder, ann_path, device):
+        self.device = device
         self.report_id = report_id
         self.max_splits = max_splits
         self.done = False
@@ -42,7 +43,7 @@ class DetectionProcess(threading.Thread):
         u.assert_arguments(args)
 
         print("init engine", flush=True)
-        engine = InferenceEngine(out_folders=args.outfolders, configs=args.configs,
+        engine = InferenceEngine(device=self.device, out_folders=args.outfolders, configs=args.configs,
                                  checkpoints=args.checkpoints, network_folders=args.netfolders)
 
         # Init DataHandler

@@ -1,7 +1,11 @@
+import os
 from detection_server import DetectionServer
 
 def main():
-    server = DetectionServer("0.0.0.0", 6000)
+    device = "cpu"
+    if os.getenv("ARGUS_GPU_NVIDIA", "false") == "true":
+        device = "cuda:0"
+    server = DetectionServer("0.0.0.0", 6000, device)
     server.run()
 
 

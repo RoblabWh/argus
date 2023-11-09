@@ -8,3 +8,11 @@ services:
             - driver: nvidia
               count: 1
               capabilities: [gpu]
+  detection:
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
