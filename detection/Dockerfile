@@ -4,8 +4,6 @@ ARG CUDNN="8"
 
 FROM pytorch/pytorch:${PYTORCH}-cuda${CUDA}-cudnn${CUDNN}-devel
 
-ARG MODEL_WEIGHTS_FILE="model_weights_mmdet3"
-
 ENV TORCH_CUDA_ARCH_LIST="6.0 6.1 7.0 7.5 8.0 8.6+PTX" \
     TORCH_NVCC_FLAGS="-Xfatbin -compress-all" \
     CMAKE_PREFIX_PATH="$(dirname $(which conda))/../" \
@@ -39,6 +37,7 @@ RUN conda clean --all \
     && cd /mmdetection \
     && pip install --no-cache-dir -e .
 
+ARG MODEL_WEIGHTS_FILE="model_weights_mmdet3"
 RUN curl -u "dF2wQbFNW2zuCpK:fire" "https://w-hs.sciebo.de/public.php/webdav/${MODEL_WEIGHTS_FILE}.zip" -o "/tmp/${MODEL_WEIGHTS_FILE}.zip" && \
     cd /tmp && \
     unzip "${MODEL_WEIGHTS_FILE}.zip" && \
