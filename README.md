@@ -4,7 +4,7 @@
 
 **The ARGUS WebApp is currently in development.**
 
-ARGUS is a documentation and analysis app designed for structured work with drone images in rescue operations. Its main functions include creating orthophotos from mapping flights with UAVs, presenting flight data and individual images in a structured manner, and evaluating infrared images. Additionally, Argus offers extensive object recognition functionalities with specially developed classifiers based on our own datasets ([paper link](https://arxiv.org/abs/2310.05512), [dataset link](https://www.kaggle.com/datasets/julienmeine/rescue-object-detection)) from real-world missions. The established drone software OpenDroneMaps ([ODM link](https://www.kaggle.com/datasets/julienmeine/rescue-object-detection)) is also integrated into ARGUS.
+ARGUS is a documentation and analysis app designed for structured work with drone images in rescue operations. Its main functions include creating orthophotos from mapping flights with UAVs, presenting flight data and individual images in a structured manner, and evaluating infrared images. Additionally, Argus offers extensive object recognition functionalities with specially developed classifiers based on our own datasets ([paper link](https://arxiv.org/abs/2310.05512), [dataset link](https://www.kaggle.com/datasets/julienmeine/rescue-object-detection)) from real-world missions. The established drone software OpenDroneMaps ([ODM link](https://www.opendronemap.org/) ) is also integrated into ARGUS.
 Since Docker is a WebApp, it can be accessed from every device within the same network as the server. It is recommended to use Chrome (or any Chrome-based browser).
 
 
