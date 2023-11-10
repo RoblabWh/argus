@@ -1,50 +1,54 @@
+![Argus Logo](https://github.com/RoblabWh/argus/blob/main/app/static/default/Argus_icon_dark_title-long_white_BG_scaled.PNG?raw=true)
+
 # ARGUS
 
-The ARGUS WebApp is still in development.
+**The ARGUS WebApp is currently in development.**
+
+ARGUS is a documentation and analysis app designed for structured work with drone images in rescue operations. Its main functions include creating orthophotos from mapping flights with UAVs, presenting flight data and individual images in a structured manner, and evaluating infrared images. Additionally, Argus offers extensive object recognition functionalities with specially developed classifiers based on our own datasets ([paper link](https://arxiv.org/abs/2310.05512), [dataset link](https://www.kaggle.com/datasets/julienmeine/rescue-object-detection)) from real-world missions. The established drone software OpenDroneMaps ([ODM link](https://www.kaggle.com/datasets/julienmeine/rescue-object-detection)) is also integrated into ARGUS.
+Since Docker is a WebApp, it can be accessed from every device within the same network as the server. It is recommended to use Chrome (or any Chrome-based browser).
+
+
+This WebApp was developed at the Westphalian University of Applied Sciences (Westfälische Hochschule) as part of the E-DRZ research project, funded by the German Federal Ministry of Education and Research. For more details about our latest research findings, you can read our paper published at [SSRR 2023](#to-be-added-after-conference).
+
+*Please note that Argus is intended for use in a scientific context and does not offer the reliability and stability of fully developed commercial software.*
+
 
 # Dependencies
+To run the Docker server, the following is needed:
 - Linux
 - [Docker & Docker Compose](https://docs.docker.com/engine/install/)
 - (Optional) [Nvidia Docker](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html)
 
+Without Nvidia Docker, the Object Detection pipeline will use the CPU to run our neural networks, and WebODM will also run without the GPU.
+
 ## Installing
-1. clone repo
-2. run repo/install.sh
+1. Clone the repository.
+2. Run `./install.sh` from the repository directory.
 
-## Running with installation
-1. argus up
+## Running with Installation
+1. Run `argus up`.
 
-## Running without installation
+## Running without Installation
+1. Clone the repository.
+2. Navigate to the `argus` directory.
+3. Run `./argus up --build`.
 
-1. clone repo
-2. cd argus
-3. ./argus up --build
-
-## Utilising the systemd service
-- systemctl enable argus
-
+## Utilizing the systemd Service
+- Enable the service with `systemctl enable argus`.
 
 ## Uninstalling
 
-### Without removing images and userdata
- /opt/argus/uninstall.sh
+### Without Removing Images and User Data
+Run `/opt/argus/uninstall.sh`.
 
-### With removing images and userdata
- /opt/argus/uninstall.sh all
-
-## In Prosa und alt
-Run the start-docker.sh script.
-This will build the image and run the container.
-Once build the script will only run the container.
-If you want to rebuild the image you will need to run the script with the --rebuid flag.
-It will also mount a directory called data to the container where you can see the uploaded images without the server running.
-This is where all images and project descriptions will be stored.
-
-Currently, it is not easily possible to run the WebApp without Docker.
-Accessing the WebApp from another computer on the same network is currently only possible with a linux system.
-
+### With Removing Images and User Data
+Run `/opt/argus/uninstall.sh all`.
 
 ## Accessing the WebApp
 
-The WebApp is typically running in port 5000.
-You can either use your loaclhost or the IP address of the machine running the WebApp.
+The WebApp typically runs on port 5000. You can use either your localhost or the IP address of the machine running the WebApp. It should be visible to all devices on the same network.
+
+# Known Issues
+- Firefox may encounter problems when uploading larger files, such as high-resolution panoramic photos.
+- Since ARGUS is still in development, starting multiple tasks simultaneously can lead to unexpected behavior or, in rare cases, system crashes.
+- Currently, ARGUS primarily supports and is tested with DJI drones (DJI M30T, as well as multiple Mavic and Mavic Enterprise models)
