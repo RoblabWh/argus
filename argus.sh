@@ -3,6 +3,7 @@ set -e
 
 # get path to argus
 ARGUS_PATH="$(dirname "$(realpath "${BASH_SOURCE[0]}")")"
+echo "Installation path is $ARGUS_PATH"
 
 # export default env for all unset vars
 set -a
@@ -55,4 +56,5 @@ else
 fi
 
 # run docker compose with provided arguments
+echo "Runing command: $docker_compose $@\"
 $docker_compose "$@"
