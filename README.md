@@ -26,12 +26,12 @@ Without Nvidia Docker, the object detection pipeline will use the CPU to run our
 2. Run `./install.sh` from the repository directory.
 
 ## Running with Installation
-1. Run `./argus up`.
+1. Run `./argus up`
 
 ## Running without Installation
 1. Clone the repository.
 2. Navigate to the `argus` directory.
-3. Run `./argus up --build`.
+3. Run `./argus up --build`
 
 ## Utilizing the systemd Service
 1. Install ARGUS.
