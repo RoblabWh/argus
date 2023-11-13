@@ -16,8 +16,8 @@ This WebApp was developed at the Westphalian University of Applied Sciences (Wes
 # Dependencies
 To run the server, the following is needed:
 - Linux
-- Docker & Docker Compose [(install guide)](https://docs.docker.com/engine/install/)
-- (Optional) Nvidia Docker [(install guide)](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html)
+- Docker & Docker Compose [(installation guide)](https://docs.docker.com/engine/install/)
+- (Optional) Nvidia Docker [(installation guide)](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html)
 
 Without Nvidia Docker, the object detection pipeline will use the CPU to run our neural networks, and WebODM will also run without the GPU.
 
