@@ -45,6 +45,9 @@ Run `/opt/argus/uninstall.sh`.
 ### With Removing Images and User Data
 Run `/opt/argus/uninstall.sh all`.
 
+### Example
+Cooming soon
+
 ## Accessing the WebApp
 
 The WebApp typically runs on port 5000. You can use either your localhost or the IP address of the machine running the WebApp. It should be visible to all devices on the same network.
