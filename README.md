@@ -50,7 +50,8 @@ The WebApp typically runs on port 5000. You can use either your localhost or the
 
 ### Example
 see video at youtube: [(Drone Flight Documentation with ARGUS at rescue operations)](https://www.youtube.com/watch?v=xpbTlIRI9pY)
-Cooming soon
+
+more cooming soon
 
 # Papers
 1. Redefining Recon: Bridging Gaps with UAVs, 360° Cameras, and Neural Radiance Fields; Hartmut Surmann, Niklas Digakis, Jan-Nicklas Kremer, Julien Meine, Max Schulte, Niklas Voigt, SSRR2023, 13.11.2023 - 15.11.2023 Fukushima, Japan 2023 (cite this). 
