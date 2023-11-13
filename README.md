@@ -5,7 +5,7 @@
 **The ARGUS WebApp is currently in development.**
 
 ARGUS is a documentation and analysis app designed for structured work with drone images in rescue operations. Its main functions include creating orthophotos from mapping flights with UAVs, presenting flight data and individual images in a structured manner, and evaluating infrared images. Additionally, ARGUS offers extensive object recognition functionalities with specially developed classifiers based on our own datasets ([paper link](https://arxiv.org/abs/2310.05512), [dataset link](https://www.kaggle.com/datasets/julienmeine/rescue-object-detection)) from real-world missions. The established drone software OpenDroneMaps ([ODM link](https://www.opendronemap.org/) ) is also integrated into ARGUS.
-Since Docker is a WebApp, it can be accessed from every device within the same network as the server. It is recommended to use Chrome (or any Chrome-based browser).
+Since ARGUS is a WebApp, it can be accessed from every device within the same network as the server. It is recommended to use Chrome (or any Chrome-based browser).
 
 
 This WebApp was developed at the Westphalian University of Applied Sciences (Westfälische Hochschule) as part of the E-DRZ research project, funded by the German Federal Ministry of Education and Research. For more details about our latest research findings, you can read our paper published at [SSRR 2023](#to-be-added-after-conference).
@@ -34,7 +34,8 @@ Without Nvidia Docker, the object detection pipeline will use the CPU to run our
 3. Run `./argus up --build`.
 
 ## Utilizing the systemd Service
-- Enable the service with `systemctl enable argus`.
+1. Install ARGUS.
+2. Enable the service with `systemctl enable argus`.
 
 ## Uninstalling
 
