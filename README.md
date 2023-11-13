@@ -16,8 +16,8 @@ This WebApp was developed at the Westphalian University of Applied Sciences (Wes
 # Dependencies
 To run the server, the following is needed:
 - Linux
-- [Docker & Docker Compose](https://docs.docker.com/engine/install/)
-- (Optional) [Nvidia Docker](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html)
+- Docker & Docker Compose [(install guide)](https://docs.docker.com/engine/install/)
+- (Optional) Nvidia Docker [(install guide)](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html)
 
 Without Nvidia Docker, the object detection pipeline will use the CPU to run our neural networks, and WebODM will also run without the GPU.
 
@@ -53,3 +53,4 @@ The WebApp typically runs on port 5000. You can use either your localhost or the
 - Firefox may encounter problems when uploading larger files, such as high-resolution panoramic photos.
 - Since ARGUS is still in development, starting multiple tasks simultaneously can lead to unexpected behavior or, in rare cases, system crashes.
 - Currently, ARGUS primarily supports and is tested with DJI drones (DJI M30T, as well as multiple Mavic and Mavic Enterprise models).
+- In order to generate fast orthophotos, the UAVs gimbal should orient the camera orthogonal towards ground (-90°).

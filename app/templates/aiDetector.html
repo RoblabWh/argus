@@ -330,6 +330,9 @@
             //image_slider = document.getElementById("layer-threshold-slider-" + categoryName);
             //image_slider.value = threshold;
             //$("#layer-threshold-slider-" + categoryName).trigger("input");
+            if (objectDetectionLayer != null){
+                generateObjectDetectionLayer(detections);
+            }
         }
 
         function generateAnnotationSettings(detectionData){
@@ -547,7 +550,7 @@
                 var displayedObjectsCell = document.getElementById("layer-displayed-objects-" + category.name);
                 displayedObjectsCell.innerHTML = displayedObjects;
             }
-            generateObjectDetectionLayer(detections);
+            //generateObjectDetectionLayer(detections);
         }
 
 

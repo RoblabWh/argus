@@ -448,7 +448,9 @@ function isUsedInMap(index, displayingIR){
 
 $('#mapOverlayStyleCheckbox').change(function(){
     if (detections != null){
-        generateObjectDetectionLayer(detections);
+        if (objectDetectionLayer != null){
+            generateObjectDetectionLayer(detections);
+        }
     }
 });
 
