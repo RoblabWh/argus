@@ -56,5 +56,5 @@ else
 fi
 
 # run docker compose with provided arguments
-echo "Runing command: $docker_compose $@\"
+echo "Runing command: $docker_compose $@"
 $docker_compose "$@"
