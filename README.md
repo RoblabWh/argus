@@ -49,7 +49,7 @@ Run `/opt/argus/uninstall.sh all`.
 The WebApp typically runs on port 5000. You can use either your localhost or the IP address of the machine running the WebApp. It should be visible to all devices on the same network.
 
 ### Example
-See video at youtube: [(Drone Flight Documentation with ARGUS at rescue operations)]https://www.youtube.com/watch?v=xpbTlIRI9pY
+See video at youtube: [(Drone Flight Documentation with ARGUS at rescue operations)](https://www.youtube.com/watch?v=xpbTlIRI9pY)
 
 more cooming soon
 
