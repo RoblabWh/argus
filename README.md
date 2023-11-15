@@ -23,15 +23,15 @@ Without Nvidia Docker, the object detection pipeline will use the CPU to run our
 
 ## Installing
 1. Clone the repository.
-2. Run `./install.sh` from the repository directory.
+2. Run `./install.sh` from the repository directory. # take a coffee, building all images need up to 20 minutes
 
 ## Running with Installation
-1. Run `./argus up`.
+1. Run `./argus up`
 
 ## Running without Installation
 1. Clone the repository.
 2. Navigate to the `argus` directory.
-3. Run `./argus up --build`.
+3. Run `./argus up --build`
 
 ## Utilizing the systemd Service
 1. Install ARGUS.
@@ -49,7 +49,9 @@ Run `/opt/argus/uninstall.sh all`.
 The WebApp typically runs on port 5000. You can use either your localhost or the IP address of the machine running the WebApp. It should be visible to all devices on the same network.
 
 ### Example
-Cooming soon
+See video at youtube: [Drone Flight Documentation with ARGUS at rescue operations]:https://www.youtube.com/watch?v=xpbTlIRI9pY
+
+more cooming soon
 
 # Papers
 1. Redefining Recon: Bridging Gaps with UAVs, 360° Cameras, and Neural Radiance Fields; Hartmut Surmann, Niklas Digakis, Jan-Nicklas Kremer, Julien Meine, Max Schulte, Niklas Voigt, SSRR2023, 13.11.2023 - 15.11.2023 Fukushima, Japan 2023 (cite this). 
