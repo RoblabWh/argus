@@ -161,7 +161,19 @@
         }
 
 
+        .custom-file-upload {
+            border-radius: 4px;
+            display: inline-block;
+            padding: 11px;
+            margin: 8px;
+            cursor: pointer;
+            background-color: var(--accent-color-interaction);
+            color: var(--font-color-b);
+        }
 
+        input[type="file"] {
+            display: none;
+        }
 
 
 
@@ -230,6 +242,42 @@
         function projectDelete(id){
             if(confirm("Are you sure you want to delete this report?")){
                 window.location.href = "/delete/" + id;
+            }
+        }
+
+
+        function uploadProjectZip() {
+            const fileInput = document.getElementById('fileInputProjectZip');
+            const file = fileInput.files[0];
+
+            if (file) {
+                const formData = new FormData();
+                formData.append('import-file', file);
+
+                fetch('/import_project', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => {
+                    if (response.ok) {
+                        // Successful response, redirect to another page
+                        console.log('Success:', response);
+                        if (response.redirected) {
+                           // Redirect the user to the new location
+                           window.location.href = response.url;
+                        }
+                    } else {
+                        // Server encountered an error, show alert
+                        alert('Error processing the file. Please try again.');
+                    }
+                })
+                .catch(error => {
+                    // Fetch or network error
+                    console.error('Error:', error);
+                    alert('An unexpected error occurred. Please try again.');
+                });
+            } else {
+                alert('Please select a file to upload.');
             }
         }
 
@@ -305,6 +353,18 @@
                     <input class="big_button" type="submit" value="Create new Report">
                 </form>
             </div>
+            <div class="tab-content">
+                <label style="line-height: 42px;"> Import project: </label>
+<!--                <input type="file" id="fileInputProjectZip" style="line-height: 42px;"/>-->
+                <label for="fileInputProjectZip" class="custom-file-upload">Select project zip file</label>
+                <input type="file" id="fileInputProjectZip">
+                <label id="uploadFilename" style="line-height: 42px; padding: 0px 8px; width: 60%;
+                        text-overflow: ellipsis; white-space: nowrap; overflow: hidden; font-style: italic;
+                        color: var(--bg-color-b);">
+                    no file selected
+                </label>
+                <button id="uploadProjectButton" class="big_button" onclick="uploadProjectZip()">Import</button>
+            </div>
         </details>
 
         <div class="sort-by">
@@ -357,7 +417,10 @@
     const sortDropdown = document.getElementById('sort-by-dropdown');
     const sortValue = document.getElementById('sort-by-value');
     sortDropdown.style.display = 'none';
-
+    const uploadProjectButton = document.getElementById('uploadProjectButton');
+    uploadProjectButton.disabled = true;
+    uploadProjectButton.style.backgroundColor = "var(--bg-color-b)";
+    uploadProjectButton.style.cursor = "not-allowed";
 
     sortValue.addEventListener('click', function() {
       sortDropdown.style.display = sortDropdown.style.display == 'none' ? 'block' : 'none';
@@ -373,6 +436,28 @@
         sortProjectsByFlightDate();
       }
       sortDropdown.style.display = 'none';
+    });
+
+    //listener for file upload to activate (or deactivate) uploadProjectButton
+    document.getElementById('fileInputProjectZip').addEventListener('change', function() {
+        const fileInput = document.getElementById('fileInputProjectZip');
+        const file = fileInput.files[0];
+        //const uploadProjectButton = document.getElementById('uploadProjectButton');
+        const uploadFilename = document.getElementById('uploadFilename');
+
+        if (file) {
+            uploadProjectButton.disabled = false;
+            uploadProjectButton.style.cursor = 'pointer';
+            uploadProjectButton.style.backgroundColor = "var(--accent-color-interaction)";
+            uploadFilename.innerHTML = file.name;
+            console.log("file selected: " + file.name);
+        } else {
+            uploadProjectButton.disabled = true;
+            uploadProjectButton.style.backgroundColor = "var(--bg-color-b)";
+            uploadProjectButton.style.cursor = "not-allowed";
+            uploadFilename.innerHTML = "no file selected";
+            console.log("no file selected");
+        }
     });
 </script>
 </body>

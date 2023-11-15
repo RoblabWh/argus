@@ -38,6 +38,7 @@ class ArgusServer:
         self.app.config['UPLOAD_FOLDER'] = project_manager.projects_path
         self.app.config['MAX_CONTENT_LENGTH'] = 500 * 10000 * 10000
         self.ALLOWED_EXTENSIONS = set(['png', 'jpg', 'jpeg', 'PNG', 'JPG', 'JPEG'])
+        self.ALLOWED_EXTENSIONS_PROJECT = set(['zip'])
 
         self.threads = []
         self.detection_threads = []
@@ -105,6 +106,8 @@ class ArgusServer:
                                 view_func=self.get_webodm_port)
         self.app.add_url_rule('/<int:report_id>/download', methods=['GET', 'POST'],
                               view_func=self.download_project)
+        self.app.add_url_rule('/import_project', methods=['GET', 'POST'],
+                              view_func=self.import_project)
         # self.app.add_url_rule('/<int:report_id>/upload', methods=['POST'],
         #                       view_func=self.upload_image)
         # self.app.add_url_rule('/<int:report_id>/process', methods=['GET', 'POST'],
@@ -407,7 +410,6 @@ class ArgusServer:
         return jsonify({"port": self.webodm_manager.public_port})
 
     def download_project(self, report_id):
-        #get requested download packedge from request
         download_package = request.form.get('export-chooser')
         print("download_package: " + str(download_package), flush=True)
         print(request.form, flush=True)
@@ -431,6 +433,32 @@ class ArgusServer:
             return send_file(zip_path, as_attachment=True, download_name=zip_name)
         else:
             return "error"
+
+    def import_project(self):
+        file = request.files['import-file']
+        if file and self.allowed_file_project(file.filename):
+            # create a new project and empty folder for the project with a new id
+            id = self.project_manager.initialize_project_from_import()
+
+            # paste zip file into the empty folder
+            save_path = os.path.join(self.project_manager.projects_path, str(id), file.filename)
+            file.save(save_path)
+
+            # check if the zip file contains a project.json file
+            if self.project_manager.contains_project_json(id, save_path):
+                # if yes, load the project.json file and update the project with the data from the file
+                try:
+                    self.project_manager.import_project(id)
+                    return redirect(url_for('render_report', report_id=id), code=301)
+                except Exception as e:
+                    #get exception
+                    return "failed to import project, error: " + str(e), 422
+            else:
+                return "failed to import project, no project.json file found", 415
+        else:
+            return "failed to import project, no zip file found", 404
+
+
 
     def display_image(self, filename):
         return redirect(self.global_for(filename), code=301)
@@ -621,3 +649,6 @@ class ArgusServer:
 
     def allowed_file(self, filename):
         return '.' in filename and filename.rsplit('.', 1)[1].lower() in self.ALLOWED_EXTENSIONS
+
+    def allowed_file_project(self, filename):
+        return '.' in filename and filename.rsplit('.', 1)[1].lower() in self.ALLOWED_EXTENSIONS_PROJECT

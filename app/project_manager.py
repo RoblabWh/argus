@@ -16,17 +16,18 @@ class ProjectManager:
         if not os.path.exists(projects_path):
             os.makedirs(projects_path)
         self.projects_path = projects_path
+        self.CURRENT_PROJECT_FILE_VERSION = 1
         #self.image_mapper = {}
 
 
     def create_project(self, name, description):
         #id = self.get_next_id()
-        id = self.generate_project_id()
-        print("creating project with id: " + str(id))
-        os.mkdir(os.path.join(self.projects_path, str(id)))
+        id = self.create_new_basics()
         data = self.generate_empty_data_dict()
+        version = self.CURRENT_PROJECT_FILE_VERSION
         creation_time = datetime.now().strftime("%d.%m.%Y %H:%M:%S")
-        project = ({'name': name, 'description': description, 'id': id, 'creation_time': creation_time, 'data': data})
+        project = ({'name': name, 'description': description, 'id': id, 'creation_time': creation_time,
+                    'version': version, 'data': data})
         self.projects.append(project)
         with open(os.path.join(self.projects_path, str(id), "project.json"), "w") as json_file:
             json.dump(project, json_file)
@@ -34,6 +35,85 @@ class ProjectManager:
         self.highest_id += 1
         self.projects = sorted(self.projects, key=lambda d: d['id'], reverse=True)
         return project
+
+    def create_new_basics(self):
+        id = self.generate_project_id()
+        print("creating project with id: " + str(id))
+        os.mkdir(os.path.join(self.projects_path, str(id)))
+        return id
+
+    def initialize_project_from_import(self):
+        return self.create_new_basics()
+
+    def contains_project_json(self, id, zip_path):
+        # unpack zip into same directory
+        print("zip_path: " + zip_path, flush=True)
+        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+            zip_ref.extractall(self.projects_path + str(id))
+
+        all_files = os.listdir(self.projects_path + str(id))
+        print("unpacked files: " + str(all_files), flush=True)
+
+        for file in os.listdir(os.path.join(self.projects_path, str(id))):
+            print("file: " + file, flush=True)
+            if file == "project.json":
+                return True
+
+        shutil.rmtree(os.path.join(self.projects_path, str(id)), ignore_errors=True)
+        return False
+
+    def import_project(self, project_id):
+        try:
+            print("loading project.json with id: " + str(project_id), flush=True)
+
+            project = self.load_project_from_directory(str(project_id))
+            print("imported_id " + str(project['id']), flush=True)
+            project = self.changeID(project, project_id)
+            print("changed_id " + str(project['id']), flush=True)
+            self.projects.append(project)
+            self.projects = sorted(self.projects, key=lambda d: d['id'], reverse=True)
+
+            with open(os.path.join(self.projects_path, str(project_id), "project.json"), "w") as json_file:
+                json.dump(project, json_file)
+
+        except:
+            if not self.delete_project(project_id):
+                shutil.rmtree(os.path.join(self.projects_path, str(project_id)), ignore_errors=True)
+            raise Exception("error while importing project.json - report_id: " + str(project_id))
+
+    def changeID(self, project, new_id):
+        old_id = project['id']
+        project['id'] = new_id
+        data = project['data']
+        for path in data['file_names']:
+            path = path.replace(str(old_id), str(new_id), 1)
+        for path in data['file_names_ir']:
+            path = path.replace(str(old_id), str(new_id), 1)
+        for pano in data['panos']:
+            pano['file'] = pano['file'].replace(str(old_id), str(new_id), 1)
+        for map in data['maps']:
+            map['file'] = map['file'].replace(str(old_id), str(new_id), 1)
+            map['file_url'] = map['file_url'].replace(str(old_id), str(new_id), 1)
+            for image_coordinate in map['image_coordinates']:
+                image_coordinate['file_name'] = image_coordinate['file_name'].replace(str(old_id), str(new_id), 1)
+        for slides in data['slide_file_paths']:
+            for i in range(len(slides)):
+                slides[i] = slides[i].replace(str(old_id), str(new_id), 1)
+        data['annotation_file_path'] = data['annotation_file_path'].replace(str(old_id), str(new_id), 1)
+        return project
+
+    # def replace_project_id_in_path(self, path, new_id):
+    #     parts = path.split(os.path.sep)
+    #     # Find the index of 'projects' in the path
+    #     try:
+    #         projects_index = parts.index('projects')
+    #     except ValueError:
+    #         return path
+    #
+    #     parts[projects_index + 1] = new_id
+    #     new_path = os.path.join(*parts)
+    #
+    #     return new_path
 
     def load_project_from_directory(self, project_id):
         # load project.json from static/uploads/id
@@ -43,18 +123,25 @@ class ProjectManager:
             print("loading project from directory: " + project_id)
             with open(os.path.join(self.projects_path, project_id, "project.json"), "r") as json_file:
                 project = json.load(json_file)
+
+        # check if there is a project['version'] and if not, add it with self.CURRENT_PROJECT_FILE_VERSION
+        try:
+            version = project['version']
+        except:
+            project['version'] = self.CURRENT_PROJECT_FILE_VERSION
+
         return project
 
     def initiate_project_list(self):
         # check for every directory in static/uploads/ if there is project.json
         # if yes, load project and add to project list
-        for project in os.listdir(self.projects_path):
-            if os.path.isdir(os.path.join(self.projects_path, project)):
-                project = self.load_project_from_directory(project)
+        for project_id in os.listdir(self.projects_path):
+            if os.path.isdir(os.path.join(self.projects_path, project_id)):
+                project = self.load_project_from_directory(project_id)
                 if project != None:
                     self.projects.append(project)
-                    if project['id'] > self.highest_id:
-                        self.highest_id = project['id']
+                    # if project['id'] > self.highest_id:
+                    #     self.highest_id = project['id']
 
         self.projects = sorted(self.projects, key=lambda d: d['id'], reverse=True)
 
@@ -224,8 +311,9 @@ class ProjectManager:
     def delete_project(self, id):
         project = self.get_project(id)
         if project != None:
+            print("deleted project with id: " + str(id) + " and path: " + os.path.join(self.projects_path, str(id)), flush=True)
             self.projects.remove(project)
-            shutil.rmtree(self.projects_path + str(id), ignore_errors=True)
+            shutil.rmtree(os.path.join(self.projects_path, str(id)), ignore_errors=True)
             #os.rmdir(self.projects_path + str(id))
             return True
         return False
