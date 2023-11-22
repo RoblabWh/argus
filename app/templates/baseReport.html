@@ -211,7 +211,21 @@
           border-radius: 6px;
         }
 
-
+        .spinner-small {
+          width: 30px;
+          --b: 6px; /* the border thickness */
+          aspect-ratio: 1;
+          border-radius: 50%;
+          padding: 1px;
+          background: conic-gradient(#0000 10%,var(--accent-color-interaction)) content-box;
+          -webkit-mask:
+            repeating-conic-gradient(#0000 0deg,#000 1deg 20deg,#0000 21deg 36deg),
+            radial-gradient(farthest-side,#0000 calc(100% - var(--b) - 1px),#000 calc(100% - var(--b)));
+          -webkit-mask-composite: destination-in;
+          mask-composite: intersect;
+          animation:s4 1s infinite steps(10);
+        }
+        @keyframes s4 {to{transform: rotate(1turn)}}
 
         {% include 'tableStyle.css' %}
 
@@ -331,19 +345,70 @@
             }
         };
 
-        function exportReport(){
+        function prepareExport(){
             console.log("downloading project as zip");
-            //send request data with variable download_package and value project_export
-            $.get('/{{ id }}/download', {download_package: "project_export"}, function(response) {
+
+            spinner = document.getElementById("download_feedback_spinner");
+            spinner.style.display = "inline-block";
+
+            //deactivate download button
+            exportButton = document.getElementById("export-button");
+            exportButton.disabled = true;
+            exportButton.style.backgroundColor = "var(--bg-color-a)";
+            exportButton.style.color = "var(--bg-color-b)";
+            exportButton.style.cursor = "default";
+
+            //send data from the export form to /{{ id }}/download
+            $.post("/{{ id }}/prepare_download", $("#export-form").serialize(), function(response){
                 console.log(response);
-                if (response.success) {
-                    console.log("download started");
-                    window.open(response.url, '_blank').focus();
-                } else {
-                    console.log("download failed");
+                if(response.success){
+                    //download the zip file
+                    zip_path = response.zip_path;
+                    zip_name = response.zip_name;
+
+                    //start download of file from "/{{ id }}/download" with the zip_path and zip_name
+                    //$.post("/{{ id }}/download", {path: zip_path, filename: zip_name});
+                    // Create a hidden form
+                    var $form = $('<form>', {
+                        'id': 'download-form',
+                        'action': '/{{ id }}/download',
+                        'method': 'post'
+                    });
+
+                    // Append the necessary input fields for your POST request
+                    $form.append($('<input>', {
+                        'type': 'hidden',
+                        'name': 'path',
+                        'value': zip_path
+                    }));
+
+                    $form.append($('<input>', {
+                        'type': 'hidden',
+                        'name': 'filename',
+                        'value': zip_name
+                    }));
+
+                    // Append the form to the body
+                    $('body').append($form);
+
+                    // Submit the form
+                    $form.submit();
+
+                    // Remove the form from the DOM (optional)
+                    $form.remove();
+
+
+                }else{
+                    alert("Error while downloading project as zip");
                 }
+                spinner.style.display = "none";
+                exportButton.disabled = false;
+                exportButton.style.backgroundColor = "var(--accent-color-interaction)";
+                exportButton.style.color = "var(--font-color-b)";
+                exportButton.style.cursor = "pointer";
             });
         }
+
 
 
 
@@ -368,15 +433,18 @@
         <div style="position: relative;">
             <h4 style="margin-bottom: 2px;">Flight Report (ID:{{ id }})</h4>
             <button style="position: absolute" class="big_button" onClick="location.href = '/{{id}}/edit'"> Change settings and reprocess</button>
-            <form action="/{{ id }}/download" method="post">
+            <form id="export-form" action="{{ id }}/download" method="post">
                 <label>Export:</label>
                 <select id="export-chooser" name="export-chooser" style="width: auto">
                     <option value="project_export">Project</option>
                     <option value="maps">Maps</option>
                     <option value="project_export">PDF</option>
                 </select>
-                <button type="submit">Download Zip</button>
+                <button type="submit" id="export-button">Download Zip</button>
             </form>
+            <div style="margin: auto 8px auto 0">
+                <div id="download_feedback_spinner" class="spinner-small" style="display: none;"></div>
+            </div>
         </div>
 
         <div style="width: 100%; display: flex;">
@@ -481,5 +549,10 @@
     check_progress({{ id }});
     {% endif %}
     $('descriptionText').contentEditable = "false";
+
+
+    document.getElementById('export-button').addEventListener('click', function() {
+        prepareExport();
+    });
     </script>
 </html>

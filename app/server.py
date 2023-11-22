@@ -108,6 +108,8 @@ class ArgusServer:
                               view_func=self.webodm_project_exists)
         self.app.add_url_rule('/get_webodm_last_task/<int:report_id>', methods=['GET', 'POST'],
                               view_func=self.get_webodm_last_task)
+        self.app.add_url_rule('/<int:report_id>/prepare_download', methods=['GET', 'POST'],
+                              view_func=self.download_prepare_project)
         self.app.add_url_rule('/<int:report_id>/download', methods=['GET', 'POST'],
                               view_func=self.download_project)
         self.app.add_url_rule('/import_project', methods=['GET', 'POST'],
@@ -436,7 +438,7 @@ class ArgusServer:
             print("wo_project_id: " + str(wo_project_id) + " - id: " + str(id), flush=True)
             return jsonify({"success": True, "project_id": wo_project_id, "task_id": id, "port": self.webodm_manager.public_port})
 
-    def download_project(self, report_id):
+    def download_prepare_project(self, report_id):
         download_package = request.form.get('export-chooser')
         print("download_package: " + str(download_package), flush=True)
         print(request.form, flush=True)
@@ -456,10 +458,18 @@ class ArgusServer:
             pass
 
         if zip_path is not None:
-            print("zip_name: " + str(zip_name) + " - zip_path: " + str(zip_path), flush=True)
-            return send_file(zip_path, as_attachment=True, download_name=zip_name)
+            return jsonify({"success": True, "zip_name": zip_name, "zip_path": zip_path})
         else:
-            return "error"
+            return jsonify({"success": False})
+
+    def download_project(self, report_id):
+        file_name = request.form.get('filename')
+        path = request.form.get('path')
+        print("download_project: " + str(file_name) + " - " + str(path), flush=True)
+        if file_name and path:
+            return send_file(path, as_attachment=True, download_name=file_name)
+        else:
+            return jsonify({"success": False})
 
     def import_project(self):
         file = request.files['import-file']
