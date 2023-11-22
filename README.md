@@ -65,3 +65,4 @@ more cooming soon
 - Since ARGUS is still in development, starting multiple tasks simultaneously can lead to unexpected behavior or, in rare cases, system crashes.
 - Currently, ARGUS primarily supports and is tested with DJI drones (DJI M30T, as well as multiple Mavic and Mavic Enterprise models).
 - In order to generate fast orthophotos, the UAVs gimbal should orient the camera orthogonal towards ground (-90°).
+- If WebODM has many 'WARNING Bad Request: /api/token-auth/' during startup and the redirection from ARGUS does not work, try pulling a new WebODM image with './argus.sh pull --ignore-buildable' and rebuild the server with './argus.sh up --build'.

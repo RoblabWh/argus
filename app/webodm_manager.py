@@ -14,7 +14,7 @@ class WebodmManager():
 
     def authenticate(self):
         try_count = 0
-        while try_count < 30:
+        while try_count < 20:
             try:
                 response = requests.post('{}/api/token-auth/'.format(self.url),
                                 data={'username': self.username, 'password': self.username})
@@ -72,14 +72,33 @@ class WebodmManager():
             file = ('images', (os.path.basename(filename), open(filename, 'rb'), 'image/{}'.format(ext)))
             files.append(file)
 
+        human_readable_time_date = time.strftime("Model_%Y-%m-%d_%H-%M-%S", time.localtime())
+
         options = json.dumps([
-            {'name': "orthophoto-resolution", 'value': 24}
+            {'name': "orthophoto-resolution", 'value': 24},
         ])
+
 
         response = requests.post('{}/api/projects/{}/tasks/'.format(self.url, wo_project_id),
                             headers={'Authorization': 'JWT {}'.format(token)},
                             files=files,
                             data={
+                                'name': human_readable_time_date,
                                 'options': options
                             }).json()
         return response
+
+    def get_last_task_data(self, token, wo_project_id, key):
+        # get all tasks
+        # GET /api/projects/{project_id}/tasks/
+        response = requests.get('{}/api/projects/{}/tasks/'.format(self.url, wo_project_id),
+                            headers={'Authorization': 'JWT {}'.format(token)
+                            }).json()
+
+        # get last task by id
+        task = response[0]
+        print(task, flush=True)
+        if task['status'] == 40:
+            return task[key]
+
+        return -1

@@ -92,6 +92,7 @@
 
         .big_button{
             width: 25%;
+            height: 42px;
             padding: 4px;
             background-color: var(--accent-color-interaction);
             color: var(--font-color-b);
@@ -344,25 +345,7 @@
             });
         }
 
-        function processInWebODM(){
-            //Deactivate button
-            document.getElementById("processInWebODMButton").disabled = true;
-            document.getElementById("processInWebODMButton").style.backgroundColor = "var(--bg-color-a)";
-            document.getElementById("processInWebODMButton").style.color = "var(--bg-color-b)";
-            document.getElementById("processInWebODMButton").style.cursor = "default";
-            console.log("process in webodm");
 
-            $.get('/process_in_webodm/{{ id }}', function(response) {
-                if (response.success) {
-                    document.getElementById("processInWebODMButton").innerHTML = "Successfuly send to WebODM";
-                    url = window.location.protocol + "//" + window.location.hostname + ":" + response.port;
-                    console.log(url);
-                    window.open(url, '_blank').focus();
-                } else {
-                    document.getElementById("processInWebODMButton").innerHTML = "Failed to send to WebODM";
-                }
-            });
-        }
 
 
 
@@ -385,7 +368,6 @@
         <div style="position: relative;">
             <h4 style="margin-bottom: 2px;">Flight Report (ID:{{ id }})</h4>
             <button style="position: absolute" class="big_button" onClick="location.href = '/{{id}}/edit'"> Change settings and reprocess</button>
-            <button style="position: absolute; right: 25%; margin-right: 10px;" class="big_button" onClick="processInWebODM()" id="processInWebODMButton"> Send to WebODM</button>
             <form action="/{{ id }}/download" method="post">
                 <label>Export:</label>
                 <select id="export-chooser" name="export-chooser" style="width: auto">
@@ -455,6 +437,12 @@
             <div class="tab-content">
                 <p>ATTENTION - Currently using weather at time of report-creation (after pressing calculate). Not using actual flight date and time for pulling weather yet.</p>
                 {% include 'weather.html' %}
+            </div>
+        </details>
+        <details>
+            <summary>3D Model - WebODM </summary>
+            <div class="tab-content">
+                {% include 'webODM.html' %}
             </div>
         </details>
         <details>

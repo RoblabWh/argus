@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>webODM</title>
+    <style>
+    </style>
+</head>
+<body>
+<script>
+    //check if WebODM project already exists
+    //if so change button to show in webODM
+    $.get('webodm_project_exists/{{ id }}', function(response) {
+        if (response.success) {
+            document.getElementById("processInWebODMButton").innerHTML = "reprocess 3D Model with WebODM";
+        } else {
+            document.getElementById("processInWebODMButton").innerHTML = "generate 3D Model with WebODM";
+            document.getElementById("openWebODMModelButton").disabled = true;
+        }
+    });
+
+    function processInWebODM(){
+        //Deactivate button
+        document.getElementById("processInWebODMButton").disabled = true;
+        document.getElementById("processInWebODMButton").style.backgroundColor = "var(--bg-color-a)";
+        document.getElementById("processInWebODMButton").style.color = "var(--bg-color-b)";
+        document.getElementById("processInWebODMButton").style.cursor = "default";
+        console.log("process in webodm");
+
+        $.get('/process_in_webodm/{{ id }}', function(response) {
+            if (response.success) {
+                document.getElementById("processInWebODMButton").innerHTML = "Successfuly send to WebODM";
+                url = window.location.protocol + "//" + window.location.hostname + ":" + response.port;
+                console.log(url);
+                window.open(url, '_blank').focus();
+            } else {
+                document.getElementById("processInWebODMButton").innerHTML = "Failed to send to WebODM";
+            }
+        });
+    }
+
+    function redirectWebODM() {
+        $.get('/get_webodm_port', function(response) {
+            if (response.port != null) {
+                url = window.location.protocol + "//" + window.location.hostname + ":" + response.port;
+                console.log(url);
+                window.open(url, '_blank').focus();
+            } else {
+                alert('Error launching WebODM.');
+            }
+        });
+    }
+
+    function openModelInWebODM(){
+        //redirectWebODM();
+        $.get('/get_webodm_last_task/{{ id }}', function(response) {
+            if (response.success) {
+                url = window.location.protocol + "//" + window.location.hostname + ":" + response.port + "/3d/project/" + response.project_id + "/task/" + response.task_id;
+                console.log(url);
+                window.open(url, '_blank').focus();
+            } else {
+                alert('Error launching WebODM.');
+            }
+        });
+    }
+
+</script>
+<div style="display: flex; justify-content: space-between">
+  <a sryle="margin: auto 0"> Use WebODM to calculate a 3d Model or point cloud based on the rgb images </a>
+  <button id="processInWebODMButton" onClick="processInWebODM()" class="big_button" style="margin: 0 10px"> calculate 3D Model </button>
+  <button id="openWebODMModelButton" onClick="openModelInWebODM()" class="big_button" style="margin: 0 0 0 10px"> open 3D Model </button>
+</div>
+
+</body>
+</html>

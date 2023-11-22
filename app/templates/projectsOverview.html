@@ -142,6 +142,12 @@
           border-style: none;
         }
 
+        .webodm_button{
+          padding: 0;
+          margin: auto 0px;
+          height: 42px;
+        }
+
         .timestamp{
             float: right;
             margin: 8px;
@@ -333,6 +339,18 @@
             }
         }
 
+        function redirectWebODM() {
+            $.get('/get_webodm_port', function(response) {
+                if (response.port != null) {
+                    url = window.location.protocol + "//" + window.location.hostname + ":" + response.port;
+                    console.log(url);
+                    window.open(url, '_blank').focus();
+                } else {
+                    alert('Error launching WebODM.');
+                }
+            });
+        }
+
 
 
     </script>
@@ -340,7 +358,10 @@
 <body>
     {% include 'headerOverview.html' %}
     <div class="bodyDiv">
-        <h1 onclick="projectShowAll();">All Reports</h1>
+        <div style="display: flex; justify-content: space-between;">
+            <h1 onclick="projectShowAll();">All Reports</h1>
+            <button class="big_button webodm_button" onclick="redirectWebODM();"> open WebODM </button>
+        </div>
                 <!-- button to add a new report with the app.route / create -->
         <details>
             <summary>new Report</summary>
