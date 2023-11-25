@@ -79,6 +79,7 @@ var map = L.map('map')
 var coordinatesNamesList = [];
 
 var objectDetectionLayer = null;
+var objectDetectionLayer_detail = null;
 
 
 
@@ -456,6 +457,7 @@ $('#mapOverlayStyleCheckbox').change(function(){
 
 function generateObjectDetectionLayer(objectDetectionData){
     //check if Layer already exists
+    let layer_visibility = map.hasLayer(objectDetectionLayer);
     if(objectDetectionLayer != null){
         map.removeLayer(objectDetectionLayer);
         layerControl.removeLayer(objectDetectionLayer);
@@ -583,9 +585,161 @@ function generateObjectDetectionLayer(objectDetectionData){
     }
 
     //add layer to map
-    objectDetectionLayer.addTo(map);
+    if(layer_visibility){
+        objectDetectionLayer.addTo(map);
+    }
     layerControl.addOverlay(objectDetectionLayer , 'taktischeZeichen');
+    draw_individual_objects_on_map(objectDetectionData);
 }
+
+function draw_individual_objects_on_map(objectDetectionData){
+    //check if Layer already exists
+    if(objectDetectionLayer_detail != null){
+        map.removeLayer(objectDetectionLayer_detail);
+        layerControl.removeLayer(objectDetectionLayer_detail);
+    }
+
+    objectDetectionLayer_detail = L.layerGroup();
+    objectDetectionLayer_detail.addTo(map);
+
+    let detections = objectDetectionData.annotations;
+    let images = objectDetectionData.images;
+
+    global_thresholds = get_global_thresholds();
+
+    for(var i=0; i < detections.length; i++){
+        let detection = detections[i];
+        let categoryID = detection.category_id;
+        let score = detection.score;
+
+        console.log(categoryID);
+
+        if(score < global_thresholds[categoryID]){
+            continue;
+        }
+
+        let image = images[detection.image_id];
+        let filename = image.file_name;
+        let image_size = [image.width, image.height];
+        let object_bounds = detection.bbox;
+        let object_center_gps = get_object_detection_coordinate(filename, object_bounds, image_size, detection.image_id);
+
+        if(object_center_gps == null){
+            continue;
+        }
+
+        let color = 'white';
+        if(categoryID == 0){
+            color = 'red';
+        }
+        else if(categoryID == 1){
+            color = 'black';
+        }
+        else if(categoryID == 2){
+            color = 'blue';
+        }
+
+        marker = L.circle(object_center_gps, {
+            color: 'white',
+            fillColor: color,
+            fillOpacity: 0.9,
+            radius: 2
+        }).addTo(objectDetectionLayer_detail);
+    }
+
+    layerControl.addOverlay(objectDetectionLayer_detail , 'taktischeZeichen_positioniert');
+}
+
+function get_object_detection_coordinate(filename, object_bounds, image_size, image_id){
+    if(mapSizeRGB == null){
+        return null;
+    }
+
+    image_index = -1;
+
+    if(coordinatesRGB[image_id].file_name == filename){
+        image_index = i;
+    }
+    else{
+        for(var i=0; i< coordinatesRGB.length; i++){
+            let long_name = coordinatesRGB[i].file_name;
+            let short_name = long_name.split("/").pop();
+            if(short_name == filename){
+                image_index = i;
+                break;
+            }
+        }
+    }
+
+    if(image_index == -1){
+        return null;
+    }
+
+    let coordinates_string = coordinatesRGB[image_index].coordinates_string;
+
+    let points_strings = coordinates_string.split(',');
+    let image_bounds_gps = new Array();
+
+    for (var j = 0; j < points_strings.length; j++) {
+        let point = points_strings[j].split(' ');
+        image_bounds_gps.push([parseInt(point[0]), parseInt(point[1])]);
+        image_bounds_gps[j][0] = (image_bounds_gps[j][0] / mapSizeRGB[0] * long2RGB) + ((1 - image_bounds_gps[j][0] / mapSizeRGB[0]) * long1RGB);
+        image_bounds_gps[j][1] = (image_bounds_gps[j][1] / mapSizeRGB[1] * lat1RGB) + ((1 - image_bounds_gps[j][1] / mapSizeRGB[1]) * lat2RGB);
+        //Swap lat and long
+        let temp = image_bounds_gps[j][0];
+        image_bounds_gps[j][0] = image_bounds_gps[j][1];
+        image_bounds_gps[j][1] = temp;
+    }
+
+    let object_center_gps = new Array();
+
+    let object_center_px = [object_bounds[0], object_bounds[1]];
+    let factor_w = 1 - (object_center_px[0] / image_size[0]);
+    let factor_h = 1 - (object_center_px[1] / image_size[1]);
+
+
+    let u = [image_bounds_gps[3][0] - image_bounds_gps[0][0], image_bounds_gps[3][1] - image_bounds_gps[0][1]];
+    let v = [image_bounds_gps[1][0] - image_bounds_gps[0][0], image_bounds_gps[1][1] - image_bounds_gps[0][1]];
+
+    object_center_gps.push(image_bounds_gps[0][0] + (u[0] * factor_w) + (v[0] * factor_h));
+    object_center_gps.push(image_bounds_gps[0][1] + (u[1] * factor_w) + (v[1] * factor_h));
+
+
+
+    ////Debug the image_bounds_gps by drawing a polygon
+    //let polygon = L.polygon(image_bounds_gps ,{ opacity: 0, fillOpacity: 0.5, fillColor: '#FF00FF' });
+    //polygon.addTo(objectDetectionLayer_detail);
+
+    ////Also add a marker in each corner of the image
+    //let marker = L.circle(image_bounds_gps[0], {
+    //    color: 'white',
+    //    fillColor: 'white',
+    //    fillOpacity: 1,
+    //    radius: 2
+    //}).addTo(objectDetectionLayer_detail);
+    //marker = L.circle(image_bounds_gps[1], {
+    //    color: 'white',
+    //    fillColor: 'lightgray',
+    //    fillOpacity: 1,
+    //    radius: 2
+    //}).addTo(objectDetectionLayer_detail);
+    //marker = L.circle(image_bounds_gps[2], {
+    //    color: 'white',
+    //    fillColor: 'gray',
+    //    fillOpacity: 1,
+    //    radius: 2
+    //}).addTo(objectDetectionLayer_detail);
+    //marker = L.circle(image_bounds_gps[3], {
+    //    color: 'white',
+    //    fillColor: 'black',
+    //    fillOpacity: 1,
+    //    radius: 2
+    //}).addTo(objectDetectionLayer_detail);
+
+
+    return object_center_gps;
+}
+
 
 
 </script>

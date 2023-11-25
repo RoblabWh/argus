@@ -553,6 +553,22 @@
             //generateObjectDetectionLayer(detections);
         }
 
+        function get_global_thresholds(){
+            var categories = detections["categories"];
+            var thresholds = [];
+            for(let i = 0; i < categories.length; i++){
+                var category = categories[i];
+                //Check if there is a slider for this category
+                let threshold = 0.3;
+                if(document.getElementById("slider_" + category.name + "_global_threshold") != null){
+                    var slider = document.getElementById("slider_" + category.name + "_global_threshold");
+                    threshold = slider.value;
+                }
+                thresholds.push(threshold);
+            }
+            return thresholds;
+        }
+
 
 
         function changeColor(category){
