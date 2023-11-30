@@ -1,6 +1,6 @@
 ![Argus Logo](https://github.com/RoblabWh/argus/blob/main/app/static/default/Argus_icon_dark_title-long_white_BG_scaled.PNG?raw=true)
 
-# ARGUS
+# ARGUS - Aerial Rescue and Geospatial Utility System
 
 **The ARGUS WebApp is currently in development.**
 
