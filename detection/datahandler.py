@@ -168,7 +168,7 @@ class DataHandler(Dataset):
         """
         h, w = image.shape[:2]
         if (h > 1200 or w > 1200) and remaining_steps > 0:
-            print(f'Slitting images with {remaining_steps} remaining steps')
+            # print(f'Splitting images with {remaining_steps} remaining steps')
             remaining_steps -= 1
             images = self.split_image_into_four(image)
             new_images = []

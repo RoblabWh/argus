@@ -30,7 +30,7 @@ class DetectionServer:
 
     def process(self):
         data = request.get_json(force=True)
-        print("data: ", data, flush=True)
+        print("processing with settings: ", data, flush=True)
         report_id = data['report_id']
         models = data['models']
         max_splits = data['max_splits']
@@ -52,11 +52,15 @@ class DetectionServer:
 
     def remove_thread(self, report_id):
         removed = False
+        print("Removing thread with report id: ", report_id, "number of threads: ", str(len(self.threads)), flush=True)
         for i, thread in enumerate(self.threads):
             if thread.report_id == report_id:
-                self.threads.pop(i)
-                removed = True
+                thread.stop()
+                thread.join()
                 break
+
+        self.threads.pop(i)
+        removed = True
 
         if self.threads:
             self.threads[0].start()

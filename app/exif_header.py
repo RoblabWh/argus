@@ -3,6 +3,8 @@
 
 import json
 import re
+import os
+import datetime as dt
 
 import pyexifinfo as p
 
@@ -35,23 +37,44 @@ class ExifHeader:
         self.ir = False
         self.pano = False
         self.pano_data = None
+        self.usable = True
 
-        self.read_gps_coordinate()
-        self.read_xmp_metadata()
-        self.read_camera_properties()
-        self.read_image_size()
-        self.read_creation_time()
-        self.read_xmp_ir()
-        self.read_xmp_projection_type()
+
+        try:
+            self.read_image_size()
+            self.read_creation_time()
+            self.read_xmp_metadata()
+            self.read_camera_properties()
+            self.read_xmp_projection_type()
+            self.read_xmp_ir()
+            self.read_gps_coordinate()
+        except Exception as e:
+            print("Error reading metadata: " + str(e))
+            self.usable = False
+
+
 
 
         #print(self.python_dict)
 
     def read_creation_time(self):
-        self.creation_time_str = (str(self._get_if_exist(self.python_dict, 'EXIF:CreateDate')))
-        creation_time = self.creation_time_str.replace(':','')
-        creation_time = creation_time.replace(' ','')
-        self.creation_time = int(creation_time)%1000000
+        try:
+            self.creation_time_str = (str(self._get_if_exist(self.python_dict, 'EXIF:CreateDate')))
+            creation_time = self.creation_time_str.replace(':', '')
+            creation_time = creation_time.replace(' ', '')
+            self.creation_time = int(creation_time) % 1000000
+            print("creation_time_str: '" + self.creation_time_str + "' (from EXIF:CreateDate)" + " creation_time: " + str(self.creation_time) + "time wo modulo" + str(int(creation_time)))
+        except:
+            self.creation_time_str = str(dt.datetime.fromtimestamp(os.path.getmtime(__file__)))
+            print("creation_time_str: '" + self.creation_time_str + "' (from file creation time)")
+            creation_time = self.creation_time_str.replace(':', '')
+            creation_time = creation_time.replace('-', '')
+            creation_time = creation_time.replace(' ', '')
+            self.creation_time = int(creation_time.split(".")[0]) % 1000000
+            print("creation_time_str: '" + creation_time + "' (from file creation time)" + " creation_time: " + str(self.creation_time))
+
+
+
 
     def read_image_size(self):
         image_size = (str(self._get_if_exist(self.python_dict, 'Composite:ImageSize'))).split('x')

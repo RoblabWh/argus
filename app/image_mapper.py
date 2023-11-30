@@ -59,7 +59,9 @@ class ImageMapper:
 
 
     def generate_map_elements_and_scaler(self, images):
-        filtered_images = GimbalPitchFilter(89 - self.max_gimbal_pitch_deviation).filter(images)
+        #print(images, flush=True)
+        filtered_images = [image for image in images if image.get_exif_header().usable]
+        filtered_images = GimbalPitchFilter(89 - self.max_gimbal_pitch_deviation).filter(filtered_images)
         if len(filtered_images) < self.minimum_number_of_images:
             return None, []
         map_scaler = MapScaler(filtered_images, self.map_width_px, self.map_height_px)
@@ -185,7 +187,7 @@ class ImageMapper:
         return map_obj.get_min_and_max_coords(), map_elements
 
     def save_map(self, save_path):
-        print("-Start saving map under ", save_path)
+        # print("-Start saving map under ", save_path)
         cv2.imwrite(save_path, self.cropped_map)
         print("-Saved map under ", save_path)
 

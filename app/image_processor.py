@@ -23,7 +23,11 @@ class ImageProcessor:
         images = list()
         for path in image_paths:
             # print(path)
-            images.append(Image(path))
+            try:
+                images.append(Image(path))
+            except:
+                print("Error while processing image: ", path)
+                print(sys.exc_info())
         return images
 
     def set_image_paths(self, image_paths):
@@ -66,6 +70,10 @@ class ImageProcessor:
         print('all panos: ', self.all_panos)
         print('all images after pano Filtering: ', len(self.all_images))
         print('all images after pano Filtering: ', self.all_images)
+
+    def filter_unusable_images(self):
+        self.all_images = [image for image in self.all_images if image.get_exif_header().usable]
+        print('all images after unusable Filtering: ', len(self.all_images))
 
     def get_panos(self):
         panos = []

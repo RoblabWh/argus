@@ -70,13 +70,13 @@ class MapperThread(threading.Thread):
             if self.with_odm:
                 self.mapping = True
                 self.progress_mapping += 4 / self.number_of_maps
-                print("RGB_PATHS: " + str([image.get_image_path() for image in self.rgb_images]))
+                # print("RGB_PATHS: " + str([image.get_image_path() for image in self.rgb_images]))
                 self.map_odm = self.image_mapper.generate_odm_orthophoto([image.get_image_path() for image in self.rgb_images],840)
                 self.maps.append(self.map_odm)
                 self.set_next_map_done()
                 self.progress_mapping += 96 / self.number_of_maps
                 if self.ir:
-                    print("IR_PATHS: " + str([image.get_image_path() for image in self.ir_images]))
+                    # print("IR_PATHS: " + str([image.get_image_path() for image in self.ir_images]))
                     self.map_odm_ir = self.image_mapper.generate_odm_orthophoto([image.get_image_path() for image in self.ir_images], ir=True)
                     self.maps.append(self.map_odm_ir)
                     self.set_next_map_done()
@@ -101,6 +101,7 @@ class MapperThread(threading.Thread):
         processor.sort_images()
         self.progress_preprocess = 30
         processor.filter_panos()
+        #processor.filter_unusable_images()
         self.progress_preprocess = 40
         processor.separate_ir_rgb()
         self.progress_preprocess = 50
@@ -132,9 +133,9 @@ class MapperThread(threading.Thread):
             self.ir = self.image_mapper.has_ir
             self.number_of_maps = self.fast_mapping + self.with_odm + self.fast_mapping * self.ir + self.with_odm * self.ir
 
-            print("number of maps: " + str(self.number_of_maps))
-            print("mappeable: " + str(self.mappable))
-            print("ir: " + str(self.ir))
+            # print("number of maps: " + str(self.number_of_maps))
+            # print("mappeable: " + str(self.mappable))
+            # print("ir: " + str(self.ir))
 
             if len(self.ir_images) > 0:
                 self.ir_settings = self.image_mapper.get_ir_settings()
