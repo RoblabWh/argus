@@ -1,0 +1,237 @@
+
+
+<!DOCTYPE html>
+<html>
+
+<head lang="en">
+    <meta charset="UTF-8">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+
+    <title>ARGUS - Aerial Rescue and Geospatial Utility System</title>
+
+    <meta name="description" content="Discover ARGUS: a WebApp for drone image processing, featuring orthophoto creation, structured flight data, infrared evaluation, and advanced object recognition.">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    
+    <link rel="icon" href="img/favicon.png" type="image/png">
+
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.4.0/css/font-awesome.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.8.0/codemirror.min.css">
+    <link rel="stylesheet" href="css/app.css">
+
+    <link rel="stylesheet" href="css/bootstrap.min.css">
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.8.0/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/1.5.3/clipboard.min.js"></script>
+    
+    <script src="js/app.js"></script>
+</head>
+
+<body>
+    <div class="container" id="main">
+        <div class="row">
+            <h2 class="col-md-12 text-center">
+                <b>ARGUS</b><br>Aerial Rescue and Geospatial Utility System</br> 
+                <small>
+				SSRR 2023, ISR Europe
+                </small>
+            </h2>
+        </div>
+        <div class="row">
+            <div class="col-md-12 text-center">
+                <img class="university-logo" src="img/favicon.png"/>Westphalian University of Applied Sciences Gelsenkirchen
+                <ul class="list-inline">
+                    <li>
+                        <a href="https://www.w-hs.de/service/informationen-zur-person/person/surmann/">
+                            Hartmut Surmann
+                        </a>
+                    </li>
+                    <li>
+                        <a href="">
+                            Artur Leinweber
+                        </a>
+                    </li>
+                    <li>
+                        <a href="">
+                            Dominik Slomma
+                        </a>
+                    </li>
+                    <li>
+                        <a href="">
+                            Gerhard Senkowski
+                        </a>
+                    </li>
+                    <br>
+                    <li>
+                        <a href="">
+                            Niklas Digakis
+                        </a>
+                    </li>
+                    <li>
+                        <a href="">
+                            Jan-Nicklas Kremer
+                        </a>
+                    </li>
+                    <li>
+                        <a href="">
+                            Julien Meine
+                        </a>
+                    </li>
+                    <li>
+                        <a href="">
+                            Max Schulte
+                        </a>
+                    </li>
+                    <li>
+                        <a href="">
+                            Niklas Voigt
+                        </a>
+                    </li>
+                </ul>
+                <br>
+                
+            </div>
+        </div>
+
+        <div class="row">
+                <div class="col-md-4 col-md-offset-4 text-center">
+                    <ul class="nav nav-pills nav-justified">
+                        <li>
+                            <a href="#">
+                            <image src="img/Redefining Recon Bridging Gaps with UAVs 360 Cameras and Neural Radiance Fields.png" height="60px">
+                                <h4><strong>Paper SSRR</strong></h4>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="https://arxiv.org/abs/2310.05512">
+                            <image src="img/UAVs and Neural Networks for search and rescue missions.png" height="60px">
+                                <h4><strong>Paper ISR</strong></h4>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="https://www.youtube.com/watch?v=9iYYrnm3ge0">
+                            <image src="img/youtube_icon.png" height="60px">
+                                <h4><strong>Video</strong></h4>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="https://www.youtube.com/watch?v=xpbTlIRI9pY">
+                            <image src="img/youtube_icon.png" height="60px">
+                                <h4><strong>Video</strong></h4>
+                            </a>
+                        </li>
+                        <!--<li>
+                            <a href="#" target="popup" onclick="window.open('#','popup','width=600,height=400')">
+                            <image src="img/database_icon.png" height="60px">
+                                <h4><strong>Dataset</strong></h4>
+                            </a>
+                        </li>-->
+                        <li>
+                            <a href="https://github.com/RoblabWh/argus">
+                            <image src="img/github.png" height="60px">
+                                <h4><strong>Code</strong></h4>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+        </div>
+
+
+
+        <div class="row">
+            <div class="col-md-8 col-md-offset-2">
+                <h3>
+                    Video
+                </h3>
+                <div class="text-center">
+                    <div style="position:relative;padding-top:56.25%;">
+                        <iframe src="https://youtube.com/embed/xpbTlIRI9pY" allowfullscreen style="position:absolute;top:0;left:0;width:100%;height:100%;"></iframe>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+        <div class="row">
+            <div class="col-md-8 col-md-offset-2">
+                <h3>
+                    Redefining Recon: Bridging Gaps with UAVs, 360° Cameras, and Neural Radiance Fields
+                </h3>
+                <h4>Abstract</h4>
+                <p class="text-justify">
+                    In the realm of digital situational awareness during disaster situations, accurate digital representations, like 3D models, play an indispensable role. To ensure the safety of rescue teams, robotic platforms are often deployed to generate these models. In this paper, we introduce an innovative approach that synergizes the capabilities of compact Unmaned Arial Vehicles (UAVs), smaller than 30 cm, equipped with 360° cameras and the advances of Neural Radiance Fields (NeRFs). A NeRF, a specialized neural network, can deduce a 3D representation of any scene using 2D images and then synthesize it from various angles upon request. This method is especially tailored for urban environments which have experienced significant destruction, where the structural integrity of buildings is compromised to the point of barring entry—commonly observed post-earthquakes and after severe fires. We have tested our approach through recent post-fire scenario, underlining the efficacy of NeRFs even in challenging outdoor environments characterized by water, snow, varying light conditions, and reflective surfaces.                </p>
+            </div>
+            <div class="col-md-8 col-md-offset-2">
+                <h3>
+                    UAVs and Neural Networks for search and rescue missions
+                </h3>
+                <h4>Abstract</h4>
+                <p class="text-justify">
+                    In this paper, we present a method for detecting
+                    objects of interest, including cars, humans, and fire, in aerial
+                    images captured by unmanned aerial vehicles (UAVs) usually
+                    during vegetation fires. To achieve this, we use artificial neural
+                    networks and create a dataset for supervised learning. We
+                    accomplish the assisted labeling of the dataset through the implementation of an object detection pipeline that combines classic
+                    image processing techniques with pretrained neural networks. In
+                    addition, we develop a data augmentation pipeline to augment the
+                    dataset with automatically labeled images. Finally, we evaluate
+                    the performance of different neural networks.
+                </p>
+            </div>
+        </div>
+  
+        <div class="row">
+            <div class="col-md-8 col-md-offset-2">
+                <h3>
+                    Citation
+                </h3>
+                <div class="form-group">
+                    <textarea id="bibtex" class="form-control" readonly>
+@INPROCEEDINGS{surmann2023bridging,
+    author={Hartmut Surmann and Niklas Digakis and Jan-Nicklas Kremer and Julien Meine and Max Schulte and Niklas Voigt},
+    booktitle={2023 IEEE International Symposium on Safety, Security, and Rescue Robotics (SSRR 2023 Fukushima)}, 
+    title={Redefining Recon: Bridging Gaps with UAVs, 360° Cameras, and Neural Radiance Fields}, 
+    year={2023},
+    volume={},
+    number={},
+    pages={},
+    doi={}
+}
+
+@INPROCEEDINGS{surmann2023uavs,
+        title={UAVs and Neural Networks for search and rescue missions}, 
+        author={Hartmut Surmann and Artur Leinweber and Gerhard Senkowski and Julien Meine and Dominik Slomma},
+        booktitle={56th International Symposium on Robotics (ISR Europe) | September 26-27, 2023},
+        year={2023},
+        eprint={2310.05512},
+        archivePrefix={arXiv},
+        primaryClass={cs.AI}
+}
+                    </textarea>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-8 col-md-offset-2">
+                <h3>
+                    Acknowledgements
+                </h3>
+                <p class="text-justify">
+                    This work is funded by the Federal Ministry of Education and Research (BMBF) under grant, 13N16478 (E-DRZ), cf. <a href="https://rettungsrobotik.de">https://rettungsrobotik.de</a>.
+                    
+                    <br>
+                    
+                    We thank our project partners and collaborators. 
+
+                <br><br>
+                The website template was borrowed from <a href="http://mgharbi.com/">Michaël Gharbi</a>.
+                </p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
