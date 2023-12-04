@@ -11,9 +11,10 @@ class CustomCOCO(COCO):
     CLASSES = ('fire', 'vehicle', 'human')
     PALETTE = [(220, 20, 60), (119, 11, 32), (0, 0, 142)]
 
-    def __init__(self, ann_file=None, score_thr=0.3):
+    def __init__(self, ann_file=None, score_thr=0.3, keep_coco_format=True):
         super().__init__(annotation_file=ann_file)
         self.score_thr = score_thr
+        self.keep_coco_format = keep_coco_format
 
     def results2json(self, results, outfile_prefix):
         """Dump the detection results to a COCO style json file.
@@ -66,6 +67,11 @@ class CustomCOCO(COCO):
         return len(self.dataset['images'])
 
     def _det2json(self, results):
+
+        coco_correction = 0
+        if self.keep_coco_format:
+            coco_correction = 1
+
         json_results = []
         id = 1
         for image in self.dataset['images']:
@@ -93,7 +99,7 @@ class CustomCOCO(COCO):
                     data['image_id'] = img_id
                     data['bbox'] = self.xyxy2xywh(bboxes[instance])
                     data['score'] = float(scores[instance])
-                    data['category_id'] = labels[instance]
+                    data['category_id'] = labels[instance] + coco_correction # add 1 to stay in COCO format
                     data['segmentation'] = []
                     json_results.append(data)
         return json_results

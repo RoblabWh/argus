@@ -145,7 +145,7 @@ class DataHandler(Dataset):
             if len(images) > 1:
                 ids = {}
                 for j, image in enumerate(images):
-                    new_image_path = self.preprocessed_img_folder / (image_path.stem + f'_{j:02d}' + image_path.suffix)
+                    new_image_path = self.preprocessed_img_folder / (image_path.stem + f'_{j:03d}' + image_path.suffix)
                     self.remove_later.append(new_image_path)
                     mmcv.imwrite(image, new_image_path)
                     new_image_paths.append(new_image_path)

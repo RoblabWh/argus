@@ -12,7 +12,7 @@ import os
 
 class AnnotationHandler:
 
-    def __init__(self, args):
+    def __init__(self, args, keep_coco_format=True):
         self.custom_coco = None
         self.ann_path = None
         self.config = None
@@ -58,6 +58,7 @@ class AnnotationHandler:
                         {"id": 3, "name": "human"}]
 
         self.custom_coco = None
+        self.keep_coco_format = keep_coco_format
 
     def create_empty_ann(self, image_paths):
         """
@@ -76,7 +77,7 @@ class AnnotationHandler:
         with open(self.ann_path, 'w') as json_ann_file:
             json.dump(ann, json_ann_file, ensure_ascii=False, indent=4)
 
-        self.custom_coco = CustomCOCO(ann_file=self.ann_path, score_thr=self.score_thr)
+        self.custom_coco = CustomCOCO(ann_file=self.ann_path, score_thr=self.score_thr,  keep_coco_format=self.keep_coco_format)
 
     def save_results_in_json(self, results, out_folder='.'):
         """

@@ -476,6 +476,9 @@ function generateObjectDetectionLayer(objectDetectionData){
         score = objectDetectionData.annotations[i].score;
         category = objectDetectionData.categories[categoryID - 1];
         var slider = document.getElementById("slider_" + category.name + "_global_threshold");
+        if(slider == null){
+            continue;
+        }
         var threshold = slider.value;
         if(score < threshold){
             continue;

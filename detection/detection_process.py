@@ -42,12 +42,10 @@ class DetectionProcess(threading.Thread):
         print("args: ", str(args), flush=True)
         u.assert_arguments(args)
 
-        print("init engine", flush=True)
         engine = InferenceEngine(device=self.device, out_folders=args.outfolders, configs=args.configs,
                                  checkpoints=args.checkpoints, network_folders=args.netfolders)
 
         # Init DataHandler
-        print("init datahandler", flush=True)
         datahandler = DataHandler(args)
         if args.split_images:
             print("option --split_images is set, images will be split into tiles")
@@ -63,7 +61,7 @@ class DetectionProcess(threading.Thread):
 
         # Create AnnotationFile from Results
         if args.create_coco:
-            annotationhandler = AnnotationHandler(args)
+            annotationhandler = AnnotationHandler(args, keep_coco_format=False)
             annotationhandler.create_empty_ann(datahandler.image_paths)
             annotationhandler.save_results_in_json(results)
 
