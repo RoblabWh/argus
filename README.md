@@ -26,12 +26,12 @@ Without Nvidia Docker, the object detection pipeline will use the CPU to run our
 2. Run `./install.sh` from the repository directory. # take a coffee, building all images need up to 20 minutes
 
 ## Running with Installation
-1. Run `./argus up`
+1. Run `argus up`
 
 ## Running without Installation
 1. Clone the repository.
 2. Navigate to the `argus` directory.
-3. Run `./argus up --build`
+3. Run `./argus.sh up --build`
 
 ## Utilizing the systemd Service
 1. Install ARGUS.
@@ -54,7 +54,7 @@ See video at youtube: [Drone Flight Documentation with ARGUS at rescue operation
 more cooming soon
 
 # Papers
-1. Redefining Recon: Bridging Gaps with UAVs, 360° Cameras, and Neural Radiance Fields; Hartmut Surmann, Niklas Digakis, Jan-Nicklas Kremer, Julien Meine, Max Schulte, Niklas Voigt, SSRR2023, 13.11.2023 - 15.11.2023 Fukushima, Japan 2023 (cite this). 
+1. Redefining Recon: Bridging Gaps with UAVs, 360° Cameras, and Neural Radiance Fields; Hartmut Surmann, Niklas Digakis, Jan-Nicklas Kremer, Julien Meine, Max Schulte, Niklas Voigt, SSRR2023, 13.11.2023 - 15.11.2023 Fukushima, Japan 2023 (cite this).
 2. UAVs and Neural Networks for search and rescue missions, Hartmut Surmann, Artur Leinweber, Gerhard Senkowski, Julien Meine, Dominik Slomma, https://arxiv.org/abs/2310.05512
 3. Lessons from Robot-Assisted Disaster Response Deployments by the German Rescue Robotics Center Task Force, Hartmut Surmann, Ivana Kruijff-Korbayova, Kevin Daun, Marius Schnaubelt, Oskar von Stryk, Manuel Patchou, Stefan Boecker, Christian Wietfeld, Jan Quenzel, Daniel Schleich, Sven Behnke, Robert Grafe, Nils Heidemann, Dominik Slomma, https://arxiv.org/abs/2212.09354
 4. Deployment of Aerial Robots during the Flood Disaster in Erftstadt / Blessem in July 2021, Hartmut Surmann, Dominik Slomma, Robert Grafe, Stefan Grobelny, https://arxiv.org/abs/2209.03084
