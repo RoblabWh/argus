@@ -3,7 +3,7 @@ set -e
 
 # get path to argus
 ARGUS_PATH="$(dirname "$(realpath "${BASH_SOURCE[0]}")")"
-echo "Installation path is $ARGUS_PATH"
+echo "Argus path is $ARGUS_PATH"
 
 # export default env for all unset vars
 set -a
@@ -18,7 +18,11 @@ if [ -z ${ARGUS_GPU_NVIDIA+x} ]; then
 	if lspci | grep -q 'NVIDIA' || lspci | grep -q "VGA.*NVIDIA" || \
 		(command -v nvidia-smi >/dev/null 2>&1 && [[ $(nvidia-smi -L | grep "GPU 0:" | awk -F ': ' '{print $2}' | awk -F '(' '{print $1}') == *"NVIDIA"* ]]); then
 		echo "NVIDIA GPU has been found"
-		export ARGUS_GPU_NVIDIA=true
+		if cat /etc/docker/daemon.json | grep -q nvidia-container-runtime; then
+			export ARGUS_GPU_NVIDIA=true
+		else
+			echo "Missing nvidia docker toolkit, falling back to CPU"
+		fi
 	fi
 fi
 if [ -z ${ARGUS_GPU_INTEL+x} ]; then
