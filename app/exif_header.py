@@ -44,9 +44,10 @@ class ExifHeader:
             self.read_image_size()
             self.read_creation_time()
             self.read_xmp_metadata()
-            self.read_camera_properties()
             self.read_xmp_projection_type()
-            self.read_xmp_ir()
+            if not self.pano:
+                self.read_camera_properties()
+                self.read_xmp_ir()
             self.read_gps_coordinate()
         except Exception as e:
             print("Error reading metadata: " + str(e))
@@ -63,15 +64,15 @@ class ExifHeader:
             creation_time = self.creation_time_str.replace(':', '')
             creation_time = creation_time.replace(' ', '')
             self.creation_time = int(creation_time) % 1000000
-            print("creation_time_str: '" + self.creation_time_str + "' (from EXIF:CreateDate)" + " creation_time: " + str(self.creation_time) + "time wo modulo" + str(int(creation_time)))
+            # print("creation_time_str: '" + self.creation_time_str + "' (from EXIF:CreateDate)" + " creation_time: " + str(self.creation_time) + "time wo modulo" + str(int(creation_time)))
         except:
             self.creation_time_str = str(dt.datetime.fromtimestamp(os.path.getmtime(__file__)))
-            print("creation_time_str: '" + self.creation_time_str + "' (from file creation time)")
+            # print("creation_time_str: '" + self.creation_time_str + "' (from file creation time)")
             creation_time = self.creation_time_str.replace(':', '')
             creation_time = creation_time.replace('-', '')
             creation_time = creation_time.replace(' ', '')
             self.creation_time = int(creation_time.split(".")[0]) % 1000000
-            print("creation_time_str: '" + creation_time + "' (from file creation time)" + " creation_time: " + str(self.creation_time))
+            # print("creation_time_str: '" + creation_time + "' (from file creation time)" + " creation_time: " + str(self.creation_time))
 
 
 
@@ -98,6 +99,12 @@ class ExifHeader:
             # x, y = GPS.mercator_projection(latitude, longitude)
         relative_height = float(self._get_if_exist(self.python_dict, 'XMP:RelativeAltitude'))
         self.gps_coordinate = GPS(relative_height, latitude, longitude)
+
+        if self.pano:
+            self.pano_data['coordinates'] = [
+                self.gps_coordinate.get_latitude(),
+                self.gps_coordinate.get_longitude()
+            ]
 
     def read_xmp_metadata(self):
         """
@@ -130,7 +137,7 @@ class ExifHeader:
         try:
             # print(self.python_dict)
             projectionType = self._get_if_exist(self.python_dict, key)
-            print("projectionType: " + projectionType)
+            # print("projectionType: " + projectionType)
             if projectionType == "pano":
                 projectionType = "equirectangular"
 
@@ -139,15 +146,20 @@ class ExifHeader:
 
             self.pano = True
 
-            short_path = self.image_path[self.image_path.find("uploads"):]
+            short_path = self.image_path[self.image_path.find("projects"):]
+            # print("short_path: " + short_path, flush=True)
             author = "WHS-Team DRZ"
             title = "Pano taken at" + str(self.creation_time)
 
-            self.pano_data = dict(file=short_path, author=author, title=title, type=projectionType, coordinates=[
-                self.gps_coordinate.get_latitude(),
-                self.gps_coordinate.get_longitude()
-            ])
-            # print(self.pano)
+            coordinates = None
+            if self.gps_coordinate is not None:
+                coordinates = [
+                    self.gps_coordinate.get_latitude(),
+                    self.gps_coordinate.get_longitude()
+                ]
+
+            self.pano_data = dict(file=short_path, author=author, title=title, type=projectionType, coordinates=coordinates)
+            # print(self.pano_data, flush=True)
         except:
             if key == 'XMP:ProjectionType':
                 self.read_xmp_projection_type(key='EXIF:XPKeywords')
@@ -200,7 +212,7 @@ class ExifHeader:
                 if camera_model_name in data:
                     val = float(data[camera_model_name][key])
                     msg = "Using camera_specs.json..."
-                    print(msg, end='\r', flush=True)
+                    # print(msg, end='\r', flush=True)
                     f.close()
                 else:
                     msg = "Untested configuration for camera model:\""+str(camera_model_name)+"\", please add Horizontal FOV and Focal Length to camera_specs.json!"

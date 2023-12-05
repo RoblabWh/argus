@@ -156,7 +156,7 @@ function update{{map.name}}Map(map) {
     {% if not map.odm %}
     coordinates{{map.name}} = map.image_coordinates;
 
-    console.log(coordinates{{map.name}});
+
     if(map.image_coordinates!= null) {
         updateCoordinatesNamesList({{loop.index0}}, coordinates{{map.name}});
         loadPolygons{{map.name}}(map.image_coordinates);
@@ -193,7 +193,6 @@ function loadPolygons{{map.name}}(coordinates) {
             points.push([parseInt(point[0]), parseInt(point[1])]);
         }
         if(typeof(mapSize{{map.name}}[0]) == 'string') {
-            console.log('mapSize{{map.name}} was String');
             var arr = new Array();
             arr.push(parseInt(mapSize{{map.name}}[0]));
             arr.push(parseInt(mapSize{{map.name}}[1]));
@@ -439,11 +438,9 @@ function isUsedInMap(index, displayingIR){
     for (var i = 0; i < coordinatesNamesList.length; i++) {
         list = coordinatesNamesList[i];
         if(list.indexOf(filename) > -1){
-            console.log(filename + " isUsedInMap true");
             return true;
         }
     }
-    console.log(filename + " isUsedInMap false");
     return false;
 }
 
@@ -513,8 +510,6 @@ function generateObjectDetectionLayer(objectDetectionData){
             points[j][0] = points[j][1];
             points[j][1] = temp;
         }
-        console.log(polygonString);
-        console.log(points);
         let center = [((points[0][0] + points[2][0]) / 2.0), ((points[0][1] + points[2][1]) / 2.0)];
 
         let imageID = -1;
@@ -615,7 +610,6 @@ function draw_individual_objects_on_map(objectDetectionData){
         let categoryID = detection.category_id;
         let score = detection.score;
 
-        console.log(categoryID);
 
         if(score < global_thresholds[categoryID]){
             continue;
@@ -660,10 +654,15 @@ function get_object_detection_coordinate(filename, object_bounds, image_size, im
 
     image_index = -1;
 
-    if(coordinatesRGB[image_id].file_name == filename){
-        image_index = i;
+    if(coordinatesRGB.length > image_id){
+        let long_name = coordinatesRGB[image_id].file_name;
+        let short_name = long_name.split("/").pop();
+        if(short_name == filename){
+            image_index = image_id;
+        }
     }
-    else{
+
+    if(image_index == -1){
         for(var i=0; i< coordinatesRGB.length; i++){
             let long_name = coordinatesRGB[i].file_name;
             let short_name = long_name.split("/").pop();

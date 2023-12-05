@@ -96,6 +96,13 @@ class ImageProcessor:
         firstImage = self.all_images[0]
         lastImage = self.all_images[-1]
 
+        imageWithGPSData = None
+
+        for i in range(len(self.all_images)):
+            imageWithGPSData = self.all_images[i]
+            if imageWithGPSData.get_exif_header().get_gps() is not None:
+                break
+
         date = str(firstImage.get_exif_header().get_creation_time_str())
         #date is in format yyyy:mm:dd hh:mm:ss but should be changed to dd.mm.yyyy hh:mm
         date = date[8:10] + '.' + date[5:7] + '.' + date[0:4] + ' ' + date[11:16]
@@ -109,7 +116,7 @@ class ImageProcessor:
         flight_duration = "{:02d}".format(flight_duration_hours) + ':' + "{:02d}".format(flight_duration_minutes) + ':' + "{:02d}".format(flight_duration_seconds)
 
         try:
-            location = str(firstImage.get_exif_header().get_gps().get_address())
+            location = str(imageWithGPSData.get_exif_header().get_gps().get_address())
         except:
             location = str("N/A")
 
@@ -148,10 +155,15 @@ class ImageProcessor:
         return str("N/A")
 
     def extract_camera_specs(self):
-        firstImage = self.all_images[0]
+        imageWithCameraData = None
+
+        for i in range(len(self.all_images)):
+            imageWithCameraData = self.all_images[i]
+            if imageWithCameraData.get_exif_header().get_camera_properties() is not None:
+                break
 
         # extract camera model, focal length, horizontal_fov, vertical_fov, sensor size
-        camera_properties = firstImage.get_exif_header().get_camera_properties()
+        camera_properties = imageWithCameraData.get_exif_header().get_camera_properties()
         camera_model = camera_properties.get_model()
         camera_focal_length = camera_properties.get_focal_length()
         camera_fov = camera_properties.get_fov()
@@ -169,7 +181,13 @@ class ImageProcessor:
 
 
     def load_weather_data(self):
-        firstImage = self.all_images[0]
+        imageWithGPSData = None
+
+        for i in range(len(self.all_images)):
+            imageWithGPSData = self.all_images[i]
+            if imageWithGPSData.get_exif_header().get_gps() is not None:
+                break
+
         temperature = "N/A"
         humidity = "N/A"
         altimeter = "N/A"
@@ -182,8 +200,8 @@ class ImageProcessor:
 
 
         try:
-            actual_weather = Weather(firstImage.get_exif_header().get_gps().get_latitude(),
-                                     firstImage.get_exif_header().get_gps().get_longitude(),
+            actual_weather = Weather(imageWithGPSData.get_exif_header().get_gps().get_latitude(),
+                                     imageWithGPSData.get_exif_header().get_gps().get_longitude(),
                                      "e9d56399575efd5b03354fa77ef54abb")
             # print(weather_info_lst)
             temperature = actual_weather.get_temperature()
