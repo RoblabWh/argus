@@ -82,24 +82,48 @@ class ProjectManager:
             raise Exception("error while importing project.json - report_id: " + str(project_id))
 
     def changeID(self, project, new_id):
+        #print("changing id from " + str(project['id']) + " to " + str(new_id), flush=True)
         old_id = project['id']
         project['id'] = new_id
         data = project['data']
         for path in data['file_names']:
             path = path.replace(str(old_id), str(new_id), 1)
-        for path in data['file_names_ir']:
-            path = path.replace(str(old_id), str(new_id), 1)
-        for pano in data['panos']:
-            pano['file'] = pano['file'].replace(str(old_id), str(new_id), 1)
-        for map in data['maps']:
-            map['file'] = map['file'].replace(str(old_id), str(new_id), 1)
-            map['file_url'] = map['file_url'].replace(str(old_id), str(new_id), 1)
-            for image_coordinate in map['image_coordinates']:
-                image_coordinate['file_name'] = image_coordinate['file_name'].replace(str(old_id), str(new_id), 1)
+        #print('changed filenames paths', flush=True)
+
+        # check if 'file_names_ir' exists
+        if 'file_names_ir' in data:
+            for path in data['file_names_ir']:
+                path = path.replace(str(old_id), str(new_id), 1)
+        #print('changed filenames_ir paths', flush=True)
+
+        if 'panos' in data:
+            for pano in data['panos']:
+                pano['file'] = pano['file'].replace(str(old_id), str(new_id), 1)
+        #print('changed panos paths', flush=True)
+
+        if 'maps' in data:
+            for map in data['maps']:
+
+                file = map['file'].replace(str(old_id), str(new_id), 1)
+                map['file'] = file
+
+                file_url = map['file_url'].replace(str(old_id), str(new_id), 1)
+                map['file_url'] = file_url
+
+                if map['image_coordinates'] is not None:
+                    for image_coordinate in map['image_coordinates']:
+                        coordinate = image_coordinate['file_name'].replace(str(old_id), str(new_id), 1)
+                        image_coordinate['file_name'] = coordinate
+        #print('changed maps paths', flush=True)
+
         for slides in data['slide_file_paths']:
             for i in range(len(slides)):
                 slides[i] = slides[i].replace(str(old_id), str(new_id), 1)
-        data['annotation_file_path'] = data['annotation_file_path'].replace(str(old_id), str(new_id), 1)
+        #print('changed slide_file_paths paths', flush=True)
+
+        if 'annotation_file_path' in data:
+            data['annotation_file_path'] = data['annotation_file_path'].replace(str(old_id), str(new_id), 1)
+        #print('changed annotation_file_path paths', flush=True)
         return project
 
     # def replace_project_id_in_path(self, path, new_id):
