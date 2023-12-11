@@ -239,6 +239,22 @@
           color: white
         }
 
+        .spinner-small-export {
+          width: 1.25rem;
+          --b: 6px; /* the border thickness */
+          aspect-ratio: 1;
+          border-radius: 50%;
+          padding: 1px;
+          background: conic-gradient(#0000 10%,var(--accent-color-interaction)) content-box;
+          -webkit-mask:
+            repeating-conic-gradient(#0000 0deg,#000 1deg 20deg,#0000 21deg 36deg),
+            radial-gradient(farthest-side,#0000 calc(100% - var(--b) - 1px),#000 calc(100% - var(--b)));
+          -webkit-mask-composite: destination-in;
+          mask-composite: intersect;
+          animation:s4 1s infinite steps(10);
+        }
+        @keyframes s4 {to{transform: rotate(1turn)}}
+
 
     </style>
     <script src="{{url_for('static', filename='default/jquery-3.6.3.js') }}"></script>
@@ -253,6 +269,21 @@
 
 
         function uploadProjectZip() {
+
+            spinner = document.getElementById("download_feedback_spinner");
+            spinnerParent = spinner.parentElement;
+            spinnerParent.style.display = "inline-block";
+            spinnerParent.style.margin = "auto auto auto 0";
+            spinner.style.display = "inline-block";
+
+            //deactivate download button
+            importButton = document.getElementById("uploadProjectButton");
+            importButton.disabled = true;
+            importButton.style.backgroundColor = "var(--bg-color-a)";
+            importButton.style.color = "var(--bg-color-b)";
+            importButton.style.cursor = "default";
+
+
             const fileInput = document.getElementById('fileInputProjectZip');
             const file = fileInput.files[0];
 
@@ -274,7 +305,18 @@
                         }
                     } else {
                         // Server encountered an error, show alert
+                        //activate download button
+                        spinner.style.display = "none";
+                        spinnerParent.style.display = "none";
+                        spinnerParent.style.margin = "0";
+
+                        importButton.disabled = false;
+                        importButton.style.backgroundColor = "var(--accent-color-interaction)";
+                        importButton.style.color = "var(--font-color-b)";
+                        importButton.style.cursor = "pointer";
+
                         alert('Error processing the file. Please try again.');
+
                     }
                 })
                 .catch(error => {
@@ -285,6 +327,8 @@
             } else {
                 alert('Please select a file to upload.');
             }
+
+
         }
 
         function projectShow(id){
@@ -384,7 +428,14 @@
                         color: var(--bg-color-b);">
                     no file selected
                 </label>
-                <button id="uploadProjectButton" class="big_button" onclick="uploadProjectZip()">Import</button>
+                <button id="uploadProjectButton" class="big_button" onclick="uploadProjectZip()">
+                    <div style="margin: auto 0 auto 0; display: flex;">
+                        <p style="display: inline-block; margin: auto;font-size: 14px;">Import</p>
+                        <div style="dislpay: none; margin: 0;transition: 0.3s">
+                            <div id="download_feedback_spinner" class="spinner-small-export" style="display: none;"></div>
+                        </div>
+                    </div>
+                </button>
             </div>
         </details>
 
@@ -465,7 +516,6 @@
         const file = fileInput.files[0];
         //const uploadProjectButton = document.getElementById('uploadProjectButton');
         const uploadFilename = document.getElementById('uploadFilename');
-
         if (file) {
             uploadProjectButton.disabled = false;
             uploadProjectButton.style.cursor = 'pointer';
