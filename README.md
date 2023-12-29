@@ -56,7 +56,7 @@ Short Demo video on YouTube: [ARGUS - Aerial Rescue and Geospatial Utility Syste
 
 
 # Papers
-1. Redefining Recon: Bridging Gaps with UAVs, 360° Cameras, and Neural Radiance Fields; Hartmut Surmann, Niklas Digakis, Jan-Nicklas Kremer, Julien Meine, Max Schulte, Niklas Voigt, SSRR2023, 13.11.2023 - 15.11.2023 Fukushima, Japan 2023 (cite this).
+1. Redefining Recon: Bridging Gaps with UAVs, 360° Cameras, and Neural Radiance Fields; Hartmut Surmann, Niklas Digakis, Jan-Nicklas Kremer, Julien Meine, Max Schulte, Niklas Voigt, SSRR2023, 13.11.2023 - 15.11.2023 Fukushima, Japan 2023. https://github.com/RoblabWh/argus/blob/main/papers/ssrr2023-surmann.pdf (cite this).
 2. UAVs and Neural Networks for search and rescue missions, Hartmut Surmann, Artur Leinweber, Gerhard Senkowski, Julien Meine, Dominik Slomma, https://arxiv.org/abs/2310.05512
 3. Lessons from Robot-Assisted Disaster Response Deployments by the German Rescue Robotics Center Task Force, Hartmut Surmann, Ivana Kruijff-Korbayova, Kevin Daun, Marius Schnaubelt, Oskar von Stryk, Manuel Patchou, Stefan Boecker, Christian Wietfeld, Jan Quenzel, Daniel Schleich, Sven Behnke, Robert Grafe, Nils Heidemann, Dominik Slomma, https://arxiv.org/abs/2212.09354
 4. Deployment of Aerial Robots during the Flood Disaster in Erftstadt / Blessem in July 2021, Hartmut Surmann, Dominik Slomma, Robert Grafe, Stefan Grobelny, https://arxiv.org/abs/2209.03084
