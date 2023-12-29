@@ -60,9 +60,8 @@ Short Demo video on YouTube: [ARGUS - Aerial Rescue and Geospatial Utility Syste
 2. UAVs and Neural Networks for search and rescue missions, Hartmut Surmann, Artur Leinweber, Gerhard Senkowski, Julien Meine, Dominik Slomma, [56th International Symposium on Robotics (ISR Europe) | September 26-27, 2023](https://arxiv.org/abs/2310.05512).
 3. Lessons from Robot-Assisted Disaster Response Deployments by the German Rescue Robotics Center Task Force, Hartmut Surmann, Ivana Kruijff-Korbayova, Kevin Daun, Marius Schnaubelt, Oskar von Stryk, Manuel Patchou, Stefan Boecker, Christian Wietfeld, Jan Quenzel, Daniel Schleich, Sven Behnke, Robert Grafe, Nils Heidemann, Dominik Slomma,  [Journal of Field robotics, Wiley, 2023](https://onlinelibrary.wiley.com/doi/full/10.1002/rob.22275)
 4. Deployment of Aerial Robots during the Flood Disaster in Erftstadt / Blessem in July 2021, Hartmut Surmann, Dominik Slomma, Robert Grafe, Stefan Grobelny, https://arxiv.org/abs/2209.03084
-5. Deployment of Aerial Robots after a major fire of an industrial hall with hazardous substances, a report, Hartmut Surmann, Dominik Slomma, Stefan Grobelny, Robert Grafe, https://arxiv.org/abs/2111.14542
-
-# Known Issues
+5. Deployment of Aerial Robots after a major fire of an industrial hall with hazardous substances, a report, Hartmut Surmann, Dominik Slomma, Stefan Grobelny, Robert Grafe, 2021 IEEE International Symposium on Safety, Security, and Rescue Robotics (SSRR2021), New York City, NY, USA, 2021, pp. 40-47, doi: 10.1109/SSRR53300.2021.9597677.
+   
 - Firefox may encounter problems when uploading larger files, such as high-resolution panoramic photos.
 - Since ARGUS is still in development, starting multiple tasks simultaneously can lead to unexpected behavior or, in rare cases, system crashes.
 - Currently, ARGUS primarily supports and is tested with DJI drones (DJI M30T, as well as multiple Mavic and Mavic Enterprise models).
