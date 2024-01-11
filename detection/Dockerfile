@@ -38,7 +38,7 @@ RUN conda clean --all \
     && pip install --no-cache-dir -e .
 
 ARG MODEL_WEIGHTS_FILE="model_weights_mmdet3"
-RUN curl -u "dF2wQbFNW2zuCpK:fire" "https://w-hs.sciebo.de/public.php/webdav/${MODEL_WEIGHTS_FILE}.zip" -o "/tmp/${MODEL_WEIGHTS_FILE}.zip" && \
+RUN curl -u "dF2wQbFNW2zuCpK:fire" "https://w-hs.sciebo.de/public.php/webdav/argus/${MODEL_WEIGHTS_FILE}.zip" -o "/tmp/${MODEL_WEIGHTS_FILE}.zip" && \
     cd /tmp && \
     unzip "${MODEL_WEIGHTS_FILE}.zip" && \
     mkdir /detection && \
