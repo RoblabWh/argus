@@ -56,7 +56,7 @@ class DetectionProcess(threading.Thread):
         results = engine.inference_all(data, score_thr=args.score_thr, batch_size=args.batch_size)
         # print("results: ", str(results))
         if args.split_images:
-            datahandler.postprocess_images(results=results)
+            results = datahandler.postprocess_images(results_=results)
         results = datahandler.merge_bboxes(results=results)
 
         # Create AnnotationFile from Results

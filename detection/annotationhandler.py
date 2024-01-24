@@ -77,13 +77,13 @@ class AnnotationHandler:
         with open(self.ann_path, 'w') as json_ann_file:
             json.dump(ann, json_ann_file, ensure_ascii=False, indent=4)
 
-        self.custom_coco = CustomCOCO(ann_file=self.ann_path, score_thr=self.score_thr,  keep_coco_format=self.keep_coco_format)
+        self.custom_coco = CustomCOCO(ann_file=self.ann_path, score_thr=self.score_thr, keep_coco_format=self.keep_coco_format)
 
     def save_results_in_json(self, results, out_folder='.'):
         """
         Save the results in a json file
-        :param results: results to save
         :param out_folder: folder where to save the json file
+        :param results: results to save
         :return:
         """
         outpath = str(Path(out_folder).expanduser() / "result.json")

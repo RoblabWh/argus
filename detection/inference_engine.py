@@ -1,7 +1,10 @@
+from mmdet.structures import DetDataSample
 from mmdet.apis import DetInferencer
 from mmengine import Config
+from mmengine.structures import InstanceData
 from pathlib import Path
 
+import numpy as np
 import sys
 import os
 
@@ -29,7 +32,6 @@ class InferenceEngine:
         self.configs = []
         self.device = device
 
-
         for loading_idx in range(cnt_networks):
             if out_folders:
                 self.out_folders.append(out_folders[loading_idx])
@@ -46,7 +48,6 @@ class InferenceEngine:
             # Build the model from a config file and a checkpoint file using the DetInferencer class
             self.models.append(DetInferencer(model=config, weights=checkpoint, device=self.device))
             self.configs.append(Config.fromfile(config))
-        print("InferenceEngine initialized", flush=True)
 
     def add_model(self, network_folder, out_folder=None):
         """
@@ -101,6 +102,28 @@ class InferenceEngine:
             sys.exit(1)
         return config[0], checkpoint[0]
 
+    def postprocess(self, results, score_thr=0.00001):
+        """
+        Converts the results to numpy arrays.
+        :param results: results to convert
+        :return: numpy array
+        """
+        if isinstance(results, dict):
+            for k, v in results.items():
+                results[k] = self.postprocess(v, score_thr)
+        elif isinstance(results, list):
+            for i, v in enumerate(results):
+                results[i] = self.postprocess(v, score_thr)
+        elif isinstance(results, DetDataSample):
+            results = results.cpu().numpy()
+            new_instance = InstanceData()
+            indices = np.where(results.pred_instances.scores > score_thr)[0]
+            new_instance.scores = results.pred_instances.scores[indices]
+            new_instance.bboxes = results.pred_instances.bboxes[indices]
+            new_instance.labels = results.pred_instances.labels[indices]
+            results.pred_instances = new_instance
+        return results
+
     def inference_all(self, data, score_thr, batch_size):
         """
         Runs the inference on a batch of images for all models loaded.
@@ -110,7 +133,8 @@ class InferenceEngine:
 
         results = []
         for i, model in enumerate(self.models):
-            result = model(data, batch_size=batch_size, return_datasample=True, no_save_vis=False, pred_score_thr=score_thr, out_dir=self.out_folders[i])
+            result = model(data, batch_size=batch_size, return_datasamples=True, no_save_vis=False, pred_score_thr=score_thr, out_dir=self.out_folders[i])
             results.append(result)
 
+        results = self.postprocess(results, score_thr)
         return results

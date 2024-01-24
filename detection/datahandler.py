@@ -150,10 +150,8 @@ class DataHandler(Dataset):
                     mmcv.imwrite(image, new_image_path)
                     new_image_paths.append(new_image_path)
                     ids[splitted_images + j] = image.shape[:2]
-                    #print(f'Split image {image_path} into {new_image_path} with id {splitted_images + j} = {image.shape[:2]}')
 
                 self.split_images[image_path] = ids
-                #print(f'Split image {image_path} into {len(images)} smaller images with ids: {ids}')
             else:
                 new_image_paths.append(image_path)
 
@@ -168,7 +166,6 @@ class DataHandler(Dataset):
         """
         h, w = image.shape[:2]
         if (h > 1200 or w > 1200) and remaining_steps > 0:
-            # print(f'Splitting images with {remaining_steps} remaining steps')
             remaining_steps -= 1
             images = self.split_image_into_four(image)
             new_images = []
@@ -192,32 +189,36 @@ class DataHandler(Dataset):
 
     ###### POSTPROCESSING ######
 
-    def postprocess_images(self, results):
+    def postprocess_images(self, results_):
         """
         Postprocesses the images. This includes:
         - Merging the bounding boxes of the split images into the original image
         - Deleting the preprocessed images
-        :param results: results from the inference
+        :param results_: results from the inference
         :return: merged results
         """
         # TODO Split images is problematic, because the ids are not the same as the original ones
 
         keys_to_add = []
-        last_net = len(results) - 1
+        last_net = len(results_) - 1
+        results = copy.deepcopy(results_)
 
         for net_num, result in enumerate(results):
             delete_later = []
             result_pred = result['predictions']
-            for key in self.split_images:
-                ids = list(self.split_images[key].keys())
+            split_images_ = copy.deepcopy(self.split_images)
+            bboxes_ = [np.array(result_pred[i].pred_instances.bboxes) for i in range(len(result_pred))]
+            labels_ = [np.array(result_pred[i].pred_instances.labels) for i in range(len(result_pred))]
+            scores_ = [np.array(result_pred[i].pred_instances.scores) for i in range(len(result_pred))]
+
+            for key in split_images_:
+                ids = list(split_images_[key].keys())
                 # get bounding boxes of the pairs
-                bboxes = [np.array(result_pred[i].pred_instances.bboxes.cpu()) for i in ids]
-                labels = [np.array(result_pred[i].pred_instances.labels.cpu()) for i in ids]
-                scores = [np.array(result_pred[i].pred_instances.scores.cpu()) for i in ids]
-                # image_paths = [np.array(result_pred[i].img_path) for i in ids]
-                # print(f'merging {image_paths}')
+                bboxes = [bboxes_[i] for i in ids]
+                labels = [labels_[i] for i in ids]
+                scores = [scores_[i] for i in ids]
                 # merge the results of the split images
-                merged_bbox, merged_label, merged_score = self.merge_results(key, bboxes, labels, scores, ids)
+                merged_bbox, merged_label, merged_score = self.merge_results(key, bboxes, labels, scores, ids, split_images_)
                 # add the merged results to the original result
                 new_instance = InstanceData()
                 new_instance.bboxes = merged_bbox
@@ -258,13 +259,15 @@ class DataHandler(Dataset):
         num_images = len(results[0]['predictions'])
         instances = []
 
+        results_ = copy.deepcopy(results)
+
         if net_cnt == 1:
-            return results[0]
+            return results_[0]
 
         for img_idx in range(num_images):
-            bboxes = [results[net_idx]['predictions'][img_idx].pred_instances.bboxes for net_idx in range(net_cnt)]
-            labels = [results[net_idx]['predictions'][img_idx].pred_instances.labels for net_idx in range(net_cnt)]
-            scores = [results[net_idx]['predictions'][img_idx].pred_instances.scores for net_idx in range(net_cnt)]
+            bboxes = [results_[net_idx]['predictions'][img_idx].pred_instances.bboxes for net_idx in range(net_cnt)]
+            labels = [results_[net_idx]['predictions'][img_idx].pred_instances.labels for net_idx in range(net_cnt)]
+            scores = [results_[net_idx]['predictions'][img_idx].pred_instances.scores for net_idx in range(net_cnt)]
 
             merged_bboxes = []
             merged_labels = []
@@ -277,7 +280,7 @@ class DataHandler(Dataset):
                         if labels[net_a][idx_a] == labels[net_b][idx_b]:
                             iou = u.calc_iou(bbox_a, bbox_b)
                             if iou > 0.05:
-                                merged_bbox = (bbox_a + bbox_b) / 2
+                                merged_bbox = bbox_a #(bbox_a + bbox_b) / 2
                                 found, _ = self.already_found(merged_bbox, merged_bboxes)
                                 if not found:
                                     merged_bboxes.append(merged_bbox)
@@ -291,9 +294,10 @@ class DataHandler(Dataset):
             instances.append(new_instance)
 
         for img_idx in range(num_images):
-            results[0]['predictions'][img_idx].pred_instances = instances[img_idx]
+            results_[0]['predictions'][img_idx].pred_instances = instances[img_idx]
 
-        return results[0]
+        results_ = results_[0]
+        return results_
 
     def compare_results(self, results):
         """
@@ -333,7 +337,7 @@ class DataHandler(Dataset):
             new_results[img_idx] = new_bboxes
         return new_results
 
-    def merge_results(self, key, bboxes, labels, scores, ids):
+    def merge_results(self, key, bboxes, labels, scores, ids, split_images_):
         """
         Recursively merges the results of the split images into the original image.
         :param key: key of the original image
@@ -357,7 +361,7 @@ class DataHandler(Dataset):
                 pairboxes = [bboxes[j] for j in id_pairs[i]]
                 pairlabels = [labels[j] for j in id_pairs[i]]
                 pairscores = [scores[j] for j in id_pairs[i]]
-                _bboxes = self.merge_results_of_four(key, pairboxes, pair)
+                _bboxes = self.merge_results_of_four(key, pairboxes, pair, split_images_)
                 _labels = np.concatenate((pairlabels[0], pairlabels[1], pairlabels[2], pairlabels[3]), axis=0)
                 _scores = np.concatenate((pairscores[0], pairscores[1], pairscores[2], pairscores[3]), axis=0)
                 new_bboxes.append(_bboxes)
@@ -370,14 +374,14 @@ class DataHandler(Dataset):
             labels = new_labels
             scores = new_scores
             for i, pair in enumerate(collapse):
-                new_height = self.split_images[key][pair[0]][0] + self.split_images[key][pair[2]][0]
-                new_width = self.split_images[key][pair[0]][1] + self.split_images[key][pair[1]][1]
+                new_height = split_images_[key][pair[0]][0] + split_images_[key][pair[2]][0]
+                new_width = split_images_[key][pair[0]][1] + split_images_[key][pair[1]][1]
                 for j in pair:
-                    self.split_images[key].pop(j)
-                self.split_images[key][i] = (new_height, new_width)
+                    split_images_[key].pop(j)
+                split_images_[key][i] = (new_height, new_width)
         return bboxes[0], labels[0], scores[0]
 
-    def merge_results_of_four(self, key, bboxes, pair):
+    def merge_results_of_four(self, key, bboxes, pair, split_images_):
         """
         Merges the results of four images into one.
         :param bboxes: results from the inference
@@ -385,7 +389,7 @@ class DataHandler(Dataset):
         :return: merged results
         """
 
-        sizes = [self.split_images[key][i] for i in pair]
+        sizes = [split_images_[key][i] for i in pair]
         w_offset = sizes[0][1]
         h_offset = sizes[0][0]
 
