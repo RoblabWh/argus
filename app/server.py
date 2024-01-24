@@ -229,7 +229,7 @@ class ArgusServer:
             print("initial_process " + str(report_id), "with_mapping: " + str(with_mapping), "with_odm: " + str(with_odm),
                     "ai_detection: " + str(ai_detection), "map_resolution: " + str(map_resolution))
 
-            thread = MapperThread(self.project_manager, self.nodeodm_manager, with_mapping, with_odm, report_id, (max_width, max_height), file_names, data)
+            thread = MapperThread(self.project_manager, self.webodm_manager, with_mapping, with_odm, report_id, (max_width, max_height), file_names, data)
             self.threads.append(thread)
             thread.start()
             print("process started")

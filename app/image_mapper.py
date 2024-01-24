@@ -11,10 +11,10 @@ from map_scaler import MapScaler
 
 
 class ImageMapper:
-    def __init__(self, project_manager, nodeodm_manager, report_id, map_width_px=2048, map_height_px=2048, blending=0.7, optimize=True,
+    def __init__(self, project_manager, webodm_manager, report_id, map_width_px=2048, map_height_px=2048, blending=0.7, optimize=True,
                  max_gimbal_pitch_deviation=10, with_odm=True):
         self.project_manager = project_manager
-        self.nodeodm_manager = nodeodm_manager
+        self.webodm_manager = webodm_manager
         self.report_id = report_id
         self.map_width_px = map_width_px
         self.map_height_px = map_height_px
@@ -279,6 +279,119 @@ class ImageMapper:
         return new_coordinates
 
     def generate_odm_orthophoto(self, filenames, image_size=0, ir=False):
+        if not self.with_odm:
+            print("Error: ODM is not enabled for this dataset!")
+            return
+
+        token=self.webodm_manager.authenticate()
+        if token is None:
+            print("Error: ODM is not enabled for this dataset!")
+            return
+        wo_project_id = self.webodm_manager.get_project_id(token, self.project_manager.get_project_name(self.report_id),
+                                                           self.project_manager.get_project_description(self.report_id))
+        if wo_project_id is None:
+            wo_project_id = self.webodm_manager.create_project(token, self.project_manager.get_project_name(self.report_id),
+                                                               self.project_manager.get_project_description(self.report_id))
+
+        #TODO scale images smaller
+
+        r = self.webodm_manager.upload_and_process_images(token, wo_project_id, filenames, fast_orthophoto=True)
+        task_id = r['id']
+        failed = False
+        while True:
+            print("waiting for ODM")
+            time.sleep(3)
+
+            status = self.webodm_manager.get_task_data_by_key(token, wo_project_id, task_id, 'status')
+            if status == 30:
+                print("Error: ODM task failed!", self.webodm_manager.get_task_data_by_key(token, wo_project_id, task_id, 'last_error'))
+                failed = True
+                break
+
+            progress = self.webodm_manager.get_task_data_by_key(token, wo_project_id, task_id, 'running_progress')
+            if progress >= 1.0:
+                break
+
+        if failed:
+            map = self.generate_map_dict_from_odm_fail(ir)
+            return map
+
+        results_folder = self.webodm_manager.download_assets_from_task(token, wo_project_id, task_id,
+                                                                       path.join(self.project_manager.projects_path,
+                                                                                 str(self.report_id)))
+
+        if results_folder is None:
+            map = self.generate_map_dict_from_odm_fail(ir)
+            return map
+
+        map = self.generate_map_dict_from_odm_results(results_folder, ir)
+
+        return map
+
+    def generate_map_dict_from_odm_results(self, results_folder, ir=False):
+        bounds = None
+        middle_gps = None
+        georef_file = 'odm_georeferencing/odm_georeferenced_model.info.json'
+        with open(path.join(results_folder, georef_file), 'r') as j:
+            contents = json.loads(j.read())
+            bbox = contents['stats']['bbox']['EPSG:4326']['bbox']
+            corner_gps_left_bottom = (bbox['minx'], bbox['miny'])
+            corner_gps_right_top = (bbox['maxx'], bbox['maxy'])
+            middle_gps = [(corner_gps_left_bottom[1] + corner_gps_right_top[1]) / 2,
+                          (corner_gps_left_bottom[0] + corner_gps_right_top[0]) / 2]
+            bounds = [[corner_gps_left_bottom[1], corner_gps_left_bottom[0]],
+                      [corner_gps_right_top[1], corner_gps_right_top[0]]]
+            # print(corner_gps_left_bottom, corner_gps_right_top)
+
+
+        map_file = 'odm_orthophoto/odm_orthophoto.tif'
+        im = cv2.imread(path.join(results_folder, map_file), cv2.IMREAD_UNCHANGED)
+        map_size = [im.shape[1], im.shape[0]]
+        filename = "odm_map.png" if not ir else "odm_map_ir.png"
+        save_path = path.join(self.project_manager.projects_path, str(self.report_id), filename)
+        cv2.imwrite(save_path, im)
+        print("Orthophoto saved under", save_path)
+
+        map = {
+            "center": middle_gps,
+            "zoom": 18,
+            "file": save_path,
+            "bounds": bounds,
+            "size": map_size,
+            "image_coordinates": None,
+            "ir": ir,
+            "odm": True,
+            "name": "RGB_ODM" if not ir else "IR_ODM",
+        }
+
+        return map
+
+    def generate_map_dict_from_odm_fail(self, ir=False):
+        lat1 = self.corner_gps_left_bottom.get_latitude()
+        long1 = self.corner_gps_left_bottom.get_longitude()
+        lat2 = self.corner_gps_right_top.get_latitude()
+        long2 = self.corner_gps_right_top.get_longitude()
+        latc = self.middle_gps.get_latitude()
+        longc = self.middle_gps.get_longitude()
+        bounds = [[lat1, long1], [lat2, long2]]
+
+        map = {
+            "center": [latc, longc],
+            "zoom": 18,
+            "file": "./static/default/ODMFehler.png",
+            "bounds": bounds,
+            "size": [1080, 1080],
+            "image_coordinates": None,
+            "ir": ir,
+            "odm": True,
+            "name": "RGB_ODM" if not ir else "IR_ODM",
+        }
+        print("Error: ODM task failed!")
+
+        return map
+
+
+    def generate_odm_orthophoto_deprecated(self, filenames, image_size=0, ir=False):
         print("-Generating ODM orthophoto...")
         if not self.with_odm:
             print("Error: ODM is not enabled for this dataset!")

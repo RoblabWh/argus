@@ -1,7 +1,10 @@
 import os
+import os.path as path
 import json
 import requests
 import time
+import cv2
+import zipfile
 
 class WebodmManager():
     def __init__(self, address="127.0.0.1", internal_port="8000", public_port="8000", username="admin", password="admin"):
@@ -11,6 +14,22 @@ class WebodmManager():
         self.username = username
         self.password = password
         self.url = "http://{}:{}".format(address, internal_port)
+
+
+    @staticmethod
+    def scale_image(size, path):
+        img = cv2.imread(os.path.abspath(path))
+        # print("Scaling image", os.path.abspath(path))
+        # print("Image size", img.shape)
+        scale_percent = size / img.shape[1]
+        dim = (int(img.shape[1] * scale_percent), int(img.shape[0] * scale_percent))
+        resized = cv2.resize(img, dim, interpolation=cv2.INTER_NEAREST)
+        img = None
+        scaled_image_path = os.path.join(os.path.dirname(path), 'proxy', os.path.basename(path))
+        cv2.imwrite(scaled_image_path, resized)
+        resized = None
+        os.system('exiftool -TagsFromFile ' + path + ' ' + scaled_image_path)
+        return scaled_image_path
 
     def authenticate(self):
         try_count = 0
@@ -62,7 +81,7 @@ class WebodmManager():
             print('Error creating project "{}"'.format(name))
             print(response.text)
 
-    def upload_and_process_images(self, token, wo_project_id, filenames):
+    def upload_and_process_images(self, token, wo_project_id, filenames, fast_orthophoto=False):
         files = []
 
         for filename in filenames:
@@ -74,9 +93,15 @@ class WebodmManager():
 
         human_readable_time_date = time.strftime("Model_%Y-%m-%d_%H-%M-%S", time.localtime())
 
-        options = json.dumps([
-            {'name': "orthophoto-resolution", 'value': 24},
-        ])
+        if fast_orthophoto:
+            options = json.dumps([
+                {'name': "auto-boundary", 'value': True},
+                {'name': "fast-orthophoto", 'value': True},
+            ])
+        else:
+            options = json.dumps([
+                {'name': "orthophoto-resolution", 'value': 24},
+            ])
 
 
         response = requests.post('{}/api/projects/{}/tasks/'.format(self.url, wo_project_id),
@@ -102,3 +127,43 @@ class WebodmManager():
             return task[key]
 
         return -1
+
+    def get_task_data_by_key(self, token, wo_project_id, task_id, key):
+        task = requests.get('{}/api/projects/{}/tasks/{}/'.format(self.url, wo_project_id, task_id),
+                                headers={'Authorization': 'JWT {}'.format(token)
+                                         }).json()
+        # print(task, flush=True)
+        return task[key]
+
+    def get_assets_from_task(self, token, wo_project_id, task_id, asset="all.zip"):
+        response = requests.get('{}/api/projects/{}/tasks/{}/download/{}'.format(self.url, wo_project_id, task_id, asset),
+                            headers={'Authorization': 'JWT {}'.format(token)})
+        if response.status_code == 200:
+            return response
+        else:
+            print("Error getting assets from task: " + str(response.status_code))
+            return None
+
+    def download_assets_from_task(self, token, wo_project_id, task_id, destination, asset="all.zip"):
+        response = requests.get('{}/api/projects/{}/tasks/{}/download/{}'.format(self.url, wo_project_id, task_id, asset),
+                                headers={'Authorization': 'JWT {}'.format(token)})
+        if response.status_code == 200:
+            print("Downloading assets from task", flush=True)
+            #save file
+            save_path = path.join(destination, asset)
+            with open(save_path, 'wb') as f:
+                f.write(response.content)
+
+            #if zip, extract
+            if asset.endswith(".zip"):
+                #create folder
+                destination = path.join(destination, asset[:-4])
+                #extract
+                with zipfile.ZipFile(save_path, 'r') as zip_ref:
+                    zip_ref.extractall(destination)
+                os.remove(save_path)
+
+            return destination
+        else:
+            print("Error getting assets from task: " + str(response.status_code), flush=True)
+            return None

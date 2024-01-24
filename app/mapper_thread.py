@@ -5,7 +5,7 @@ from image_mapper import ImageMapper
 
 
 class MapperThread(threading.Thread):
-    def __init__(self, project_manager, nodeodm_manager, fast_mapping, odm_mapping, report_id, map_resolution, file_names, data):
+    def __init__(self, project_manager, webodm_manager, fast_mapping, odm_mapping, report_id, map_resolution, file_names, data):
         self.fast_mapping = fast_mapping
         self.with_odm = odm_mapping
         self.report_id = report_id
@@ -18,7 +18,7 @@ class MapperThread(threading.Thread):
         self.message = "Step 1/2: Preprocessing"
         self.mapping = False
         self.metadata_delivered = False
-        self.image_mapper = ImageMapper(project_manager, nodeodm_manager, report_id, map_width_px=map_resolution[0],
+        self.image_mapper = ImageMapper(project_manager, webodm_manager, report_id, map_width_px=map_resolution[0],
                                             map_height_px=map_resolution[1], with_odm=odm_mapping)
         self.ir = False
         self.flight_data = None
