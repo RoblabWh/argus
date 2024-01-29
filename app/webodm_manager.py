@@ -1,10 +1,15 @@
+import multiprocessing
 import os
 import os.path as path
 import json
+
+import psutil
 import requests
 import time
 import cv2
 import zipfile
+from functools import partial
+
 
 class WebodmManager():
     def __init__(self, address="127.0.0.1", internal_port="8000", public_port="8000", username="admin", password="admin"):
@@ -167,3 +172,65 @@ class WebodmManager():
         else:
             print("Error getting assets from task: " + str(response.status_code), flush=True)
             return None
+
+
+    def scale_images(self, image_paths, image_size):
+        proxy_path = os.path.join(os.path.dirname(image_paths[0]), 'proxy')
+        if not os.path.exists(proxy_path):
+            os.mkdir(proxy_path)
+
+        print("Scaling images", image_paths)
+        scaled_image_paths = []
+        nmbr_of_processes = self.calculate_number_of_safely_usable_processes(image_paths[0])
+        print('number of processes: ', nmbr_of_processes)
+        if nmbr_of_processes < len(image_paths):
+            nmbr_of_processes = len(image_paths)
+        pool = multiprocessing.Pool(nmbr_of_processes)
+        func = partial(WebodmManager.scale_image, image_size)
+        scaled_image_paths = pool.map(func, image_paths)
+        pool.close()
+        pool.join()
+        print("scaling done")
+        return scaled_image_paths
+
+    def get_image_memory_usage(self, image_path):
+        # Get memory usage before loading the image
+        initial_memory = psutil.virtual_memory().used
+
+        # Load the image
+        loaded_image = cv2.imread(image_path)
+
+        # Get memory usage after loading the image
+        final_memory = psutil.virtual_memory().used
+
+        # Calculate the memory used by the loaded image
+        image_memory_usage = final_memory - initial_memory
+
+        # Release the memory occupied by the loaded image
+        loaded_image = None
+
+        return image_memory_usage
+
+    def calculate_number_of_safely_usable_processes(self, example_image_path):
+        example_memory_usage = self.get_image_memory_usage(example_image_path)
+        print('example_memory_usage: ', example_memory_usage, 'of image: ', example_image_path)
+        available_memory = psutil.virtual_memory().available
+
+        # Calculate the number of processes based on memory usage
+        max_processes = multiprocessing.cpu_count()
+        if max_processes > 8:
+            max_processes = max_processes - 2
+        #len(os.sched_getaffinity(0))
+        safely_usable_processes = min(max_processes, int(available_memory / example_memory_usage))
+        print('safely_usable_processes: ', safely_usable_processes, 'with max_processes: ', max_processes, 'and available_memory: ', available_memory)
+        return safely_usable_processes
+
+    def clean_up(self, image_paths):
+        for filename in image_paths:
+            try:
+                if os.path.isfile(filename) or os.path.islink(filename):
+                    os.unlink(filename)
+                elif os.path.isdir(filename):
+                    print("Directory found", filename)
+            except Exception as e:
+                print('Failed to delete %s. Reason: %s' % (filename, e))

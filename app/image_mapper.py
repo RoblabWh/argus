@@ -293,7 +293,10 @@ class ImageMapper:
             wo_project_id = self.webodm_manager.create_project(token, self.project_manager.get_project_name(self.report_id),
                                                                self.project_manager.get_project_description(self.report_id))
 
-        #TODO scale images smaller
+        tmp_filenames = list()
+        if image_size != 0:
+            filenames = self.webodm_manager.scale_images(filenames, image_size)
+            tmp_filenames = filenames
 
         r = self.webodm_manager.upload_and_process_images(token, wo_project_id, filenames, fast_orthophoto=True)
         task_id = r['id']
@@ -311,6 +314,8 @@ class ImageMapper:
             progress = self.webodm_manager.get_task_data_by_key(token, wo_project_id, task_id, 'running_progress')
             if progress >= 1.0:
                 break
+
+        self.webodm_manager.clean_up(tmp_filenames)
 
         if failed:
             map = self.generate_map_dict_from_odm_fail(ir)
