@@ -45,6 +45,13 @@
             border-radius: 4px;
             align-items: center;
         }
+
+        #map-overlay-detections-filter-collapsed {
+            position: absolute;
+            top: 64px;
+            right: 10px;
+        }
+
     </style>
 </head>
 <body>
@@ -64,6 +71,12 @@
                 <label style="margin: 0 0 0 10px; color: var(--font-color-b);">icon</label>
             </div>
         </a>
+    </div>
+    <div id="map-overlay-detections-filter">
+        <div id="map-overlay-detections-filter-collapsed">
+
+        </div>
+        <div id="map-overlay-detections-filter-expanded"></div>
     </div>
 </div>
 
@@ -243,14 +256,20 @@ var layerSwitcher = {
     {% endfor %}
 };
 
+const mapAnnotationsSwitcher = {};
+
+//var layerControl2 = L.control.layers({}, mapAnnotationsSwitcher).addTo(map);
+
+
 var layerControl = L.control.layers(baseLayers, layerSwitcher,{}, {collapsed: false}).addTo(map);
-satellite.addTo(map)
+satellite.addTo(map);
 
 drawFlightTrajectory({{ flight_trajectory |tojson }});
 
 {% if maps[0] %}
 layerSwitcher.{{maps[0].name}}_Map.addTo(map);
 {% endif %}
+
 
 
 
@@ -453,12 +472,109 @@ $('#mapOverlayStyleCheckbox').change(function(){
 });
 
 function generateObjectDetectionLayer(objectDetectionData){
-    //check if Layer already exists
+
     let layer_visibility = map.hasLayer(objectDetectionLayer);
     if(objectDetectionLayer != null){
         map.removeLayer(objectDetectionLayer);
         layerControl.removeLayer(objectDetectionLayer);
     }
+    else{
+        const ObjectDetectionControl = L.Control.extend({
+            options: {
+                detections: {}
+            },
+
+            initialize: function(options) {
+                L.Util.setOptions(this, options);
+            },
+
+            onAdd: function(map) {
+                const container = L.DomUtil.create('div', 'custom-control');
+
+                let htmlContent = `
+                    <div class="leaflet-control-layers leaflet-touch">
+                    <a id="map-overlay-detections-filter-activator" class="leaflet-control-layers-toggle" title="detections" href="#" style="background-image: url(/static/default/ObjectDetectionIcon.png)"></a>
+                    <div id="map-overlay-detections-filter-expanded" class="leaflet-control-layers-expanded leaflet-control-layers" style="display:none";>
+                    <section class="leaflet-control-layers-list">
+                    `;
+                for (var i = 0; i < detections["categories"].length; i++) {
+                    name = detections["categories"][i]["name"];
+                    //try to get the global slider, if it does not exist, skip this category
+                    if (document.getElementById("slider_" + name + "_global_threshold")){
+                        htmlContent += `
+                            <div style="display: flex; width: 100%">
+                                <input type="checkbox" id="${name}-checkbox-map"}>
+                                <label for="${name}-checkbox-map">${name}</label>
+                                <input type="range" id="${name}-slider-map" min="0" max="1" step="0.01" value="0.75" style="width:150px; margin-left: auto;">
+                            </div>
+                            `;
+                    }
+                }
+                htmlContent += `
+                </section>
+                </div>
+                </div>
+                `;
+
+
+                container.innerHTML = htmlContent;
+
+                // Prevent map click events from being triggered on the control container
+                L.DomEvent.disableClickPropagation(container);
+
+                // add on mouseenter event to show the expanded filter
+                L.DomEvent.on(container.querySelector('#map-overlay-detections-filter-activator'), 'mouseenter', function() {
+                    container.querySelector('#map-overlay-detections-filter-expanded').style.display = 'block';
+                    container.querySelector('#map-overlay-detections-filter-activator').style.display = 'none';
+                });
+
+                // add on mouseleave event to hide the expanded filter
+                L.DomEvent.on(container.querySelector('#map-overlay-detections-filter-expanded'), 'mouseleave', function() {
+                    container.querySelector('#map-overlay-detections-filter-expanded').style.display = 'none';
+                    container.querySelector('#map-overlay-detections-filter-activator').style.display = 'block';
+                });
+
+                // Event listeners for checkbox and slider changes
+                for (var i = 0; i < detections["categories"].length; i++) {
+                    name = detections["categories"][i]["name"];
+
+                    if (document.getElementById("slider_" + name + "_global_threshold")){
+                        //Set checkbox to be checked by default
+                        container.querySelector(`#${name}-checkbox-map`).checked = true;
+                        L.DomEvent.on(container.querySelector(`#${name}-checkbox-map`), 'change', this.toggleVisibilityDetection, this);
+                        L.DomEvent.on(container.querySelector(`#${name}-slider-map`), 'input', this.updateThresholdDetection, this);
+                    }
+                }
+
+                return container;
+            },
+
+            toggleVisibilityDetection: function(event) {
+                //const category = event.target.id.replace('-checkbox', '');
+                //detections[category].visible = event.target.checked;
+
+                draw_individual_objects_on_map(detections);
+
+                // Update map based on visibility changes
+                // Implement this part based on your specific use case
+            },
+
+            updateThresholdDetection: function(event) {
+
+                name = event.target.id.split("-")[0];
+                global_slider = document.getElementById("slider_" + name + "_global_threshold");
+                global_slider.value = event.target.value;
+                global_slider.dispatchEvent(new Event('change', { bubbles: true }));
+
+            }
+        });
+
+        // Add the custom control to the map
+        (new ObjectDetectionControl(objectDetectionData)).addTo(map);
+    }
+
+
+
 
     // generate a new layer
     objectDetectionLayer = L.layerGroup();
@@ -466,6 +582,15 @@ function generateObjectDetectionLayer(objectDetectionData){
 
     //loop over all detections and collect found object types per image using image_id as key
     foundObjectsByImageID = {};
+
+    let category_visibilities = {};
+    for (var i = 0; i < objectDetectionData["categories"].length; i++) {
+        name = objectDetectionData["categories"][i]["name"];
+        var checkbox = document.getElementById(name + "-checkbox-map");
+        if(checkbox != null){
+            category_visibilities[name] = checkbox.checked;
+        }
+    }
 
     for(var i=0; i< objectDetectionData.annotations.length; i++){
         imageID = objectDetectionData.annotations[i].image_id;
@@ -537,16 +662,23 @@ function generateObjectDetectionLayer(objectDetectionData){
         if(imageID in foundObjectsByImageID){
             foundCategoriesInImage = foundObjectsByImageID[imageID];
             if(foundCategoriesInImage.indexOf(1) > -1){
-                icon_filename = icon_filename + 'Brand';
+                if(category_visibilities['fire']){
+                    icon_filename = icon_filename + 'Brand';
+                }
             }
             if(foundCategoriesInImage.indexOf(2) > -1){
-                icon_filename = icon_filename + 'Fahrzeug';
+                if(category_visibilities['vehicle']){
+                    icon_filename = icon_filename + 'Fahrzeug';
+                }
             }
             if(foundCategoriesInImage.indexOf(3) > -1){
-                icon_filename = icon_filename + 'Person';
+                if(category_visibilities['human']){
+                    icon_filename = icon_filename + 'Person';
+                }
             }
         }
-        else{
+
+        if (icon_filename == ''){
             //add white circle as marker
             marker = L.circle(center, {
                 color: 'white',
@@ -594,7 +726,7 @@ function draw_individual_objects_on_map(objectDetectionData){
     //check if Layer already exists
     if(objectDetectionLayer_detail != null){
         map.removeLayer(objectDetectionLayer_detail);
-        layerControl.removeLayer(objectDetectionLayer_detail);
+        //layerControl2.removeLayer(objectDetectionLayer_detail);
     }
 
     objectDetectionLayer_detail = L.layerGroup();
@@ -604,12 +736,26 @@ function draw_individual_objects_on_map(objectDetectionData){
     let images = objectDetectionData.images;
 
     global_thresholds = get_global_thresholds();
+    let category_visibilities = {};
+
+    for (var i = 0; i < objectDetectionData["categories"].length; i++) {
+        name = objectDetectionData["categories"][i]["name"];
+        var checkbox = document.getElementById(name + "-checkbox-map");
+        if(checkbox != null){
+            category_visibilities[name] = checkbox.checked;
+        }
+    }
 
     for(var i=0; i < detections.length; i++){
         let detection = detections[i];
         let categoryID = detection.category_id;
+        let category = objectDetectionData["categories"][detection.category_id]["name"];
         let score = detection.score;
 
+
+        if(category_visibilities[category] == false){
+            continue;
+        }
 
         if(score < global_thresholds[categoryID]){
             continue;
@@ -644,7 +790,7 @@ function draw_individual_objects_on_map(objectDetectionData){
         }).addTo(objectDetectionLayer_detail);
     }
 
-    layerControl.addOverlay(objectDetectionLayer_detail , 'taktischeZeichen_positioniert');
+    //layerControl2.addOverlay(objectDetectionLayer_detail , 'taktischeZeichen_positioniert');
 }
 
 function get_object_detection_coordinate(filename, object_bounds, image_size, image_id){
@@ -705,38 +851,6 @@ function get_object_detection_coordinate(filename, object_bounds, image_size, im
 
     object_center_gps.push(image_bounds_gps[0][0] + (u[0] * factor_w) + (v[0] * factor_h));
     object_center_gps.push(image_bounds_gps[0][1] + (u[1] * factor_w) + (v[1] * factor_h));
-
-
-
-    ////Debug the image_bounds_gps by drawing a polygon
-    //let polygon = L.polygon(image_bounds_gps ,{ opacity: 0, fillOpacity: 0.5, fillColor: '#FF00FF' });
-    //polygon.addTo(objectDetectionLayer_detail);
-
-    ////Also add a marker in each corner of the image
-    //let marker = L.circle(image_bounds_gps[0], {
-    //    color: 'white',
-    //    fillColor: 'white',
-    //    fillOpacity: 1,
-    //    radius: 2
-    //}).addTo(objectDetectionLayer_detail);
-    //marker = L.circle(image_bounds_gps[1], {
-    //    color: 'white',
-    //    fillColor: 'lightgray',
-    //    fillOpacity: 1,
-    //    radius: 2
-    //}).addTo(objectDetectionLayer_detail);
-    //marker = L.circle(image_bounds_gps[2], {
-    //    color: 'white',
-    //    fillColor: 'gray',
-    //    fillOpacity: 1,
-    //    radius: 2
-    //}).addTo(objectDetectionLayer_detail);
-    //marker = L.circle(image_bounds_gps[3], {
-    //    color: 'white',
-    //    fillColor: 'black',
-    //    fillOpacity: 1,
-    //    radius: 2
-    //}).addTo(objectDetectionLayer_detail);
 
 
     return object_center_gps;

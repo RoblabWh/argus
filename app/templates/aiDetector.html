@@ -179,7 +179,7 @@
             tbl.insertRow().insertCell().innerHTML="";
 
             //create a selection of all images that have detections by categrory
-            var imagesWithDetectionsByCategory = {};
+            const imagesWithDetectionsByCategory = {};
             //create an empy list for each category
             for (let i = 0; i < detectionData["categories"].length; i++) {
                 var category = detectionData["categories"][i];
@@ -223,7 +223,11 @@
                     slider.setAttribute("value", 0.3);
                     (function(category, slider){
                         slider.onchange = function(x) {
-                        updateSubTableThreshold(category.name, x.target.value);
+                            updateSubTableThreshold(category.name, x.target.value);
+                            map_slider = document.getElementById(category.name + "-slider-map");
+                            if (map_slider != null){
+                                map_slider.value = x.target.value;
+                            }
                         }
                     })(category, slider);
                     row.insertCell().append(slider);//category.lowest_score;
