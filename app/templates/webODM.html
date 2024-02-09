@@ -66,19 +66,20 @@
                 thead.appendChild(tr);
                 table.appendChild(thead);
                 for (var i = response.tasks.length-1; i >= 0; i--) {
+                    let task = response.tasks[i];
                     var tr = document.createElement('tr');
                     var td = document.createElement('td');
-                    td.appendChild(document.createTextNode(response.tasks[i].name));
+                    td.appendChild(document.createTextNode(task.name));
                     tr.appendChild(td);
                     td = document.createElement('td');
-                    reformatDate = new Date(response.tasks[i].created_at);
+                    reformatDate = new Date(task.created_at);
                     dateStr = reformatDate.toLocaleDateString() + " " + reformatDate.toLocaleTimeString();
                     td.appendChild(document.createTextNode(dateStr));
                     tr.appendChild(td);
                     tbody.appendChild(tr);
                     // button to open 3D model of task
                     td = document.createElement('td');
-                    td.appendChild(document.createTextNode(response.tasks[i].images_count));
+                    td.appendChild(document.createTextNode(task.images_count));
                     tr.appendChild(td);
                     td = document.createElement('td');
                     td.style.textAlign = "center";
@@ -87,8 +88,10 @@
                     var button = document.createElement('button');
                     button.className = "big_button";
                     button.style.width = "95%";
-
-                    switch (response.tasks[i].status) {
+                    if(task.status == null){
+                        task.status = 10;
+                    }
+                    switch (task.status) {
                         case 10:
                         case 20:
                             //processing
@@ -107,16 +110,19 @@
                                 return function() {
                                     openModelInWebODMByID(id);
                                 };
-                            })(response.tasks[i].id);
-                            //button.onclick = function() {
-                             //   openModelInWebODMByID(response.tasks[i].id);
-                            //};
+                            })(task.id);
                             break;
                         case 50:
                             button.innerHTML = "canceled";
                             button.disabled = true;
                             break;
-
+                        default:
+                            button.innerHTML = "default Open 3D Model";
+                            button.onclick = (function(id) {
+                                return function() {
+                                    openModelInWebODMByID(id);
+                                };
+                            })(task.id);
                     }
                     td.appendChild(button);
                     tr.appendChild(td);

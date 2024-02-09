@@ -235,6 +235,11 @@ class WebodmManager():
         return safely_usable_processes
 
     def clean_up(self, image_paths):
+        if not image_paths:
+            return
+        if len(image_paths) == 0:
+            return
+
         for filename in image_paths:
             try:
                 if os.path.isfile(filename) or os.path.islink(filename):
@@ -243,3 +248,17 @@ class WebodmManager():
                     print("Directory found", filename)
             except Exception as e:
                 print('Failed to delete %s. Reason: %s' % (filename, e))
+
+        proxy_folder = os.path.dirname(image_paths[0])
+        if proxy_folder.endswith('proxy'):
+            files = os.listdir(proxy_folder)
+            for file in files:
+                file_path = os.path.join(proxy_folder, file)
+                try:
+                    if os.path.isfile(file_path) or os.path.islink(file_path):
+                        os.unlink(file_path)
+                    elif os.path.isdir(file_path):
+                        print("Directory found", file_path)
+                except Exception as e:
+                    print('Failed to delete %s. Reason: %s' % (file_path, e))
+            os.rmdir(proxy_folder)
