@@ -45,7 +45,7 @@ fi
 set -e
 
 # add docker compose overlay yml for gpu if detected
-docker_compose="docker compose -f $ARGUS_PATH/docker-compose.yml"
+docker_compose="docker compose -f $ARGUS_PATH/docker-compose.yml -f $ARGUS_PATH/docker-compose.nodeodm.yml -f $ARGUS_PATH/docker-compose.webodm.yml"
 if $ARGUS_GPU_NVIDIA; then
 	echo "Using NVIDIA GPU"
 	docker_compose="$docker_compose -f $ARGUS_PATH/docker-compose.gpu.nvidia.yml"

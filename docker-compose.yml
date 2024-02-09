@@ -1,7 +1,3 @@
-include:
-  - docker-compose.nodeodm.yml
-  - docker-compose.webodm.yml
-
 services:
   argus:
     image: argus
