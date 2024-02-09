@@ -108,6 +108,8 @@ class ArgusServer:
                               view_func=self.webodm_project_exists)
         self.app.add_url_rule('/get_webodm_last_task/<int:report_id>', methods=['GET', 'POST'],
                               view_func=self.get_webodm_last_task)
+        self.app.add_url_rule('/get_webodm_all_tasks/<int:report_id>', methods=['GET', 'POST'],
+                                view_func=self.get_webodm_all_tasks)
         self.app.add_url_rule('/<int:report_id>/prepare_download', methods=['GET', 'POST'],
                               view_func=self.download_prepare_project)
         self.app.add_url_rule('/<int:report_id>/download', methods=['GET', 'POST'],
@@ -420,7 +422,7 @@ class ArgusServer:
         if wo_project_id is None:
             return jsonify({"success": False})
         else:
-            return jsonify({"success": True})
+            return jsonify({"success": True, "project_id": wo_project_id, "port": self.webodm_manager.public_port})
 
 
     def get_webodm_port(self):
@@ -437,6 +439,18 @@ class ArgusServer:
             id = self.webodm_manager.get_last_task_data(token, wo_project_id, "id")
             print("wo_project_id: " + str(wo_project_id) + " - id: " + str(id), flush=True)
             return jsonify({"success": True, "project_id": wo_project_id, "task_id": id, "port": self.webodm_manager.public_port})
+
+    def get_webodm_all_tasks(self, report_id):
+        token = self.webodm_manager.authenticate()
+        if token is None:
+            return jsonify({"success": False})
+        wo_project_id = self.webodm_manager.get_project_id(token, self.project_manager.get_project_name(report_id), self.project_manager.get_project_description(report_id))
+        if wo_project_id is None:
+            return jsonify({"success": False})
+
+        tasks = self.webodm_manager.get_all_tasks(token, wo_project_id)
+        return jsonify({"success": True,"tasks": tasks})
+
 
     def download_prepare_project(self, report_id):
         download_package = request.form.get('export-chooser')

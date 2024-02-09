@@ -96,14 +96,16 @@ class WebodmManager():
             file = ('images', (os.path.basename(filename), open(filename, 'rb'), 'image/{}'.format(ext)))
             files.append(file)
 
-        human_readable_time_date = time.strftime("Model_%Y-%m-%d_%H-%M-%S", time.localtime())
+        human_readable_time_date = time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime())
 
         if fast_orthophoto:
+            name = "Fast-Model_" + human_readable_time_date
             options = json.dumps([
                 {'name': "auto-boundary", 'value': True},
                 {'name': "fast-orthophoto", 'value': True},
             ])
         else:
+            name = "Full-3D-Model_" + human_readable_time_date
             options = json.dumps([
                 {'name': "orthophoto-resolution", 'value': 24},
             ])
@@ -113,9 +115,16 @@ class WebodmManager():
                             headers={'Authorization': 'JWT {}'.format(token)},
                             files=files,
                             data={
-                                'name': human_readable_time_date,
+                                'name': name,
                                 'options': options
                             }).json()
+        return response
+
+    def get_all_tasks(self, token, wo_project_id):
+        response = requests.get('{}/api/projects/{}/tasks/'.format(self.url, wo_project_id),
+                            headers={'Authorization': 'JWT {}'.format(token)
+                            }).json()
+        response = sorted(response, key=lambda k: k['created_at'])
         return response
 
     def get_last_task_data(self, token, wo_project_id, key):

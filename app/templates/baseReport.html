@@ -112,6 +112,7 @@
         .big_button:disabled{
           background-color: var(--bg-color-a);
           color: var(--bg-color-b);
+          cursor: not-allowed;
         }
 
         .map_container {
@@ -267,6 +268,7 @@
                     document.getElementById("progress-bar-text").innerHTML = "DONE";
                     $.get( "/stop_mapping_thread/{{ id }}");
                     window.clearInterval(intervalID);
+                    updateODMTasksTable();
                 }
                 // jetzt die Liste mit boolean durchgehen und bei jedem der true ist die karte laden.
                 for (var i = 0; i < maps_done.length; i++) {
@@ -285,6 +287,7 @@
                                 }
                             }
                          });
+                         updateODMTasksTable();
                     }
                 }
 

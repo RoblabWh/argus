@@ -8,16 +8,131 @@
 </head>
 <body>
 <script>
+    var webODMProjectID = null;
+    var webODMPort = null;
+
     //check if WebODM project already exists
     //if so change button to show in webODM
-    $.get('webodm_project_exists/{{ id }}', function(response) {
-        if (response.success) {
-            document.getElementById("processInWebODMButton").innerHTML = "reprocess 3D Model with WebODM";
-        } else {
-            document.getElementById("processInWebODMButton").innerHTML = "generate 3D Model with WebODM";
-            document.getElementById("openWebODMModelButton").disabled = true;
+    function checkForWebODMProject(){
+        $.get('webodm_project_exists/{{ id }}', function(response) {
+            if (response.success) {
+                webODMProjectID = response.project_id;
+                webODMPort = response.port;
+                document.getElementById("processInWebODMButton").innerHTML = "reprocess 3D Model with WebODM";
+                document.getElementById("showInWebODM").setAttribute("style", "display: block");
+
+                generateODMTasksTable();
+            } else {
+                document.getElementById("processInWebODMButton").innerHTML = "generate 3D Model with WebODM";
+                document.getElementById("showInWebODM").setAttribute("style", "display: none");
+            }
+        });
+    }
+
+    checkForWebODMProject();
+
+    function updateODMTasksTable() {
+        if (webODMProjectID != null) {
+            generateODMTasksTable();
+        } else{
+            checkForWebODMProject();
         }
-    });
+    }
+
+    function generateODMTasksTable() {
+        $.get('get_webodm_all_tasks/{{ id }}', function(response) {
+            if (response.success) {
+                console.log(response.tasks);
+                var table = document.createElement('table');
+                table.style.width = '100%';
+                var thead = document.createElement('thead');
+                var tbody = document.createElement('tbody');
+                var tr = document.createElement('tr');
+                var th = document.createElement('th');
+                th.appendChild(document.createTextNode('Name'));
+                tr.appendChild(th);
+                th = document.createElement('th');
+                th.appendChild(document.createTextNode('Created at'));
+                tr.appendChild(th);
+                th = document.createElement('th');
+                th.appendChild(document.createTextNode('Images'));
+                tr.appendChild(th);
+                th = document.createElement('th');
+                th.appendChild(document.createTextNode('3D Model'));
+                tr.appendChild(th);
+                thead.appendChild(tr);
+                tr = document.createElement('tr');
+                tr.style.height = "16px";
+                thead.appendChild(tr);
+                table.appendChild(thead);
+                for (var i = response.tasks.length-1; i >= 0; i--) {
+                    var tr = document.createElement('tr');
+                    var td = document.createElement('td');
+                    td.appendChild(document.createTextNode(response.tasks[i].name));
+                    tr.appendChild(td);
+                    td = document.createElement('td');
+                    reformatDate = new Date(response.tasks[i].created_at);
+                    dateStr = reformatDate.toLocaleDateString() + " " + reformatDate.toLocaleTimeString();
+                    td.appendChild(document.createTextNode(dateStr));
+                    tr.appendChild(td);
+                    tbody.appendChild(tr);
+                    // button to open 3D model of task
+                    td = document.createElement('td');
+                    td.appendChild(document.createTextNode(response.tasks[i].images_count));
+                    tr.appendChild(td);
+                    td = document.createElement('td');
+                    td.style.textAlign = "center";
+                    td.style.width = "33%";
+                    td.style.maxWidth = "300px";
+                    var button = document.createElement('button');
+                    button.className = "big_button";
+                    button.style.width = "95%";
+
+                    switch (response.tasks[i].status) {
+                        case 10:
+                        case 20:
+                            //processing
+                            button.innerHTML = "Processing";
+                            button.disabled = true;
+                            break;
+                        case 30:
+                            button.innerHTML = "Failed";
+                            button.disabled = true;
+                            button.style.backgroundColor = "var(--accent-color-red)";
+                            button.style.color = "var(--bg-color-a)";
+                            break;
+                        case 40:
+                            button.innerHTML = "Open 3D Model";
+                            button.onclick = (function(id) {
+                                return function() {
+                                    openModelInWebODMByID(id);
+                                };
+                            })(response.tasks[i].id);
+                            //button.onclick = function() {
+                             //   openModelInWebODMByID(response.tasks[i].id);
+                            //};
+                            break;
+                        case 50:
+                            button.innerHTML = "canceled";
+                            button.disabled = true;
+                            break;
+
+                    }
+                    td.appendChild(button);
+                    tr.appendChild(td);
+                }
+                table.appendChild(tbody);
+
+                var oldTable = document.getElementById("webODMTasksTable");
+                if (oldTable != null) {
+                    oldTable.remove();
+                }
+                table.setAttribute("id", "webODMTasksTable");
+
+                document.getElementById("WebODMContentContainer").appendChild(table);
+            }
+        });
+    }
 
     function processInWebODM(){
         //Deactivate button
@@ -33,8 +148,10 @@
                 url = window.location.protocol + "//" + window.location.hostname + ":" + response.port;
                 console.log(url);
                 window.open(url, '_blank').focus();
+                updateODMTasksTable();
             } else {
                 document.getElementById("processInWebODMButton").innerHTML = "Failed to send to WebODM";
+                updateODMTasksTable();
             }
         });
     }
@@ -64,12 +181,27 @@
         });
     }
 
+    function openModelInWebODMByID(taskID){
+        console.log("openModelInWebODMByID", taskID);
+        url = window.location.protocol + "//" + window.location.hostname + ":" + webODMPort + "/3d/project/" + webODMProjectID + "/task/" + taskID;
+        console.log(url);
+        window.open(url, '_blank').focus();
+    }
+
+    function openWebODMinNewTab(){
+        url = window.location.protocol + "//" + window.location.hostname + ":" + webODMPort;
+        console.log(url);
+        window.open(url, '_blank').focus();
+    }
+
 </script>
-<div style="display: flex; justify-content: space-between">
-  <a style="margin: auto 0"> Use WebODM to calculate a 3d Model or point cloud based on the rgb images </a>
-  <button id="processInWebODMButton" onClick="processInWebODM()" class="big_button" style="margin: 0 10px"> calculate 3D Model </button>
-  <button id="openWebODMModelButton" onClick="openModelInWebODM()" class="big_button" style="margin: 0 0 0 10px"> open 3D Model </button>
-</div>
+<div id="WebODMContentContainer" style="width: 100%">
+    <div style="display: flex; justify-content: space-between; padding-bottom: 16px">
+        <a style="margin: auto 0"> Use WebODM to calculate a 3d Model or point cloud based on the rgb images </a>
+        <button id="processInWebODMButton" onClick="processInWebODM()" class="big_button" style="margin: 0 10px"> calculate 3D Model </button>
+        <button id="showInWebODM" onClick="openWebODMinNewTab()" class="big_button" style="margin: 0 0 0 10px"> show in WebODM </button>
+    </div>
+  </div>
 
 </body>
 </html>
