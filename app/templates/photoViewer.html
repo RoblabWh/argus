@@ -307,14 +307,12 @@
         justify-self: start;
         margin: 0 0 auto;
         display: grid;
-        grid-template-columns: 1fr 1fr 1fr 1fr;
+        grid-template-columns: 1fr 1fr 1fr;
         grid-template-rows: auto;
         grid-template-areas:
-            "a0 a0 a0 a0"
-            "b0 b0 b0 b1"
-            "c0 c0 c0 c0"
-            "d0 d1 d1 d1"
-            "e0 e1 e2 e3";
+            "a0 a1 a1"
+            "b0 b1 b1"
+            "c0 c0 c0";
         gap: 5px 5px;
         margin-top: 0px;
         padding: 16px;
@@ -349,6 +347,13 @@
     .slideshow-settings-item > div {
         justify-self: start;
         width: 100%;
+    }
+
+    .slideshow-settings-inside-contianer{
+        background-color: var(--bg-color-page);
+        color: var(--font-color-a);
+        border-radius: 6px;
+        padding: 6px;
     }
 
     .setting-fade {
@@ -532,34 +537,89 @@
     }
 
 
+    .range_container {
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        margin: 16px auto;
+    }
+
+    .sliders_control {
+        position: relative;
+        min-height: 30px;
+    }
+
+
+    .sliders_control input[type=range]::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        pointer-events: all;
+        width: 11px;
+        height: 24px;
+        cursor: pointer;
+        background-color: var(--accent-color-interaction);
+        z-index: 10;
+    }
+
+    .sliders_control input[type=range]::-moz-range-thumb {
+        -webkit-appearance: none;
+        pointer-events: all;
+        width: 11px;
+        height: 24px;
+        cursor: pointer;
+        background-color: var(--accent-color-interaction);
+        z-index: 10;
+    }
+
+    .sliders_control input[type="range"] {
+        -webkit-appearance: none;
+        appearance: none;
+        height: 20px;
+        width: 100%;
+        position: absolute;
+        background-color: #C6C6C6;
+        pointer-events: none;
+        z-index: 4;
+    }
+
+    #fromSlider{
+        z-index: 10;
+        background: rgba(0,0,0,0);
+    }
+
+    #toSlider{
+        z-index: 10;
+    }
+
+
+
+    .bubble {
+        background: var(--bg-color-b);
+        color: var(--font-color-b);
+        padding: 4px 12px;
+        position: absolute;
+        border-radius: 4px;
+        left: 50%;
+        top: 26px;
+        transform: translateX(-50%);
+    }
+    .bubble::after {
+        content: "";
+        position: absolute;
+        width: 2px;
+        height: 2px;
+        background: var(--bg-color-b);
+        top: -1px;
+        left: 50%;
+    }
 
 
 </style>
 
 
 <script>
-    var displayingIR = false;
-    var displayingAI = false;
-    var lastSlide = 0;
 
-    var slideshowCouples = {{ slide_file_paths | tojson}};
 
-    var ImageRGB_missingCounterpart = new Image();
-    ImageRGB_missingCounterpart.src = "{{ url_for('static', filename='default/missingCounterpartRGB.JPG') }}";
-    ImageRGB_missingCounterpart.className = "dynamic-images-rgb";
-    var ImageIR_missingCounterpart = new Image()
-    ImageIR_missingCounterpart.src = "{{ url_for('static', filename='default/missingCounterpartIR.JPG') }}";
-    ImageIR_missingCounterpart.className = "ir-image";
-
-    var allImages = [];
-
-    for(var i = 0; i < slideshowCouples.length; i++){
-        var imagePlacerholders = [];
-        for(var j = 0; j < slideshowCouples[i].length; j++){
-            imagePlacerholders.push(null);
-        }
-        allImages.push(imagePlacerholders);
-    }
+    
 
     function plusSlides(n) {
       slideIndex += n;
@@ -648,24 +708,24 @@
 
 
     function showSlideIR(n) {
-      var details = document.getElementById("gallery-details");
-      if(!details.open){
-        details.open = true;
-      }
-      slideshowContainer.scrollIntoView({
-          behavior: "smooth",
-          block: "start",
-          inline: "nearest"
-      });
-      if(n >= slideshowCouples.length){
-        n = 0;
-      } else if (n < 0){
-        n = slideshowCouples.length - 1;
-      }
-      console.log(n);
-      slideIndex = n
-      activateIR();
-      showCurrentSlide();
+        var details = document.getElementById("gallery-details");
+        if(!details.open){
+            details.open = true;
+        }
+        slideshowContainer.scrollIntoView({
+            behavior: "smooth",
+            block: "start",
+            inline: "nearest"
+        });
+        if(n >= slideshowCouples.length){
+            n = 0;
+        } else if (n < 0){
+            n = slideshowCouples.length - 1;
+        }
+        console.log(n);
+        slideIndex = n
+        activateIR();
+        showCurrentSlide();
     }
 
 
@@ -674,14 +734,10 @@
         if(!details.open){
             details.open = true;
         }
-        {% if has_ir %}
-        currentIROpacity = document.getElementById("irOpacityRange").value/100;
-        applyOpacity(currentIROpacity);//checkIR();
-        {% endif %}
 
-        checkbox = document.getElementById("magnifierCheckbox");
+
         demagnify();
-        console.log(slideIndex);
+        //console.log(slideIndex);
 
         dynamicCanvas = document.getElementById("dynamic-canvas");
 
@@ -689,9 +745,9 @@
         dynamicFilename = document.getElementById("dynamic-filename-RGB");
         dynamicFilename.innerHTML = "RGB: " + currentImageName;
 
-        currentImageNameIR = slideshowCouples[slideIndex][1].substring(slideshowCouples[slideIndex][0].lastIndexOf('/') + 1);
+        currentImageNameIR = slideshowCouples[slideIndex][1].substring(slideshowCouples[slideIndex][1].lastIndexOf('/') + 1);
         dynamicFilenameIR = document.getElementById("dynamic-filename-IR");
-        dynamicFilenameIR.innerHTML = "IR: " + currentImageName;
+        dynamicFilenameIR.innerHTML = "IR: " + currentImageNameIR;
 
         dynamicFilenameUnprocessed = document.getElementById("dynamic-filename-Unprocessed");
         dynamicFilenameUnprocessed.innerHTML = "Unprocessed: ";
@@ -714,13 +770,8 @@
         }
 
         imageRGB = allImages[slideIndex][0];
-        imageIR = allImages[slideIndex][1];
         imageUnprocessed = allImages[slideIndex][2];
         currentImagePaths = slideshowCouples[slideIndex];
-
-        console.log(currentImagePaths);
-        console.log(currentImagePaths[0]);
-        console.log(imageRGB);
 
         var noRGBImageOnShow = false;
 
@@ -743,8 +794,7 @@
                     }
 
                     zoomValue = document.getElementById("zoomRange").value/10;
-                    checkbox = document.getElementById("magnifierCheckbox");
-                    if(checkbox.checked){
+                    if(magnifiying){
                         magnify(slideIndex, zoomValue);
                     }
                 };
@@ -758,59 +808,6 @@
             }
         }
 
-        if(imageIR == null){
-            if(currentImagePaths[1] != ""){
-                imageIR = new Image();
-                //TODO use global_for ?
-                imageIR.src = currentImagePaths[1];
-                imageIR.classList.add("ir-image");
-                allImages[slideIndex][1] = imageIR;
-
-                imageIR.addEventListener("mousemove", function(e) {
-                if($('#temperatureCheckbox').is(':checked')){
-                    var img = document.getElementById('dynamic-image-IR').getElementsByTagName('img')[0];
-                    var tempGlass = document.getElementById('dynamic-temp-glass');
-                    tempGlass.style.opacity = 1.0;
-                    var canvas = document.createElement('canvas');
-                    canvas.width = img.width;
-                    canvas.height = img.height;
-                    canvas.getContext('2d').drawImage(img, 0, 0, img.width, img.height);
-                    var p = canvas.getContext('2d').getImageData(e.offsetX, e.offsetY, 1, 1).data;
-                    var coord = "x: " + e.offsetX + " ,y: " + e.offsetY;
-                    // If transparency on the image
-                    if ((p[0] == 0) && (p[1] == 0) && (p[2] == 0) && (p[3] == 0)) {
-                        coord += " (Transparent color detected, cannot be converted to HEX)";
-                    }
-                    var hex = "#" + ("000000" + rgbToHex(p[0], p[1], p[2])).slice(-6);
-                    var closestColorIndex = color_closest(p[0], p[1], p[2]);
-                    var temp = calc_temp_from_percentage(closestColorIndex/gradient_lut.length);
-                    tempGlass.style.backgroundColor = hex;
-                    tempGlass.innerHTML = "  ~ " +temp + "°C  ";
-
-                    $('#dynamic-temp-glass').css({
-                        left: e.offsetX + 20 + img.offsetLeft,
-                        top: e.offsetY + document.body.scrollTop + img.offsetTop,
-                    });
-                    if ((p[0]*0.299 + p[1]*0.587 + p[3]*0.114) > 186){
-                        tempGlass.style.color = "#000000";
-                        tempGlass.style.borderColor = "#000000";
-                    } else {
-                        tempGlass.style.color = "#ffffff";
-                        tempGlass.style.borderColor = "#ffffff";
-                    }
-                 } else {
-                    var tempGlass = document.getElementById('dynamic-temp-glass');
-                    tempGlass.style.opacity = 0.0;
-                    this.style.backgroundColor = "transparent";
-                    this.innerHTML = "";
-                 }
-            });
-
-            }
-            else{
-                imageIR = ImageIR_missingCounterpart;
-            }
-        }
 
         if(imageUnprocessed == null){
             if(currentImagePaths[2] != "" && currentImagePaths[2] != null){
@@ -827,18 +824,14 @@
         }
         a.appendChild(imageRGB);
 
-
-        div = document.getElementById("dynamic-image-IR");
-        irImages = div.getElementsByClassName("ir-image");
-        for (var i = 0; i < irImages.length; i++) {
-            irImages[i].remove();
-        }
-        div.insertBefore(imageIR, div.childNodes[0]);
+        {% if has_ir %}
+        showCurrentSlideIR();
+        {% endif %}
 
 
 
         zoomValue = document.getElementById("zoomRange").value/10;
-        if(checkbox.checked){
+        if(magnifiying){
             magnify(slideIndex, zoomValue);
         }
 
@@ -904,90 +897,137 @@
         }
     }
 
+    function showCurrentSlideIR() {
+
+        // remove old images if there are some displayed
+        div = document.getElementById("dynamic-image-IR");
+        irImages = div.getElementsByClassName("ir-image");
+        for (var i = 0; i < irImages.length; i++) {
+            irImages[i].remove();
+        }
+
+
+
+        currentImagePaths = slideshowCouples[slideIndex];
+        // get status of checkbox irModeCehckbox
+        mode = document.getElementById("irModeCheckbox").checked;
+        console.log("Ir analysis Mode: " + mode);
+
+        if(!mode){
+            imageIR = allImages[slideIndex][1];
+
+            if(imageIR == null){
+                if(currentImagePaths[1] != ""){
+                    imageIR = new Image();
+                    //TODO use global_for ?
+                    imageIR.src = currentImagePaths[1];
+                    imageIR.classList.add("ir-image");
+                    allImages[slideIndex][1] = imageIR;
+
+                }
+                else{
+                    imageIR = ImageIR_missingCounterpart;
+                }
+            }
+            deactivateIRCanvas();
+            div.insertBefore(imageIR, div.childNodes[0]);
+
+        } else {
+            let currentImageNameIRPath = slideshowCouples[slideIndex][1];
+            loadImagesMatrix(currentImageNameIRPath);
+            activateIRCanvas();
+        }
+
+
+
+        currentIROpacity = document.getElementById("irOpacityRange").value/100;
+        applyOpacity(currentIROpacity);
+    }
+
 
 
     // magnify hover
     function magnify(imgNbr, zoom) {
-      var img, glass, w, h, bw, annotationCanvas;
-      demagnify();
+        var img, glass, w, h, bw, annotationCanvas;
+        demagnify();
 
-      img = document.getElementById("dynamic-slide").getElementsByTagName('img')[0];
-      annotationCanvas = document.getElementById("dynamic-slide").getElementsByTagName('canvas')[0];
+        img = document.getElementById("dynamic-slide").getElementsByTagName('img')[0];
+        annotationCanvas = document.getElementById("dynamic-slide").getElementsByTagName('canvas')[0];
 
-      /*create magnifier glass:*/
-      glass = document.createElement("DIV");
-      glass.setAttribute("class", "img-magnifier-glass");
-      glass.setAttribute("id", "magnifying-glass-id-for-deleting");
-      /*insert magnifier glass:*/
-      annotationCanvas.parentElement.insertBefore(glass, annotationCanvas);
-      /*set background properties for the magnifier glass:*/
-      glass.style.backgroundImage = "url('" + img.src + "')";
-      glass.style.backgroundRepeat = "no-repeat";
-      console.log(img.width + " " + img.height);
-      glass.style.backgroundSize = (img.width * zoom) + "px " + (img.height * zoom) + "px";
-      bw = 3;
-      w = glass.offsetWidth / 2;
-      h = glass.offsetHeight / 2;
+        /*create magnifier glass:*/
+        glass = document.createElement("DIV");
+        glass.setAttribute("class", "img-magnifier-glass");
+        glass.setAttribute("id", "magnifying-glass-id-for-deleting");
+        /*insert magnifier glass:*/
+        annotationCanvas.parentElement.insertBefore(glass, annotationCanvas);
+        /*set background properties for the magnifier glass:*/
+        glass.style.backgroundImage = "url('" + img.src + "')";
+        glass.style.backgroundRepeat = "no-repeat";
+        console.log(img.width + " " + img.height);
+        glass.style.backgroundSize = (img.width * zoom) + "px " + (img.height * zoom) + "px";
+        bw = 3;
+        w = glass.offsetWidth / 2;
+        h = glass.offsetHeight / 2;
 
-      /*execute a function when someone moves the magnifier glass over the image:*/
-      glass.addEventListener("mousemove", moveMagnifier);
-      annotationCanvas.addEventListener("mousemove", moveMagnifier);
-      img.addEventListener("mousemove", moveMagnifier);
+        /*execute a function when someone moves the magnifier glass over the image:*/
+        glass.addEventListener("mousemove", moveMagnifier);
+        annotationCanvas.addEventListener("mousemove", moveMagnifier);
+        img.addEventListener("mousemove", moveMagnifier);
 
-      /*and also for touch screens:*/
-      glass.addEventListener("touchmove", moveMagnifier);
-      annotationCanvas.addEventListener("touchmove", moveMagnifier);
-      img.addEventListener("touchmove", moveMagnifier);
-      function moveMagnifier(e) {
-        var pos, x, y;
-        /*prevent any other actions that may occur when moving over the image*/
-        e.preventDefault();
-        /*get the cursor's x and y positions:*/
-        pos = getCursorPos(e);
-        x = pos.x;
-        y = pos.y;
-        /*prevent the magnifier glass from being positioned outside the image:*/
-        if (x > img.width - (w / zoom) || x < (w / zoom) || y > img.height - (h / zoom) || y < (h / zoom)) {
-            glass.setAttribute("class", "img-magnifier-hide");
-        } else {
-            glass.setAttribute("class", "img-magnifier-glass");
+        /*and also for touch screens:*/
+        glass.addEventListener("touchmove", moveMagnifier);
+        annotationCanvas.addEventListener("touchmove", moveMagnifier);
+        img.addEventListener("touchmove", moveMagnifier);
+        function moveMagnifier(e) {
+            var pos, x, y;
+            /*prevent any other actions that may occur when moving over the image*/
+            e.preventDefault();
+            /*get the cursor's x and y positions:*/
+            pos = getCursorPos(e);
+            x = pos.x;
+            y = pos.y;
+            /*prevent the magnifier glass from being positioned outside the image:*/
+            if (x > img.width - (w / zoom) || x < (w / zoom) || y > img.height - (h / zoom) || y < (h / zoom)) {
+                glass.setAttribute("class", "img-magnifier-hide");
+            } else {
+                glass.setAttribute("class", "img-magnifier-glass");
+            }
+
+            /*set the position of the magnifier glass:*/
+            glass.style.left = (x - w) + "px";
+            glass.style.top = (y - h) + "px";
+
+            /*display what the magnifier glass "sees":*/
+            glass.style.backgroundPosition = "-" + ((x * zoom) - w + bw) + "px -" + ((y * zoom) - h + bw) + "px";
         }
+        function getCursorPos(e) {
+            var a, x = 0, y = 0;
+            e = e || window.event;
+            /*get the x and y positions of the image:*/
+            a = img.getBoundingClientRect();
+            /*calculate the cursor's x and y coordinates, relative to the image:*/
+            x = e.pageX - a.left;
+            y = e.pageY - a.top;
+            /*consider any page scrolling:*/
+            x = x - window.pageXOffset;
+            y = y - window.pageYOffset;
+            return {x : x, y : y};
+        }
+    }
 
-        /*set the position of the magnifier glass:*/
-        glass.style.left = (x - w) + "px";
-        glass.style.top = (y - h) + "px";
-
-        /*display what the magnifier glass "sees":*/
-        glass.style.backgroundPosition = "-" + ((x * zoom) - w + bw) + "px -" + ((y * zoom) - h + bw) + "px";
-      }
-      function getCursorPos(e) {
-        var a, x = 0, y = 0;
-        e = e || window.event;
-        /*get the x and y positions of the image:*/
-        a = img.getBoundingClientRect();
-        /*calculate the cursor's x and y coordinates, relative to the image:*/
-        x = e.pageX - a.left;
-        y = e.pageY - a.top;
-        /*consider any page scrolling:*/
-        x = x - window.pageXOffset;
-        y = y - window.pageYOffset;
-        return {x : x, y : y};
-      }
-      }
-
-      function demagnify() {
+    function demagnify() {
         glass = document.getElementById("magnifying-glass-id-for-deleting");
         if(glass){
             glass.parentNode.removeChild(glass);
-            }
-      }
+        }
+    }
 
-      function remagnify() {
-      if(!displayingIR){
+    function remagnify() {
+        if(!displayingIR){
             zoomValue = document.getElementById("zoomRange").value/10;
             magnify(slideIndex, zoomValue);
         }
-      }
+    }
 
     function openSettingsEvent(tablinkID, divName){
         tablink = document.getElementById(tablinkID);
@@ -1008,7 +1048,6 @@
       selctedLink.className += " active";
     }
 
-    var slideshowCouples = {{ slide_file_paths|tojson }};
 
     function getSlideIndexByFilename(filename, imagetype){
         var index = -1;
@@ -1049,6 +1088,252 @@
         return path;
     }
 
+
+    function activateIRCanvas(){
+        var canvasIRTest = document.getElementById('canvasIRTest');
+        canvasIRTest.style.display = "block";
+        //Remove all event listeners from canvas
+        //var newCanvas = canvasIRTest.cloneNode(true);
+        //canvasIRTest.parentNode.replaceChild(newCanvas, canvasIRTest);
+        //canvasIRTest = newCanvas;
+
+        
+    }
+
+    function deactivateIRCanvas(){
+        var canvasIRTest = document.getElementById('canvasIRTest');
+        canvasIRTest.style.display = "none";
+    }
+
+    function loadImagesMatrix(imageName) {
+        infraredDataMatrix = allTemperaturesIR[slideIndex];
+
+        if(infraredDataMatrix == null){
+            $.post('/ir_temp_data_of_image/{{id}}', {filename: imageName}, function(response) {
+                infraredDataMatrix = response.temperature_matrix;
+                allTemperaturesIR[slideIndex] = infraredDataMatrix;
+                drawImage();
+            });
+        } else {
+            drawImage();
+        }
+
+        
+    }
+
+
+
+    // Function to draw the image based on the temperature range
+    function drawImage() {
+        console.log('redrawing ir of currentImageNameIRPath', currentImageNameIRPath);
+
+        if (infraredDataMatrix == null) {
+            console.log('infraredDataMatrix is null');
+            return;
+        }        
+
+        //TODO gradient_lut_scheme imemr beim neu laden mit abspeichern
+        if (numbr_at_end_of_value == gradient_lut_scheme){
+            //TODO all in a seperate function
+        }
+        else{
+            //TODO erst get, dann die selbe funktion aufrufen
+        }
+
+
+        $.get('/gradient_lut/'+numbr_at_end_of_value, function(lut) {
+            gradient_lut = lut;
+
+            let minTemp = parseInt(document.getElementById('fromSlider').value);
+            let maxTemp = parseInt(document.getElementById('toSlider').value);
+            lut_length = gradient_lut.length;
+
+            let canvasIRTest = document.getElementById('canvasIRTest');
+            let ctxIRTEst = canvasIRTest.getContext('2d');
+
+            canvasIRTest.willReadFrequently = true;
+
+            ctxIRTEst.clearRect(0, 0, canvasIRTest.width, canvasIRTest.height);
+
+            //Set SIze of the canvas to the size of the image
+            canvasIRTest.width = infraredDataMatrix[0].length;
+            canvasIRTest.height = infraredDataMatrix.length;
+
+            for (var y = 0; y < infraredDataMatrix.length; y++) {
+                for (var x = 0; x < infraredDataMatrix[y].length; x++) {
+                    var temperature = infraredDataMatrix[y][x];
+                    if (temperature >= minTemp && temperature < maxTemp) {
+                        var color = gradient_lut[Math.floor(((temperature - minTemp) / (maxTemp - minTemp)) * lut_length)];
+                        ctxIRTEst.fillStyle = 'rgb(' + color[0] + ',' + color[1] + ',' + color[2] + ')';
+                        ctxIRTEst.fillRect(x, y, 1, 1);
+                    }
+                    else {
+                        //ctxIRTEst.fillStyle = 'rgba(0, 0, 0, 0)';
+                        if(temperature < minTemp){
+                            var color = gradient_lut[0];
+                            ctxIRTEst.fillStyle = 'rgba(' + color[0] + ',' + color[1] + ',' + color[2] + ', 0.45)';
+                            ctxIRTEst.fillRect(x, y, 1, 1);
+                        }
+                        else{
+                            var color = gradient_lut[gradient_lut.length - 1];
+                            ctxIRTEst.fillStyle = 'rgba(' + color[0] + ',' + color[1] + ',' + color[2] + ', 0.8)';
+                            ctxIRTEst.fillRect(x, y, 1, 1);
+                        }
+                    }
+                }
+            }
+
+            let debug = false;
+
+            if(debug){
+                //add timestemp on image
+                ctxIRTEst.font = "20px Arial";
+                ctxIRTEst.fillStyle = "white";
+                ctxIRTEst.fillText("Time: " + currentImageNameIRPath.split('_')[1].split('.')[0], 10, 30);
+
+                canvasIRTest.style.display = "block";
+
+                //draw colors saved in the lut list over to bottom of the canvas with a height of 40px
+                if (lut_length > 0) {
+                    for (var i = 0; i < lut_length; i++) {
+                        ctxIRTEst.fillStyle = 'rgb(' + gradient_lut[i][0] + ',' + gradient_lut[i][1] + ',' + gradient_lut[i][2] + ')';
+                        ctxIRTEst.fillRect(i*2, canvasIRTest.height - 40, 2, 40);
+                        if(i % (lut_length/10) <= 1){
+                            ctxIRTEst.fillStyle = 'white';
+                            ctxIRTEst.fillRect(i*2, canvasIRTest.height - 60, 2, 20);
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+
+    function activateIR() {
+        openSettingsEvent('slideshow-settings-ir-tablink','slideshow-settings-IR')
+        displayingIR = true;
+
+        if (magnifiying) {
+            deactivateMagnifier();
+        }
+        if(displayingAI){
+            deactivateAiOverlays();
+        }
+
+        showCurrentSlide(slideIndex);
+    }
+
+    function deactivateIR() {
+        displayingIR = false;
+
+        showCurrentSlide(slideIndex);
+
+    }
+
+    function activateMagnifier() {
+        openSettingsEvent('slideshow-settings-magnifier-tablink', 'slideshow-settings-RGB')
+        magnifiying = true;
+        
+        if (displayingIR){
+            deactivateIR() 
+        }
+        if(displayingAI){
+            deactivateAiOverlays();
+        }
+
+        demagnify();
+        magnify(slideIndex, document.getElementById("zoomRange").value/10);
+    }
+
+    function deactivateMagnifier() {
+        magnifiying = false;
+        demagnify();
+    }
+
+    function activateAiOverlays(){
+        openSettingsEvent('slideshow-settings-annotaions-tablink','slideshow-settings-Annotations')
+        displayingAI = true;
+
+        if(displayingIR){
+            deactivateIR();
+        }
+        if(magnifiying){
+            deactivateMagnifier();
+        }
+
+        toggleLayerSettings(false);
+        showCurrentSlide();
+        filenameOfSlide = getFilenameBySlideIndex(slideIndex,0);
+        generateAnnotationsLayerTableForImage(filenameOfSlide);
+    }
+
+    function deactivateAiOverlays(){
+        displayingAI = false;
+        toggleLayerSettings(true);
+        showCurrentSlide(slideIndex);
+    }
+
+    function color_closest(r,g,b){
+        var min_distance = null
+        var min_index = null
+        for (const [i, c] of gradient_lut.entries()){
+           var d = (r - c[0]) ** 2 + (g - c[1]) ** 2 + (b - c[2]) ** 2;
+           if (min_distance == null || d < min_distance){
+              min_distance = d;
+              min_index = i;
+           }
+        }
+        return min_index;
+    }
+
+    function calc_temp_from_percentage(perc){
+        var maxT = Number(document.getElementById("maxTemp").value);
+        var minT = Number(document.getElementById("minTemp").value);
+        var degree = minT + ((maxT - minT) * perc);
+        //console.log(perc, maxT, minT, degree, typeof minT)
+        return Math.round( degree );
+    }
+
+    function getPosition(obj) {
+        var curleft = 0,
+        curtop = 0;
+        if (obj.offsetParent) {
+            do {
+                curleft += obj.offsetLeft;
+                curtop += obj.offsetTop;
+            } while (obj = obj.offsetParent);
+            return {
+                x: curleft,
+                y: curtop
+            };
+        }
+        return undefined;
+    }
+
+    function rgbToHex(r, g, b) {
+        if (r > 255 || g > 255 || b > 255)
+            throw "Invalid color component";
+        return ((r << 16) | (g << 8) | b).toString(16);
+    }
+
+
+        function resizeCanvas(){
+        //get all objects with class "annotaionsCanvas"
+        var canvases = document.getElementsByClassName("annotaionsCanvas");
+        var img = document.getElementById("dynamic-image-RGB").getElementsByTagName("img")[0];
+
+
+        for (var i = 0; i < canvases.length; i++) {
+            var canvas = canvases[i];
+            canvas.width = img.width;
+            canvas.height = img.height;
+        }
+
+        if (displayingAI){
+            drawAnnotationsOnCurrentSlide();
+        }
+    }
+
 </script>
 </head>
 <body>
@@ -1084,8 +1369,11 @@
                             <canvas id="dynamic-canvas" class="annotaionsCanvas" width="100%" height="100%;"></canvas>
                         </a>
                     </div>
+
+
                     <div class="ir-overlay" style="width: 80%; opacity: 0; grid-area: inner-div;" id="dynamic-image-IR">
                         <img class="ir-image" src="{{ url_for('static', filename='default/missingCounterpartIR.JPG') }}">
+                        <canvas id="canvasIRTest" width="500" height="500" style="width: 100%; display: none"></canvas>
                         <div class="temp-glass" id="dynamic-temp-glass"> <p>Temp:</p></div>
                     </div>
                 </div>
@@ -1095,100 +1383,80 @@
     </div>
         <div id="slideshow-settings-tabs">
             <div id="slideshow-settings-tabs-links" class="tab-vertical">
-                <button id="slideshow-settings-magnifier-tablink" class="tablink-vertical" onclick="openSettingsEvent('slideshow-settings-magnifier-tablink', 'slideshow-settings-RGB')">Magnifier</button>
+                <button id="slideshow-settings-magnifier-tablink" class="tablink-vertical" onclick="activateMagnifier()">Magnifier</button>
                 {% if has_ir %}
-                <button id="slideshow-settings-ir-tablink" class="tablink-vertical" onclick="openSettingsEvent('slideshow-settings-ir-tablink','slideshow-settings-IR')">IR-Overlay</button>
+                <button id="slideshow-settings-ir-tablink" class="tablink-vertical" onclick="activateIR()">IR-Overlay</button>
                 {% endif %}
                 {% if detections %}
-                <button id="slideshow-settings-annotaions-tablink" class="tablink-vertical" onclick="openSettingsEvent('slideshow-settings-annotaions-tablink','slideshow-settings-Annotations')">AI-Overlays</button>
+                <button id="slideshow-settings-annotaions-tablink" class="tablink-vertical" onclick="activateAiOverlays()">AI-Overlays</button>
                 {% endif %}
             </div>
 
             <div id="slideshow-settings-RGB" class="tabcontent-vertical">
                 <div class="slideshow-settings-item">
+
                     <div style="grid-area: a0;">
-                        <label>
-                            <label class="switch">
-                                <input type="checkbox" id="magnifierCheckbox" checked="checked">
-                                <span class="switch-slider round"></span>
-                            </label>
-                          Magnifier
-                        </label>
-                    </div>
-                    <div style="grid-area: b0;">
-                        <input type="range" min="10" max="100" value="50" class="slider" id="zoomRange" style="width:100%;">
-                    </div>
-                    <div style="grid-area: b1;">
                          <label for="zoomRange" >Zoom: <span id="zoomValue"></span></label>
                     </div>
-                    <div style="grid-area: c0; display: inline-block;"></div>
-                    <div style="grid-area: d0;"></div>
+                    <div style="grid-area: a1;">
+                        <input type="range" min="10" max="100" value="50" class="slider" id="zoomRange" style="width:100%;">
+                    </div>
+
                 </div>
             </div>
             <div id="slideshow-settings-IR" class="tabcontent-vertical">
                 <div class="slideshow-settings-item">
-                    <div style="grid-area: a0;">
-                        <label>
-                            <label class="switch">
-                                <input type="checkbox" id="irOverlayCheckbox">
-                                <span class="switch-slider round"></span>
-                            </label>
-                          Infrared image overlay
-                        </label>
-                    </div>
-                    <div class="setting-fade" style="grid-area: b0;">
-                        <input type="range" min="10" max="100" value="100" class="slider setting-disabler" id="irOpacityRange" style="width:100%; grid-area: center">
-                    </div>
-                    <div class="setting-fade" style="grid-area: b1;">
+                    
+                    <div class="" style="grid-area: a0;">
                         <label for="irOpacityRange" >Opacity: <span id="opacityValue"></span></label>
                     </div>
-                    <div class="setting-fade" style="grid-area: c0;">
-                        <label>
-                            <label class="switch">
-                                <input class="setting-disabler" type="checkbox" id="temperatureCheckbox">
-                                <span class="switch-slider round"></span>
+                    <div class="" style="grid-area: a1;">
+                        <input type="range" min="10" max="100" value="100" class="slider" id="irOpacityRange" style="width:100%; grid-area: center">
+                    </div>
+
+                    
+                    <div class="slideshow-settings-inside-contianer" style="grid-area: c0;">
+                        <div style="margin: auto; padding-bottom: 12px; padding-top:12px; margin: auto; width: 180px;">
+                            <label>
+                                <label class="switch">
+                                    <input type="checkbox" id="irModeCheckbox" >
+                                    <span class="switch-slider round"></span>
+                                </label>
+                            Ir Analysis Mode
                             </label>
-                            Read temperature
-                        </label>
+                        </div>
+                        <div style="background: var(--bg-color-AILayer); padding: 12px 16px;">
+                            <div class="setting-fade" style="width: 80%; max-width: 260px; margin-left: auto;">
+                                <select id="ir-palette-chooser-display" class="setting-disabler" style="width: 100%">
+                                    <option value="grad-option1">white hot</option>
+                                    <option value="grad-option2">Fulgurite</option>
+                                    <option value="grad-option3">Iron Red</option>
+                                    <option value="grad-option4">Hot Iron</option>
+                                    <option value="grad-option5">Medical</option>
+                                    <option value="grad-option6">Arctic</option>
+                                    <option value="grad-option7">Rainbow 1</option>
+                                    <option value="grad-option8">Rainbow 2</option>
+                                    <option value="grad-option9">Tint</option>
+                                    <option value="grad-option10">Black Hot</option>
+                                </select>
+                            </div>
+
+                            <div class="setting-fade range_container" style="width= 100%;">
+                                <div class="sliders_control">
+                                    <input id="fromSlider" class="setting-disabler" type="range" value="{{ir_settings.ir_min_temp }}" min="-20" max="180"/>
+                                    <input id="toSlider" class="setting-disabler" type="range" value="{{ir_settings.ir_max_temp }}" min="-20" max="180"/>
+                                    <output class="bubble" id="fromBubble"></output>
+                                    <output class="bubble" id="toBubble"></output>
+                                    <div id="gradientInSlider" style="z-index: 2; height: 20px; position: relative; top: 2px;"></div>
+
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    <div class="setting-fade" style="grid-area: d0;">
-                        <select id="ir-palette-chooser" class="setting-disabler" style="width: 100%">
-                            <option value="grad-option1">white hot</option>
-                            <option value="grad-option2">Fulgurite</option>
-                            <option value="grad-option3">Iron Red</option>
-                            <option value="grad-option4">Hot Iron</option>
-                            <option value="grad-option5">Medical</option>
-                            <option value="grad-option6">Arctic</option>
-                            <option value="grad-option7">Rainbow 1</option>
-                            <option value="grad-option8">Rainbow 2</option>
-                            <option value="grad-option9">Tint</option>
-                            <option value="grad-option10">Black Hot</option>
-                        </select>
-                    </div>
-                    <div id="grad" class="setting-fade grad-option1" style="grid-area: d1;"></div>
-                    <div class="setting-fade" style="grid-area: e0;">
-                        <input class="setting-disabler" type="number" id="minTemp" name="minTemp" min="-20" max="800" value="{{ ir_settings.ir_min_temp }}"
-                               style="width: 90%; padding; 0px: height:100%; border: 0px; border-radius: 4px;">
-                    </div>
-                    <div class="setting-fade" style="grid-area: e1;">min</div>
-                    <div class="setting-fade" style="grid-area: e2;">
-                        <input class="setting-disabler" type="number" id="maxTemp" name="maxTemp" min="-20" max="800" value="{{ ir_settings.ir_max_temp }}"
-                               style="width: 90%; padding; 0px: height:100%; border: 0px; border-radius: 4px;">
-                    </div>
-                    <div class="setting-fade" style="grid-area: e3;">max</div>
                 </div>
             </div>
             <div id="slideshow-settings-Annotations" class="tabcontent-vertical">
                 <div class="slideshow-settings-item-unstructured">
-                    <div style="margin-bottom: 10px;">
-                        <label style="margin-bottom: 8px;">
-                            <label class="switch">
-                                <input type="checkbox" id="aiOverlayCheckbox">
-                                <span class="switch-slider round"></span>
-                            </label>
-                          AI-Overlays
-                        </label>
-                    </div>
                     <div>
                         Annotations line width:
                         <input type="number" id="annotationsLineWidth" name="lineWidth" min="1" max="100" value="2"
@@ -1318,38 +1586,24 @@
 
 </div>
 
-<script>
-    function getPosition(obj) {
-        var curleft = 0,
-        curtop = 0;
-        if (obj.offsetParent) {
-            do {
-                curleft += obj.offsetLeft;
-                curtop += obj.offsetTop;
-            } while (obj = obj.offsetParent);
-            return {
-                x: curleft,
-                y: curtop
-            };
-        }
-        return undefined;
-    }
-
-    function rgbToHex(r, g, b) {
-        if (r > 255 || g > 255 || b > 255)
-            throw "Invalid color component";
-        return ((r << 16) | (g << 8) | b).toString(16);
-    }
-
-</script>
-
-
 
 <script>
+    var slideshowCouples = {{ slide_file_paths|tojson }};
+    {% if has_ir %}
     var gradient_lut = {{ gradient_lut }};
+    var gradient_lut_scheme = {{ ir_settings.ir_color_scheme }};
+    {% else %}
+    var gradient_lut = null;
+    var gradient_lut_scheme = null;
+    {% endif %}
+    var displayingIR = false;
+    var displayingAI = false;
+    var magnifiying = true;
+    var lastSlide = 0;
+    var allImages = [];
+    var allTemperaturesIR = [];
     var slideIndex = 0;
-    var currentImageName = slideshowCouples[slideIndex][0];
-    currentImageName = currentImageName.substring(currentImageName.lastIndexOf('/') + 1);
+    var infraredDataMatrix = null;
 
     for (var i = 0; i < slideshowCouples.length; i++) {
         if (slideshowCouples[i][0] != "" ) {
@@ -1357,39 +1611,74 @@
             break;
         }
     }
+
+    for(var i = 0; i < slideshowCouples.length; i++){
+        var imagePlacerholders = [];
+        for(var j = 0; j < slideshowCouples[i].length; j++){
+            imagePlacerholders.push(null);
+        }
+        allImages.push(imagePlacerholders);
+        allTemperaturesIR.push(null);
+    }
+        
+    var currentImageName = slideshowCouples[slideIndex][0].substring(slideshowCouples[slideIndex][0].lastIndexOf('/') + 1);
+    var currentImageNameIRPath = slideshowCouples[slideIndex][1];
+    var infraredData = [];
+
+    var ImageRGB_missingCounterpart = new Image();
+    ImageRGB_missingCounterpart.src = "{{ url_for('static', filename='default/missingCounterpartRGB.JPG') }}";
+    ImageRGB_missingCounterpart.className = "dynamic-images-rgb";
+    var ImageIR_missingCounterpart = new Image()
+    ImageIR_missingCounterpart.src = "{{ url_for('static', filename='default/missingCounterpartIR.JPG') }}";
+    ImageIR_missingCounterpart.className = "ir-image";
+
+
     showCurrentSlide(slideIndex);
+    
     var slideshowContainer = document.getElementById("slideshow-container");
     var dynamicSlide = document.getElementById("dynamic-slide");
     dynamicSlide.style.display = "block";
 
 
-    var checkbox = document.getElementById("magnifierCheckbox");
     var slider = document.getElementById("zoomRange");
     var output = document.getElementById("zoomValue");
-    //document.getElementById("zoomValue").innerHTML = slider.value/10;
-    output.innerHTML = slider.value;
+    output.innerHTML = slider.value/10;
+
 
     document.getElementById("dynamic-slide").getElementsByTagName('img')[0].onload = function(){
         magnify(0,slider.value/10);
     }
 
     slider.oninput = function() {
-      output.innerHTML = this.value/10;
-      demagnify();
-      if(checkbox.checked){
-        magnify(slideIndex, this.value/10);
+        output.innerHTML = this.value/10;
+        demagnify();
+        if(magnifiying){
+            magnify(slideIndex, this.value/10);
       }
     }
 
-    checkbox.onchange = function() {
+    $('#irModeCheckbox').change(function(){
         if(this.checked){
-            magnify(slideIndex, slider.value/10);
-        }else{
-            demagnify();
+            $('.setting-fade').map(function () {
+            $(this).css("opacity", "0.999");
+            });
+            $('.setting-disabler').map(function () {
+                $(this).prop('disabled', false);
+            });
+        } else {
+            document.getElementById('dynamic-temp-glass').style.opacity = 0;
+            $('.setting-fade').map(function () {
+            $(this).css("opacity", "0.4");
+            });
+            $('.setting-disabler').map(function () {
+                $(this).prop('disabled', true);
+            });
         }
-    }
+        showCurrentSlideIR();
+    });
 
-    output.innerHTML = slider.value/10;
+
+
 
     $(document).ready(function(){
         $('ul.tabs li').click(function(){
@@ -1402,58 +1691,6 @@
             $("#"+tab_id).addClass('current');
         })
 
-        $('#irOverlayCheckbox').change(function(){
-            if(this.checked){
-                $('#magnifierCheckbox').prop('checked', false);
-                demagnify();
-                displayingIR = true;
-                showCurrentSlide();
-                $('.setting-fade').map(function () {
-                    $(this).css("opacity", "0.999");
-                });
-                $('.setting-disabler').map(function () {
-                    $(this).prop('disabled', false);
-                });
-            }else{
-                $('#magnifierCheckbox').prop('checked', true);
-                displayingIR = false;
-                showCurrentSlide(slideIndex);
-                $('.setting-fade').map(function () {
-                    $(this).css("opacity", "0.4");
-                });
-                $('.setting-disabler').map(function () {
-                    $(this).prop('disabled', true);
-                });
-            }
-        });
-
-        $('#magnifierCheckbox').change(function(){
-            if(this.checked){
-                $('#irOverlayCheckbox').prop('checked', false);
-                displayingIR = false;
-                showCurrentSlide(slideIndex);
-                deactivateIR();
-            }else{
-                //$('#irOverlayCheckbox').prop('checked', true);
-                demagnify();
-                //displayingIR = true;
-                //showCurrentSlide();
-            }
-        });
-
-        $('#aiOverlayCheckbox').change(function(){
-            if(this.checked){
-                displayingAI = true;
-                toggleLayerSettings(false);
-                showCurrentSlide();
-                filenameOfSlide = getFilenameBySlideIndex(slideIndex,0);
-                generateAnnotationsLayerTableForImage(filenameOfSlide);
-            }else{
-                displayingAI = false;
-                toggleLayerSettings(true);
-                showCurrentSlide(slideIndex);
-            }
-        });
 
         $('#annotationsLineWidth').change(function(event) {
             if(displayingAI){
@@ -1479,8 +1716,8 @@
     });
 
 
-    $('#irOverlayCheckbox').prop('checked', false);
-    $('#magnifierCheckbox').prop('checked', true);
+    //$('#irOverlayCheckbox').prop('checked', false);
+    //$('#magnifierCheckbox').prop('checked', true);
     $('.setting-fade').map(function () {
         $(this).css("opacity", "0.4");
     });
@@ -1489,87 +1726,178 @@
     });
 
 
-    function activateIR() {
-        displayingIR = true;
-        $('#slideshow-settings-ir-tablink').click();
-        $('#irOverlayCheckbox').prop('checked', true);
-        $('#magnifierCheckbox').prop('checked', false);
-        $('.setting-fade').map(function () {
-            $(this).css("opacity", "0.999");
-        });
-        $('.setting-disabler').map(function () {
-            $(this).prop('disabled', false);
-        });
-        showCurrentSlide(slideIndex);
-    }
-
-     function deactivateIR() {
-        displayingIR = false;
-        $('#irOverlayCheckbox').prop('checked', false);
-        $('#magnifierCheckbox').prop('checked', true);
-        $('.setting-fade').map(function () {
-            $(this).css("opacity", "0.4");
-        });
-        $('.setting-disabler').map(function () {
-            $(this).prop('disabled', true);
-        });
-    }
-
     $('#irOpacityRange').val(100);
     $('#irOpacityRange').change();
 
-
-
-
     //change css class of grad depending on selected option of ir-palette-chooser
-    $("#ir-palette-chooser").change(function() {
-        $("#ir-palette-chooser option:selected").each(function() {
-            var ir_palette = $(this).val();
-            console.log(ir_palette);
-            $("#grad").removeClass();
-            $("#grad").addClass('setting-fade ' + ir_palette);
-            numbr_at_end_of_value = ir_palette.match(/\d+$/);
+    $("#ir-palette-chooser-display").change(function() {
+
+        var ir_palette = $(this).val();
+        console.log(ir_palette);
+        numbr_at_end_of_value = ir_palette.match(/\d+$/);
+
+        gradientDiv = document.getElementById('gradientInSlider');
+        //remove all classes from the div
+        gradientDiv.className = '';
+        gradientDiv.classList.add('grad-option'+numbr_at_end_of_value);
+
+        $("#ir-palette-chooser-display option:selected").each(function() {
+            
+            drawGradientInMiddleOfSlider(document.getElementById('fromSlider'), document.getElementById('toSlider'));
             $.get('/gradient_lut/'+numbr_at_end_of_value, function(lut) {
                 console.log(lut);
                 gradient_lut = lut;
+                drawImage();
             });
-            $.get( "/update_ir_settings/{{ id }}/" + Number(document.getElementById("minTemp").value) + "," + Number(document.getElementById("maxTemp").value) + "," + numbr_at_end_of_value);
         });
     });
 
-    $("#minTemp").change(function() {
-        $.get( "/update_ir_settings/{{ id }}/" + Number(document.getElementById("minTemp").value) + "," + Number(document.getElementById("maxTemp").value) + "," + Number(document.getElementById("ir-palette-chooser").value.match(/\d+$/)));
-    });
 
-    $("#maxTemp").change(function() {
-        $.get( "/update_ir_settings/{{ id }}/" + Number(document.getElementById("minTemp").value) + "," + Number(document.getElementById("maxTemp").value) + "," + Number(document.getElementById("ir-palette-chooser").value.match(/\d+$/)));
-    });
+    $("#ir-palette-chooser-display").val("grad-option{{ ir_settings.ir_color_scheme }}").change();
 
 
-    function color_closest(r,g,b){
-        var min_distance = null
-        var min_index = null
-        for (const [i, c] of gradient_lut.entries()){
-           var d = (r - c[0]) ** 2 + (g - c[1]) ** 2 + (b - c[2]) ** 2;
-           if (min_distance == null || d < min_distance){
-              min_distance = d;
-              min_index = i;
-           }
+
+    function controlFromSlider(fromSlider, toSlider) {
+        const [from, to] = getParsed(fromSlider, toSlider);
+        fillSlider(fromSlider, toSlider, '#C6C6C6', '#25daa5', toSlider);
+        if (from > to) {
+            fromSlider.value = to;
+        } 
+        bubble = document.getElementById('fromBubble');
+        setBubble(fromSlider, bubble);
+    }
+
+    function controlToSlider(fromSlider, toSlider) {
+        const [from, to] = getParsed(fromSlider, toSlider);
+        fillSlider(fromSlider, toSlider, '#C6C6C6', '#25daa5', toSlider);
+        //setToggleAccessible(toSlider);
+        if (from <= to) {
+            toSlider.value = to;
+        } else {
+            toSlider.value = from;
         }
-        return min_index;
+        bubble = document.getElementById('toBubble');
+        setBubble(toSlider, bubble);
     }
 
-    function calc_temp_from_percentage(perc){
-        var maxT = Number(document.getElementById("maxTemp").value);
-        var minT = Number(document.getElementById("minTemp").value);
-        var degree = minT + ((maxT - minT) * perc);
-        //console.log(perc, maxT, minT, degree, typeof minT)
-        return Math.round( degree );
+    function getParsed(currentFrom, currentTo) {
+        const from = parseInt(currentFrom.value, 10);
+        const to = parseInt(currentTo.value, 10);
+        return [from, to];
     }
 
-    $("#ir-palette-chooser").val("grad-option{{ ir_settings.ir_color_scheme }}").change();
+    function fillSlider(from, to, sliderColor, rangeColor, controlSlider) {
+        const rangeDistance = to.max-to.min;
+        const fromPosition = from.value - to.min;
+        const toPosition = to.value - to.min;
+        controlSlider.style.background = `linear-gradient(
+        to right,
+        ${sliderColor} 0%,
+        ${sliderColor} ${(fromPosition)/(rangeDistance)*100}%,
+        ${'transparent'} ${((fromPosition)/(rangeDistance))*100}%,
+        ${'transparent'} ${(toPosition)/(rangeDistance)*100}%, 
+        ${sliderColor} ${(toPosition)/(rangeDistance)*100}%, 
+        ${sliderColor} 100%)`;
+        drawGradientInMiddleOfSlider(from, to);
+    }
 
-    {% endif %}
+    function drawGradientInMiddleOfSlider(fromSlider, toSlider){
+        gradientDiv = document.getElementById('gradientInSlider');
+        const rangeDistance = toSlider.max-toSlider.min;
+        const fromPosition = fromSlider.value - toSlider.min;
+        const toPosition = toSlider.value - toSlider.min;
+        
+        //position div in middle of slider
+        gradientDiv.style.left = ((fromPosition)/(rangeDistance)*100 +1)  + "%";
+        gradientDiv.style.width = ((toPosition - fromPosition)/(rangeDistance)*100 - 1) + "%";
+
+    }
+
+    function setBubble(range, bubble) {
+        const val = range.value;
+        const min = range.min ? range.min : 0;
+        const max = range.max ? range.max : 100;
+        const newVal = Number(((val - min) * 100) / (max - min));
+        bubble.innerHTML = val + "°C";
+
+        // Sorta magic numbers based on size of the native UI thumb
+        bubble.style.left = `calc(${newVal}% + (${8 - newVal * 0.15}px))`;
+    }
+
+    function setToggleAccessible(currentTarget) {
+        const toSlider = document.querySelector('#toSlider');
+        if (Number(currentTarget.value) <= 0 ) {
+            toSlider.style.zIndex = 4;
+        } else {
+            toSlider.style.zIndex = 3;
+        }
+    }
+
+    const fromSlider = document.querySelector('#fromSlider');
+    const toSlider = document.querySelector('#toSlider');
+    fillSlider(fromSlider, toSlider, '#C6C6C6', '#25daa5', toSlider);
+    setToggleAccessible(toSlider);
+    setBubble(fromSlider, document.getElementById('fromBubble'));
+    setBubble(toSlider, document.getElementById('toBubble'));
+
+    fromSlider.oninput = () => controlFromSlider(fromSlider, toSlider);
+    toSlider.oninput = () => controlToSlider(fromSlider, toSlider);
+    toSlider.addEventListener('change', () => drawImage());
+    fromSlider.addEventListener('change', () => drawImage());
+
+
+
+
+
+    document.getElementById('canvasIRTest').addEventListener("mousemove", function(e) {
+        if($('#irModeCheckbox').is(':checked')){
+            var tempMatrix = allTemperaturesIR[slideIndex];
+            var tempGlass = document.getElementById('dynamic-temp-glass');
+            tempGlass.style.opacity = 1.0;
+            matrix_coord_x = Math.floor(e.offsetX / this.clientWidth * tempMatrix[0].length);
+            matrix_coord_y = Math.floor(e.offsetY / this.clientHeight * tempMatrix.length);
+            
+            var p = this.getContext('2d').getImageData(matrix_coord_x, matrix_coord_y, 1, 1).data;
+            var coord = "x: " + e.offsetX + " ,y: " + e.offsetY;
+            // If transparency on the image
+            if ((p[0] == 0) && (p[1] == 0) && (p[2] == 0) && (p[3] == 0)) {
+                coord += " (Transparent color detected, cannot be converted to HEX)";
+            }
+            var hex = "#" + ("000000" + rgbToHex(p[0], p[1], p[2])).slice(-6);
+            var temp = tempMatrix[matrix_coord_y][matrix_coord_x];
+            //round to one decimal
+            temp = Math.round(temp * 10) / 10;
+            tempGlass.style.backgroundColor = hex;
+            tempGlass.innerHTML = " " +temp + "°C  ";
+
+            $('#dynamic-temp-glass').css({
+                left: e.offsetX + 20 + this.offsetLeft,
+                top: e.offsetY + document.body.scrollTop + this.offsetTop,
+            });
+            if ((p[0]*0.299 + p[1]*0.587 + p[3]*0.114) > 186){
+                tempGlass.style.color = "#000000";
+                tempGlass.style.borderColor = "#000000";
+            } else {
+                tempGlass.style.color = "#ffffff";
+                tempGlass.style.borderColor = "#ffffff";
+            }
+        } else {
+            var tempGlass = document.getElementById('dynamic-temp-glass');
+            tempGlass.style.opacity = 0.0;
+            this.style.backgroundColor = "transparent";
+            this.innerHTML = "";
+        }
+    });
+
+    document.getElementById('canvasIRTest').addEventListener("mouseleave", function(e) {
+        var tempGlass = document.getElementById('dynamic-temp-glass');
+        tempGlass.style.opacity = 0.0;
+        this.style.backgroundColor = "transparent";
+        this.innerHTML = "";
+    });
+
+    {% endif %}        
+
 
     window.onload = function() {
         {% if detections %}
@@ -1578,7 +1906,7 @@
         generateAnnotationSettings({{ detections | tojson }});
         var fileName = "{{ file_names[0].split('/')[-1] }}";
         generateAnnotationsLayerTableForImage(fileName);
-        $('#aiOverlayCheckbox').prop('checked', false);
+        //$('#aiOverlayCheckbox').prop('checked', false);
         toggleLayerSettings(true);
         {% endif %}
     };
@@ -1600,22 +1928,7 @@
     {% endif %}
     {% endif %}
 
-    function resizeCanvas(){
-        //get all objects with class "annotaionsCanvas"
-        var canvases = document.getElementsByClassName("annotaionsCanvas");
-        var img = document.getElementById("dynamic-image-RGB").getElementsByTagName("img")[0];
 
-
-        for (var i = 0; i < canvases.length; i++) {
-            var canvas = canvases[i];
-            canvas.width = img.width;
-            canvas.height = img.height;
-        }
-
-        if (displayingAI){
-            drawAnnotationsOnCurrentSlide();
-        }
-    }
 
     document.getElementById("slideshow-settings-magnifier-tablink").click();
 

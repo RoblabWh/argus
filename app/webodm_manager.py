@@ -64,6 +64,13 @@ class WebodmManager():
                                         data={'hostname': address, 'port': port}).json()
         return response
 
+    def project_exists(self, token, wo_project_id):
+        response = requests.get('{}/api/projects/{}/'.format(self.url, wo_project_id),
+                                    headers={'Authorization': 'JWT {}'.format(token)}).json()
+        if response:
+            return True
+        return False
+
     def get_project_id(self, token, name, description):
         response = requests.get('{}/api/projects/'.format(self.url),
                                                 headers={'Authorization': 'JWT {}'.format(token)},
@@ -118,6 +125,8 @@ class WebodmManager():
                                 'name': name,
                                 'options': options
                             }).json()
+
+
         return response
 
     def get_all_tasks(self, token, wo_project_id):

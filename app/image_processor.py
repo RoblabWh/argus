@@ -7,6 +7,10 @@ from image import Image
 from infrared_rgb_sorter import InfraredRGBSorter
 from weather import Weather
 
+#TODO
+# als erstes die Kamera feststellen
+# abhängig davon checken, IR oder RGB (entweder über Kamera oder über Dateinamen oder über Bildgröße)
+# und entsprechend eine flag setzen, ob die Temperaturen ausgelesen werden können oder nicht
 
 class ImageProcessor:
     def __init__(self):

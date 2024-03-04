@@ -171,7 +171,7 @@ class ProjectManager:
 
     def get_project(self, id):
         for project in self.projects:
-            print("project id: " + str(project['id']), "id: " + str(id), flush=True)
+            #print("project id: " + str(project['id']), "id: " + str(id), flush=True)
             if project['id'] == id:
                 return project
         return None
@@ -388,6 +388,18 @@ class ProjectManager:
             return project['creation_time']
         except:
             return "no creation time found"
+
+    def get_ir_settings(self, report_id):
+        project = self.get_project(report_id)
+        return project['data']['ir_settings']
+
+    def get_webodm_project_id(self, report_id):
+        project = self.get_project(report_id)
+        # print("project: " + str(project), flush=True)
+        return project['data']['webodm_project_id']
+
+    def set_webodm_project_id(self, report_id, webodm_project_id):
+        self.update_data_by_keyword(report_id, 'webodm_project_id', webodm_project_id)
 
     def update_ir_settings_from_website(self, report_id, settings):
         project = self.get_project(report_id)

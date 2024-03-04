@@ -2,6 +2,7 @@ import json
 import datetime
 
 from mapper_thread import MapperThread
+from thermal.thermal_analyser import ThermalAnalyser
 
 # from gunicorn.app.base import BaseApplication
 from flask import Flask, flash, request, redirect, url_for, render_template, jsonify, send_file
@@ -50,6 +51,7 @@ class ArgusServer:
         self.nodeodm_manager = nodeodm_manager
         self.webodm_manager = webodm_manager
         self.detection_manager = detection_manager
+        self.thermal_analyser = ThermalAnalyser(project_manager)
 
         self.setup_routes()
 
@@ -116,6 +118,8 @@ class ArgusServer:
                               view_func=self.download_project)
         self.app.add_url_rule('/import_project', methods=['GET', 'POST'],
                               view_func=self.import_project)
+        self.app.add_url_rule('/ir_temp_data_of_image/<int:report_id>', methods=['GET', 'POST'],
+                              view_func=self.get_ir_temp_data_of_image)
         # self.app.add_url_rule('/<int:report_id>/upload', methods=['POST'],
         #                       view_func=self.upload_image)
         # self.app.add_url_rule('/<int:report_id>/process', methods=['GET', 'POST'],
@@ -348,6 +352,13 @@ class ArgusServer:
         lut = json.load(open("./static/default/gradient_luts/gradient_lut_" + str(gradient_id) + ".json"))
         return lut
 
+    def get_ir_temp_data_of_image(self, report_id):
+        filename = request.form.get('filename')
+        print("get_ir_temp_data_of_image for id" + str(report_id) + " with: " + str(filename), flush=True)
+        temp_matrix = self.thermal_analyser.get_image_temp_matrix(report_id, filename)
+        temperature_matrix = temp_matrix.tolist()
+        return jsonify({'temperature_matrix': temperature_matrix})
+
 
     def run_detection(self, report_id):
         numbr_of_models = 2
@@ -404,21 +415,43 @@ class ArgusServer:
         token = self.webodm_manager.authenticate()
         if token is None:
             return jsonify({"success": False})
-        wo_project_id = self.webodm_manager.get_project_id(token, self.project_manager.get_project_name(report_id), self.project_manager.get_project_description(report_id))
-        if wo_project_id is None:
-            wo_project_id = self.webodm_manager.create_project(token, self.project_manager.get_project_name(report_id), self.project_manager.get_project_description(report_id))
+
+        wo_project_id = None
+        try:
+            wo_project_id = self.project_manager.get_webodm_project_id(report_id)
+            if not self.webodm_manager.project_exists(token, wo_project_id):
+                wo_project_id = self.webodm_manager.create_project(token, self.project_manager.get_project_name(report_id), self.project_manager.get_project_description(report_id))
+        except:
+            wo_project_id = self.webodm_manager.get_project_id(token, self.project_manager.get_project_name(report_id), self.project_manager.get_project_description(report_id))
+            if wo_project_id is None:
+                wo_project_id = self.webodm_manager.create_project(token, self.project_manager.get_project_name(report_id), self.project_manager.get_project_description(report_id))
+            if wo_project_id is not None:
+                self.project_manager.set_webodm_project_id(report_id, wo_project_id)
+
         if wo_project_id is not None:
             self.webodm_manager.upload_and_process_images(token, wo_project_id, self.project_manager.get_file_names_rgb(report_id))
             return jsonify({"success": True, "port": self.webodm_manager.public_port})
         else:
-            print("Failed to create a webodm project with name {}".format(self.project_manager.get_project_name(report_id)), flush=True)
+            print("Failed to open or create a webodm project with name {}".format(self.project_manager.get_project_name(report_id)), flush=True)
             return jsonify({"success": False})
 
     def webodm_project_exists(self, report_id):
+        print("webodm_project_exists for id" + str(report_id), flush=True)
         token = self.webodm_manager.authenticate()
         if token is None:
             return jsonify({"success": False})
-        wo_project_id = self.webodm_manager.get_project_id(token, self.project_manager.get_project_name(report_id), self.project_manager.get_project_description(report_id))
+
+        wo_project_id = None
+        try:
+            wo_project_id = str(self.project_manager.get_webodm_project_id(report_id))
+            if not self.webodm_manager.project_exists(token, wo_project_id):
+                return jsonify({"success": False})
+        except Exception as e:
+            print(e, flush=True)
+            wo_project_id = self.webodm_manager.get_project_id(token, self.project_manager.get_project_name(report_id), self.project_manager.get_project_description(report_id))
+            if wo_project_id is not None:
+                self.project_manager.set_webodm_project_id(report_id, wo_project_id)
+
         if wo_project_id is None:
             return jsonify({"success": False})
         else:
@@ -432,7 +465,17 @@ class ArgusServer:
         token = self.webodm_manager.authenticate()
         if token is None:
             return jsonify({"success": False})
-        wo_project_id = self.webodm_manager.get_project_id(token, self.project_manager.get_project_name(report_id), self.project_manager.get_project_description(report_id))
+
+        wo_project_id = None
+        try:
+            wo_project_id = self.project_manager.get_webodm_project_id(report_id)
+            if not self.webodm_manager.project_exists(token, wo_project_id):
+                return jsonify({"success": False})
+        except:
+            wo_project_id = self.webodm_manager.get_project_id(token, self.project_manager.get_project_name(report_id), self.project_manager.get_project_description(report_id))
+            if wo_project_id is not None:
+                self.project_manager.set_webodm_project_id(report_id, wo_project_id)
+
         if wo_project_id is None:
             return jsonify({"success": False})
         else:
@@ -444,7 +487,18 @@ class ArgusServer:
         token = self.webodm_manager.authenticate()
         if token is None:
             return jsonify({"success": False})
-        wo_project_id = self.webodm_manager.get_project_id(token, self.project_manager.get_project_name(report_id), self.project_manager.get_project_description(report_id))
+
+        wo_project_id = None
+        try:
+            wo_project_id = self.project_manager.get_webodm_project_id(report_id)
+            if not self.webodm_manager.project_exists(token, wo_project_id):
+                return jsonify({"success": False})
+        except:
+            wo_project_id = self.webodm_manager.get_project_id(token, self.project_manager.get_project_name(report_id),
+                                                               self.project_manager.get_project_description(report_id))
+            if wo_project_id is not None:
+                self.project_manager.set_webodm_project_id(report_id, wo_project_id)
+
         if wo_project_id is None:
             return jsonify({"success": False})
 
