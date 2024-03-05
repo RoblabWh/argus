@@ -74,6 +74,13 @@
         background-image:  linear-gradient(to right, white, black);
     }
 
+    .IrSettingsLineContainer {
+        display: flex;
+        width:100%;
+        justify-content: space-between;
+        margin: 12px 0;
+    }
+
     </style>
 </head>
 <body>
@@ -87,9 +94,11 @@
 </table>
 
 {% if has_ir %}
-<div class="irBaseSettings" >
-    <div style="grid-area: d0;">
-        <select id="ir-palette-chooser" style="width: 100%">
+<h2 style="margin-block-end: 0;">IR Settings</h2>
+<a> (IR settings are only relevant if IR Images incompatible withthe DJI Thermal SDK are used)</a>
+<div class="IrSettingsLineContainer">   
+    <div style="">
+        <select id="ir-palette-chooser" style="width: 100% border-radius: 4px;">
             <option value="grad-option1">white hot</option>
             <option value="grad-option2">Fulgurite</option>
             <option value="grad-option3">Iron Red</option>
@@ -102,17 +111,27 @@
             <option value="grad-option10">Black Hot</option>
         </select>
     </div>
-    <div id="grad" class="grad-option1" style="grid-area: d1;"></div>
-    <div style="grid-area: e0;">
-        <input type="number" id="minTemp" name="minTemp" min="-20" max="800" value="{{ ir_settings.ir_min_temp }}"
-                style="width: 90%; padding; 0px: height:100%; border: 0px; border-radius: 4px;">
+
+    
+    <div id="grad" class="grad-option1" style="max-width: 400px; height: 20px"></div>
+    <div style="width: 50%">   </div>
+</div>
+<div class="IrSettingsLineContainer">
+    <div style="display: flex;">
+        <div style="">
+            <input type="number" id="minTemp" name="minTemp" min="-20" max="800" value="{{ ir_settings.ir_min_temp }}"
+                    style="width: 90%; padding; 0px: height:100%; border-color: var(--accent-color-interaction); border-radius: 4px;">
+        </div>
+        <div style="margin: 0 8px">min</div>
     </div>
-    <div style="grid-area: e1;">min</div>
-    <div style="grid-area: e2;">
-        <input type="number" id="maxTemp" name="maxTemp" min="-20" max="800" value="{{ ir_settings.ir_max_temp }}"
-                style="width: 90%; padding; 0px: height:100%; border: 0px; border-radius: 4px;">
+    <div style="display: flex;">
+        <div style="">
+            <input type="number" id="maxTemp" name="maxTemp" min="-20" max="800" value="{{ ir_settings.ir_max_temp }}"
+                    style="width: 90%; padding; 0px: height:100%; border-color: var(--accent-color-interaction); border-radius: 4px;">
+        </div>
+        <div style="margin: 0 8px">max</div>
     </div>
-    <div style="grid-area: e3;">max</div>
+    <div style="width: 50%">   </div>
 </div>
 
 {% endif %}
@@ -124,7 +143,7 @@
             var ir_palette = $(this).val();
             console.log(ir_palette);
             $("#grad").removeClass();
-            $("#grad").addClass('setting-fade ' + ir_palette);
+            $("#grad").addClass(ir_palette);
             numbr_at_end_of_value = ir_palette.match(/\d+$/);
             $.get('/gradient_lut/'+numbr_at_end_of_value, function(lut) {
                 console.log(lut);
