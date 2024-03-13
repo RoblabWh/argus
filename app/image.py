@@ -12,8 +12,10 @@ import os
 
 import cv2
 import imutils
+import numpy as np
 
 from exif_header import ExifHeader
+from thermal.thermal_analyser import ThermalAnalyser
 
 class Image:
     def __init__(self, image_path):
@@ -65,7 +67,19 @@ class Image:
         """
     
         if self.matrix is None:
-            return cv2.cvtColor(cv2.imread(self.image_path,cv2.IMREAD_UNCHANGED),cv2.COLOR_BGR2BGRA)
+            if self.exif_header.ir:
+                try:
+                    report_id = self.image_path.split('/')[-2]
+                    image = ThermalAnalyser(None).get_image_temp_matrix(report_id, self.image_path)
+                    image = np.expand_dims(image, axis=2)
+                    image = np.concatenate((image, np.ones((image.shape[0], image.shape[1], 1), dtype=np.float32)), axis=2)
+
+                except Exception as e:
+                    print("loading thermal data failed with error: ", e)
+                    image = cv2.cvtColor(cv2.imread(self.image_path,cv2.IMREAD_UNCHANGED),cv2.COLOR_BGR2BGRA)
+                return image
+            else:
+                return cv2.cvtColor(cv2.imread(self.image_path,cv2.IMREAD_UNCHANGED),cv2.COLOR_BGR2BGRA)
         else:
             return self.matrix
 
@@ -92,7 +106,7 @@ class Image:
         Generate thumbnail of image and save it in a sub-folder in the same directory called 'thumbnails'
 
         """
-        matrix = self.get_matrix()
+        matrix = cv2.cvtColor(cv2.imread(self.image_path,cv2.IMREAD_UNCHANGED),cv2.COLOR_BGR2BGRA)
         scale_factor = 350 / matrix.shape[1]
         new_size = (350, int(matrix.shape[0] * scale_factor))
         thumbnail = cv2.resize(matrix, new_size, interpolation=cv2.INTER_NEAREST)
@@ -103,7 +117,7 @@ class Image:
 
         path = os.path.join(os.path.dirname(self.image_path), 'thumbnails', os.path.basename(self.image_path))
         cv2.imwrite(path, thumbnail)
-        self.matrix = None
+        matrix = None
 
 
     @staticmethod

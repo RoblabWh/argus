@@ -130,13 +130,13 @@ class ImageMapper:
 
     def calculate_map_RGB(self, report_id):
         (min_x, max_x, min_y, max_y), self.map_elements_RGB = self.__calculate_map(self.map_scaler_RGB,
-                                                                                   self.map_elements_RGB)
+                                                                                   self.map_elements_RGB, False)
         map_dict = self.process_map(self.map_scaler_RGB, self.map_elements_RGB, min_x, max_x, min_y, max_y, False)
         return map_dict
 
     def calculate_map_IR(self, report_id):
         (min_x, max_x, min_y, max_y), self.map_elements_IR = self.__calculate_map(self.map_scaler_IR,
-                                                                                  self.map_elements_IR)
+                                                                                  self.map_elements_IR, True)
         map_dict = self.process_map(self.map_scaler_IR, self.map_elements_IR, min_x, max_x, min_y, max_y, True)
         return map_dict
 
@@ -170,7 +170,7 @@ class ImageMapper:
 
         return map_dict
 
-    def __calculate_map(self, map_scaler, map_elements):
+    def __calculate_map(self, map_scaler, map_elements, ir):
         map_offset = map_scaler.get_map_offset()
 
         map_obj = Map(map_elements,
@@ -178,7 +178,8 @@ class ImageMapper:
                       self.map_height_px + map_offset,
                       self.blending,
                       map_scaler.get_scale_px_per_m(),
-                      self.optimize)
+                      self.optimize,
+                      ir)
 
         print("-Creating map...             ")
         self.final_map = map_obj.create_map()

@@ -1,3 +1,4 @@
+import json
 import multiprocessing
 import time
 
@@ -7,7 +8,7 @@ import imutils
 
 class Map:
 
-    def __init__(self, map_elements, width, height, blending, px_per_m, optimize):
+    def __init__(self, map_elements, width, height, blending, px_per_m, optimize, ir=False):
         self.map_elements = map_elements
         self.width = width
         self.height = height
@@ -15,6 +16,8 @@ class Map:
         self.px_per_m = px_per_m
         self.optimize = optimize
         self.final_map = np.zeros((width, height, 4), np.uint8)
+        self.ir_temp_map = np.zeros((width, height, 2), np.float32)
+        self.ir = ir
         #self.final_map = 34 * np.ones((width, height, 4), np.uint8)
         #self.final_map [:, :, 3] = 255
         #self.final_map = 255 * np.ones((width, height, 4), np.uint8)
@@ -36,6 +39,11 @@ class Map:
         # pool.join()
         map_creation_time_loading = time.time()
         self.add_images_to_map(map_elements_chunks)
+        if self.ir:
+            if self.ir_temp_map.min() == 0 and self.ir_temp_map.max() == 0:
+                pass
+            else:
+                self.final_map = self.draw_map_from_temp_data_with_LUT(3)
         map_creation_time_mapping = time.time()
         # self.crop_map()
         self.draw_flight_trajectorie()
@@ -57,6 +65,50 @@ class Map:
     #     pool.close()
     #     pool.join()
 
+    def draw_map_from_temp_data(self):
+        #scale ir_temp_map to fit final_map from 0 to 255
+        max = np.max(self.ir_temp_map[:, :, 0])
+        min = np.min(self.ir_temp_map[:, :, 0])
+        print("max: ", max, "min: ", min, "shape: ", self.final_map.shape, flush=True)
+
+        map_scaled = (self.ir_temp_map[:, :, 0] - min) / (max - min) * 255
+        map_scaled = map_scaled.astype(np.uint8)
+
+        map_scaled = cv2.cvtColor(map_scaled, cv2.COLOR_GRAY2BGRA)
+        map_scaled[:, :, 3] = (self.ir_temp_map[:, :, 1] * 255).astype(np.uint8)
+
+        map_scaled[:, :, 2] = map_scaled[:, :, 2]
+        map_scaled[:, :, 1] = (map_scaled[:, :, 1] * map_scaled[:, :, 1] ) * (1/128)
+        map_scaled[:, :, 0] = (map_scaled[:, :, 0] * map_scaled[:, :, 0] ) * (-1/128) + 128
+        # map_scaled[:, :, 0] = map_scaled[:, :, 0] * (-1) + 255
+
+        return map_scaled
+
+    def draw_map_from_temp_data_with_LUT(self, lut):
+        #load lut from "static/default/gradient_luts/gradient_lut_" + lut + ".json"
+        lut = json.load(open("./static/default/gradient_luts/gradient_lut_" + str(lut) + ".json"))
+        lut_len = len(lut)
+
+        min = np.min(self.ir_temp_map[:, :, 0])
+        max = np.max(self.ir_temp_map[:, :, 0])
+
+        map_scaled = (self.ir_temp_map[:, :, 0] - min) / (max - min) * 255
+        map_scaled = map_scaled.astype(np.uint8)
+
+        #generate an matrix in the shape of the image and fill it with the color value of the LUT, by using the map_scaled dor the index
+        map_scaled = np.array(lut)[map_scaled]
+        print("shape: ", map_scaled.shape, flush=True)
+        map_scaled[:, :, 3] = (self.ir_temp_map[:, :, 1] * 255).astype(np.uint8)
+
+        #swap color channels
+        output_map = map_scaled.copy()
+        output_map[:, :, 0] = map_scaled[:, :, 2]
+        output_map[:, :, 2] = map_scaled[:, :, 0]
+
+        return output_map
+
+
+
     def load_images_parallel(self, map_elements):
         pool = multiprocessing.Pool(6)
         map_elements = pool.map(Map.load_image, map_elements)
@@ -67,11 +119,15 @@ class Map:
     @staticmethod
     def load_image(map_element):
         image = map_element.get_image().get_matrix()
+        ir = map_element.get_image().exif_header.ir
         rotated_rectangle = map_element.get_rotated_rectangle()
         (w, h) = rotated_rectangle.get_size()
-        h1, w1, c = image.shape
         # print (rotated_rectangle.get_angle(), w, h, w1, h1, c)
-        resized_image = cv2.resize(image, (w, h), cv2.INTER_NEAREST)
+        if ir:
+            resized_image = cv2.resize(image, (w, h), cv2.INTER_LINEAR)
+        else:
+            resized_image = cv2.resize(image, (w, h), cv2.INTER_NEAREST)
+
         rotated_image = imutils.rotate_bound(resized_image, -rotated_rectangle.get_angle())
         (h, w) = rotated_rectangle.get_shape()
         rotated_image = cv2.resize(rotated_image, (int(w), int(h)), cv2.INTER_NEAREST)
@@ -98,6 +154,7 @@ class Map:
 
                 elements = self.load_images_parallel(elements)
 
+
                 for i, map_element in enumerate(elements):
 
                     image = map_element.get_image().get_matrix()
@@ -111,13 +168,22 @@ class Map:
                     x1, x2 = x_offset, x_offset + image.shape[1]
 
 
+
+
                     if self.optimize:
                         closest_in_aoi = self.closest_index_voronoi[y1:y2, x1:x2]
-                        closest_in_aoi = np.repeat(closest_in_aoi[:, :, np.newaxis], 4, axis=2)
-                        combined_image = self.final_map[y1:y2, x1:x2, :]
-                        combined_image = np.where(closest_in_aoi == i+(j*self.chunk_size), image, combined_image)
-
-                        self.final_map[y1:y2, x1:x2, :] = combined_image
+                        if image.shape[2] == 4:
+                            closest_in_aoi = np.repeat(closest_in_aoi[:, :, np.newaxis], 4, axis=2)
+                            combined_image = self.final_map[y1:y2, x1:x2, :]
+                            combined_image = np.where(closest_in_aoi == i + (j * self.chunk_size), image,
+                                                      combined_image)
+                            self.final_map[y1:y2, x1:x2, :] = combined_image
+                        else:
+                            closest_in_aoi = np.repeat(closest_in_aoi[:, :, np.newaxis], 2, axis=2)
+                            combined_image = self.ir_temp_map[y1:y2, x1:x2, :]
+                            combined_image = np.where(closest_in_aoi == i + (j * self.chunk_size), image,
+                                                      combined_image)
+                            self.ir_temp_map[y1:y2, x1:x2, :] = combined_image
                     else:
                         alpha_s = image[:, :, 3] / 255.0
                         alpha_l = 1.0 - alpha_s
@@ -137,7 +203,8 @@ class Map:
                 #    b = 0.5 * self.final_map[y1:y2, x1:x2, c]
                 #    alpha_image = ( a + b)
                 #    self.final_map[y1:y2, x1:x2, c] = (0.5 * alpha_image[:, :] + 0.5 * self.final_map[y1:y2, x1:x2, c])
-        except:
+        except Exception as e:
+            print("mapping: error adding images to map: ", e)
             pass
 
     def write_out_image_px_centers_on_map_scaled(self, n_times_smaller):
