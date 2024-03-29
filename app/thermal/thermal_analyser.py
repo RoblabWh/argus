@@ -22,6 +22,16 @@ class ThermalAnalyser:
             dtype=dtype,
         )
 
+    def are_settings_extractable(self, image_filename):
+        try:
+            temperature = self.parse_image(image_filename)
+            if isinstance(temperature, np.ndarray):
+                return True
+            else:
+                return False
+        except Exception as e:
+            return False
+
     def get_image_temp_matrix(self, report_id, image_filename):
         try:
             temperature = self.parse_image(image_filename)

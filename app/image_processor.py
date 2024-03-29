@@ -13,13 +13,16 @@ from weather import Weather
 # und entsprechend eine flag setzen, ob die Temperaturen ausgelesen werden können oder nicht
 
 class ImageProcessor:
-    def __init__(self):
+    def __init__(self, image_paths, rgb_images, ir_images, pano_images):
         self.all_image_paths = []
         self.all_images = []
+        self.all_image_paths = image_paths
+        self.all_rgb_images = rgb_images
+        self.all_ir_images = ir_images
+        self.all_pano_images = pano_images
         self.all_sorted_images = []
         self.all_panos = []
-        self.all_ir_images = []
-        self.all_rgb_images = []
+
         self.couples_path_list = []
 
     @staticmethod
@@ -34,14 +37,26 @@ class ImageProcessor:
                 print(sys.exc_info())
         return images
 
-    def set_image_paths(self, image_paths):
-        self.all_image_paths = image_paths
 
     def _chunks(self, lst, n):
         """Yield successive n-sized chunks from lst."""
         for i in range(0, len(lst), n):
             yield lst[i:i + n]
     def generate_images_from_paths(self):
+
+        for image in self.all_rgb_images:
+            path = image.get_image_path()
+            self.all_image_paths.remove(path)
+
+        for image in self.all_ir_images:
+            path = image.get_image_path()
+            self.all_image_paths.remove(path)
+
+        for image in self.all_pano_images:
+            path = image.get_image_path()
+            self.all_image_paths.remove(path)
+
+
         nmbr_of_processes = len(os.sched_getaffinity(0)) #6
         print('number of processes: ', nmbr_of_processes)
         if nmbr_of_processes < len(self.all_image_paths):
@@ -56,7 +71,22 @@ class ImageProcessor:
 
         self.all_images = images
 
+    def filter_images(self):
+        for image in self.all_images:
+            if image.get_exif_header().ir:
+                self.all_ir_images.append(image)
+            elif image.get_exif_header().pano:
+                self.all_pano_images.append(image)
+            else:
+                self.all_rgb_images.append(image)
+
+
     def sort_images(self):
+        self.all_rgb_images.sort(key=lambda x: x.get_exif_header().get_creation_time())
+        self.all_ir_images.sort(key=lambda x: x.get_exif_header().get_creation_time())
+        self.all_pano_images.sort(key=lambda x: x.get_exif_header().get_creation_time())
+
+        self.all_images = self.all_rgb_images + self.all_ir_images + self.all_pano_images
         self.all_images.sort(key=lambda x: x.get_exif_header().get_creation_time())
 
     def filter_panos(self):
@@ -81,7 +111,7 @@ class ImageProcessor:
 
     def get_panos(self):
         panos = []
-        for pano in self.all_panos:
+        for pano in self.all_pano_images:
             panos.append(pano.get_exif_header().pano_data)
         return panos
 
@@ -238,7 +268,7 @@ class ImageProcessor:
 
     def generate_flight_trajectory(self):
         coordinates = []
-        for image in self.all_images:
+        for image in self.all_rgb_images:
             try:
                 coordinate = [image.get_exif_header().get_gps().get_latitude(),
                                 image.get_exif_header().get_gps().get_longitude()]
@@ -278,3 +308,44 @@ class ImageProcessor:
 
         for image in self.all_ir_images:
             image.generate_thumbnail()
+
+    def find_couples(self):
+        # go throuhg all_rgb_images and all_ir_images and find the image taken within the same second, if no image is found, the image is added with an empty counterpart string
+
+        couples = []
+        j = 0
+        i = 0
+
+        while True:
+            rgb_image = None
+            if i < len(self.all_rgb_images):
+                rgb_image = self.all_rgb_images[i]
+
+            while j < len(self.all_ir_images):
+                ir_image = self.all_ir_images[j]
+
+                if rgb_image is None:
+                    couples.append(("", ir_image.image_path))
+                    j += 1
+                    continue
+
+                if abs(rgb_image.get_exif_header().get_creation_time() - ir_image.get_exif_header().get_creation_time()) <= 1:
+                    rgb_image.set_rgb_counterpart_path(ir_image.get_image_path())
+                    couples.append((rgb_image.image_path, ir_image.image_path))
+                    j += 1
+                    break
+
+                if rgb_image.get_exif_header().get_creation_time() < ir_image.get_exif_header().get_creation_time():
+                    couples.append((rgb_image.image_path, ""))
+                    break
+
+                couples.append(("", ir_image.image_path))
+                j += 1
+
+            if j == len(self.all_ir_images):
+                if i == len(self.all_rgb_images):
+                    break
+                couples.append((rgb_image.image_path, ""))
+            i += 1
+
+            self.couples_path_list = couples

@@ -3,6 +3,7 @@ import datetime
 
 from mapper_thread import MapperThread
 from thermal.thermal_analyser import ThermalAnalyser
+from filter_thread import FilterThread
 
 # from gunicorn.app.base import BaseApplication
 from flask import Flask, flash, request, redirect, url_for, render_template, jsonify, send_file
@@ -43,6 +44,7 @@ class ArgusServer:
 
         self.threads = []
         self.detection_threads = []
+        self.image_filter_threads = []
         # self.map = {}
 
         self.address = address
@@ -68,6 +70,8 @@ class ArgusServer:
                               view_func=self.upload_image_file)
         self.app.add_url_rule('/<int:report_id>/deleteFile', methods=['POST'],
                               view_func=self.delete_file)
+        self.app.add_url_rule('/<int:report_id>/checkUploadedImages', methods=['GET', 'POST'],
+                                view_func=self.check_upload_processing_progress)
         self.app.add_url_rule('/<int:report_id>/processFromUpload', methods=['POST', 'GET'],
                               view_func=self.initial_process)
         self.app.add_url_rule('/<int:report_id>/preprocessProgress', methods=['GET', 'POST'],
@@ -179,7 +183,12 @@ class ArgusServer:
         self.project_manager.set_unprocessed_changes(report_id, True)
         self.project_manager.append_unprocessed_images(report_id, file_names)
 
+        thread = FilterThread(save_path, report_id)
+        self.image_filter_threads.append(thread)
+        thread.start()
+
         return json.dumps({'success': True, 'path': save_path}), 200, {'ContentType': 'application/json'}
+
 
     def delete_file(self, report_id):
         data = request.get_json()
@@ -208,6 +217,54 @@ class ArgusServer:
             return 'Invalid request.'
 
 
+    def check_upload_processing_progress(self, report_id):
+        print('asking for upload progress of report ' + str(report_id))
+        done = True
+        done_threads = []
+        rgb_images = []
+        ir_images = []
+        pano_images = []
+        path_changes = {}
+
+        for thread in self.image_filter_threads:
+            if thread.report_id != report_id:
+                print("-! thread not for this report, skipping", flush=True)
+                continue
+
+            if thread.done:
+                old_path, new_path = thread.get_old_and_new_path()
+                self.project_manager.update_single_file_path(report_id, old_path, new_path)
+                path_changes[old_path] = new_path
+
+                ir, pano, image = thread.get_result()
+                done_threads.append(thread)
+                if ir:
+                    ir_images.append(image)
+                elif pano:
+                    pano_images.append(image)
+                else:
+                    rgb_images.append(image)
+            else:
+                done = False
+
+        for thread in done_threads:
+            self.image_filter_threads.remove(thread)
+
+        self.project_manager.add_image_objects(report_id, rgb_images, ir_images, pano_images)
+
+        if done:
+            # self.project_manager.set_unprocessed_changes(report_id, False)
+            # self.project_manager.update_contains_unprocessed_images(report_id, False)
+            n_rgb = self.project_manager.get_image_objects_rgb_count(report_id)
+            n_ir = self.project_manager.get_image_objects_ir_count(report_id)
+            n_pano = self.project_manager.get_image_objects_panos_count(report_id)
+            ir_readable = True
+            if n_ir > 0:
+                ir_readable = self.thermal_analyser.are_settings_extractable(self.project_manager.get_image_objects_ir(report_id)[0].get_image_path())
+
+            return jsonify({'done': done, "dataSummary": {"rgb": n_rgb, "ir": n_ir, "panos": n_pano, "ir_readable": ir_readable}, "pathChanges": path_changes})
+
+        return jsonify({'done': done, "dataSummary": {}, "pathChanges": path_changes})
 
     def initial_process(self, report_id):
         if request.method == 'POST':

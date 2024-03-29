@@ -9,6 +9,7 @@ __email__ = "arturleinweber@live.de"
 __status__ = "Production"
 
 import os
+import shutil
 
 import cv2
 import imutils
@@ -25,6 +26,13 @@ class Image:
         """
         self.image_path = image_path
         self.exif_header = ExifHeader(image_path)
+        if self.exif_header.ir:
+            self.move_to_super_folder('ir')
+        elif self.exif_header.pano:
+            self.move_to_super_folder('panos')
+        else:
+            self.move_to_super_folder('rgb')
+
         (self.width, self.height) = self.exif_header.get_image_size()
         self.matrix = None
         self.rgb_counterpart_path = None
@@ -126,4 +134,14 @@ class Image:
 
     @staticmethod
     def rotate_image(matrix, rotate_angle_degree):
-        return imutils.rotate_bound(matrix, rotate_angle_degree) 
+        return imutils.rotate_bound(matrix, rotate_angle_degree)
+
+    def move_to_super_folder(self, subfolder):
+        last_folder = os.path.basename(os.path.dirname(self.image_path))
+        if last_folder != subfolder:
+            subfolder_path = os.path.join(os.path.dirname(self.image_path), subfolder)
+            image_path = os.path.join(subfolder_path, os.path.basename(self.image_path))
+            if not os.path.exists(subfolder_path):
+                os.makedirs(subfolder_path)
+            shutil.move(self.image_path, image_path)
+            self.update_path(image_path)

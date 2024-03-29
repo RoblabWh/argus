@@ -1,400 +1,405 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-    <meta charset="UTF-8">
-    <title>Upload</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='default/variables-light.css') }}" id="currentCss">
-    <style>
-        body{
-            margin-left: 0px;
-            margin-right: 0px;
-            margin-bottom: 0px;
-            background-color: var(--bg-color-page);
-            color: var(--font-color-a);
-        }
+  <meta charset="UTF-8">
+  <title>Upload</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='default/variables-light.css') }}" id="currentCss">
+  <style>
+    body {
+      margin-left: 0px;
+      margin-right: 0px;
+      margin-bottom: 0px;
+      background-color: var(--bg-color-page);
+      color: var(--font-color-a);
+    }
 
-        .bodyDiv {
-            min-height: 95vh;
-            width: 94%;
-            max-width: 1400px;
-            margin: 0 auto !important;
-            float: none !important;
-            font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
-        }
-
-
-        .edit-text-button{
-            font-size: 18px;
-            height: fit-content;
-            width: 18px;
-            margin-top:5px;
-            border-radius: 5px;
-            border-style: solid;
-            border-color: var(--bg-color-b);
-            border-width: 1px;
-            background-color: var(--bg-color-a);
-        }
-
-        .edit-text-button:hover{
-            background-color: var(--accent-color-interaction);
-            color: var(--font-color-b);
-        }
-
-        #descriptionText{
-            margin: 0px;
-            padding: 8px;
-            border-radius: 5px;
-            border-style: solid;
-            border-color: transparent;
-            background-color: transparent;
-        }
-
-         #title-name{
-            margin: 0px;
-            margin-left: -14px;
-            padding: 8px;
-            max-width: 95%;
-            border-radius: 6px;
-            border-style: solid;
-            border-color: transparent;
-        }
-
-        #descriptionText.editable, #title-name.editable{
-            border-radius: 6px;
-            border-style: solid;
-            border-color: var(--accent-color-interaction);
-        }
+    .bodyDiv {
+      min-height: 95vh;
+      width: 94%;
+      max-width: 1400px;
+      margin: 0 auto !important;
+      float: none !important;
+      font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    }
 
 
+    .edit-text-button {
+      font-size: 18px;
+      height: fit-content;
+      width: 18px;
+      margin-top: 5px;
+      border-radius: 5px;
+      border-style: solid;
+      border-color: var(--bg-color-b);
+      border-width: 1px;
+      background-color: var(--bg-color-a);
+    }
 
-        .upload-area {
-          width: 90%;
-          margin: 50px auto;
-          padding: 20px 5%;
-          border: 2px dashed #ccc;
-          border-radius: 10px;
-          text-align: center;
-        }
+    .edit-text-button:hover {
+      background-color: var(--accent-color-interaction);
+      color: var(--font-color-b);
+    }
 
-        .upload-area__label {
-          font-size: 24px;
-          font-weight: bold;
-        }
+    #descriptionText {
+      margin: 0px;
+      padding: 8px;
+      border-radius: 5px;
+      border-style: solid;
+      border-color: transparent;
+      background-color: transparent;
+    }
 
-        .uploaded-images {
-          display: flex;
-          flex-wrap: wrap;
-          justify-content: center;
-          margin-top: 20px;
-        }
+    #title-name {
+      margin: 0px;
+      margin-left: -14px;
+      padding: 8px;
+      max-width: 95%;
+      border-radius: 6px;
+      border-style: solid;
+      border-color: transparent;
+    }
 
-        .uploaded-image {
-          position: relative;
-          width: 136px;
-          height: 136px;
-          margin: 10px;
-          background-color: var(--bg-color-a);
-          color: var(--font-color-a);
-          border: 1px solid #ccc;
-          border-radius: 4px;
-          overflow: hidden;
-        }
-
-        .uploaded-image:hover {
-          border: 1px solid var(--accent-color-interaction);
-        }
-
-        .uploaded-image img {
-          width: 100%;
-          height: 80%;
-          object-fit: cover;
-        }
-
-        .uploaded-image .loading-indicator {
-          position: absolute;
-          top: 0;
-          left: 0;
-          width: 100%;
-          height: 100%;
-          background-color: rgba(255, 255, 255, 0.8);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-
-        .uploaded-image .delete-button {
-          position: absolute;
-          top: 5px;
-          right: 5px;
-          width: 25px;
-          height: 25px;
-          background-color:  var(--accent-color-red);
-          border: 1px solid #ccc;
-          border-radius: 50%;
-          display: flex;
-          align-items: center;
-          align-items: center;
-          justify-content: center;
-          cursor: pointer;
-          z-index: 50;
-        }
-
-        .uploaded-image .delete-button:hover {
-          background-color: rgb(255, 0, 0);;
-        }
-
-        .filename-text {
-          font-size: 14px;
-          margin-top: 0px;
-          //color: #333;
-        }
-
-        input[type="file"] {
-            display: none;
-        }
-
-        .custom-file-upload {
-            border-radius: 4px;
-            display: inline-block;
-            padding: 8px 12px;
-            cursor: pointer;
-            background-color: var(--accent-color-interaction);
-            color: var(--font-color-b);
-        }
+    #descriptionText.editable,
+    #title-name.editable {
+      border-radius: 6px;
+      border-style: solid;
+      border-color: var(--accent-color-interaction);
+    }
 
 
 
-        .settings {
-          width: 48%;
-          text-align: left;
-        }
+    .upload-area {
+      width: 90%;
+      margin: 50px auto;
+      padding: 20px 5%;
+      border: 2px dashed #ccc;
+      border-radius: 10px;
+      text-align: center;
+    }
 
-        .separator {
-          border: none;
-          border-top: 1px solid #ccc;
-          margin: 15px 0;
-        }
+    .upload-area__label {
+      font-size: 24px;
+      font-weight: bold;
+    }
 
-        .option {
-          //display: flex;
-          //align-items: left;
-          //justify-content: center;
-          margin-bottom: 5px;
-          margin-left: 20px;
-        }
+    .uploaded-images {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-top: 20px;
+    }
 
-        .option label {
-          margin-left: 5px;
-        }
+    .uploaded-image {
+      position: relative;
+      width: 136px;
+      height: 136px;
+      margin: 10px;
+      background-color: var(--bg-color-a);
+      color: var(--font-color-a);
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      overflow: hidden;
+    }
 
-        .button-container {
-          width: 48%;
-          height: 100%;
-          position: absolute;
-          top: 0;
-          left: 52%;
-        }
+    .uploaded-image:hover {
+      border: 1px solid var(--accent-color-interaction);
+    }
 
-        button {
-          width: 100%;
-          height: 100%;
-          margin: auto;
-          display: block;
-          padding: 10px;
-          background-color: var(--accent-color-interaction);
-          color: var(--font-color-b);
-          font-size: 16px;
-          font-weight: bold;
-          border: none;
-          border-radius: 6px;
-          cursor: pointer;
-          transition: 0.3s ease;
-        }
+    .uploaded-image img {
+      width: 100%;
+      height: 80%;
+      object-fit: cover;
+    }
 
-        .button_active:hover {
-          color: var(--font-color-a);
-          font-weight: bold;
-          font-size: 20px;
-        }
+    .uploaded-image .loading-indicator {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(255, 255, 255, 0.8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .uploaded-image .delete-button {
+      position: absolute;
+      top: 5px;
+      right: 5px;
+      width: 25px;
+      height: 25px;
+      background-color: var(--accent-color-red);
+      border: 1px solid #ccc;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      z-index: 50;
+    }
+
+    .uploaded-image .delete-button:hover {
+      background-color: rgb(255, 0, 0);
+      ;
+    }
+
+    .filename-text {
+      font-size: 14px;
+      margin-top: 0px;
+      //color: #333;
+    }
+
+    input[type="file"] {
+      display: none;
+    }
+
+    .custom-file-upload {
+      border-radius: 4px;
+      display: inline-block;
+      padding: 8px 12px;
+      cursor: pointer;
+      background-color: var(--accent-color-interaction);
+      color: var(--font-color-b);
+    }
 
 
-        .progress-bar-container {
-          display: none;
-          position: relative;
-          width: 100%;
-          height: 30px;
-          background-color: var(--bg-color-a);
-          margin-bottom: 10px;
-          border-radius: 6px;
-        }
 
-        .progress-bar-container a{
-            position: absolute;
-            top: 4px;
-            font-size: 22px;
-            width: 100%;
-            text-align: center;
-            color: var(--font-color-b);
-            font-weight: bold;
-        }
+    .settings {
+      width: 48%;
+      text-align: left;
+    }
 
-        .progress-bar {
-          display: none;
-          height: 100%;
-          background-color: var(--accent-color-green);
-          width: 0%;
-          transition: width 0.2s ease-in-out;
-          border-radius: 6px;
-        }
+    .separator {
+      border: none;
+      border-top: 1px solid #ccc;
+      margin: 15px 0;
+    }
 
-    </style>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <script src="{{url_for('static', filename='default/jquery-3.6.3.js') }}"></script>
+    .option {
+      //display: flex;
+      //align-items: left;
+      //justify-content: center;
+      margin-bottom: 5px;
+      margin-left: 20px;
+    }
+
+    .option label {
+      margin-left: 5px;
+    }
+
+    .button-container {
+      width: 48%;
+      height: 100%;
+      position: absolute;
+      top: 0;
+      left: 52%;
+    }
+
+    button {
+      width: 100%;
+      height: 100%;
+      margin: auto;
+      display: block;
+      padding: 10px;
+      background-color: var(--accent-color-interaction);
+      color: var(--font-color-b);
+      font-size: 16px;
+      font-weight: bold;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: 0.3s ease;
+    }
+
+    .button_active:hover {
+      color: var(--font-color-a);
+      font-weight: bold;
+      font-size: 20px;
+    }
+
+
+    .progress-bar-container {
+      display: none;
+      position: relative;
+      width: 100%;
+      height: 30px;
+      background-color: var(--bg-color-a);
+      margin-bottom: 10px;
+      border-radius: 6px;
+    }
+
+    .progress-bar-container a {
+      position: absolute;
+      top: 4px;
+      font-size: 22px;
+      width: 100%;
+      text-align: center;
+      color: var(--font-color-b);
+      font-weight: bold;
+    }
+
+    .progress-bar {
+      display: none;
+      height: 100%;
+      background-color: var(--accent-color-green);
+      width: 0%;
+      transition: width 0.2s ease-in-out;
+      border-radius: 6px;
+    }
+  </style>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="{{url_for('static', filename='default/jquery-3.6.3.js') }}"></script>
 </head>
+
 <body>
-<script>
+  <script>
 
     ////////////////////////////////////////
     //  Description and Title  editing
     ////////////////////////////////////////
 
-    function toggleTextfieldTitle(){
-            fakeButton = document.getElementById("edit-title-button");
-            toggleTextField("title-name", fakeButton, "update_title");
-        }
+    function toggleTextfieldTitle() {
+      fakeButton = document.getElementById("edit-title-button");
+      toggleTextField("title-name", fakeButton, "update_title");
+    }
 
 
-        function toggleTextFieldDescription(){
-            fakeButton = document.getElementById("edit-description-button");
-            toggleTextField("descriptionText", fakeButton, "update_description");
-        }
+    function toggleTextFieldDescription() {
+      fakeButton = document.getElementById("edit-description-button");
+      toggleTextField("descriptionText", fakeButton, "update_description");
+    }
 
-        function toggleTextField(textfieldID, button, link){
-            var textfield = document.getElementById(textfieldID);
-            if (textfield.contentEditable == "true") {
-                textfield.contentEditable = false;
-                button.children[0].style.display = "inline-block";
-                button.children[1].style.display = "none";
-                $('#'+textfieldID).removeClass('editable');
-                $.post("/"+link+"/{{ id }}", {content: textfield.innerHTML});
-            } else {
-                textfield.contentEditable = "true";
-                $('#'+textfieldID).addClass('editable');
-                button.children[0].style.display = "none";
-                button.children[1].style.display = "inline-block";
-            }
-        }
-
-
-        ////////////////////////////////////////
-        //  process Button de/activation
-        ////////////////////////////////////////
-
-        function disableProcessButton(){
-            document.getElementById("startProcessingButton").disabled = true;
-            document.getElementById("startProcessingButton").style.backgroundColor = "var(--bg-color-b)";
-            document.getElementById("startProcessingButton").style.cursor = "not-allowed";
-            document.getElementById("startProcessingButton").classList.remove("button_active");
-        }
-
-        function enableProcessButton(){
-            document.getElementById("startProcessingButton").disabled = false;
-            document.getElementById("startProcessingButton").style.backgroundColor = "var(--accent-color-interaction)";
-            document.getElementById("startProcessingButton").style.cursor = "pointer";
-            document.getElementById("startProcessingButton").classList.add("button_active");
-        }
+    function toggleTextField(textfieldID, button, link) {
+      var textfield = document.getElementById(textfieldID);
+      if (textfield.contentEditable == "true") {
+        textfield.contentEditable = false;
+        button.children[0].style.display = "inline-block";
+        button.children[1].style.display = "none";
+        $('#' + textfieldID).removeClass('editable');
+        $.post("/" + link + "/{{ id }}", { content: textfield.innerHTML });
+      } else {
+        textfield.contentEditable = "true";
+        $('#' + textfieldID).addClass('editable');
+        button.children[0].style.display = "none";
+        button.children[1].style.display = "inline-block";
+      }
+    }
 
 
-</script>
-{% include 'headerReport.html' %}
+    ////////////////////////////////////////
+    //  process Button de/activation
+    ////////////////////////////////////////
+
+    function disableProcessButton() {
+      document.getElementById("startProcessingButton").disabled = true;
+      document.getElementById("startProcessingButton").style.backgroundColor = "var(--bg-color-b)";
+      document.getElementById("startProcessingButton").style.cursor = "not-allowed";
+      document.getElementById("startProcessingButton").classList.remove("button_active");
+    }
+
+    function enableProcessButton() {
+      document.getElementById("startProcessingButton").disabled = false;
+      document.getElementById("startProcessingButton").style.backgroundColor = "var(--accent-color-interaction)";
+      document.getElementById("startProcessingButton").style.cursor = "pointer";
+      document.getElementById("startProcessingButton").classList.add("button_active");
+    }
+
+
+  </script>
+  {% include 'headerReport.html' %}
 
   <div class="bodyDiv">
-      <br>
-      <br>
-      <br>
+    <br>
+    <br>
+    <br>
 
-      <h4 style="margin-bottom: 2px;">Flight Report (ID:{{ id }})</h4>
+    <h4 style="margin-bottom: 2px;">Flight Report (ID:{{ id }})</h4>
 
-      <div style="width: 100%; display: flex;">
-          <h1 id="title-name">{{ project.name }}</h1>
-          <div id="edit-title-button" class="edit-text-button" style="margin: 12px; float:left"
-               onclick="toggleTextfieldTitle()">
-              <span style="display: inline-block; transform: rotate(100deg); -ms-transform: rotate(100deg); -moz-transform: rotate(100deg); -webkit-transform: rotate(100deg);">&#x270E;</span>
-              <span style="display: none;">&check;</span>
-          </div>
+    <div style="width: 100%; display: flex;">
+      <h1 id="title-name">{{ project.name }}</h1>
+      <div id="edit-title-button" class="edit-text-button" style="margin: 12px; float:left"
+        onclick="toggleTextfieldTitle()">
+        <span
+          style="display: inline-block; transform: rotate(100deg); -ms-transform: rotate(100deg); -moz-transform: rotate(100deg); -webkit-transform: rotate(100deg);">&#x270E;</span>
+        <span style="display: none;">&check;</span>
+      </div>
+    </div>
+
+    <div style="display: inline-flex; width:100% ">
+      <div style="max-width: 97%; margin-right:10px">
+        <p id="descriptionText">
+          {% for line in project.description.splitlines()[:-1] %}
+          {{line}}<br>
+          {% endfor %}
+          {{project.description.splitlines()[-1]}}
+        </p>
+      </div>
+      <div id="edit-description-button" class="edit-text-button" onclick="toggleTextFieldDescription()">
+        <span
+          style="display: inline-block; transform: rotate(100deg); -ms-transform: rotate(100deg); -moz-transform: rotate(100deg); -webkit-transform: rotate(100deg);">&#x270E;</span>
+        <span style="display: none;">&check;</span>
+      </div>
+    </div>
+
+    <br>
+
+    <form id='processingForm' style="position: relative" method="post" action="/{{ id }}/processFromUpload">
+      <div class="settings">
+        <hr class="separator">
+        <h3>Settings</h3>
+
+        <div class="option">
+          <input type="checkbox" id="with_mapping" name="with_mapping" value="mapping" checked>
+          <label for="with_mapping">Fast Orthophoto</label>
+        </div>
+        <div class="option">
+          <select id="map_res" name="map resolution">
+            <option value="low">Low</option>
+            <option value="med">Medium</option>
+            <option selected="selected" value="high">High</option>
+            <option value="ultra">Ultra</option>
+          </select>
+          <label for="map_res">Orthophoto Resolution</label>
+        </div>
+        <br>
+        <div class="option">
+          <input type="checkbox" id="with_odm" name="with_odm" value="odm">
+          <label for="with_odm">ODM Orthophoto</label>
+        </div>
+        <hr class="separator">
       </div>
 
-      <div style="display: inline-flex; width:100% ">
-          <div style="max-width: 97%; margin-right:10px">
-              <p id="descriptionText">
-                  {% for line in project.description.splitlines()[:-1] %}
-                  {{line}}<br>
-                  {% endfor %}
-                  {{project.description.splitlines()[-1]}}
-              </p>
-          </div>
-          <div id="edit-description-button" class="edit-text-button" onclick="toggleTextFieldDescription()">
-              <span style="display: inline-block; transform: rotate(100deg); -ms-transform: rotate(100deg); -moz-transform: rotate(100deg); -webkit-transform: rotate(100deg);">&#x270E;</span>
-              <span style="display: none;">&check;</span>
-          </div>
+      <div class="button-container">
+        <button id="startProcessingButton">Start Processing</button>
       </div>
+    </form>
 
+
+    <div class="progress-bar-container">
+      <div id="progress-bar" class="progress-bar"></div>
+      <a id="progress-bar-label"> Preprocessing-Progress </a>
+    </div>
+
+
+    <div class="upload-area" id="upload-area">
+      <div class="upload-area__label" id="upload-label">Upload Images</div>
       <br>
-
-      <form id='processingForm' style="position: relative" method="post" action="/{{ id }}/processFromUpload">
-          <div class="settings">
-              <hr class="separator">
-              <h3>Settings</h3>
-
-              <div class="option">
-                  <input type="checkbox" id="with_mapping" name="with_mapping" value="mapping" checked>
-                  <label for="with_mapping">Fast Orthophoto</label>
-              </div>
-              <div class="option">
-                  <select id="map_res" name="map resolution">
-                      <option value="low">Low</option>
-                      <option value="med">Medium</option>
-                      <option selected="selected" value="high">High</option>
-                      <option value="ultra">Ultra</option>
-                  </select>
-                  <label for="map_res">Orthophoto Resolution</label>
-              </div>
-              <br>
-              <div class="option">
-                  <input type="checkbox" id="with_odm" name="with_odm" value="odm">
-                  <label for="with_odm">ODM Orthophoto</label>
-              </div>
-              <hr class="separator">
-          </div>
-
-          <div class="button-container">
-              <button id="startProcessingButton">Start Processing</button>
-          </div>
-      </form>
-
-
-      <div class="progress-bar-container">
-          <div id="progress-bar" class="progress-bar"></div>
-          <a id="progress-bar-label"> Preprocessing-Progress </a>
-      </div>
-
-
-      <div class="upload-area" id="upload-area">
-          <div class="upload-area__label" id="upload-label">Upload Images</div>
-          <br>
-          <a> Drag and drop images here or use the file browser to select your images.</a>
-          <br>
-          <a> Upload at least 5 images.</a>
-          <br>
-          <br>
-          <label for="file-input" class="custom-file-upload">Select Images</label>
-          <input type="file" id="file-input" multiple>
-          <div class="uploaded-images" id="uploaded-images"></div>
-      </div>
+      <a> Drag and drop images here or use the file browser to select your images.</a>
+      <br>
+      <a> Upload at least 5 images.</a>
+      <br>
+      <br>
+      <label for="file-input" class="custom-file-upload">Select Images</label>
+      <input type="file" id="file-input" multiple>
+      <div class="uploaded-images" id="uploaded-images"></div>
+    </div>
 
   </div>
 
-<script>
+  <script>
 
     ////////////////////////////////////////////
     // Image upload
@@ -420,7 +425,7 @@
     uploadArea.addEventListener('drop', handleFileSelect);
 
     // Prevent default behavior on dragover event to enable drop
-    uploadArea.addEventListener('dragover', function(event) {
+    uploadArea.addEventListener('dragover', function (event) {
       event.preventDefault();
     });
 
@@ -437,7 +442,7 @@
       const xhr = new XMLHttpRequest();
       xhr.open('POST', '/{{ id }}/uploadFile', true);
 
-      xhr.onreadystatechange = function() {
+      xhr.onreadystatechange = function () {
         if (xhr.readyState === XMLHttpRequest.DONE) {
           // Handle response from the server if needed
           if (xhr.status === 200) {
@@ -467,14 +472,14 @@
       xhr.open('POST', '/{{ id }}/deleteFile', true);
       xhr.setRequestHeader('Content-Type', 'application/json');
 
-      xhr.onreadystatechange = function() {
+      xhr.onreadystatechange = function () {
         if (xhr.readyState === XMLHttpRequest.DONE) {
           if (xhr.status === 200) {
             console.log(xhr.responseText);
             console.log('File deleted successfully.');
 
             if (uploadedImage.querySelector('.loading-indicator').style.display == 'none') {
-                numberOfImagesUploadedSuccessfully--;
+              numberOfImagesUploadedSuccessfully--;
             }
             numberOfImagesUploading--;
             updateUploadProgress();
@@ -497,7 +502,7 @@
 
     // Function to get the filename from the file path
     function getFilenameFromPath(path) {
-        return path.split('\\').pop().split('/').pop();
+      return path.split('\\').pop().split('/').pop();
     }
 
 
@@ -505,7 +510,7 @@
     function handleFileSelect(event) {
       console.log('handleFileSelect');
       event.preventDefault();
-      if(processing) {
+      if (processing) {
         return;
       }
 
@@ -526,77 +531,77 @@
 
         // Check if the file is an image
         if (!imageType.test(file.type)) {
-            console.error('File', file.name, 'is not an image.');
-            continue;
+          console.error('File', file.name, 'is not an image.');
+          continue;
         }
 
         const reader = new FileReader();
 
         // Function to handle image loading
-        reader.onload = (function(imageFile) {
-          return function(e) {
+        reader.onload = (function (imageFile) {
+          return function (e) {
             // Check if the filename is already uploaded
-            if(isFilenameAlreadyUploaded(imageFile.name)){
-                doubleNames.push(imageFile.name);
-                numberOfImagesUploading--;
-                updateUploadProgress();
+            if (isFilenameAlreadyUploaded(imageFile.name)) {
+              doubleNames.push(imageFile.name);
+              numberOfImagesUploading--;
+              updateUploadProgress();
             }
-            else{
-                // Create the image element
-                const img = document.createElement('img');
-                img.onload = function() {
-                  uploadImage(imageFile, uploadedImage);
-                };
-                img.src = e.target.result;
-                 // Create the uploaded image container
-                const uploadedImage = document.createElement('div');
-                uploadedImage.className = 'uploaded-image';
-                a = document.createElement('a');
+            else {
+              // Create the image element
+              const img = document.createElement('img');
+              img.onload = function () {
+                uploadImage(imageFile, uploadedImage);
+              };
+              img.src = e.target.result;
+              // Create the uploaded image container
+              const uploadedImage = document.createElement('div');
+              uploadedImage.className = 'uploaded-image';
+              a = document.createElement('a');
 
-                // Open the image in big size on click
-                uploadedImage.addEventListener('click', function(event) {
-                  event.stopPropagation();
-                  image = this.querySelector('a');
-                  console.log(image);
-                  window.open(image);
-                });
-
-
-
-                // Create the filename text element
-                const filenameText = document.createElement('div');
-                filenameText.className = 'filename-text';
-                filenameText.textContent = getFilenameFromPath(file.name);
-
-                // Create the loading indicator
-                const loadingIndicator = document.createElement('div');
-                loadingIndicator.className = 'loading-indicator';
-                loadingIndicator.textContent = 'Uploading...';
-
-                // Create the delete button
-                const deleteButton = document.createElement('div');
-                deleteButton.className = 'delete-button';
-                deleteButton.innerHTML = '<a style="font-size: 17px; margin-top: auto; color: var(--font-color-b);">✖</a>';
-
-                deleteButton.addEventListener('click', function(event) {
-                  event.stopPropagation();
-                  const uploadedImage = this.parentNode;
-                  const img = uploadedImage.querySelector('img');
-                  const filename = uploadedImage.querySelector('.filename-text').innerHTML;
-                  console.log(filename);
-                  deleteFile(filename, uploadedImage);
-                });
-
-                // Append elements to the uploaded image container
-                uploadedImage.appendChild(img);
-                uploadedImage.appendChild(a);
-                uploadedImage.appendChild(loadingIndicator);
-                uploadedImage.appendChild(deleteButton);
-                uploadedImage.appendChild(filenameText);
+              // Open the image in big size on click
+              uploadedImage.addEventListener('click', function (event) {
+                event.stopPropagation();
+                image = this.querySelector('a');
+                console.log(image);
+                window.open(image);
+              });
 
 
-                // Append the uploaded image container to the uploaded images container
-                uploadedImages.appendChild(uploadedImage);
+
+              // Create the filename text element
+              const filenameText = document.createElement('div');
+              filenameText.className = 'filename-text';
+              filenameText.textContent = getFilenameFromPath(file.name);
+
+              // Create the loading indicator
+              const loadingIndicator = document.createElement('div');
+              loadingIndicator.className = 'loading-indicator';
+              loadingIndicator.textContent = 'Uploading...';
+
+              // Create the delete button
+              const deleteButton = document.createElement('div');
+              deleteButton.className = 'delete-button';
+              deleteButton.innerHTML = '<a style="font-size: 17px; margin-top: auto; color: var(--font-color-b);">✖</a>';
+
+              deleteButton.addEventListener('click', function (event) {
+                event.stopPropagation();
+                const uploadedImage = this.parentNode;
+                const img = uploadedImage.querySelector('img');
+                const filename = uploadedImage.querySelector('.filename-text').innerHTML;
+                console.log(filename);
+                deleteFile(filename, uploadedImage);
+              });
+
+              // Append elements to the uploaded image container
+              uploadedImage.appendChild(img);
+              uploadedImage.appendChild(a);
+              uploadedImage.appendChild(loadingIndicator);
+              uploadedImage.appendChild(deleteButton);
+              uploadedImage.appendChild(filenameText);
+
+
+              // Append the uploaded image container to the uploaded images container
+              uploadedImages.appendChild(uploadedImage);
             }
           };
         })(file);
@@ -606,61 +611,100 @@
       }
     }
 
-    function isFilenameAlreadyUploaded(filename){
-        var uploadedImages = document.getElementsByClassName('uploaded-image');
-        for (let i = 0; i < uploadedImages.length; i++){
-            var uploadedFilename = uploadedImages[i].querySelector('.filename-text').innerHTML;
-            if (uploadedFilename == filename){
-                console.log("found duplicate with name " + filename + " and existing image " + uploadedFilename);
-                return true;
+    function isFilenameAlreadyUploaded(filename) {
+      var uploadedImages = document.getElementsByClassName('uploaded-image');
+      for (let i = 0; i < uploadedImages.length; i++) {
+        var uploadedFilename = uploadedImages[i].querySelector('.filename-text').innerHTML;
+        if (uploadedFilename == filename) {
+          console.log("found duplicate with name " + filename + " and existing image " + uploadedFilename);
+          return true;
+        }
+      }
+      return false;
+    }
+    var changedPaths = {};
+
+    function updateUploadProgress() {
+      const progressBarLabel = document.getElementById('progress-bar-label');
+      var progress = Math.round((numberOfImagesUploadedSuccessfully / numberOfImagesUploading) * 100);
+
+      progressBarLabel.innerHTML = 'UPLOADING...';
+      updateProgressBar(progress);
+      if (progress > 99.9) {
+        if (doubleNames.length > 0) {
+          alert('The following images were not uploaded because they already exist: ' + doubleNames.join(', '));
+          doubleNames = [];
+        }
+
+        $.post("/{{ id }}/checkUploadedImages", function (response) {
+        // go through every changed path in response.pathChanges an update the according a href of the image with the old path as href
+          console.log(response);
+          if(response.pathChanges != null) {
+            const uploadedImages = document.getElementsByClassName('uploaded-image');
+            for (let j = 0; j < uploadedImages.length; j++) {
+              var ref = uploadedImages[j].querySelector('a').href;
+              ref = './static' + ref.split('static').pop();
+              console.log(ref);
+              console.log(response.pathChanges[ref]);
+              changedPaths = response.pathChanges;
+              if (response.pathChanges[ref] != null) {
+                new_ref = response.pathChanges[ref];
+                // cut away the first character of the new_ref
+                console.log(new_ref);
+                new_ref = new_ref.slice(1);
+                console.log(new_ref);
+                address = window.location.href.split('/');
+                new_ref = address[0] + '//' + address[2] + new_ref;
+                console.log(new_ref);
+                uploadedImages[j].querySelector('a').href = new_ref;
+              }
             }
-        }
-        return false;
+          }
+
+
+
+          if (response.done) {
+            drawSummary(response.dataSummary);
+            updateProcessButtonEnabling();
+          } else {
+
+            setTimeout(updateUploadProgress, 750);
+          }
+        }, "json");
+      }
+
+
+      //showProgressBar();
     }
 
-
-    function updateUploadProgress(){
-        const progressBarLabel = document.getElementById('progress-bar-label');
-        var progress = Math.round((numberOfImagesUploadedSuccessfully/numberOfImagesUploading)*100);
-
-        progressBarLabel.innerHTML = 'UPLOADING...';
-        updateProgressBar(progress);
-        if(progress > 99.9){
-          if(doubleNames.length > 0){
-            alert('The following images were not uploaded because they already exist: ' + doubleNames.join(', '));
-            doubleNames = [];
-           }
-        }
-
-        updateProcessButtonEnabling();
-
-        //showProgressBar();
+    function drawSummary(summaryData){
+      console.log(summaryData);
     }
 
-    function updateProcessButtonEnabling(){
-        if (numberOfImagesUploading < 5){
-            disableProcessButton();
-            return;
-        }
-        if (numberOfImagesUploadedSuccessfully < numberOfImagesUploading){
-            disableProcessButton();
-            return;
-        }
-        enableProcessButton();
+    function updateProcessButtonEnabling() {
+      if (numberOfImagesUploading < 5) {
+        disableProcessButton();
+        return;
+      }
+      if (numberOfImagesUploadedSuccessfully < numberOfImagesUploading) {
+        disableProcessButton();
+        return;
+      }
+      enableProcessButton();
     }
 
-    function disableUpload(){
-        processing = true;
-        //disable upload button and deactivate the drag and drop for the upload area
-        var uploadButton = document.getElementsByClassName('custom-file-upload')[0];
-        uploadButton.style.cursor = 'not-allowed';
-        uploadButton.style.opacity = '0.5';
+    function disableUpload() {
+      processing = true;
+      //disable upload button and deactivate the drag and drop for the upload area
+      var uploadButton = document.getElementsByClassName('custom-file-upload')[0];
+      uploadButton.style.cursor = 'not-allowed';
+      uploadButton.style.opacity = '0.5';
 
-        var inputFile = document.getElementById('file-input');
-        inputFile.disabled = true;
+      var inputFile = document.getElementById('file-input');
+      inputFile.disabled = true;
 
-        var uploadArea = document.getElementById('upload-area');
-        uploadArea.style.cursor = 'not-allowed';
+      var uploadArea = document.getElementById('upload-area');
+      uploadArea.style.cursor = 'not-allowed';
     }
 
 
@@ -669,74 +713,74 @@
     // Image upload area if already uploaded
     ////////////////////////////////////////////
 
-    const file_paths = {{ file_names|tojson }};
+    const file_paths = {{ file_names| tojson }};
     const urls_thumbnails = [];
     const urls = [];
     {% for file_name in file_names %}
-        urls_thumbnails.push("{{ global_for(thumbnail_for(file_name)) }}");
-        urls.push("{{ global_for(file_name) }}");
+    urls_thumbnails.push("{{ global_for(thumbnail_for(file_name)) }}");
+    urls.push("{{ global_for(file_name) }}");
     {% endfor %}
     // Process each selected file and create an uploadImage
-    for (let i = 0; i < file_paths.length; i++){
-        numberOfImagesUploading++;
-        const img = document.createElement('img');
-        img.src = urls_thumbnails[i];
-        img.onload = function() {
-          // remove the loading indicator
-            const loadingIndicator = uploadedImage.querySelector('.loading-indicator');
-            loadingIndicator.style.display = 'none';
-            numberOfImagesUploadedSuccessfully++;
-        };
+    for (let i = 0; i < file_paths.length; i++) {
+      numberOfImagesUploading++;
+      const img = document.createElement('img');
+      img.src = urls_thumbnails[i];
+      img.onload = function () {
+        // remove the loading indicator
+        const loadingIndicator = uploadedImage.querySelector('.loading-indicator');
+        loadingIndicator.style.display = 'none';
+        numberOfImagesUploadedSuccessfully++;
+      };
 
 
-        // Create the uploaded image container
-        const uploadedImage = document.createElement('div');
-        uploadedImage.className = 'uploaded-image';
-        a = document.createElement('a');
-        a.href = urls[i];
+      // Create the uploaded image container
+      const uploadedImage = document.createElement('div');
+      uploadedImage.className = 'uploaded-image';
+      a = document.createElement('a');
+      a.href = urls[i];
 
 
-        // Open the image in big size on click
-        uploadedImage.addEventListener('click', function(event) {
-          event.stopPropagation();
-          image = this.querySelector('a');
-          console.log(image);
-          window.open(image);
-        });
+      // Open the image in big size on click
+      uploadedImage.addEventListener('click', function (event) {
+        event.stopPropagation();
+        image = this.querySelector('a');
+        console.log(image);
+        window.open(image);
+      });
 
-        // Create the filename text element
-        const filenameText = document.createElement('div');
-        filenameText.className = 'filename-text';
-        filenameText.textContent = getFilenameFromPath(file_paths[i]);
+      // Create the filename text element
+      const filenameText = document.createElement('div');
+      filenameText.className = 'filename-text';
+      filenameText.textContent = getFilenameFromPath(file_paths[i]);
 
-        // Create the loading indicator
-        const loadingIndicator = document.createElement('div');
-        loadingIndicator.className = 'loading-indicator';
-        loadingIndicator.textContent = 'Uploading...';
+      // Create the loading indicator
+      const loadingIndicator = document.createElement('div');
+      loadingIndicator.className = 'loading-indicator';
+      loadingIndicator.textContent = 'Uploading...';
 
-        // Create the delete button
-        const deleteButton = document.createElement('div');
-        deleteButton.className = 'delete-button';
-        deleteButton.innerHTML = '<a style="font-size: 17px; margin-top: auto; color: var(--font-color-b);">✖</a>';
+      // Create the delete button
+      const deleteButton = document.createElement('div');
+      deleteButton.className = 'delete-button';
+      deleteButton.innerHTML = '<a style="font-size: 17px; margin-top: auto; color: var(--font-color-b);">✖</a>';
 
-        deleteButton.addEventListener('click', function(event) {
-          event.stopPropagation();
-          const uploadedImage = this.parentNode;
-          const img = uploadedImage.querySelector('img');
-          const filename = uploadedImage.querySelector('.filename-text').innerHTML;
-          console.log(filename);
-          deleteFile(filename, uploadedImage);
-        });
+      deleteButton.addEventListener('click', function (event) {
+        event.stopPropagation();
+        const uploadedImage = this.parentNode;
+        const img = uploadedImage.querySelector('img');
+        const filename = uploadedImage.querySelector('.filename-text').innerHTML;
+        console.log(filename);
+        deleteFile(filename, uploadedImage);
+      });
 
-        // Append elements to the uploaded image container
-        uploadedImage.appendChild(img);
-        uploadedImage.appendChild(a);
-        uploadedImage.appendChild(loadingIndicator);
-        uploadedImage.appendChild(deleteButton);
-        uploadedImage.appendChild(filenameText);
+      // Append elements to the uploaded image container
+      uploadedImage.appendChild(img);
+      uploadedImage.appendChild(a);
+      uploadedImage.appendChild(loadingIndicator);
+      uploadedImage.appendChild(deleteButton);
+      uploadedImage.appendChild(filenameText);
 
-        // Append the uploaded image container to the uploaded images container
-        uploadedImages.appendChild(uploadedImage);
+      // Append the uploaded image container to the uploaded images container
+      uploadedImages.appendChild(uploadedImage);
 
     }
 
@@ -747,9 +791,9 @@
 
     allImages = document.querySelectorAll('.uploaded-image');
     if (allImages.length < 5) {
-        disableProcessButton();
+      disableProcessButton();
     } else {
-        enableProcessButton();
+      enableProcessButton();
     }
 
     // Function to update the loading bar
@@ -773,7 +817,7 @@
       const xhr = new XMLHttpRequest();
       xhr.open('GET', '/{{ id }}/preprocessProgress', true);
 
-      xhr.onreadystatechange = function() {
+      xhr.onreadystatechange = function () {
         if (xhr.readyState === XMLHttpRequest.DONE) {
           if (xhr.status === 200) {
             const progress = parseInt(xhr.responseText);
@@ -829,32 +873,33 @@
 
     // Add event listener to form submission
     const processingForm = document.getElementById('processingForm');
-    processingForm.addEventListener('submit', function(event) {
+    processingForm.addEventListener('submit', function (event) {
       event.preventDefault(); // Prevent the form from being submitted
 
       const formData = $(processingForm).serialize();
 
       // Send the form data using $.post
-      $.post($(processingForm).attr('action'), formData, function(response) {
+      $.post($(processingForm).attr('action'), formData, function (response) {
         console.log(response);
       });
 
       // Call the startCheckingProgress function
       startCheckingProgress();
-  });
+    });
 
-  function showProgressBar(){
-    var progressBar = document.getElementById('progress-bar');
-    var progressBarContainer = document.getElementsByClassName('progress-bar-container')[0];
-    progressBar.style.display = 'block';
-    progressBarContainer.style.display = 'block';
-  }
-
-
+    function showProgressBar() {
+      var progressBar = document.getElementById('progress-bar');
+      var progressBarContainer = document.getElementsByClassName('progress-bar-container')[0];
+      progressBar.style.display = 'block';
+      progressBarContainer.style.display = 'block';
+    }
 
 
-</script>
 
-{% include 'footer.html' %}
+
+  </script>
+
+  {% include 'footer.html' %}
 </body>
+
 </html>

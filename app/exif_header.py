@@ -47,7 +47,7 @@ class ExifHeader:
             self.read_xmp_projection_type()
             if not self.pano:
                 self.read_camera_properties()
-                self.read_xmp_ir()
+                self.check_ir()
             self.read_gps_coordinate()
         except Exception as e:
             print("Error reading metadata: " + str(e))
@@ -119,6 +119,26 @@ class ExifHeader:
         flight_roll_degree = float(self._get_if_exist(self.python_dict, 'XMP:FlightRollDegree'))
         self.xmp_metadata = XMP(flight_yaw_degree, flight_pitch_degree, flight_roll_degree, gimbal_yaw_degree, gimbal_pitch_degree, gimbal_roll_degree)
 
+    def check_ir(self):
+        """
+        Checking if the image is an IR image
+        :return:
+        """
+
+        if self.read_xmp_ir():
+            self.enable_ir()
+            return
+
+        if self.check_for_camera_model_ir_image_size():
+            self.enable_ir()
+            return
+
+        if self.check_filename_ir():
+            self.enable_ir()
+            return
+
+
+
     def read_xmp_ir(self):
         """
         Trying to read IR metadata, if available
@@ -127,10 +147,52 @@ class ExifHeader:
 
         try:
             imageSource = self._get_if_exist(self.python_dict, 'XMP:ImageSource')
-            if "infrared" in imageSource or "ir" in imageSource or "Infrared" in imageSource or "IR" in imageSource or "InfraRed" in imageSource:
-                self.enable_ir()
+            if "infrared" in imageSource or "ir" in imageSource or "Infrared" in imageSource or "IR" in imageSource or "InfraRed"  or "InfraredCamera" in imageSource:
+                print("IR image detected by XMP:ImageSource", flush=True)
+                return
         except:
-            return
+            return False
+
+    def check_for_camera_model_ir_image_size(self):
+        """
+        Checking if the image has specific dimensions known to be uses for IR images of guven camera model
+        :return: True if the image is an IR image
+        """
+        camera_model_name = self.camera_properties.get_model()
+        #print("trying to check the image size of camera_model_name: " + str(camera_model_name) + " to check for ir", flush=True)
+        with open('ir_camera_resolutions.json') as f:
+            data = json.load(f)
+            if camera_model_name in data:
+                size = data[camera_model_name]
+                x_ref = size["x"]
+                y_ref = size["y"]
+                # print("image size from ir_camera_resolutions.json: x" + str(x_ref) + " y" + str(y_ref), flush=True)
+                # print("image size from image: x" + str(self.image_size[0]) + " y" + str(self.image_size[1]), flush=True)
+                if self.image_size[0] == x_ref and self.image_size[1] == y_ref:
+                    f.close()
+                    return True
+                f.close()
+            else:
+                print("Untested configuration for camera model:\"" + str(
+                    camera_model_name) + "\", please add IR image size to ir_camera_resolutions.json!")
+                f.close()
+
+        return False
+
+    def check_filename_ir(self):
+        """
+        Checking if the image has knowns naming conventions for IR images
+        :return: True if the image is an IR image
+        """
+        filename = self.image_path.split('/')[-1]
+        if "IR" in filename or "ir" in filename:
+            return True
+
+        if filename.split('.')[0][-2:] == "_T":
+            return True
+
+        return False
+
 
     def read_xmp_projection_type(self, key='XMP:ProjectionType'):
 
@@ -191,14 +253,12 @@ class ExifHeader:
 
     def enable_ir(self):
         self.ir = True
-        self.camera_properties.model += "_IR"
+        model = self.camera_properties.model + "_IR"
         fl = None
         fov = None
         try:
-            fl = self.get_data_from_camera_specs(self.camera_properties.get_model,
-                                                                        'EXIF:FocalLength')
-            fov = self.get_data_from_camera_specs(self.camera_properties.get_model,
-                                                                         'Composite:FOV')
+            fl = self.get_data_from_camera_specs(model, 'EXIF:FocalLength')
+            fov = self.get_data_from_camera_specs(model, 'Composite:FOV')
         except:
             #print(f"no specific ir camera properties found in camera_specs.json for model: { self.camera_properties.get_model }")
             return

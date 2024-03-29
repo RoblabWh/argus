@@ -11,6 +11,7 @@ class MapperThread(threading.Thread):
         self.report_id = report_id
         self.file_names = file_names
         self.data = data
+        self.project_manager = project_manager
 
 
         self.progress_preprocess = 0
@@ -92,23 +93,38 @@ class MapperThread(threading.Thread):
         except:
             pass
 
+        #alle images liste für liste durchgehen und aus temp. filenames entfernen, von den übrigen noch image objects erstellen
+
 
         self.progress_preprocess = 2
-        processor = ImageProcessor()
-        processor.set_image_paths(self.file_names)
-        processor.generate_images_from_paths()
-        self.progress_preprocess = 10
-        processor.sort_images()
-        self.progress_preprocess = 30
-        processor.filter_panos()
-        #processor.filter_unusable_images()
-        self.progress_preprocess = 40
-        processor.separate_ir_rgb()
-        self.progress_preprocess = 50
-        processor.generate_flight_trajectory()
-        self.progress_preprocess = 55
-        processor.generate_thumbnais()
 
+        rgb_images = self.project_manager.get_image_objects_rgb(self.report_id)
+        ir_images = self.project_manager.get_image_objects_ir(self.report_id)
+        pano_images = self.project_manager.get_image_objects_panos(self.report_id)
+
+        processor = ImageProcessor(self.file_names, rgb_images, ir_images, pano_images)
+        self.progress_preprocess = 5
+
+        processor.generate_images_from_paths()
+        self.progress_preprocess = 35
+
+        processor.filter_images()
+        self.progress_preprocess = 40
+
+        processor.sort_images()
+        self.progress_preprocess = 50
+
+        processor.generate_flight_trajectory()
+        self.progress_preprocess = 60
+
+        processor.find_couples()
+        self.progress_preprocess = 70
+
+        # processor.filter_panos()
+        # processor.filter_unusable_images()
+        # processor.separate_ir_rgb()
+        # self.progress_preprocess = 50
+        # processor.generate_thumbnais()
 
         self.panos = processor.get_panos()
         self.couples_path_list = processor.couples_path_list
@@ -116,14 +132,14 @@ class MapperThread(threading.Thread):
         self.ir_images = processor.all_ir_images
         self.flight_trajectory = processor.flight_trajectory
         print("flight trajectory: " + str(self.flight_trajectory))
-        self.progress_preprocess = 58
+        self.progress_preprocess = 75
 
 
         #next step: calculate metadata for report
         self.flight_data = processor.extract_flight_data(flight_data)
-        self.progress_preprocess = 70
-        self.camera_specs = processor.extract_camera_specs()
         self.progress_preprocess = 80
+        self.camera_specs = processor.extract_camera_specs()
+        self.progress_preprocess = 85
         self.weather_data = processor.load_weather_data()
         self.progress_preprocess = 90
 

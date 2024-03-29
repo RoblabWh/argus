@@ -11,12 +11,14 @@ from datetime import datetime
 class ProjectManager:
     def __init__(self, projects_path):
         self.projects = []
+        self.projects_image_objects = {}
         self.highest_id = -1
         self.current_project_id = None
         if not os.path.exists(projects_path):
             os.makedirs(projects_path)
         self.projects_path = projects_path
-        self.CURRENT_PROJECT_FILE_VERSION = 1
+        self.CURRENT_PROJECT_FILE_VERSION = 1.1
+        self.projects_dirs = ["rgb", "ir", "panos", "rgb/thumbnails" , "ir/thumbnails", "panos/thumbnails"]
         #self.image_mapper = {}
 
 
@@ -31,6 +33,10 @@ class ProjectManager:
         self.projects.append(project)
         with open(os.path.join(self.projects_path, str(id), "project.json"), "w") as json_file:
             json.dump(project, json_file)
+
+        #make subdirectories for project as dtermined in varable "project_dirs"
+        for dir in self.projects_dirs:
+            os.makedirs(os.path.join(self.projects_path, str(id), dir))
 
         self.highest_id += 1
         self.projects = sorted(self.projects, key=lambda d: d['id'], reverse=True)
@@ -160,12 +166,15 @@ class ProjectManager:
         # check for every directory in static/uploads/ if there is project.json
         # if yes, load project and add to project list
         for project_id in os.listdir(self.projects_path):
-            if os.path.isdir(os.path.join(self.projects_path, project_id)):
-                project = self.load_project_from_directory(project_id)
-                if project != None:
-                    self.projects.append(project)
-                    # if project['id'] > self.highest_id:
-                    #     self.highest_id = project['id']
+            try:
+                if os.path.isdir(os.path.join(self.projects_path, project_id)):
+                    project = self.load_project_from_directory(project_id)
+                    if project != None:
+                        self.projects.append(project)
+                        # if project['id'] > self.highest_id:
+                        #     self.highest_id = project['id']
+            except:
+                print("error while loading project with id: " + str(project_id), flush=True)
 
         self.projects = sorted(self.projects, key=lambda d: d['id'], reverse=True)
 
@@ -241,6 +250,21 @@ class ProjectManager:
         data = project['data']
         data['file_names'] += file_names
         with open(os.path.join(self.projects_path, str(id), "project.json"), "w") as json_file:
+            json.dump(project, json_file)
+
+        return data['file_names']
+
+    def update_single_file_path(self, id, old_path, new_path):
+        project = self.get_project(id)
+        data = project['data']
+        file_names = data['file_names']
+        try:
+            file_names[file_names.index(old_path)] = new_path
+        except:
+            print("file " + old_path + " not found in file_names list", flush=True)
+
+
+        with open(self.projects_path + str(id) + "/project.json", "w") as json_file:
             json.dump(project, json_file)
 
         return data['file_names']
@@ -519,4 +543,47 @@ class ProjectManager:
                 # Add each file to the zip archive without its relative path
                 zipf.write(file, os.path.basename(file))
 
+    def add_image_objects(self, report_id, rgb, ir, panos):
+        try:
+            if self.projects_image_objects[str(report_id)] == None:
+                print("creating new image objects since they were none for report_id: " + str(report_id), flush=True)
+                self.projects_image_objects[str(report_id)] = {'rgb': [], 'ir': [], 'panos': []}
+        except:
+            print("creating new image objects dict after error for report_id: " + str(report_id), flush=True)
+            self.projects_image_objects[str(report_id)] = {'rgb': [], 'ir': [], 'panos': []}
+
+
+        self.projects_image_objects[str(report_id)]['rgb'] += rgb
+        self.projects_image_objects[str(report_id)]['ir'] += ir
+        self.projects_image_objects[str(report_id)]['panos'] += panos
+
+        #add paths to correct list in project or maybe not yet...
+
+    def set_image_objects(self, report_id, rgb, ir, panos):
+        self.projects_image_objects[str(report_id)] = {'rgb': rgb, 'ir': ir, 'panos': panos}
+
+    def get_image_objects(self, report_id):
+        try:
+            return self.projects_image_objects[str(report_id)]
+        except:
+            self.projects_image_objects[str(report_id)] = {'rgb': [], 'ir': [], 'panos': []}
+            return self.projects_image_objects[str(report_id)]
+
+    def get_image_objects_rgb(self, report_id):
+        return self.get_image_objects(report_id)['rgb']
+
+    def get_image_objects_ir(self, report_id):
+        return self.get_image_objects(report_id)['ir']
+
+    def get_image_objects_panos(self, report_id):
+        return self.get_image_objects(report_id)['panos']
+
+    def get_image_objects_rgb_count(self, report_id):
+        return len(self.get_image_objects_rgb(report_id))
+
+    def get_image_objects_ir_count(self, report_id):
+        return len(self.get_image_objects_ir(report_id))
+
+    def get_image_objects_panos_count(self, report_id):
+        return len(self.get_image_objects_panos(report_id))
 
