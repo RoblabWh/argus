@@ -785,8 +785,13 @@ class ArgusServer:
                                    processing=processing)
 
     def delete_file_in_folder(self, report_id, filename, subfolder, thumbnail=False):
-        file_path = os.path.join(self.project_manager.project_path(report_id), subfolder, filename)
-        print("trying to delete file in folder " + file_path)
+        # project_path = self.project_manager.project_path(report_id)
+        # file_path = os.path.join(project_path, subfolder)
+        # print('project_path:', project_path, 'file_path', file_path)
+        # file_path = os.path.join(file_path, filename)
+        # print("trying to delete file in folder ", file_path)
+        # since os.path.join does noot want to put the project_path into the path, we have to do it manually
+        file_path = self.project_manager.project_path(report_id) + subfolder + filename
         if os.path.exists(file_path):
             os.remove(file_path)
             print("file deleted @" + file_path)

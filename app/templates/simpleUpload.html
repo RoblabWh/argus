@@ -582,15 +582,13 @@
               const deleteButton = document.createElement('div');
               deleteButton.className = 'delete-button';
               deleteButton.innerHTML = '<a style="font-size: 17px; margin-top: auto; color: var(--font-color-b);">✖</a>';
+              
+              //make deletebutton appear inactive
+              deleteButton.style.backgroundColor = 'var(--bg-color-b)';
+              deleteButton.style.cursor = 'not-allowed';
 
-              deleteButton.addEventListener('click', function (event) {
-                event.stopPropagation();
-                const uploadedImage = this.parentNode;
-                const img = uploadedImage.querySelector('img');
-                const filename = uploadedImage.querySelector('.filename-text').innerHTML;
-                console.log(filename);
-                deleteFile(filename, uploadedImage);
-              });
+
+              
 
               // Append elements to the uploaded image container
               uploadedImage.appendChild(img);
@@ -657,6 +655,7 @@
                 new_ref = address[0] + '//' + address[2] + new_ref;
                 console.log(new_ref);
                 uploadedImages[j].querySelector('a').href = new_ref;
+                activateDeleteButton(uploadedImages[j], new_ref);
               }
             }
           }
@@ -679,6 +678,23 @@
 
     function drawSummary(summaryData){
       console.log(summaryData);
+    }
+
+    function activateDeleteButton(uploadedImage, new_ref) {
+      const deleteButton = uploadedImage.querySelector('.delete-button');
+      deleteButton.addEventListener('click', function (event) {
+        event.stopPropagation();
+        const uploadedImage = this.parentNode;
+        const img = uploadedImage.querySelector('img');
+        const filename = uploadedImage.querySelector('.filename-text').innerHTML;
+        console.log(filename);
+        deleteFile(filename, uploadedImage);
+        delete changedPaths[new_ref];
+      });
+
+      //make deletebutton appear active
+      deleteButton.style.backgroundColor = 'var(--accent-color-red)';
+      deleteButton.style.cursor = 'pointer';
     }
 
     function updateProcessButtonEnabling() {

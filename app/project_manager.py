@@ -186,7 +186,7 @@ class ProjectManager:
         return None
 
     def project_path(self, project_id):
-        return os.path.join(self.projects_path, str(project_id))
+        return str(os.path.join(self.projects_path, str(project_id)))
 
     def get_projects(self):
         if self.projects == []:
