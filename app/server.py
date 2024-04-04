@@ -199,6 +199,11 @@ class ArgusServer:
         print("len of file_names: ", len(file_names))
         if filename:
 
+            try:
+                self.project_manager.delete_image_object(report_id, filename)
+            except Exception as e:
+                print("Error while deleting image object: ", e)
+
             if self.delete_file_in_folder(report_id, filename, "/"):
                 return 'File deleted successfully.'
 
@@ -401,8 +406,8 @@ class ArgusServer:
     def update_ir_settings(self, report_id, settings):
         settings = settings.split(",")
         settings = [int(i) for i in settings]
+        print("update_ir_settings for id" + str(report_id) + " with: " + str(settings), flush=True)
         self.project_manager.update_ir_settings_from_website(report_id, settings)
-        print("update_ir_settings for id" + str(report_id) + " with: " + str(settings))
         return "success"
 
     def send_gradient_lut(self, gradient_id):
@@ -744,7 +749,8 @@ class ArgusServer:
 
         project = {"id": report_id, "name": self.project_manager.get_project_name(report_id),
                    "description": self.project_manager.get_project_description(report_id),
-                   'creation_time': self.project_manager.get_project_creation_time(report_id)}
+                   'creation_time': self.project_manager.get_project_creation_time(report_id),
+                   'ir_settings': ir_settings}
         return render_template(template, id=report_id, file_names=file_names, file_names_ir=file_names_ir,
                                panos=panos, has_rgb=has_rgb, has_ir=has_ir, flight_data=flight_data,
                                slide_file_paths=slide_file_paths, camera_specs=camera_specs, weather=weather,
@@ -758,6 +764,15 @@ class ArgusServer:
             file_names_ir = data["file_names_ir"]
             file_names_panos = [p['file'] for p in data["panos"]]
             file_names_upload = file_names_rgb.copy() + file_names_ir.copy() + file_names_panos.copy()
+
+            ir_settings = {}
+            try:
+                ir_settings = data["ir_settings"]
+                if ir_settings == None:
+                    print("ir settings are None", flush=True)
+                    ir_settings = {}
+            except:
+                print("no ir settings found", flush=True)
 
             has_ir = False
             if file_names_ir != []:
@@ -780,7 +795,8 @@ class ArgusServer:
 
             project = {"id": report_id, "name": self.project_manager.get_project_name(report_id),
                        "description": self.project_manager.get_project_description(report_id),
-                       'creation_time': self.project_manager.get_project_creation_time(report_id)}
+                       'creation_time': self.project_manager.get_project_creation_time(report_id),
+                       'ir_settings': ir_settings}
             return render_template(template, id=report_id, project=project, file_names=file_names_upload,
                                    processing=processing)
 

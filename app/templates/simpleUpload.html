@@ -249,6 +249,118 @@
       transition: width 0.2s ease-in-out;
       border-radius: 6px;
     }
+
+    #uploadSummary {
+      display: flex;
+      background: var(--bg-color-a);
+      padding: 12px;
+      border-radius: 6px;
+      //justify-content: space-between;
+    }
+
+    #summaryContent {
+      margin: auto auto auto 0;
+    }
+
+    #settingsPlaceholder {
+      margin: auto;
+    }
+
+    #editBtn {
+      width: 20%;
+      position: relative;
+      margin: 0;
+    }
+
+    .popup-container {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.5);
+      z-index: 999;
+    }
+
+    .popup-content {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background-color: white;
+      padding: 20px;
+      border-radius: 5px;
+    }
+
+    .close-btn {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      cursor: pointer;
+    }
+
+    #grad {
+      height: 100%;
+      background-color: purple;
+      width: 100%;
+    }
+
+    .grad-option1{
+          background-image: linear-gradient(to right, black, white);
+    }
+
+    .grad-option2{
+          background-image: linear-gradient(90deg, rgba(0,0,0,1) 0%, rgba(255,0,0,1) 37.5%, rgba(255,255,0,1) 75%,
+          rgba(255,255,255,1) 100%);
+    }
+
+    .grad-option3{
+          background-image:  linear-gradient(90deg, rgba(0,0,32,1) 0%, rgba(32,0,96,1) 12.5%, rgba(181,0,164,1) 37.5%,
+          rgba(255,64,0,1) 50%, rgba(255,255,0,1) 87.5%, rgba(255,255,200,1) 100%);
+    }
+
+    .grad-option4{
+          background-image:  linear-gradient(90deg, rgba(0,0,0,1) 0%, rgba(30,129,129,1) 35%, rgba(255,255,0,1) 75%,
+          rgba(255,65,0,1) 93.5%, rgba(225,0,0,1) 100%);
+    }
+
+
+    .grad-option5{
+          background-image: linear-gradient(90deg, rgba(0,0,0,1) 0%, rgba(221,60,221,1) 12.5%, rgba(32,32,255,1) 25%,
+           rgba(19,240,240,1) 37.5%, rgba(0,160,0,1) 55%, rgba(224,231,14,1) 70%, rgba(255,255,19,1) 75%,
+           rgba(255,32,32,1) 87.5%, rgba(255,255,255,1) 100%);
+    }
+
+
+    .grad-option6{
+          background-image: linear-gradient(90deg, rgba(0,0,0,1) 0%, rgba(0,64,255,1) 12.5%, rgba(0,160,60,1) 25%,
+          rgba(128,255,0,1) 37.5%, rgba(255,255,0,1) 50%, rgba(255,0,0,1) 75%, rgba(255,0,255,1) 87.5%,
+          rgba(255,255,255,1) 100%);
+    }
+
+
+    .grad-option7{
+          background-image: linear-gradient(90deg, rgba(127,0,0,1) 0%, rgba(255,0,193,1) 12.5%, rgba(207,0,255,1) 16.5%,
+          rgba(0,0,255,1) 33%, rgba(0,255,255,1) 50%, rgba(0,255,0,1) 66%,rgba(255,255,0,1) 82.5%, rgba(255,0,0,1) 100%);
+    }
+
+
+    .grad-option8{
+          background-image: linear-gradient(90deg, rgba(0,0,128,1) 0%, rgba(0,0,255,1) 12.5%, rgba(0,255,255,1) 37.5%,
+          rgba(255,255,0,1) 62.5%, rgba(255,0,0,1) 87.5%, rgba(128,0,0,1) 100%);
+    }
+
+
+    .grad-option9{
+          background-image:  linear-gradient(90deg, rgba(0,0,0,1) 0%, rgba(255,255,255,1) 70%, rgba(255,98,98,1) 87.5%,
+          rgba(222,0,0,1) 100%);
+    }
+
+    .grad-option10{
+        background-image:  linear-gradient(to right, white, black);
+    }
+
   </style>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <script src="{{url_for('static', filename='default/jquery-3.6.3.js') }}"></script>
@@ -383,6 +495,45 @@
       <a id="progress-bar-label"> Preprocessing-Progress </a>
     </div>
 
+    <div id="popup" class="popup-container">
+      <div class="popup-content">
+        <span class="close-btn" onclick="closePopup()">&times;</span>
+        <h2>Thermal Image Settings</h2>
+        <label for="minTemp">Min Temperature:</label>
+        <input type="number" id="minTemp" name="minTemp" value=0><br><br>
+        <label for="maxTemp">Max Temperature:</label>
+        <input type="number" id="maxTemp" name="maxTemp" value=100><br><br>
+        <label for="ir-palette-chooser">Selected Color Scheme:</label>
+        <select id="ir-palette-chooser" style="width: 100% border-radius: 4px;">
+            <option value="grad-option1">white hot</option>
+            <option value="grad-option2">Fulgurite</option>
+            <option value="grad-option3">Iron Red</option>
+            <option value="grad-option4">Hot Iron</option>
+            <option value="grad-option5">Medical</option>
+            <option value="grad-option6">Arctic</option>
+            <option value="grad-option7">Rainbow 1</option>
+            <option value="grad-option8">Rainbow 2</option>
+            <option value="grad-option9">Tint</option>
+            <option value="grad-option10">Black Hot</option>
+        </select>
+        <div id="grad" class="grad-option1" style="max-width: 400px; height: 20px"></div>
+        <br>
+
+
+          <button onclick="applySettings()">Apply Settings</button>
+      </div>
+    </div>
+
+    <div id="uploadSummary">    
+      <div id="summaryContent">New Uploaded Images: 0 </div>
+      {% if project.ir_settings.ir_min_temp == null %}
+      <div id="settingsPlaceholder">Thermal image settings not found</div>
+      {% else %}
+      <div id="settingsPlaceholder">Min Temperature: {{ project.ir_settings.ir_min_temp }}, Max Temperature: {{ project.ir_settings.ir_max_temp }}, Color Scheme: {{ project.ir_settings.ir_color_scheme }}</div>
+      {% endif %}
+      <div style="width: 1%;margin: auto;"></div>
+      <button id="editBtn">Edit Thermal Image Settings</button>
+    </div>
 
     <div class="upload-area" id="upload-area">
       <div class="upload-area__label" id="upload-label">Upload Images</div>
@@ -397,7 +548,13 @@
       <div class="uploaded-images" id="uploaded-images"></div>
     </div>
 
+
+    
+    
   </div>
+
+
+  
 
   <script>
 
@@ -664,6 +821,12 @@
 
           if (response.done) {
             drawSummary(response.dataSummary);
+            if (!response.dataSummary.ir_readable) {
+              openPopup();
+            }
+            else {
+              removeIRSettingsSummary();
+            }
             updateProcessButtonEnabling();
           } else {
 
@@ -678,6 +841,25 @@
 
     function drawSummary(summaryData){
       console.log(summaryData);
+      var summaryContent = document.getElementById('summaryContent');
+      summaryContent.innerHTML = '<a>New Uploaded Images:</a>';
+      for (var key in summaryData) {
+        if (summaryData.hasOwnProperty(key)) {
+          if (key == 'ir_readable') {
+            continue;
+          }
+          summaryContent.innerHTML += '<a>' + key + ': ' + summaryData[key] + '</a>';
+        }
+      }
+    }
+
+    function removeIRSettingsSummary() {
+      var settingsPlaceholder = document.getElementById('settingsPlaceholder');
+      settingsPlaceholder.innerHTML = 'Manual thermal image settings not needed';
+
+      var button = document.getElementById('editBtn');
+      button.style.backgroundColor = 'var(--bg-color-b)';
+      button.style.cursor = 'not-allowed';
     }
 
     function activateDeleteButton(uploadedImage, new_ref) {
@@ -722,6 +904,48 @@
       var uploadArea = document.getElementById('upload-area');
       uploadArea.style.cursor = 'not-allowed';
     }
+
+
+    const editBtn = document.getElementById('editBtn');
+    const popup = document.getElementById('popup');
+
+    editBtn.addEventListener('click', () => {
+      openPopup();
+    });
+
+    function openPopup() {
+      popup.style.display = 'block';
+    }
+
+    function closePopup() {
+      popup.style.display = 'none';
+    }
+
+    function applySettings() {
+      const minTemp = document.getElementById('minTemp').value;
+      const maxTemp = document.getElementById('maxTemp').value;
+      const irPalette = document.getElementById('ir-palette-chooser').value;
+
+      $.get( "/update_ir_settings/{{ id }}/" + Number(minTemp) + "," + Number(maxTemp) + "," + Number(irPalette.match(/\d+$/)));
+    
+
+      // Update the placeholder content with the selected settings
+      const placeholder = document.getElementById('settingsPlaceholder');
+      placeholder.innerHTML = `Min Temperature: ${minTemp}, Max Temperature: ${maxTemp}, Color Scheme: ${irPalette}`;
+
+      // Close the popup after applying settings
+      closePopup();
+    }
+
+    $("#ir-palette-chooser").change(function() {
+        $("#ir-palette-chooser option:selected").each(function() {
+            var ir_palette = $(this).val();
+            console.log(ir_palette);
+            $("#grad").removeClass();
+            $("#grad").addClass(ir_palette);
+            numbr_at_end_of_value = ir_palette.match(/\d+$/);
+        });
+    });
 
 
 

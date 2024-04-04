@@ -241,7 +241,7 @@ class ProjectManager:
         return False
 
     def generate_empty_data_dict(self):
-        data = {"file_names": [], "file_names_ir" : [], "panos": [], "flight_data": [], "camera_specs": [], "weather": [], "maps": [], "ir_settings": []}
+        data = {"file_names": [], "file_names_ir" : [], "panos": [], "flight_data": [], "camera_specs": [], "weather": [], "maps": [], "ir_settings": {}}
         return data
 
     def update_file_names(self, id, file_names):
@@ -587,3 +587,16 @@ class ProjectManager:
     def get_image_objects_panos_count(self, report_id):
         return len(self.get_image_objects_panos(report_id))
 
+    def delete_image_object(self, report_id, file_name):
+        rgb = self.get_image_objects_rgb(report_id)
+        ir = self.get_image_objects_ir(report_id)
+        panos = self.get_image_objects_panos(report_id)
+
+        if file_name in rgb:
+            rgb.remove(file_name)
+        if file_name in ir:
+            ir.remove(file_name)
+        if file_name in panos:
+            panos.remove(file_name)
+
+        self.set_image_objects(report_id, rgb, ir, panos)
