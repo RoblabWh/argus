@@ -52,13 +52,16 @@ class ImageProcessor:
             path = image.get_image_path()
             self.all_image_paths.remove(path)
 
+        print('all image paths: ', self.all_image_paths, flush=True)
+        print('pano length: ', len(self.all_pano_images), flush=True)
         for image in self.all_pano_images:
             path = image.get_image_path()
+            print('pano path: ', path, flush=True)
             self.all_image_paths.remove(path)
 
 
         nmbr_of_processes = len(os.sched_getaffinity(0)) #6
-        print('number of processes: ', nmbr_of_processes)
+        #print('number of processes: ', nmbr_of_processes)
         if nmbr_of_processes < len(self.all_image_paths):
             nmbr_of_processes = len(self.all_image_paths)
         image_paths_list = list(self._chunks(self.all_image_paths, int(len(self.all_image_paths) / nmbr_of_processes) + 1))
@@ -91,9 +94,9 @@ class ImageProcessor:
 
     def filter_panos(self):
         self.all_panos = []
-        print(self.all_images)
+        #print(self.all_images)
 
-        print('all images before pano Filtering: ', len(self.all_images))
+        #print('all images before pano Filtering: ', len(self.all_images))
 
         self.all_panos = [image for image in self.all_images if image.get_exif_header().pano]
         for pano in self.all_panos:
@@ -101,27 +104,16 @@ class ImageProcessor:
             self.move_image_to_subfolder(pano, 'panos')
             #pano.generate_thumbnail()
 
-        print('all panos: ', self.all_panos)
-        print('all images after pano Filtering: ', len(self.all_images))
-        print('all images after pano Filtering: ', self.all_images)
+        # print('all panos: ', self.all_panos)
+        # print('all images after pano Filtering: ', len(self.all_images))
+        # print('all images after pano Filtering: ', self.all_images)
 
-    def filter_unusable_images(self):
-        self.all_images = [image for image in self.all_images if image.get_exif_header().usable]
-        print('all images after unusable Filtering: ', len(self.all_images))
 
     def get_panos(self):
         panos = []
         for pano in self.all_pano_images:
             panos.append(pano.get_exif_header().pano_data)
         return panos
-
-    def separate_ir_rgb(self):
-        sorter = InfraredRGBSorter()
-        print('all images before ir/rgb separation: ', len(self.all_images))
-        self.all_ir_images, self.all_rgb_images = sorter.sort(self.all_images)
-        self.move_images_to_subfolder(self.all_rgb_images, 'rgb')
-        self.move_images_to_subfolder(self.all_ir_images, 'ir')
-        self.couples_path_list = sorter.build_couples_path_list_from_scratch(self.all_images)
 
 
     def extract_flight_data(self, flight_data=[]):

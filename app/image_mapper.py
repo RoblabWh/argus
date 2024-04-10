@@ -190,7 +190,7 @@ class ImageMapper:
     def save_map(self, save_path):
         # print("-Start saving map under ", save_path)
         cv2.imwrite(save_path, self.cropped_map)
-        print("-Saved map under ", save_path)
+        #print("-Saved map under ", save_path)
 
     def __calculate_gps_for_mapbox_plugin(self, map_elements, map_scaler, min_x, max_x, min_y, max_y):
         origin_gps = map_elements[0].get_image().get_exif_header().get_gps()
@@ -303,7 +303,7 @@ class ImageMapper:
         task_id = r['id']
         failed = False
         while True:
-            print("waiting for ODM")
+            #print("waiting for ODM")
             time.sleep(3)
 
             status = self.webodm_manager.get_task_data_by_key(token, wo_project_id, task_id, 'status')
@@ -356,7 +356,7 @@ class ImageMapper:
         filename = "odm_map.png" if not ir else "odm_map_ir.png"
         save_path = path.join(self.project_manager.projects_path, str(self.report_id), filename)
         cv2.imwrite(save_path, im)
-        print("Orthophoto saved under", save_path)
+        #print("Orthophoto saved under", save_path)
 
         map = {
             "center": middle_gps,
@@ -443,7 +443,7 @@ class ImageMapper:
             filename = "odm_map.png" if not ir else "odm_map_ir.png"
             save_path = path.join(self.project_manager.projects_path, str(self.report_id), filename)
             cv2.imwrite(save_path, im)
-            print("Orthophoto saved under", save_path)
+            #print("Orthophoto saved under", save_path)
 
             map = {
                 "center": middle_gps,
@@ -544,7 +544,7 @@ class ImageMapper:
                         long_max = long
                 except:
                     continue
-            print("Fallback GPS: ", lat_min, long_min, lat_max, long_max)
+            #print("Fallback GPS: ", lat_min, long_min, lat_max, long_max)
             if lat_min == 999999999.9 or long_min == 999999999.9 or lat_max == 0.0 or long_max == 0.0:
                 return False
             self.corner_gps_left_bottom = GPS(0, lat_min, long_min)

@@ -76,10 +76,10 @@ class NodeodmManager:
         if not os.path.exists(proxy_path):
             os.mkdir(proxy_path)
 
-        print("Scaling images", image_paths)
+        #print("Scaling images", image_paths)
         scaled_image_paths = []
         nmbr_of_processes = self.calculate_number_of_safely_usable_processes(image_paths[0])
-        print('number of processes: ', nmbr_of_processes)
+        #print('number of processes: ', nmbr_of_processes)
         if nmbr_of_processes < len(image_paths):
             nmbr_of_processes = len(image_paths)
         pool = multiprocessing.Pool(nmbr_of_processes)
@@ -87,7 +87,7 @@ class NodeodmManager:
         scaled_image_paths = pool.map(func, image_paths)
         pool.close()
         pool.join()
-        print("scaling done")
+        #print("scaling done")
         return scaled_image_paths
 
     def get_image_memory_usage(self, image_path):
@@ -110,7 +110,7 @@ class NodeodmManager:
 
     def calculate_number_of_safely_usable_processes(self, example_image_path):
         example_memory_usage = self.get_image_memory_usage(example_image_path)
-        print('example_memory_usage: ', example_memory_usage, 'of image: ', example_image_path)
+        #print('example_memory_usage: ', example_memory_usage, 'of image: ', example_image_path)
         available_memory = psutil.virtual_memory().available
 
         # Calculate the number of processes based on memory usage
@@ -119,7 +119,7 @@ class NodeodmManager:
             max_processes = max_processes - 2
         #len(os.sched_getaffinity(0))
         safely_usable_processes = min(max_processes, int(available_memory / example_memory_usage))
-        print('safely_usable_processes: ', safely_usable_processes, 'with max_processes: ', max_processes, 'and available_memory: ', available_memory)
+        #print('safely_usable_processes: ', safely_usable_processes, 'with max_processes: ', max_processes, 'and available_memory: ', available_memory)
         return safely_usable_processes
 
 

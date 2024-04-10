@@ -199,21 +199,21 @@ class ArgusServer:
         print("len of file_names: ", len(file_names))
         if filename:
 
-            try:
-                self.project_manager.delete_image_object(report_id, filename)
-            except Exception as e:
-                print("Error while deleting image object: ", e)
+
 
             if self.delete_file_in_folder(report_id, filename, "/"):
                 return 'File deleted successfully.'
 
             if self.delete_file_in_folder(report_id, filename, "/rgb/"):
+                self.project_manager.delete_image_object(report_id, filename, rgb=True)
                 return 'File deleted successfully.'
 
             if self.delete_file_in_folder(report_id, filename, "/ir/"):
+                self.project_manager.delete_image_object(report_id, filename, ir=True)
                 return 'File deleted successfully.'
 
             if self.delete_file_in_folder(report_id, filename, "/panos/"):
+                self.project_manager.delete_image_object(report_id, filename, pano=True)
                 return 'File deleted successfully.'
 
             return 'File not found.'
@@ -320,7 +320,7 @@ class ArgusServer:
                     self.project_manager.update_weather(report_id, weather)
                     self.project_manager.update_maps(report_id, maps)
                     self.project_manager.update_ir_settings(report_id, ir_settings)
-                    self.project_manager.add_panos(report_id, panos)
+                    self.project_manager.update_panos(report_id, panos)
                     self.project_manager.update_slide_file_paths(report_id, couples_path_list)
                     self.project_manager.update_flight_trajectory(report_id, flight_trajectory)
                     self.project_manager.overwrite_file_names_sorted(report_id, file_names_rgb=file_names_rgb,

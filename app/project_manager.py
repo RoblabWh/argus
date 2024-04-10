@@ -296,7 +296,7 @@ class ProjectManager:
             data['file_names'] = file_names_rgb
         if file_names_ir != None:
             data['file_names_ir'] = file_names_ir
-        print("len of file_names: " + str(len(data['file_names'])), "len of file_names_ir: " + str(len(data['file_names_ir'])))
+        #print("len of file_names: " + str(len(data['file_names'])), "len of file_names_ir: " + str(len(data['file_names_ir'])))
         with open(self.projects_path + str(id) + "/project.json", "w") as json_file:
             json.dump(project, json_file)
 
@@ -344,7 +344,7 @@ class ProjectManager:
     def remove_from_panos(self, id, pano_file):
         panos = self.get_panos(id)
         for p in panos:
-            if p['file'] == pano_file:
+            if pano_file in p['file']:
                 panos.remove(p)
                 self.update_data_by_keyword(id, 'panos', panos)
                 return True
@@ -367,7 +367,7 @@ class ProjectManager:
         return False
 
     def get_file_names(self, id):
-        return self.get_data_by_keyword(id, 'file_names') + self.get_data_by_keyword(id, 'file_names_ir')
+        return self.get_data_by_keyword(id, 'file_names') + self.get_data_by_keyword(id, 'file_names_ir') + self.get_file_names_panos(id)
 
     def get_file_names_rgb(self, id):
         return self.get_data_by_keyword(id, 'file_names')
@@ -377,6 +377,13 @@ class ProjectManager:
 
     def get_panos(self, id):
         return self.get_data_by_keyword(id, 'panos')
+
+    def get_file_names_panos(self, id):
+        panos = self.get_panos(id)
+        panos_paths = []
+        for pano in panos:
+            panos_paths.append(pano['file'])
+        return panos_paths
 
     def get_flight_data(self, id):
         return self.get_data_by_keyword(id, 'flight_data')
@@ -477,11 +484,6 @@ class ProjectManager:
 
     def update_contains_unprocessed_images(self, report_id, contains_unprocessed_images):
         self.update_data_by_keyword(report_id, 'contains_unprocessed_images', contains_unprocessed_images)
-
-    def remove_from_file_names(self, report_id, file_path):
-        file_names = self.get_file_names(report_id)
-        file_names.remove(file_path)
-        self.overwrite_file_names_sorted(report_id, file_names_rgb=file_names)
 
     def remove_from_file_names_rgb(self, report_id, file_path):
         file_names = self.get_file_names_rgb(report_id)
@@ -587,16 +589,31 @@ class ProjectManager:
     def get_image_objects_panos_count(self, report_id):
         return len(self.get_image_objects_panos(report_id))
 
-    def delete_image_object(self, report_id, file_name):
-        rgb = self.get_image_objects_rgb(report_id)
-        ir = self.get_image_objects_ir(report_id)
-        panos = self.get_image_objects_panos(report_id)
+    def delete_image_object(self, report_id, file_name, rgb=False , ir=False, pano=False):
+        try:
+            image_objects = []
+            rgb_imgs = self.get_image_objects_rgb(report_id)
+            ir_imgs = self.get_image_objects_ir(report_id)
+            pano_imgs = self.get_image_objects_panos(report_id)
 
-        if file_name in rgb:
-            rgb.remove(file_name)
-        if file_name in ir:
-            ir.remove(file_name)
-        if file_name in panos:
-            panos.remove(file_name)
+            if rgb:
+                image_objects = rgb_imgs
+            elif ir:
+                image_objects = ir_imgs
+            elif pano:
+                image_objects = pano_imgs
 
-        self.set_image_objects(report_id, rgb, ir, panos)
+            for image in image_objects:
+                if file_name in image.get_image_path():
+                    image_objects.remove(image)
+                    break
+
+            if rgb:
+                self.set_image_objects(report_id, image_objects, ir_imgs, pano_imgs)
+            elif ir:
+                self.set_image_objects(report_id, rgb_imgs, image_objects, pano_imgs)
+            elif pano:
+                self.set_image_objects(report_id, rgb_imgs, ir_imgs, image_objects)
+
+        except Exception as e:
+            print("error while deleting image object: " + str(e), flush=True)
