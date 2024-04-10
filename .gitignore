@@ -5,3 +5,4 @@ submodule
 __pycache__
 data
 model_weights
+.idea/
