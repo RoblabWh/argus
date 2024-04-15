@@ -209,6 +209,7 @@ class ExifHeader:
             self.pano = True
 
             short_path = self.image_path[self.image_path.find("projects"):]
+            print("---PANO--- short_path: " + short_path, flush=True)
             # print("short_path: " + short_path, flush=True)
             author = "WHS-Team DRZ"
             title = "Pano taken at" + str(self.creation_time)
@@ -334,4 +335,5 @@ class ExifHeader:
     def update_path(self, path):
         self.image_path = path
         if self.pano:
+            print("---PANO--- updating path: " + path, flush=True)
             self.pano_data['file'] = path

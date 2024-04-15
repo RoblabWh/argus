@@ -570,6 +570,7 @@
     {% else %}
     var processing = false;
     {% endif %}
+    var irSettingsShown = false;
 
     // Get the necessary DOM elements
     const uploadArea = document.getElementById('upload-area');
@@ -821,7 +822,7 @@
 
           if (response.done) {
             drawSummary(response.dataSummary);
-            if (!response.dataSummary.ir_readable) {
+            if (!response.dataSummary.ir_readable && !irSettingsShown) {
               openPopup();
             }
             else {
@@ -915,6 +916,7 @@
 
     function openPopup() {
       popup.style.display = 'block';
+      irSettingsShown = true;
     }
 
     function closePopup() {
@@ -1132,6 +1134,23 @@
       var progressBarContainer = document.getElementsByClassName('progress-bar-container')[0];
       progressBar.style.display = 'block';
       progressBarContainer.style.display = 'block';
+    }
+
+
+    ir_settings = {{ project.ir_settings| tojson }};
+    //check if IR settiings has contents or is empty
+    if (ir_settings.ir_min_temp != null) {
+      //update ir settings placeholder and values in popup
+      const placeholder = document.getElementById('settingsPlaceholder');
+      const minTemp = document.getElementById('minTemp');
+      const maxTemp = document.getElementById('maxTemp');
+      const irPalette = document.getElementById('ir-palette-chooser');
+
+      placeholder.innerHTML = `Min Temperature: ${ir_settings.ir_min_temp}, Max Temperature: ${ir_settings.ir_max_temp}, Color Scheme: ${ir_settings.ir_color_scheme}`;
+      minTemp.value = ir_settings.ir_min_temp;
+      maxTemp.value = ir_settings.ir_max_temp;
+      irPalette.value = 'grad-option' + ir_settings.ir_color_scheme;
+      irPalette.dispatchEvent(new Event('change'));
     }
 
 
