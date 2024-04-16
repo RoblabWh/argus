@@ -284,10 +284,11 @@ class ImageMapper:
             print("Error: ODM is not enabled for this dataset!")
             return
 
-        token=self.webodm_manager.authenticate()
+        token = self.webodm_manager.authenticate()
         if token is None:
             print("Error: ODM is not enabled for this dataset!")
-            return
+            map = self.generate_map_dict_from_odm_fail(ir)
+            return map
         wo_project_id = self.webodm_manager.get_project_id(token, self.project_manager.get_project_name(self.report_id),
                                                            self.project_manager.get_project_description(self.report_id))
         if wo_project_id is None:
