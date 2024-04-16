@@ -41,7 +41,7 @@ class WebodmManager():
         while try_count < 20:
             try:
                 response = requests.post('{}/api/token-auth/'.format(self.url),
-                                data={'username': self.username, 'password': self.username})
+                                data={'username': self.username, 'password': self.password})
                 if response.status_code == 200:
                     return response.json()['token']
             except requests.exceptions.ConnectionError:

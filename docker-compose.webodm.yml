@@ -1,4 +1,11 @@
 services:
+  argus:
+    links:
+      - webodm
+    depends_on:
+      - webodm
+    environment:
+      - ARGUS_WEBODM_INTERNAL=true
   db:
     image: opendronemap/webodm_db
     container_name: argus_db
@@ -56,4 +63,6 @@ services:
 
 volumes:
   db:
+    name: argus_webodm_db
   media:
+    name: argus_webodm_media

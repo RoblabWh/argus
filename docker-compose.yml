@@ -10,13 +10,14 @@ services:
     links:
       - nodeodm
       - detection
-      - webodm
     depends_on:
       - detection
       - nodeodm
-      - webodm
     environment:
+      - ARGUS_WEBODM_ADDRESS
       - ARGUS_WEBODM_PORT
+      - ARGUS_WEBODM_USERNAME
+      - ARGUS_WEBODM_PASSWORD
     restart: unless-stopped
   detection:
     image: argus_mmdetection
@@ -34,3 +35,4 @@ services:
 
 volumes:
   projects:
+    name: argus_projects
