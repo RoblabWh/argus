@@ -19,6 +19,7 @@ class ProjectManager:
         self.projects_path = projects_path
         self.CURRENT_PROJECT_FILE_VERSION = 1.1
         self.projects_dirs = ["rgb", "ir", "panos", "rgb/thumbnails" , "ir/thumbnails", "panos/thumbnails"]
+        self.slam_projects_dirs = ["video","orb_vocab","config","mask"] #maybe one to output keyframes
         #self.image_mapper = {}
 
 
@@ -29,7 +30,7 @@ class ProjectManager:
         version = self.CURRENT_PROJECT_FILE_VERSION
         creation_time = datetime.now().strftime("%d.%m.%Y %H:%M:%S")
         project = ({'name': name, 'description': description, 'id': id, 'creation_time': creation_time,
-                    'version': version, 'data': data})
+                    'version': version, 'data': data, 'type': "mapping_project"})
         self.projects.append(project)
         with open(os.path.join(self.projects_path, str(id), "project.json"), "w") as json_file:
             json.dump(project, json_file)
@@ -41,6 +42,26 @@ class ProjectManager:
         self.highest_id += 1
         self.projects = sorted(self.projects, key=lambda d: d['id'], reverse=True)
         return project
+
+    def create_slam_project(self, name, description): #maybe add a project type e.g. slam project or mapping project
+        id = self.create_new_basics()
+        data = self.generate_empty_slam_data_dict()
+        version = self.CURRENT_PROJECT_FILE_VERSION
+        creation_time = datetime.now().strftime("%d.%m.%Y %H:%M:%S")
+        project = ({'name': name, 'description': description, 'id': id, 'creation_time': creation_time,
+                    'version': version, 'data': data, 'type': "slam_project"})
+        self.projects.append(project)
+        with open(os.path.join(self.projects_path, str(id), "project.json"), "w") as json_file:
+            json.dump(project, json_file)
+
+        #make subdirectories for project as dtermined in varable "project_dirs"
+        for dir in self.slam_projects_dirs:
+            os.makedirs(os.path.join(self.projects_path, str(id), dir))
+
+        self.highest_id += 1
+        self.projects = sorted(self.projects, key=lambda d: d['id'], reverse=True)
+        return project
+
 
     def create_new_basics(self):
         id = self.generate_project_id()
@@ -244,6 +265,10 @@ class ProjectManager:
         data = {"file_names": [], "file_names_ir" : [], "panos": [], "flight_data": [], "camera_specs": [], "weather": [], "maps": [], "ir_settings": {}}
         return data
 
+    def generate_empty_slam_data_dict(self):
+        data = {"file_names": [], "video" : [], "orb_vocab": [], "config": [], "mask": [], "keyframes": [], "map_db": [], "point_cloud": [], "slam_settings": []}
+        return data
+
     def update_file_names(self, id, file_names):
         # append filenames to filenames inside of data of project with id
         project = self.get_project(id)
@@ -288,6 +313,46 @@ class ProjectManager:
             json.dump(project, json_file)
 
         return data['slide_file_paths']
+
+    def set_video_file(self, id, file_name):
+        project = self.get_project(id)
+        data = project['data']
+        video = []
+        video.append(file_name[0])
+
+        data['video'] = video
+        print("setting video to project with id: " + str(id))
+        with open(self.projects_path + str(id) + "/project.json", "w") as json_file:
+            json.dump(project, json_file)
+
+        return data['video']
+
+    def set_orb_vocab_file(self, id, file_name):
+        project = self.get_project(id)
+        data = project['data']
+        orb_vocab = []
+        orb_vocab.append(file_name[0])
+
+        data['orb_vocab'] = orb_vocab
+        print("setting video to project with id: " + str(id))
+        with open(self.projects_path + str(id) + "/project.json", "w") as json_file:
+            json.dump(project, json_file)
+
+        return data['orb_vocab']
+
+    def set_config_file(self, id, file_name):
+        project = self.get_project(id)
+        print(project, flush=True)
+        data = project['data']
+        config = []
+        config.append(file_name[0])
+
+        data['config'] = config
+        print("setting video to project with id: " + str(id))
+        with open(self.projects_path + str(id) + "/project.json", "w") as json_file:
+            json.dump(project, json_file)
+
+        return data['config']
 
     def overwrite_file_names_sorted(self, id, file_names_rgb=None, file_names_ir=None):
         project = self.get_project(id)

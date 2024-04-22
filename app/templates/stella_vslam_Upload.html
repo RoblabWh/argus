@@ -1,0 +1,1595 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Upload</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='default/variables-light.css') }}" id="currentCss">
+  <style>
+    body {
+      margin-left: 0px;
+      margin-right: 0px;
+      margin-bottom: 0px;
+      background-color: var(--bg-color-page);
+      color: var(--font-color-a);
+    }
+
+    .bodyDiv {
+      min-height: 95vh;
+      width: 94%;
+      max-width: 1400px;
+      margin: 0 auto !important;
+      float: none !important;
+      font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    }
+
+
+    .edit-text-button {
+      font-size: 18px;
+      height: fit-content;
+      width: 18px;
+      margin-top: 5px;
+      border-radius: 5px;
+      border-style: solid;
+      border-color: var(--bg-color-b);
+      border-width: 1px;
+      background-color: var(--bg-color-a);
+    }
+
+    .edit-text-button:hover {
+      background-color: var(--accent-color-interaction);
+      color: var(--font-color-b);
+    }
+
+    #descriptionText {
+      margin: 0px;
+      padding: 8px;
+      border-radius: 5px;
+      border-style: solid;
+      border-color: transparent;
+      background-color: transparent;
+    }
+
+    #title-name {
+      margin: 0px;
+      margin-left: -14px;
+      padding: 8px;
+      max-width: 95%;
+      border-radius: 6px;
+      border-style: solid;
+      border-color: transparent;
+    }
+
+    #descriptionText.editable,
+    #title-name.editable {
+      border-radius: 6px;
+      border-style: solid;
+      border-color: var(--accent-color-interaction);
+    }
+
+    .upload-area {
+      width: 90%;
+      margin: 50px auto;
+      padding: 20px 5%;
+      text-align: center;
+    }
+
+    .small-upload-area {
+      width: 30%;
+      margin: 20px 0;
+      padding: 10px 5%;
+      border: 2px dashed #ccc;
+      border-radius: 10px;
+      text-align: center;
+    }
+
+    .upload-area__label {
+      font-size: 24px;
+      font-weight: bold;
+    }
+
+    .uploaded-videos {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-top: 20px;
+    }
+
+    .uploaded-video {
+      position: relative;
+      width: 136px;
+      height: 136px;
+      margin: 10px;
+      background-color: var(--bg-color-a);
+      color: var(--font-color-a);
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .uploaded-video:hover {
+      border: 1px solid var(--accent-color-interaction);
+    }
+
+    .uploaded-video video {
+      width: 100%;
+      height: 80%;
+      object-fit: cover;
+    }
+
+    .uploaded-video .loading-indicator {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(255, 255, 255, 0.8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .uploaded-video .delete-button {
+      position: absolute;
+      top: 5px;
+      right: 5px;
+      width: 25px;
+      height: 25px;
+      background-color: var(--accent-color-red);
+      border: 1px solid #ccc;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      z-index: 50;
+    }
+
+    .uploaded-video .delete-button:hover {
+      background-color: rgb(255, 0, 0);
+      ;
+    }
+
+    .filename-text {
+      font-size: 14px;
+      margin-top: 0px;
+      //color: #333;
+    }
+
+    .uploaded-orb-vocabs {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-top: 20px;
+    }
+
+    .uploaded-orb-vocab {
+      position: relative;
+      width: 136px;
+      height: 136px;
+      margin: 10px;
+      background-color: var(--bg-color-a);
+      color: var(--font-color-a);
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .uploaded-orb-vocab:hover {
+      border: 1px solid var(--accent-color-interaction);
+    }
+
+    .uploaded-orb-vocab img {
+      width: 100%;
+      height: 80%;
+      object-fit: cover;
+    }
+
+    .uploaded-orb-vocab .loading-indicator {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(255, 255, 255, 0.8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .uploaded-orb-vocab .delete-button {
+      position: absolute;
+      top: 5px;
+      right: 5px;
+      width: 25px;
+      height: 25px;
+      background-color: var(--accent-color-red);
+      border: 1px solid #ccc;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      z-index: 50;
+    }
+
+    .uploaded-orb-vocab .delete-button:hover {
+      background-color: rgb(255, 0, 0);
+      ;
+    }
+
+    .uploaded-configs {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-top: 20px;
+    }
+
+    .uploaded-config {
+      position: relative;
+      width: 136px;
+      height: 136px;
+      margin: 10px;
+      background-color: var(--bg-color-a);
+      color: var(--font-color-a);
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .uploaded-config:hover {
+      border: 1px solid var(--accent-color-interaction);
+    }
+
+    .uploaded-config img {
+      width: 100%;
+      height: 80%;
+      object-fit: cover;
+    }
+
+    .uploaded-config .loading-indicator {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(255, 255, 255, 0.8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .uploaded-config .delete-button {
+      position: absolute;
+      top: 5px;
+      right: 5px;
+      width: 25px;
+      height: 25px;
+      background-color: var(--accent-color-red);
+      border: 1px solid #ccc;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      z-index: 50;
+    }
+
+    .uploaded-config .delete-button:hover {
+      background-color: rgb(255, 0, 0);
+      ;
+    }
+
+    .filename-text {
+      font-size: 14px;
+      margin-top: 0px;
+      //color: #333;
+    }
+
+    input[type="file"] {
+      display: none;
+    }
+
+    .custom-file-upload {
+      border-radius: 4px;
+      display: inline-block;
+      padding: 8px 12px;
+      cursor: pointer;
+      background-color: var(--accent-color-interaction);
+      color: var(--font-color-b);
+    }
+
+
+
+    .settings {
+      width: 48%;
+      text-align: left;
+    }
+
+    .separator {
+      border: none;
+      border-top: 1px solid #ccc;
+      margin: 15px 0;
+    }
+
+    .option {
+      //display: flex;
+      //align-items: left;
+      //justify-content: center;
+      margin-bottom: 5px;
+      margin-left: 20px;
+    }
+
+    .option label {
+      margin-left: 5px;
+    }
+
+    .button-container {
+      width: 48%;
+      height: 100%;
+      position: absolute;
+      top: 0;
+      left: 52%;
+    }
+
+    button {
+      width: 100%;
+      height: 100%;
+      margin: auto;
+      display: block;
+      padding: 10px;
+      background-color: var(--accent-color-interaction);
+      color: var(--font-color-b);
+      font-size: 16px;
+      font-weight: bold;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: 0.3s ease;
+    }
+
+    .button_active:hover {
+      color: var(--font-color-a);
+      font-weight: bold;
+      font-size: 20px;
+    }
+
+
+    .progress-bar-container {
+      display: none;
+      position: relative;
+      width: 100%;
+      height: 30px;
+      background-color: var(--bg-color-a);
+      margin-bottom: 10px;
+      border-radius: 6px;
+    }
+
+    .progress-bar-container a {
+      position: absolute;
+      top: 4px;
+      font-size: 22px;
+      width: 100%;
+      text-align: center;
+      color: var(--font-color-b);
+      font-weight: bold;
+    }
+
+    .progress-bar {
+      display: none;
+      height: 100%;
+      background-color: var(--accent-color-green);
+      width: 0%;
+      transition: width 0.2s ease-in-out;
+      border-radius: 6px;
+    }
+
+    #uploadSummary {
+      display: flex;
+      background: var(--bg-color-a);
+      padding: 12px;
+      border-radius: 6px;
+      //justify-content: space-between;
+    }
+
+    #summaryContent {
+      margin: auto auto auto 0;
+    }
+
+    #settingsPlaceholder {
+      margin: auto;
+    }
+
+    #editBtn {
+      width: 20%;
+      position: relative;
+      margin: 0;
+    }
+
+    .popup-container {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.5);
+      z-index: 999;
+    }
+
+    .popup-content {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background-color: white;
+      padding: 20px;
+      border-radius: 5px;
+    }
+
+    .close-btn {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      cursor: pointer;
+    }
+
+    #grad {
+      height: 100%;
+      background-color: purple;
+      width: 100%;
+    }
+
+    .grad-option1{
+          background-image: linear-gradient(to right, black, white);
+    }
+
+    .grad-option2{
+          background-image: linear-gradient(90deg, rgba(0,0,0,1) 0%, rgba(255,0,0,1) 37.5%, rgba(255,255,0,1) 75%,
+          rgba(255,255,255,1) 100%);
+    }
+
+    .grad-option3{
+          background-image:  linear-gradient(90deg, rgba(0,0,32,1) 0%, rgba(32,0,96,1) 12.5%, rgba(181,0,164,1) 37.5%,
+          rgba(255,64,0,1) 50%, rgba(255,255,0,1) 87.5%, rgba(255,255,200,1) 100%);
+    }
+
+    .grad-option4{
+          background-image:  linear-gradient(90deg, rgba(0,0,0,1) 0%, rgba(30,129,129,1) 35%, rgba(255,255,0,1) 75%,
+          rgba(255,65,0,1) 93.5%, rgba(225,0,0,1) 100%);
+    }
+
+
+    .grad-option5{
+          background-image: linear-gradient(90deg, rgba(0,0,0,1) 0%, rgba(221,60,221,1) 12.5%, rgba(32,32,255,1) 25%,
+           rgba(19,240,240,1) 37.5%, rgba(0,160,0,1) 55%, rgba(224,231,14,1) 70%, rgba(255,255,19,1) 75%,
+           rgba(255,32,32,1) 87.5%, rgba(255,255,255,1) 100%);
+    }
+
+
+    .grad-option6{
+          background-image: linear-gradient(90deg, rgba(0,0,0,1) 0%, rgba(0,64,255,1) 12.5%, rgba(0,160,60,1) 25%,
+          rgba(128,255,0,1) 37.5%, rgba(255,255,0,1) 50%, rgba(255,0,0,1) 75%, rgba(255,0,255,1) 87.5%,
+          rgba(255,255,255,1) 100%);
+    }
+
+
+    .grad-option7{
+          background-image: linear-gradient(90deg, rgba(127,0,0,1) 0%, rgba(255,0,193,1) 12.5%, rgba(207,0,255,1) 16.5%,
+          rgba(0,0,255,1) 33%, rgba(0,255,255,1) 50%, rgba(0,255,0,1) 66%,rgba(255,255,0,1) 82.5%, rgba(255,0,0,1) 100%);
+    }
+
+
+    .grad-option8{
+          background-image: linear-gradient(90deg, rgba(0,0,128,1) 0%, rgba(0,0,255,1) 12.5%, rgba(0,255,255,1) 37.5%,
+          rgba(255,255,0,1) 62.5%, rgba(255,0,0,1) 87.5%, rgba(128,0,0,1) 100%);
+    }
+
+
+    .grad-option9{
+          background-image:  linear-gradient(90deg, rgba(0,0,0,1) 0%, rgba(255,255,255,1) 70%, rgba(255,98,98,1) 87.5%,
+          rgba(222,0,0,1) 100%);
+    }
+
+    .grad-option10{
+        background-image:  linear-gradient(to right, white, black);
+    }
+
+  </style>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="{{url_for('static', filename='default/jquery-3.6.3.js') }}"></script>
+  <script src="{{url_for('static', filename='default/dropzone.min.js') }}"></script>
+  <link
+      rel="stylesheet"
+      src="{{url_for('static', filename='default/dropzone.min.css') }}"
+      type="text/css"
+  />
+</head>
+
+<body>
+  <script>
+
+    ////////////////////////////////////////
+    //  Description and Title  editing
+    ////////////////////////////////////////
+
+    function toggleTextfieldTitle() {
+      fakeButton = document.getElementById("edit-title-button");
+      toggleTextField("title-name", fakeButton, "update_title");
+    }
+
+
+    function toggleTextFieldDescription() {
+      fakeButton = document.getElementById("edit-description-button");
+      toggleTextField("descriptionText", fakeButton, "update_description");
+    }
+
+    function toggleTextField(textfieldID, button, link) {
+      var textfield = document.getElementById(textfieldID);
+      if (textfield.contentEditable == "true") {
+        textfield.contentEditable = false;
+        button.children[0].style.display = "inline-block";
+        button.children[1].style.display = "none";
+        $('#' + textfieldID).removeClass('editable');
+        $.post("/" + link + "/{{ id }}", { content: textfield.innerHTML });
+      } else {
+        textfield.contentEditable = "true";
+        $('#' + textfieldID).addClass('editable');
+        button.children[0].style.display = "none";
+        button.children[1].style.display = "inline-block";
+      }
+    }
+
+
+    ////////////////////////////////////////
+    //  process Button de/activation
+    ////////////////////////////////////////
+
+    function disableProcessButton() {
+      document.getElementById("startProcessingButton").disabled = true;
+      document.getElementById("startProcessingButton").style.backgroundColor = "var(--bg-color-b)";
+      document.getElementById("startProcessingButton").style.cursor = "not-allowed";
+      document.getElementById("startProcessingButton").classList.remove("button_active");
+    }
+
+    function enableProcessButton() {
+      document.getElementById("startProcessingButton").disabled = false;
+      document.getElementById("startProcessingButton").style.backgroundColor = "var(--accent-color-interaction)";
+      document.getElementById("startProcessingButton").style.cursor = "pointer";
+      document.getElementById("startProcessingButton").classList.add("button_active");
+    }
+
+
+  </script>
+  <!--{% include 'headerReport.html' %}-->
+
+  <div class="bodyDiv">
+    <br>
+    <br>
+    <br>
+
+    <h4 style="margin-bottom: 2px;">Flight Report (ID:{{ id }})</h4>
+
+    <div style="width: 100%; display: flex;">
+      <h1 id="title-name">{{ project.name }}</h1>
+      <div id="edit-title-button" class="edit-text-button" style="margin: 12px; float:left"
+        onclick="toggleTextfieldTitle()">
+        <span
+          style="display: inline-block; transform: rotate(100deg); -ms-transform: rotate(100deg); -moz-transform: rotate(100deg); -webkit-transform: rotate(100deg);">&#x270E;</span>
+        <span style="display: none;">&check;</span>
+      </div>
+    </div>
+
+    <div style="display: inline-flex; width:100% ">
+      <div style="max-width: 97%; margin-right:10px">
+        <p id="descriptionText">
+          {% for line in project.description.splitlines()[:-1] %}
+          {{line}}<br>
+          {% endfor %}
+          {{project.description.splitlines()[-1]}}
+        </p>
+      </div>
+      <div id="edit-description-button" class="edit-text-button" onclick="toggleTextFieldDescription()">
+        <span
+          style="display: inline-block; transform: rotate(100deg); -ms-transform: rotate(100deg); -moz-transform: rotate(100deg); -webkit-transform: rotate(100deg);">&#x270E;</span>
+        <span style="display: none;">&check;</span>
+      </div>
+    </div>
+
+    <br>
+
+    <!--<form id='processingForm' style="position: relative" method="post" action="/{{ id }}/processFromUpload">
+      <div class="settings">
+        <hr class="separator">
+        <h3>Settings</h3>
+
+        <div class="option">
+          <input type="checkbox" id="with_mapping" name="with_mapping" value="mapping" checked>
+          <label for="with_mapping">Fast Orthophoto</label>
+        </div>
+        <div class="option">
+          <select id="map_res" name="map resolution">
+            <option value="low">Low</option>
+            <option value="med">Medium</option>
+            <option selected="selected" value="high">High</option>
+            <option value="ultra">Ultra</option>
+          </select>
+          <label for="map_res">Orthophoto Resolution</label>
+        </div>
+        <br>
+        <div class="option">
+          <input type="checkbox" id="with_odm" name="with_odm" value="odm">
+          <label for="with_odm">ODM Orthophoto</label>
+        </div>
+        <hr class="separator">
+      </div>
+
+      <div class="button-container">
+        <button id="startProcessingButton">Start Processing</button>
+      </div>
+    </form>-->
+
+
+    <div class="progress-bar-container">
+      <div id="progress-bar" class="progress-bar"></div>
+      <a id="progress-bar-label"> Preprocessing-Progress </a>
+    </div>
+
+    <div id="uploadSummary">    
+      <div id="summaryContent">New Uploaded Files: 0 </div>
+      <div style="width: 1%;margin: auto;"></div>
+    </div>
+    <div class="upload-area" id="upload-area">
+      <div class="small-upload-area" id="video-upload-area">
+        <div class="upload-area__label" id="video-upload-label">Upload 360°Video</div>
+        <br>
+        <a> Drag and drop the video here or use the file browser to select your video.</a>
+        <br>
+        <br>
+        <br>
+        <label for="video-file-input" class="custom-file-upload" id="video-file-upload-label">Select video</label>
+        <input type="file" id="video-file-input">
+        <div class="uploaded-videos" id="uploaded-videos"></div>
+      </div>
+      <div class="small-upload-area" id="orb-vocab-upload-area">
+        <div class="upload-area__label" id="orb-vocab-upload-label">Upload Orb Vocab</div>
+        <br>
+        <a> Drag and drop the vocab here or use the file browser to select the vocab.</a>
+        <br>
+        <br>
+        <br>
+        <label for="orb-vocab-file-input" class="custom-file-upload" id="orb-vocab-file-upload-label" >Select vocab</label>
+        <input type="file" id="orb-vocab-file-input">
+        <div class="uploaded-orb-vocabs" id="uploaded-orb-vocabs"></div>
+      </div>
+      <div class="small-upload-area" id="config-upload-area">
+        <div class="upload-area__label" id="config-upload-label">Upload Config file</div>
+        <br>
+        <a> Drag and drop the Config here or use the file browser to select the Config.</a>
+        <br>
+        <br>
+        <br>
+        <label for="config-file-input" class="custom-file-upload" id="config-file-upload-label">Select config</label>
+        <input type="file" id="config-file-input">
+        <div class="uploaded-configs" id="uploaded-configs"></div>
+      </div>
+    </div>
+
+
+    
+    
+  </div>
+
+
+  
+
+  <script>
+
+    ////////////////////////////////////////////
+    // file upload
+    ////////////////////////////////////////////
+
+    // video file
+
+    var videoUploading = false;
+    var videoUploadedSuccessfully = false;
+    var videoFileName = "";
+    var numberOfFilesUploading = 0;
+    var numberOfFilesUploadedSuccessfully = 0;
+
+    // Get the necessary DOM elements
+    const uploadArea = document.getElementById('upload-area');
+    const videoUploadArea = document.getElementById('video-upload-area');
+    const videoUploadLabel = document.getElementById('video-upload-label');
+    const videoFileInput = document.getElementById('video-file-input');
+    const uploadedVideos = document.getElementById('uploaded-videos');
+
+    // Event listeners for file selection
+    videoFileInput.addEventListener('change', handleVideoFileSelect);
+    videoUploadArea.addEventListener('drop', handleVideoFileSelect);
+
+    // Prevent default behavior on dragover event to enable drop
+    videoUploadArea.addEventListener('dragover', function (event) {
+      event.preventDefault();
+    });
+
+    // Event listener for click on upload area
+    //uploadArea.addEventListener('click', function() {
+    //  fileInput.click();
+    //});
+
+
+    function uploadVideo(file, uploadedVideo) {
+      const formData = new FormData();
+      formData.append('video', file);
+      console.log(file);
+
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', '/{{ id }}/uploadVideoFile', true);
+
+      xhr.onreadystatechange = function () {
+        if (xhr.readyState === XMLHttpRequest.DONE) {
+          // Handle response from the server if needed
+          if (xhr.status === 200) {
+            uploadedVideo.querySelector('.loading-indicator').style.display = 'none';
+            numberOfFilesUploadedSuccessfully++;
+            updateUploadProgress();
+            //enableProcessButton();
+
+            //on click on uploaded video open the image in a new tab
+            response = JSON.parse(xhr.responseText);
+            console.log(response.path);
+            path = response.path;
+            uploadedVideo.querySelector('a').href = path;
+
+          } else {
+            console.error('Video upload failed:', xhr.status);
+          }
+        }
+      };
+
+      xhr.send(formData);
+    }
+
+    /*function deleteVideoFile(filename, uploadedVideo) {
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', '/{{ id }}/deleteVideoFile', true); //fix in server.py
+      xhr.setRequestHeader('Content-Type', 'application/json');
+
+      xhr.onreadystatechange = function () {
+        if (xhr.readyState === XMLHttpRequest.DONE) {
+          if (xhr.status === 200) {
+            console.log(xhr.responseText);
+            console.log('File deleted successfully.');
+
+            if (uploadedVideo.querySelector('.loading-indicator').style.display == 'none') {
+            }
+            numberOfFilesUploadedSuccessfully--;
+            updateUploadProgress();
+
+            uploadedVideo.remove();
+            allVideos = document.querySelectorAll('.uploaded-video');
+            if (numberOfFilesUploadedSuccessfully < 3) {
+              disableProcessButton();
+            }
+          } else {
+            console.error('Failed to delete file:', xhr.status);
+          }
+        }
+      };
+
+      const data = JSON.stringify({ 'filename': filename });
+      xhr.send(data);
+    }*/
+
+    // Function to get the filename from the file path
+    function getFilenameFromPath(path) {
+      return path.split('\\').pop().split('/').pop();
+    }
+
+
+    // Function to handle file selection
+    function handleVideoFileSelect(event) {
+      event.preventDefault();
+      /*if (processing) {
+        return;
+      }*/
+
+      //showProgressBar();
+
+      const files = event.target.files || event.dataTransfer.files;
+      videoUploading = true;
+      videoFileName = "";
+
+      // Process each selected file
+      const file = files[0];
+      const videoType = /^video\//;
+
+      // Check if the file is an image
+      if (!videoType.test(file.type)) {
+        console.error('File', file.name, 'is not a video.');
+        
+      } else {
+
+        const reader = new FileReader();
+
+        // Function to handle video loading
+        reader.onload = ((videoFile) => {
+          return function (e) {
+            // Check if the filename is already uploaded
+            if (isFilenameAlreadyUploaded(videoFile.name)) {
+              //videoFileName = videoFile.name;
+              numberOfFilesUploading--;
+              updateUploadProgress();
+            }
+            else {
+              // Create the video element
+              const vid = document.createElement('video');
+              vid.style = "outline:none; width:100%;height:100%;";
+              vid.setAttribute("controls","controls");
+              vid.setAttribute("muted","muted");
+              vid.onloadstart = function () {
+                uploadVideo(videoFile, uploadedVideo);
+              };
+              const source = document.createElement('source')
+              source.id = "videoSource";
+              source.src = URL.createObjectURL(videoFile);
+              vid.appendChild(source);
+              // Create the uploaded image container
+              const uploadedVideo = document.createElement('div');
+              uploadedVideo.className = 'uploaded-video';
+              a = document.createElement('a');
+
+              // Open the video in big size on click
+              uploadedVideo.addEventListener('click', function (event) {
+                event.stopPropagation();
+                video = this.querySelector('a');
+                console.log(video);
+                window.open(video);
+              });
+
+              // Create the filename text element
+              const filenameText = document.createElement('div');
+              filenameText.className = 'filename-text';
+              filenameText.textContent = getFilenameFromPath(file.name);
+
+              // Create the loading indicator
+              const loadingIndicator = document.createElement('div');
+              loadingIndicator.className = 'loading-indicator';
+              loadingIndicator.textContent = 'Uploading...';
+
+              // Create the delete button
+              const deleteButton = document.createElement('div');
+              deleteButton.className = 'delete-button';
+              deleteButton.innerHTML = '<a style="font-size: 17px; margin-top: auto; color: var(--font-color-b);">✖</a>';
+              
+              //make deletebutton appear inactive
+              deleteButton.style.backgroundColor = 'var(--bg-color-b)';
+              deleteButton.style.cursor = 'not-allowed';
+
+              // Append elements to the uploaded image container
+              uploadedVideo.appendChild(vid);
+              uploadedVideo.appendChild(a);
+              uploadedVideo.appendChild(loadingIndicator);
+              uploadedVideo.appendChild(deleteButton);
+              uploadedVideo.appendChild(filenameText);
+
+              // Append the uploaded image container to the uploaded images container
+              uploadedVideos.appendChild(uploadedVideo);
+            }
+          };
+        })(file);
+
+        // Read the image file
+        reader.readAsDataURL(file);
+      }
+    }
+
+    function isFilenameAlreadyUploaded(filename) {
+      //check all files or just video files and rename the method correspondingly
+      var uploadedVideos = document.getElementsByClassName('uploaded-video');
+      if (uploadedVideos.length > 0 ) {
+        var uploadedFilename = uploadedVideos[0].querySelector('.filename-text').innerHTML;
+        if (uploadedFilename == filename) {
+          console.log("found duplicate with name " + filename + " and existing video " + uploadedFilename);
+          return true;
+        }
+      }
+      var uploadedOrbVocabs = document.getElementsByClassName('uploaded-orb-vocab');
+      if(uploadedOrbVocabs.length > 0) {
+        var uploadedFileName = uploadedOrbVocabs[0].querySelector('.filename-text').innerHTML;
+        if(uploadedFileName == filename) {
+          console.log("found duplicate with name " + filename + " and existing orb vocab " + uploadedFilename);
+          return true;
+        }
+      } 
+      return false;
+    }
+
+    // fbow file
+    var orbVocabUploading = false;
+    var orbVocabUploadedSuccessfully = false;
+    var orbVocabFileName = "";
+
+    // Get the necessary DOM elements
+    const orbVocabUploadArea = document.getElementById('orb-vocab-upload-area');
+    const orbVocabUploadLabel = document.getElementById('orb-vocab-upload-label')
+    const orbVocabFileInput = document.getElementById('orb-vocab-file-input');
+    const uploadedOrbVocabs = document.getElementById('uploaded-orb-vocabs');
+
+    // Event listeners for file selection
+    orbVocabFileInput.addEventListener('change', handleFbowFileSelect); //rename
+    orbVocabUploadArea.addEventListener('drop', handleFbowFileSelect); //rename
+
+    // Prevent default behavior on dragover event to enable drop
+    orbVocabUploadArea.addEventListener('dragover', (event) => {
+      event.preventDefault();
+    });
+
+    // Event listener for click on upload area
+    //uploadArea.addEventListener('click', function() {
+    //  fileInput.click();
+    //});
+
+
+    function uploadFbow(file, uploadedOrbVocab) { //rename
+      const formData = new FormData();
+      formData.append('orbvocab', file);
+      console.log(file);
+
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', '/{{ id }}/uploadOrbVocabFile', true);
+
+      xhr.onreadystatechange = function () {
+        if (xhr.readyState === XMLHttpRequest.DONE) {
+          // Handle response from the server if needed
+          if (xhr.status === 200) {
+            uploadedOrbVocab.querySelector('.loading-indicator').style.display = 'none';
+            numberOfFilesUploadedSuccessfully++;
+            updateUploadProgress();
+            //enableProcessButton();
+
+            //on click on uploaded video open the image in a new tab
+            response = JSON.parse(xhr.responseText);
+            console.log(response.path);
+
+          } else {
+            console.error('orb vocab upload failed:', xhr.status);
+          }
+        }
+      };
+
+      xhr.send(formData);
+    }
+
+    /*function deleteOrbVocabFile(filename, uploadedOrbVocab) {
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', '/{{ id }}/deleteOrbVocabFile', true);
+      xhr.setRequestHeader('Content-Type', 'application/json');
+
+      xhr.onreadystatechange = function () {
+        if (xhr.readyState === XMLHttpRequest.DONE) {
+          if (xhr.status === 200) {
+            console.log(xhr.responseText);
+            console.log('File deleted successfully.');
+
+            if (uploadedOrbVocab.querySelector('.loading-indicator').style.display == 'none') {
+            }
+            numberOfFilesUploadedSuccessfully--;
+            updateUploadProgress();
+
+            uploadedOrbVocab.remove();
+            allOrbVocab = document.querySelectorAll('.uploaded-orb_vocab');
+            if (allVideos.length < 1) {
+              disableProcessButton();
+            }
+          } else {
+            console.error('Failed to delete file:', xhr.status);
+          }
+        }
+      };
+
+      const data = JSON.stringify({ 'filename': filename });
+      xhr.send(data);
+    }*/
+
+    // Function to handle file selection
+    function handleFbowFileSelect(event) { //rename
+      event.preventDefault();
+
+      //showProgressBar();
+
+      const files = event.target.files || event.dataTransfer.files;
+      orbVocabUploading = true;
+      orbVocabFileName = "";
+
+      // Process each selected file
+      const file = files[0];
+      const orbVocabExtension = "fbow";
+      const fileExtension = file.name.split('.').pop();
+
+      // Check if the file is an image
+      if (fileExtension.toLowerCase() !== orbVocabExtension) {
+        console.error('File', file.name, 'is not an orb vocab.');
+      } else {
+
+        const reader = new FileReader();
+
+        // Function to handle video loading
+        reader.onload = ((orbVocabFile) => {
+          return function (e) {
+            // Check if the filename is already uploaded
+            if (isFilenameAlreadyUploaded(orbVocabFile.name)) {
+              //orbVocabFileName = orbVocabFile.name; should save it in a var for double files
+              numberOfFilesUploading--;
+              updateUploadProgress();
+            } else {
+              // Create the video element
+              const img = document.createElement('img');
+              img.onload = function () {
+                uploadFbow(orbVocabFile, uploadedOrbVocab);
+              };
+              img.src = "{{ url_for('static', filename='default/orb_vocab.png') }}";
+              // Create the uploaded image container
+              const uploadedOrbVocab = document.createElement('div');
+              uploadedOrbVocab.className = 'uploaded-orb-vocab';
+
+              // Create the filename text element
+              const filenameText = document.createElement('div');
+              filenameText.className = 'filename-text';
+              filenameText.textContent = getFilenameFromPath(file.name);
+
+              // Create the loading indicator
+              const loadingIndicator = document.createElement('div');
+              loadingIndicator.className = 'loading-indicator';
+              loadingIndicator.textContent = 'Uploading...';
+
+              // Create the delete button
+              const deleteButton = document.createElement('div');
+              deleteButton.className = 'delete-button';
+              deleteButton.innerHTML = '<a style="font-size: 17px; margin-top: auto; color: var(--font-color-b);">✖</a>';
+
+              //make deletebutton appear inactive
+              deleteButton.style.backgroundColor = 'var(--bg-color-b)';
+              deleteButton.style.cursor = 'not-allowed';
+
+              // Append elements to the uploaded image container
+              uploadedOrbVocab.appendChild(img);
+              uploadedOrbVocab.appendChild(loadingIndicator);
+              uploadedOrbVocab.appendChild(deleteButton);
+              uploadedOrbVocab.appendChild(filenameText);
+
+              // Append the uploaded image container to the uploaded images container
+              uploadedOrbVocabs.appendChild(uploadedOrbVocab);
+            }
+          };
+        })(file);
+
+        // Read the image file
+        reader.readAsDataURL(file);
+      }
+    }
+
+    // congif file
+    var configUploading = false;
+    var configUploadedSuccessfully = false;
+    var configFileName = "";
+
+    // Get the necessary DOM elements
+    const configUploadArea = document.getElementById('config-upload-area');
+    const configUploadLabel = document.getElementById('config-upload-label')
+    const configFileInput = document.getElementById('config-file-input');
+    const uploadedConfigs = document.getElementById('uploaded-configs');
+
+    // Event listeners for file selection
+    configFileInput.addEventListener('change', handleConfigFileSelect); //rename
+    configUploadArea.addEventListener('drop', handleConfigFileSelect); //rename
+
+    // Prevent default behavior on dragover event to enable drop
+    configUploadArea.addEventListener('dragover', (event) => {
+      event.preventDefault();
+    });
+
+    // Event listener for click on upload area
+    //uploadArea.addEventListener('click', function() {
+    //  fileInput.click();
+    //});
+
+
+    function uploadConfig(file, uploadedConfig) { //rename
+      const formData = new FormData();
+      formData.append('config', file);
+      console.log(file);
+
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', '/{{ id }}/uploadConfigFile', true);
+
+      xhr.onreadystatechange = function () {
+        if (xhr.readyState === XMLHttpRequest.DONE) {
+          // Handle response from the server if needed
+          if (xhr.status === 200) {
+            uploadedConfig.querySelector('.loading-indicator').style.display = 'none';
+            numberOfFilesUploadedSuccessfully++;
+            updateUploadProgress();
+            //enableProcessButton();
+
+            //on click on uploaded video open the image in a new tab
+            response = JSON.parse(xhr.responseText);
+            console.log(response.path);
+
+          } else {
+            console.error('orb vocab upload failed:', xhr.status);
+          }
+        }
+      };
+
+      xhr.send(formData);
+    }
+
+    // Function to handle file selection
+    function handleConfigFileSelect(event) { //rename
+      event.preventDefault();
+
+      //showProgressBar();
+
+      const files = event.target.files || event.dataTransfer.files;
+      configUploading = true;
+      configFileName = "";
+
+      // Process each selected file
+      const file = files[0];
+      const configExtension = "yaml";
+      const fileExtension = file.name.split('.').pop();
+
+      // Check if the file is an image
+      if (fileExtension.toLowerCase() !== configExtension) {
+        console.error('File', file.name, 'is not a config file.');
+      } else {
+
+        const reader = new FileReader();
+
+        // Function to handle video loading
+        reader.onload = ((configFile) => {
+          return function (e) {
+            // Check if the filename is already uploaded
+            if (isFilenameAlreadyUploaded(configFile.name)) {
+              //orbVocabFileName = orbVocabFile.name; should save it in a var for double files
+              numberOfFilesUploading--;
+              updateUploadProgress();
+            } else {
+              // Create the video element
+              const img = document.createElement('img');
+              img.onload = function () {
+                uploadConfig(configFile, uploadedConfig);
+              };
+              img.src = "{{ url_for('static', filename='default/yaml_file.png') }}";
+              // Create the uploaded image container
+              const uploadedConfig = document.createElement('div');
+              uploadedConfig.className = 'uploaded-config';
+
+              // Create the filename text element
+              const filenameText = document.createElement('div');
+              filenameText.className = 'filename-text';
+              filenameText.textContent = getFilenameFromPath(file.name);
+
+              // Create the loading indicator
+              const loadingIndicator = document.createElement('div');
+              loadingIndicator.className = 'loading-indicator';
+              loadingIndicator.textContent = 'Uploading...';
+
+              // Create the delete button
+              const deleteButton = document.createElement('div');
+              deleteButton.className = 'delete-button';
+              deleteButton.innerHTML = '<a style="font-size: 17px; margin-top: auto; color: var(--font-color-b);">✖</a>';
+
+              //make deletebutton appear inactive
+              deleteButton.style.backgroundColor = 'var(--bg-color-b)';
+              deleteButton.style.cursor = 'not-allowed';
+
+              // Append elements to the uploaded image container
+              uploadedConfig.appendChild(img);
+              uploadedConfig.appendChild(loadingIndicator);
+              uploadedConfig.appendChild(deleteButton);
+              uploadedConfig.appendChild(filenameText);
+
+              // Append the uploaded image container to the uploaded images container
+              uploadedConfigs.appendChild(uploadedConfig);
+            }
+          };
+        })(file);
+
+        // Read the image file
+        reader.readAsDataURL(file);
+      }
+    }
+
+    var changedPaths = {};
+
+    function updateUploadProgress() {
+      const progressBarLabel = document.getElementById('progress-bar-label');
+      var progress = Math.round((numberOfFilesUploadedSuccessfully / numberOfFilesUploading) * 100);
+
+      progressBarLabel.innerHTML = 'UPLOADING...';
+      //updateProgressBar(progress);
+      if (progress > 99.9) {
+        /*if (doubleNames.length > 0) {
+          alert('The following images were not uploaded because they already exist: ' + doubleNames.join(', '));
+          doubleNames = [];
+        }*/
+
+        $.post("/{{ id }}/checkUploadedFiles", function (response) {
+        // go through every changed path in response.pathChanges an update the according a href of the image with the old path as href
+        // handle changed paths in here
+          if(response.video != null) {
+            const uploadedVideo = document.getElementsByClassName('uploaded-video'); //fix this code, also in server.py
+            if (uploadedVideo.length > 0) {
+              /*var ref = uploadedVideos[0].querySelector('a').href;
+              ref = './static' + ref.split('static').pop();
+              console.log(ref);
+              console.log(response.video);
+              changedPaths = response.pathChanges;
+              if (response.video != null) {
+                new_ref = response.pathChanges[ref];
+                // cut away the first character of the new_ref
+                console.log(new_ref);
+                new_ref = new_ref.slice(1);
+                console.log(new_ref);
+                address = window.location.href.split('/');
+                new_ref = address[0] + '//' + address[2] + new_ref;
+                console.log(new_ref);
+                uploadedVideos[j].querySelector('a').href = new_ref;*/
+                activateDeleteButton(uploadedVideo[0], response.video);
+              //}
+            }
+            if (response.orb_vocab != null) {
+              const uploadedOrbVocab = document.getElementsByClassName('uploaded-orb-vocab');
+              if(uploadedOrbVocab.length > 0) {
+                activateDeleteButton(uploadedOrbVocab[0], response.orb_vocab);
+              }
+            }
+            if (response.config != null) {
+              const uploadedConfig = document.getElementsByClassName('uploaded-config');
+              if(uploadedConfig.length > 0) {
+                activateDeleteButton(uploadedConfig[0], response.config);
+              }
+            }
+          }
+        }, "json");
+      }
+
+
+      //showProgressBar();
+    }
+
+    /*function drawSummary(summaryData){
+      console.log(summaryData);
+      var summaryContent = document.getElementById('summaryContent');
+      summaryContent.innerHTML = '<a>New Uploaded Videos:</a>';
+      for (var key in summaryData) {
+        if (summaryData.hasOwnProperty(key)) {
+          if (key == 'ir_readable') {
+            continue;
+          }
+          summaryContent.innerHTML += '<a>' + key + ': ' + summaryData[key] + '</a>';
+        }
+      }
+    }*/
+
+    function deleteFile(filename, uploadedFile) {
+      const xhr = new XMLHttpRequest();
+      console.log(uploadedFile.className);
+      switch (uploadedFile.className) {
+        case "uploaded-video":
+        xhr.open('POST', '/{{ id }}/deleteVideoFile', true);
+          break;
+        case "uploaded-orb-vocab":
+        xhr.open('POST', '/{{ id }}/deleteOrbVocabFile', true);
+          break;
+          case "uploaded-config":
+              xhr.open('POST', '/{{ id }}/deleteConfigFile', true);
+          break;
+      }
+      xhr.setRequestHeader('Content-Type', 'application/json');
+
+      xhr.onreadystatechange = function () {
+        if (xhr.readyState === XMLHttpRequest.DONE) {
+          if (xhr.status === 200) {
+            console.log(xhr.responseText);
+            console.log('File deleted successfully.');
+
+            if (uploadedFile.querySelector('.loading-indicator').style.display == 'none') {
+              numberOfFilesUploadedSuccessfully--;
+            }
+            numberOfFilesUploading--;
+            updateUploadProgress();
+
+
+            uploadedFile.remove();
+            if (numberOfFilesUploading < 3) {
+              disableProcessButton();
+            }
+          } else {
+            console.error('Failed to delete file:', xhr.status);
+          }
+        }
+      };
+
+      const data = JSON.stringify({ 'filename': filename });
+      xhr.send(data);
+    }
+
+    /*function removeIRSettingsSummary() {
+      var settingsPlaceholder = document.getElementById('settingsPlaceholder');
+      settingsPlaceholder.innerHTML = 'Manual thermal image settings not needed';
+
+      var button = document.getElementById('editBtn');
+      button.style.backgroundColor = 'var(--bg-color-b)';
+      button.style.cursor = 'not-allowed';
+    }*/
+
+    function activateDeleteButton(uploadedFile, file) {
+      console.log(uploadedFile);
+      const deleteButton = uploadedFile.querySelector('.delete-button'); //fix
+      deleteButton.addEventListener('click', function (event) {
+        event.stopPropagation();
+        const uploadedFile = this.parentNode;
+        const filename = uploadedFile.querySelector('filename-text').innerHTML;
+        deleteFile(filename, uploadedFile);
+      });
+
+      //make deletebutton appear active
+      deleteButton.style.backgroundColor = 'var(--accent-color-red)';
+      deleteButton.style.cursor = 'pointer';
+    }
+
+    function updateProcessButtonEnabling() {
+      if (numberOfVideosUploading < 1) {
+        disableProcessButton();
+        return;
+      }
+      if (numberOfVideosUploadedSuccessfully < numberOfVideosUploading) {
+        disableProcessButton();
+        return;
+      }
+      enableProcessButton();
+    }
+
+    function disableUpload() {
+      processing = true;
+      //disable upload button and deactivate the drag and drop for the upload area
+      var uploadButton = document.getElementsByClassName('custom-file-upload')[0];
+      uploadButton.style.cursor = 'not-allowed';
+      uploadButton.style.opacity = '0.5';
+
+      var inputFile = document.getElementById('file-input');
+      inputFile.disabled = true;
+
+      var uploadArea = document.getElementById('upload-area');
+      uploadArea.style.cursor = 'not-allowed';
+    }
+
+    /*function applySettings() {
+      const minTemp = document.getElementById('minTemp').value;
+      const maxTemp = document.getElementById('maxTemp').value;
+      const irPalette = document.getElementById('ir-palette-chooser').value;
+
+      $.get( "/update_ir_settings/{{ id }}/" + Number(minTemp) + "," + Number(maxTemp) + "," + Number(irPalette.match(/\d+$/)));
+    
+
+      // Update the placeholder content with the selected settings
+      const placeholder = document.getElementById('settingsPlaceholder');
+      placeholder.innerHTML = `Min Temperature: ${minTemp}, Max Temperature: ${maxTemp}, Color Scheme: ${irPalette}`;
+
+      // Close the popup after applying settings
+      closePopup();
+    }*/
+
+    /*$("#ir-palette-chooser").change(function() {
+        $("#ir-palette-chooser option:selected").each(function() {
+            var ir_palette = $(this).val();
+            console.log(ir_palette);
+            $("#grad").removeClass();
+            $("#grad").addClass(ir_palette);
+            numbr_at_end_of_value = ir_palette.match(/\d+$/);
+        });
+    });*/
+
+
+    //areas if files have beed uploaded
+    ////////////////////////////////////////////
+    // file upload area if already uploaded
+    ////////////////////////////////////////////
+
+    /*const file_paths = {{ file_names| tojson }};
+    const urls_thumbnails = [];
+    const urls = [];
+    {% for file_name in file_names %}
+    urls_thumbnails.push("{{ global_for(thumbnail_for(file_name)) }}");
+    urls.push("{{ global_for(file_name) }}");
+    {% endfor %}
+    // Process each selected file and create an uploadImage
+    for (let i = 0; i < file_paths.length; i++) {
+      numberOfVideosUploading++;
+      const vid = document.createElement('vid');
+      vid.src = urls_thumbnails[i];
+      vid.onload = function () {
+        // remove the loading indicator
+        const loadingIndicator = uploadedVideo.querySelector('.loading-indicator');
+        loadingIndicator.style.display = 'none';
+        numberOfVideosUploadedSuccessfully++;
+      };
+
+
+      // Create the uploaded image container
+      const uploadedVideo = document.createElement('div');
+      uploadedVideo.className = 'uploaded-video';
+      a = document.createElement('a');
+      a.href = urls[i];
+
+
+      // Open the image in big size on click
+      uploadedVideo.addEventListener('click', function (event) {
+        event.stopPropagation();
+        video = this.querySelector('a');
+        console.log(video);
+        window.open(video);
+      });
+
+      // Create the filename text element
+      const filenameText = document.createElement('div');
+      filenameText.className = 'filename-text';
+      filenameText.textContent = getFilenameFromPath(file_paths[i]);
+
+      // Create the loading indicator
+      const loadingIndicator = document.createElement('div');
+      loadingIndicator.className = 'loading-indicator';
+      loadingIndicator.textContent = 'Uploading...';
+
+      // Create the delete button
+      const deleteButton = document.createElement('div');
+      deleteButton.className = 'delete-button';
+      deleteButton.innerHTML = '<a style="font-size: 17px; margin-top: auto; color: var(--font-color-b);">✖</a>';
+
+      deleteButton.addEventListener('click', function (event) {
+        event.stopPropagation();
+        const uploadedVideo = this.parentNode;
+        const vid = uploadedVideo.querySelector('vid');
+        const filename = uploadedVideo.querySelector('.filename-text').innerHTML;
+        console.log(filename);
+        deleteFile(filename, uploadedVideo);
+      });
+
+      // Append elements to the uploaded image container
+      uploadedVideo.appendChild(vid);
+      uploadedVideo.appendChild(a);
+      uploadedVideo.appendChild(loadingIndicator);
+      uploadedVideo.appendChild(deleteButton);
+      uploadedVideo.appendChild(filenameText);
+
+      // Append the uploaded image container to the uploaded images container
+      uploadedVideos.appendChild(uploadedVideo);
+
+    }
+
+
+    ////////////////////////////////////////////
+    // Start Progress and process bar
+    ////////////////////////////////////////////
+
+    allVideos = document.querySelectorAll('.uploaded-video');
+    if (allVideos.length < 0) {
+      disableProcessButton();
+    } else {
+      enableProcessButton();
+    }
+
+    // Function to update the loading bar
+    function updateProgressBar(progress) {
+      const progressBar = document.getElementById('progress-bar');
+      progressBar.style.width = `${progress}%`;
+      console.log(progress);
+      if (progress >= 99.9) {
+        progressBarLabel = document.getElementById('progress-bar-label');
+        progressBarLabel.innerHTML = 'DONE';
+        progressBar.style.backgroundColor = 'var(--bg-color-b)';
+      }
+      else {
+        progressBar.style.backgroundColor = 'var(--accent-color-green)';
+      }
+    }
+
+    // Function to check if progress is running
+    function checkProgress() {
+      // Make an AJAX request to the server to retrieve the progress value
+      const xhr = new XMLHttpRequest();
+      xhr.open('GET', '/{{ id }}/preprocessProgress', true);
+
+      xhr.onreadystatechange = function () {
+        if (xhr.readyState === XMLHttpRequest.DONE) {
+          if (xhr.status === 200) {
+            const progress = parseInt(xhr.responseText);
+            if (progress >= 0 && progress <= 100) {
+              updateProgressBar(progress);
+            }
+            if (progress >= 100) {
+              updateProgressBar(100);
+              stopCheckingProgress();
+              window.location.href = '/{{ id }}';
+            } else if (progress < 0) {
+              console.error('Invalid progress value:', progress);
+            }
+          } else {
+            console.error('Failed to retrieve progress:', xhr.status);
+          }
+        }
+      };
+
+      xhr.send();
+    }
+
+    // Store the interval ID globally
+    let progressInterval;
+
+    // Function to start checking progress
+    function startCheckingProgress() {
+      //show the progress bar
+      var progressBarLabel = document.getElementById('progress-bar-label');
+      showProgressBar();
+
+      progressBarLabel.innerHTML = 'PREPROCESSING...';
+      updateProgressBar(0);
+      disableUpload();
+
+      // Check progress initially when the page loads
+      checkProgress();
+
+      // Set an interval to check progress periodically (e.g., every 2 seconds)
+      progressInterval = setInterval(checkProgress, 1000);
+    }
+
+    // Function to stop checking progress
+    function stopCheckingProgress() {
+      clearInterval(progressInterval);
+    }
+
+    {% if processing %}
+    // Call startCheckingProgress to begin checking progress
+    startCheckingProgress();
+    {% endif %}
+
+
+    // Add event listener to form submission
+    const processingForm = document.getElementById('processingForm');
+    processingForm.addEventListener('submit', function (event) {
+      event.preventDefault(); // Prevent the form from being submitted
+
+      const formData = $(processingForm).serialize();
+
+      // Send the form data using $.post
+      $.post($(processingForm).attr('action'), formData, function (response) {
+        console.log(response);
+      });
+
+      // Call the startCheckingProgress function
+      startCheckingProgress();
+    });
+
+    function showProgressBar() {
+      var progressBar = document.getElementById('progress-bar');
+      var progressBarContainer = document.getElementsByClassName('progress-bar-container')[0];
+      progressBar.style.display = 'block';
+      progressBarContainer.style.display = 'block';
+    }*/
+
+
+
+
+  </script>
+
+  <!--{% include 'footer.html' %}-->
+</body>
+
+</html>

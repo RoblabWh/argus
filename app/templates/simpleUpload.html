@@ -266,40 +266,6 @@
       margin: auto;
     }
 
-    #editBtn {
-      width: 20%;
-      position: relative;
-      margin: 0;
-    }
-
-    .popup-container {
-      display: none;
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background-color: rgba(0, 0, 0, 0.5);
-      z-index: 999;
-    }
-
-    .popup-content {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      background-color: white;
-      padding: 20px;
-      border-radius: 5px;
-    }
-
-    .close-btn {
-      position: absolute;
-      top: 10px;
-      right: 10px;
-      cursor: pointer;
-    }
-
     #grad {
       height: 100%;
       background-color: purple;
@@ -579,7 +545,7 @@
     const uploadedImages = document.getElementById('uploaded-images');
 
     // Event listeners for file selection
-    fileInput.addEventListener('change', handleFileSelect);
+    fileInput.addEventListener('P', handleFileSelect);
     uploadArea.addEventListener('drop', handleFileSelect);
 
     // Prevent default behavior on dragover event to enable drop

@@ -411,10 +411,15 @@
             <summary>new Report</summary>
             <div class="tab-content">
                 <form style="display: flex; justify-content: space-between;" method="post" action="/create">
-                    <label style="line-height: 42px;" for="name">Name:</label>
-                    <input style="width:30%; border-radius: 4px; border-style: solid; border-color: var(--bg-color-a)" type="text" id="name" name="name" required>
-                    <label style="line-height: 42px;" for="description">Description:</label>
-                    <textarea style="width:30%; border-radius: 4px; border-style: solid; border-color: var(--bg-color-a)"  id="description" name="description" required></textarea>
+                    <label style="line-height: 44px;" for="name">Name:</label>
+                    <input style="width:25%; border-radius: 4px; border-style: solid; border-color: var(--bg-color-a)" type="text" id="name" name="name" required>
+                    <label style="line-height: 44px;" for="description">Description:</label>
+                    <textarea style="width:25%; border-radius: 4px; border-style: solid; border-color: var(--bg-color-a)"  id="description" name="description" required></textarea>
+                    <label style="line-height: 44px;" for="report-type">Type:</label>
+                    <input type="radio" id="mapping" name="report-type" value="mapping" required checked>
+                    <label style="line-height: 44px;" for="mapping">Mapping</label></br>
+                    <input type="radio" id="slam" name="report-type" value="slam" required>
+                    <label style="line-height: 44px;" for="mapping">SLAM</label></br>
                     <input class="big_button" type="submit" value="Create new Report">
                 </form>
             </div>
