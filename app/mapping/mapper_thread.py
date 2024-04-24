@@ -1,7 +1,7 @@
 import threading
 
-from image_processor import ImageProcessor
-from image_mapper import ImageMapper
+from .image_processor import ImageProcessor
+from .image_mapper import ImageMapper
 
 
 class MapperThread(threading.Thread):

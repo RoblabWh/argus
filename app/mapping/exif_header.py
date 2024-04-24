@@ -8,9 +8,9 @@ import datetime as dt
 
 import pyexifinfo as p
 
-from gps import GPS
-from xmp import XMP
-from camera_properties import CameraProperties
+from .gps import GPS
+from .xmp import XMP
+from .camera_properties import CameraProperties
 
 
 class ExifHeader:
@@ -26,6 +26,8 @@ class ExifHeader:
         ## save the python dict as json file for debugging as debugmetadta.json
         # with open('debugmetadata.json', 'w') as outfile:
         #     json.dump(self.python_dict, outfile, indent=4, separators=(',', ': '))
+
+        #print(self.python_dict, flush=True)
 
 
         self.gps_coordinate = None
@@ -147,9 +149,9 @@ class ExifHeader:
 
         try:
             imageSource = self._get_if_exist(self.python_dict, 'XMP:ImageSource')
-            if "infrared" in imageSource or "ir" in imageSource or "Infrared" in imageSource or "IR" in imageSource or "InfraRed"  or "InfraredCamera" in imageSource:
-                print("IR image detected by XMP:ImageSource", flush=True)
-                return
+            if "infrared" in imageSource or "Infrared" in imageSource or "InfraRed" in imageSource or "InfraredCamera" in imageSource:
+                print("IR image detected by XMP:ImageSource" + imageSource, flush=True)
+                return True
         except:
             return False
 
@@ -160,7 +162,7 @@ class ExifHeader:
         """
         camera_model_name = self.camera_properties.get_model()
         #print("trying to check the image size of camera_model_name: " + str(camera_model_name) + " to check for ir", flush=True)
-        with open('ir_camera_resolutions.json') as f:
+        with open('./mapping/ir_camera_resolutions.json') as f:
             data = json.load(f)
             if camera_model_name in data:
                 size = data[camera_model_name]
@@ -268,7 +270,7 @@ class ExifHeader:
         self.camera_properties.fov = fov
 
     def get_data_from_camera_specs(self,camera_model_name, key):
-        with open('camera_specs.json') as f:
+        with open('./mapping/camera_specs.json') as f:
                 data = json.load(f)
                 if camera_model_name in data:
                     val = float(data[camera_model_name][key])

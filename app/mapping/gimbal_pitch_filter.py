@@ -9,7 +9,7 @@ __email__ = "arturleinweber@live.de"
 __status__ = "Production"
 
 from abc import ABC, abstractmethod
-from filter import Filter
+from .filter import Filter
 
 
 class GimbalPitchFilter(Filter):

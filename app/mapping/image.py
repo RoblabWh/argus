@@ -15,7 +15,7 @@ import cv2
 import imutils
 import numpy as np
 
-from exif_header import ExifHeader
+from .exif_header import ExifHeader
 from thermal.thermal_analyser import ThermalAnalyser
 
 class Image:

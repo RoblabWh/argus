@@ -1,20 +1,17 @@
 import json
 import datetime
 
-from mapper_thread import MapperThread
+from mapping.mapper_thread import MapperThread
 from thermal.thermal_analyser import ThermalAnalyser
-from filter_thread import FilterThread
+from mapping.filter_thread import FilterThread
+from data_share_manager import DataShareManager
 
 # from gunicorn.app.base import BaseApplication
 from flask import Flask, flash, request, redirect, url_for, render_template, jsonify, send_file
 import os
 import signal
-import requests
 from werkzeug.utils import secure_filename
 
-
-
-import urllib.request
 
 # class FlaskApp(BaseApplication):
 #     def __init__(self, app, options=None):
@@ -54,6 +51,7 @@ class ArgusServer:
         self.webodm_manager = webodm_manager
         self.detection_manager = detection_manager
         self.thermal_analyser = ThermalAnalyser(project_manager)
+        self.data_share_manager = DataShareManager("localhost", "admin", "admin")
 
         self.setup_routes()
 
@@ -124,6 +122,14 @@ class ArgusServer:
                               view_func=self.import_project)
         self.app.add_url_rule('/ir_temp_data_of_image/<int:report_id>', methods=['GET', 'POST'],
                               view_func=self.get_ir_temp_data_of_image)
+        self.app.add_url_rule('/poi_test',
+                              view_func=self.render_poi_test)
+        self.app.add_url_rule('/set_IAIS_settings', methods=['POST'],
+                                view_func=self.set_IAIS_settings)
+        self.app.add_url_rule('/test_POI', methods=['POST'],
+                                view_func=self.test_POI)
+        self.app.add_url_rule('/get_poi_list', methods=['GET'],
+                                view_func=self.get_POI_list)
         # self.app.add_url_rule('/<int:report_id>/upload', methods=['POST'],
         #                       view_func=self.upload_image)
         # self.app.add_url_rule('/<int:report_id>/process', methods=['GET', 'POST'],
@@ -835,3 +841,21 @@ class ArgusServer:
 
     def allowed_file_project(self, filename):
         return '.' in filename and filename.rsplit('.', 1)[1].lower() in self.ALLOWED_EXTENSIONS_PROJECT
+
+    def set_IAIS_settings(self):
+        data = request.get_json()
+        print("set_IAIS_settings with: ", data, flush=True)
+        self.data_share_manager.update_iais_connection(data["url"], data["username"], data["password"])
+        return data
+
+    def test_POI(self):
+        data = request.get_json()
+        print("test_POI with", data, flush=True)
+        response = self.data_share_manager.send_poi_to_iais(data)
+        return response
+
+    def render_poi_test(self):
+        return render_template('poi_test.html')
+
+    def get_POI_list(self):
+        return self.data_share_manager.get_all_pois_from_iais()

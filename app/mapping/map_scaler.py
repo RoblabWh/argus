@@ -8,11 +8,11 @@ __status__ = "Production"
 
 import numpy as np
 import math
-import webbrowser
+#import webbrowser
 
-from map_element import MapElement
-from rectangle import RotatedRect
-from gps import GPS
+from .map_element import MapElement
+from .rectangle import RotatedRect
+from .gps import GPS
 
 import matplotlib.pyplot as plt
 import numpy as np

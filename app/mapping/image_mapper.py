@@ -4,10 +4,10 @@ import os.path as path
 import cv2
 import time
 
-from map import Map
-from gps import GPS
-from gimbal_pitch_filter import GimbalPitchFilter
-from map_scaler import MapScaler
+from .map import Map
+from .gps import GPS
+from .gimbal_pitch_filter import GimbalPitchFilter
+from .map_scaler import MapScaler
 
 
 class ImageMapper:
@@ -66,6 +66,7 @@ class ImageMapper:
             return None, []
         map_scaler = MapScaler(filtered_images, self.map_width_px, self.map_height_px)
         map_elements = map_scaler.get_map_elements()
+        print("map_scaler:", map_scaler, flush=True)
         return map_scaler, map_elements
 
     def generate_placeholder_maps(self):
@@ -135,6 +136,7 @@ class ImageMapper:
         return map_dict
 
     def calculate_map_IR(self, report_id):
+        print("map scaler rgb & ir",self.map_scaler_IR, self.map_elements_IR, flush=True)
         (min_x, max_x, min_y, max_y), self.map_elements_IR = self.__calculate_map(self.map_scaler_IR,
                                                                                   self.map_elements_IR, True)
         map_dict = self.process_map(self.map_scaler_IR, self.map_elements_IR, min_x, max_x, min_y, max_y, True)
