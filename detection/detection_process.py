@@ -2,8 +2,8 @@ import json
 import threading
 
 
-from transformerPipeline.inference.datahandler import DataHandler
-from transformerPipeline.inference.inference_engine import Inferencer
+from transformer_pipeline.inference.datahandler import DataHandler
+from transformer_pipeline.inference.inference_engine import Inferencer
 
 
 class DetectionProcess(threading.Thread):
