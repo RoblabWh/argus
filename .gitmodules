@@ -1,3 +1,0 @@
-[submodule "detection/transformerPipeline"]
-	path = detection/transformerPipeline
-	url = git@github.com:RoblabWh/transformer_pipeline.git
