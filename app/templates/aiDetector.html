@@ -188,7 +188,7 @@
 
             for (let i = 0; i < detectionData["annotations"].length; i++) {
                 var annotation = detectionData["annotations"][i];
-                var category = detectionData["categories"][annotation.category_id]["name"];
+                var category = detectionData["categories"][annotation.category_id-1]["name"];
                 var image_id = annotation["image_id"];
 
 
@@ -294,7 +294,7 @@
         function updateSubTableThreshold(categoryName, threshold){
             var subTable = document.getElementById("table" + categoryName);
             var rows = subTable.rows;
-            categoryID = detections["categories"][detections["categories"].findIndex(x => x.name === categoryName)].id-1;
+            categoryID = detections["categories"][detections["categories"].findIndex(x => x.name === categoryName)].id;
             categorySum = 0;
             for (let i = 1; i < rows.length; i++){
                 var row = rows[i];
@@ -322,7 +322,7 @@
                 console.log("categoryID: " + categoryID + " categoryName: " + categoryName + " imageID: " + imageID + " imageName: " + imageName + " sum: " + sum);
                 categorySum += sum;
             }
-            sumCell = document.getElementById("detectionTable").rows[(categoryID+1)*2].cells[1];
+            sumCell = document.getElementById("detectionTable").rows[(categoryID)*2].cells[1];
             sumCell.innerHTML = categorySum;
             try{
                 var image_slider = document.getElementById("layer-threshold-slider-" + categoryName);
@@ -418,7 +418,7 @@
 
                 for(let j = 0; j < currentImageAnnotations.length; j++){
                     var annotation = currentImageAnnotations[j];
-                    if(annotation.category_id === category.id-1){
+                    if(annotation.category_id === category.id){
                         totalFoundObjects++;
                         displayedObjects++;
                         filteredSelection.push(j);
@@ -543,7 +543,7 @@
                     var threshold = slider.value;
                     for(let j = 0; j < currentImageAnnotations.length; j++){
                         var annotation = currentImageAnnotations[j];
-                        if(annotation.category_id == category.id-1){
+                        if(annotation.category_id == category.id){
                             if (annotation.score >= threshold){
                                 filteredSelection.push(j);
                                 displayedObjects++;
@@ -697,7 +697,7 @@
             for (let i = 0; i < filteredSelection.length; i++){
                 var annotation = currentImageAnnotations[filteredSelection[i]];
                 var categoryID = annotation.category_id;
-                var category = detections["categories"][categoryID];
+                var category = detections["categories"][categoryID-1];
                 var color = document.getElementById("color" + category.name).value;
                 //if (annotation.image_id === imageIndex){
                     var x, y, w, h;

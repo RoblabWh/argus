@@ -1,16 +1,15 @@
 import json
 import threading
-from argparse import Namespace
-import utils as u
-from datahandler import DataHandler
-from annotationhandler import AnnotationHandler
-from inference_engine import InferenceEngine
+
+
+from transformerPipeline.inference.datahandler import DataHandler
+from transformerPipeline.inference.inference_engine import Inferencer
 
 
 class DetectionProcess(threading.Thread):
 
     def __init__(self, report_id, models, max_splits, image_folder, ann_path, device):
-        self.device = device
+        self.device = device #CURRENTLY NOT SUPPORTED #TODO FIX
         self.report_id = report_id
         self.max_splits = max_splits
         self.done = False
@@ -22,49 +21,27 @@ class DetectionProcess(threading.Thread):
 
     def run(self):
         self.started = True
-        args = Namespace(
-            img=None,
-            out_file='result.jpg',
-            create_coco=True,
-            netfolders=self.netfolders,
-            configs="",
-            checkpoints="",
-            inputfolder=self.image_folder,
-            outfolders=[],
-            ann_path=self.ann_path,
-            extensions=['.jpg', '.png'],
-            pattern='.',
-            include_subdirs=False,
-            score_thr=0.3,
-            batch_size=5,
-            split_images=True,
-            max_splitting_steps=self.max_splits)
-        print("args: ", str(args), flush=True)
-        u.assert_arguments(args)
 
-        engine = InferenceEngine(device=self.device, out_folders=args.outfolders, configs=args.configs,
-                                 checkpoints=args.checkpoints, network_folders=args.netfolders)
+        datahandler = DataHandler()
+        inferencer = Inferencer(score_thr=0.4)
+        models = inferencer.which_models_are_available()
+        for model in models:
+            inferencer.add_model(model)
 
-        # Init DataHandler
-        datahandler = DataHandler(args)
-        if args.split_images:
-            print("option --split_images is set, images will be split into tiles")
-            datahandler.preprocess(int(args.max_splitting_steps))
-        data = datahandler.get_image_paths_str()
+        # inputfolder = "/home/nex/Bilder/Datasets/micro-test/images"
+        # inputlist = ["/home/nex/Bilder/Datasets/micro-test/images/001918.jpg",
+        #              "/home/nex/Bilder/Datasets/micro-test/images/DJI_0875.JPG"]
 
-        # Inference, sometimes the matplotlib backend crashes, then saving won't work. Try again.
-        results = engine.inference_all(data, score_thr=args.score_thr, batch_size=args.batch_size)
-        # print("results: ", str(results))
-        if args.split_images:
-            results = datahandler.postprocess_images(results_=results)
-        results = datahandler.merge_bboxes(results=results)
+        datahandler.set_image_paths(self.image_folder)
 
-        # Create AnnotationFile from Results
-        if args.create_coco:
-            annotationhandler = AnnotationHandler(args, keep_coco_format=False)
-            annotationhandler.create_empty_ann(datahandler.image_paths)
-            annotationhandler.save_results_in_json(results)
+        datahandler.preprocess()
+        data = datahandler.get_data()
+        results = inferencer(data)
+        result = datahandler.postprocess(results)
+        datahandler.set_ann_path(self.ann_path)
+        datahandler.save_annotation(result)
 
+        #datahandler.show(result)
         self.reformat_ann()
 
         self.done = True
@@ -83,8 +60,15 @@ class DetectionProcess(threading.Thread):
             data = json.load(json_file)
 
         print('found', len(data["annotations"]), 'objects')
+
+        for image in data["images"]:
+            image["file_name"] = image["file_name"].split("/")[-1]
+
         for category in data["categories"]:
             category["colorHSL"] = [(300 - int((category["id"] + 1) / len(data["categories"]) * 360)) % 360, 100, 50]
+
+        #add a version tag to the json file
+        data["version"] = 1.0
 
         with open(self.ann_path, 'w') as json_file:
             json.dump(data, json_file)

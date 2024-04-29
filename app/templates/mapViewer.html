@@ -594,7 +594,7 @@ function generateObjectDetectionLayer(objectDetectionData){
 
     for(var i=0; i< objectDetectionData.annotations.length; i++){
         imageID = objectDetectionData.annotations[i].image_id;
-        categoryID = objectDetectionData.annotations[i].category_id + 1;
+        categoryID = objectDetectionData.annotations[i].category_id;
         score = objectDetectionData.annotations[i].score;
         category = objectDetectionData.categories[categoryID - 1];
         var slider = document.getElementById("slider_" + category.name + "_global_threshold");
@@ -749,7 +749,7 @@ function draw_individual_objects_on_map(objectDetectionData){
     for(var i=0; i < detections.length; i++){
         let detection = detections[i];
         let categoryID = detection.category_id;
-        let category = objectDetectionData["categories"][detection.category_id]["name"];
+        let category = objectDetectionData["categories"][detection.category_id-1]["name"];
         let score = detection.score;
 
 
@@ -757,7 +757,7 @@ function draw_individual_objects_on_map(objectDetectionData){
             continue;
         }
 
-        if(score < global_thresholds[categoryID]){
+        if(score < global_thresholds[categoryID-1]){
             continue;
         }
 
@@ -772,13 +772,13 @@ function draw_individual_objects_on_map(objectDetectionData){
         }
 
         let color = 'white';
-        if(categoryID == 0){
+        if(categoryID == 1){
             color = 'red';
         }
-        else if(categoryID == 1){
+        else if(categoryID == 2){
             color = 'black';
         }
-        else if(categoryID == 2){
+        else if(categoryID == 3){
             color = 'blue';
         }
 

@@ -153,6 +153,8 @@ class ProjectManager:
             print("loading project from directory: " + project_id)
             with open(os.path.join(self.projects_path, project_id, "project.json"), "r") as json_file:
                 project = json.load(json_file)
+                self._check_for_annotations(project)
+
 
         # check if there is a project['version'] and if not, add it with self.CURRENT_PROJECT_FILE_VERSION
         try:
@@ -161,6 +163,38 @@ class ProjectManager:
             project['version'] = self.CURRENT_PROJECT_FILE_VERSION
 
         return project
+
+    def _check_for_annotations(self, project):
+        if not project:
+            return
+        if not 'data' in project:
+            return
+
+        if not 'annotation_file_path' in project['data']:
+            return
+
+        annotation_file_path = project['data']['annotation_file_path']
+        #load annotations
+        if not os.path.isfile(annotation_file_path):
+            return
+        with open(annotation_file_path, 'r') as json_file:
+            annotations = json.load(json_file)
+            if not 'version' in annotations:
+                annotations = self._update_annotations_to_v1(annotations)
+                annotations['version'] = 1.0
+                with open(annotation_file_path, 'w') as json_file:
+                    json.dump(annotations, json_file)
+
+
+    def _update_annotations_to_v1(self, annotations):
+        # if no version Tag is available it is assumed, that the file is originally from the old mm_detection pipeline
+        # therfore the "category_id" in the detections list needs to be corrected by adding 1
+        for detection in annotations['annotations']:
+            detection['category_id'] += 1
+
+        return annotations
+
+
 
     def initiate_project_list(self):
         # check for every directory in static/uploads/ if there is project.json
@@ -217,6 +251,15 @@ class ProjectManager:
         #generate int hash
         hash = int(hashlib.sha256(system_name.encode('utf-8')).hexdigest(), 16) % 10**4
         print("hash: " + str(hash))
+
+        while True:
+            if len(str(hash)) == 4:
+                break
+            else:
+                if len(str(hash)) < 4:
+                    hash = hash * 10
+                else:
+                    hash = int(str(hash)[:-1])
 
         #cast to string and concatenate
         project_id = int(timestamp + str(hash))
