@@ -6,6 +6,12 @@ from transformer_pipeline.inference.datahandler import DataHandler
 from transformer_pipeline.inference.inference_engine import Inferencer
 
 
+#TODO Changes in transformer_pipeline:
+# the path to the models.json is set in the submodule and therefore not found,
+#   it should be passed as an argument or found dynamically
+# the package import of the utils should be extended to transform_pipeline.utils
+# the yolo model should be made public or removed from the models.json to resolve the import error
+
 class DetectionProcess(threading.Thread):
 
     def __init__(self, report_id, models, max_splits, image_folder, ann_path, device):
