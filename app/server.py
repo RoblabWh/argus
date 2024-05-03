@@ -130,6 +130,8 @@ class ArgusServer:
                                 view_func=self.test_POI)
         self.app.add_url_rule('/get_poi_list', methods=['GET'],
                                 view_func=self.get_POI_list)
+        self.app.add_url_rule('/delete_poi', methods=['POST'],
+                                view_func=self.delete_POI)
         # self.app.add_url_rule('/<int:report_id>/upload', methods=['POST'],
         #                       view_func=self.upload_image)
         # self.app.add_url_rule('/<int:report_id>/process', methods=['GET', 'POST'],
@@ -859,3 +861,9 @@ class ArgusServer:
 
     def get_POI_list(self):
         return self.data_share_manager.get_all_pois_from_iais()
+
+    def delete_POI(self):
+        data = request.get_json()
+        print("delete_POI with", data, flush=True)
+        response = self.data_share_manager.remove_poi_from_iais(data['poi_id'])
+        return response
