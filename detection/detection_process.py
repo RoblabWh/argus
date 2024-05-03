@@ -15,7 +15,7 @@ from transformer_pipeline.inference.inference_engine import Inferencer
 class DetectionProcess(threading.Thread):
 
     def __init__(self, report_id, models, max_splits, image_folder, ann_path, device):
-        self.device = device #CURRENTLY NOT SUPPORTED #TODO FIX
+        self.device = device
         self.report_id = report_id
         self.max_splits = max_splits
         self.done = False

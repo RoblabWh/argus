@@ -4,10 +4,13 @@ ARG CUDNN="8"
 
 FROM pytorch/pytorch:${PYTORCH}-cuda${CUDA}-cudnn${CUDNN}-devel
 
+RUN mkdir -p /data/.huggingface
+
 ENV TORCH_CUDA_ARCH_LIST="6.0 6.1 7.0 7.5 8.0 8.6+PTX" \
     TORCH_NVCC_FLAGS="-Xfatbin -compress-all" \
     CMAKE_PREFIX_PATH="$(dirname $(which conda))/../" \
-    FORCE_CUDA="1"
+    FORCE_CUDA="1" \
+    HF_HOME="/data/.huggingface"
 
 
 # Python 3.8 and pip3
@@ -28,7 +31,7 @@ RUN apt-get update \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-RUN pip install torch torchvision transformers[torch] albumentations datasets pycocotools timm safetensors
+RUN pip install torch torchvision transformers[torch] albumentations datasets pycocotools timm safetensors gitpython
 
 
 COPY requirements.txt /detection/requirements.txt
