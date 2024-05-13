@@ -1,5 +1,6 @@
 import json
 import threading
+from argparse import Namespace
 
 
 from transformer_pipeline.inference.datahandler import DataHandler
@@ -22,13 +23,14 @@ class DetectionProcess(threading.Thread):
         self.started = False
         self.image_folder = image_folder #f'./projects/{self.report_id}/rgb'
         self.ann_path = ann_path #f'./projects/{self.report_id}/ann.json'
-        self.netfolders = self.build_model_paths_list(models)
         super().__init__()
 
     def run(self):
         self.started = True
 
-        datahandler = DataHandler()
+        args = self.generate_args()
+
+        datahandler = DataHandler(args=args)
         inferencer = Inferencer(score_thr=0.4)
         models = inferencer.which_models_are_available()
         for model in models:
@@ -52,12 +54,6 @@ class DetectionProcess(threading.Thread):
 
         self.done = True
 
-    def build_model_paths_list(self, models):
-        # TODO use models from args
-        # return [f'./model_weights/{model}' for model in models]
-        # models = ['/detection/model_weights/rtmdet_x_8xb32-300e_coco/small_trained_correctbbx/']
-        models = ['/detection/model_weights/original/defor-detr/best/']
-        return models
 
     def reformat_ann(self):
         print('reformatting ann', self.ann_path, flush=True)
@@ -78,3 +74,21 @@ class DetectionProcess(threading.Thread):
 
         with open(self.ann_path, 'w') as json_file:
             json.dump(data, json_file)
+
+    def generate_args(self):
+        split = (self.max_splits > 0)
+        default_args = {
+            'inputfolder': None,
+            'extensions': ['.jpg', '.png'],
+            'outputfolder': None,
+            'pattern': '',
+            'include_subdirs': False,
+            'create_coco': True,
+            'ann_path': self.ann_path,
+            'dataset': None,
+            'split': split,
+            'print_results': False,
+            'score_thr': 0.4,  # Used for filtering in the annotation handler
+            'max_splitting_steps': self.max_splits,
+        }
+        args = Namespace(**default_args)

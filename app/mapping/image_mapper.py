@@ -510,7 +510,7 @@ class ImageMapper:
         map_dict = {
             "center": [latc, longc],
             "zoom": 18,
-            "file": "default/MappingFailed.png",
+            "file": "./static/default/MappingFailed.png",
             "bounds": bounds,
             "size": [1080, 1080],
             "image_coordinates": None,

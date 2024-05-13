@@ -749,6 +749,7 @@ function draw_individual_objects_on_map(objectDetectionData){
     for(var i=0; i < detections.length; i++){
         let detection = detections[i];
         let categoryID = detection.category_id;
+        let imageID = detection.image_id;
         let category = objectDetectionData["categories"][detection.category_id-1]["name"];
         let score = detection.score;
 
@@ -788,6 +789,8 @@ function draw_individual_objects_on_map(objectDetectionData){
             fillOpacity: 0.9,
             radius: 2
         }).addTo(objectDetectionLayer_detail);
+
+        marker.on('click', function(){showImageByFileName(filename)});
     }
 
     //layerControl2.addOverlay(objectDetectionLayer_detail , 'taktischeZeichen_positioniert');

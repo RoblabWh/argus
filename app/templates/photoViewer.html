@@ -651,22 +651,44 @@
 
     function showSlideByFilename(filename){
         console.log("showSlideByFilename: " + filename);
+        
+        //check if filename is full path or only filename
+        if (!filename.includes("./static/")){
+            showSlideByShortFilename(filename);
+            return;
+        }
+
         var slideIndex = getSlideIndexByFilename(filename, 0);
+        if (slideIndex == -1){
+            slideIndex = getSlideIndexByFilename(filename, 1);
+        }
+        if (slideIndex == -1){
+            slideIndex = getSlideIndexByFilename(filename, 2);
+        }
         if(slideIndex != -1){
             showSlide(slideIndex);
-        } else {
-            slideIndex = getSlideIndexByFilename(filename, 1);
-            if(slideIndex != -1){
-                showSlideIR(slideIndex);
-            }
-            else{
-                slideIndex = getSlideIndexByFilename(filename, 2);
-                if(slideIndex != -1){
-                    showSlide(slideIndex);
-                }
-            }
+        } else{
+            console.log("No slide found for filename: " + filename);   
         }
     }
+
+    function showSlideByShortFilename(filename){
+        console.log("showSlideByShortFilename: " + filename);
+
+        var slideIndex = getSlideIndexByFilenameShort(filename, 0);
+        if (slideIndex == -1){
+            slideIndex = getSlideIndexByFilenameShort(filename, 1);
+        }
+        if (slideIndex == -1){
+            slideIndex = getSlideIndexByFilenameShort(filename, 2);
+        }
+        if(slideIndex != -1){
+            showSlide(slideIndex);
+        } else{
+            console.log("No slide found for filename: " + filename);   
+        }
+    }
+
 
     function showSlideByFilenameIR(filename){
         console.log("showSlideByFilenameIR: " + filename);
@@ -1060,6 +1082,17 @@
         return index;
     }
 
+    function getSlideIndexByFilenameShort(filename, imagetype){
+        var index = -1;
+        for(var i = 0; i < slideshowCouples.length; i++){
+            if(slideshowCouples[i][imagetype].includes(filename)){
+                index = i;
+                break;
+            }
+        }
+        return index;
+    }
+
     function getSlideByFilenameRGB(filename){
         var index = getSlideIndexByFilename(filename, 0);
         if(index != -1){
@@ -1251,6 +1284,7 @@
     }
 
     function activateAiOverlays(){
+        console.log("---activateAiOverlays---");
         openSettingsEvent('slideshow-settings-annotaions-tablink','slideshow-settings-Annotations')
         displayingAI = true;
 
