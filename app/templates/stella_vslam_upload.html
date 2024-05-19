@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" xmlns="http://www.w3.org/1999/html">
 
 <head>
   <meta charset="UTF-8">
@@ -23,6 +23,20 @@
       font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
     }
 
+    .dz-upload {
+        display: block;
+        background-color: red;
+        height: 10px;
+        width: 0%;
+    }
+
+    .dz-success-mark {
+        display: none;
+    }
+
+    .dz-error-mark {
+        display: none;
+    }
 
     .edit-text-button {
       font-size: 18px;
@@ -34,6 +48,12 @@
       border-color: var(--bg-color-b);
       border-width: 1px;
       background-color: var(--bg-color-a);
+    }
+
+    .hidden {
+        visibility: hidden;
+        opacity: 0;
+        transition: visibility 0s 1s, opacity 1s linear;
     }
 
     .edit-text-button:hover {
@@ -72,6 +92,7 @@
       margin: 50px auto;
       padding: 20px 5%;
       text-align: center;
+        overflow: hidden;
     }
 
     .small-upload-area {
@@ -81,6 +102,17 @@
       border: 2px dashed #ccc;
       border-radius: 10px;
       text-align: center;
+    }
+
+    .dropzone {
+      width: 30%;
+      min-height: 200px;
+      margin: 20px 0;
+      padding: 10px 5%;
+      border: 2px dashed #ccc;
+      border-radius: 10px;
+      text-align: center;
+      cursor: pointer;
     }
 
     .upload-area__label {
@@ -261,6 +293,19 @@
       justify-content: center;
     }
 
+    /* chrome and other browsers */
+    input::-webkit-outer-spin-button,
+    input::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+    }
+
+
+    input[type=number] {
+        -moz-appearance:textfield; /* Firefox */
+        width: 20px;
+    }
+
     .uploaded-config .delete-button {
       position: absolute;
       top: 5px;
@@ -302,7 +347,9 @@
       color: var(--font-color-b);
     }
 
-
+    #dropzone-text {
+        <!-- css for the text inside the dropzone -->
+    }
 
     .settings {
       width: 48%;
@@ -331,15 +378,17 @@
       width: 48%;
       height: 100%;
       position: absolute;
+        overflow: hidden;
       top: 0;
       left: 52%;
     }
 
     button {
-      width: 100%;
+      width: 90%;
       height: 100%;
       margin: auto;
       display: block;
+        float: left;
       padding: 10px;
       background-color: var(--accent-color-interaction);
       color: var(--font-color-b);
@@ -357,42 +406,16 @@
       font-size: 20px;
     }
 
-
-    .progress-bar-container {
-      display: none;
-      position: relative;
-      width: 100%;
-      height: 30px;
-      background-color: var(--bg-color-a);
-      margin-bottom: 10px;
-      border-radius: 6px;
-    }
-
-    .progress-bar-container a {
-      position: absolute;
-      top: 4px;
-      font-size: 22px;
-      width: 100%;
-      text-align: center;
-      color: var(--font-color-b);
-      font-weight: bold;
+    .progress {
+        width: 300px;
+        border: 1px solid #ddd;
+        padding: 5px;
     }
 
     .progress-bar {
-      display: none;
-      height: 100%;
-      background-color: var(--accent-color-green);
-      width: 0%;
-      transition: width 0.2s ease-in-out;
-      border-radius: 6px;
-    }
-
-    #uploadSummary {
-      display: flex;
-      background: var(--bg-color-a);
-      padding: 12px;
-      border-radius: 6px;
-      //justify-content: space-between;
+        width: 0%;
+        height: 20px;
+        background-color: #4CAF50;
     }
 
     #summaryContent {
@@ -498,10 +521,43 @@
         background-image:  linear-gradient(to right, white, black);
     }
 
+    .spinner {
+          width: 42px;
+          --b: 8px; /* the border thickness */
+          aspect-ratio: 1;
+          border-radius: 50%;
+          padding: 1px;
+          background: conic-gradient(#0000 10%,var(--accent-color-interaction)) content-box;
+          -webkit-mask:
+            repeating-conic-gradient(#0000 0deg,#000 1deg 20deg,#0000 21deg 36deg),
+            radial-gradient(farthest-side,#0000 calc(100% - var(--b) - 1px),#000 calc(100% - var(--b)));
+          -webkit-mask-composite: destination-in;
+          mask-composite: intersect;
+          animation:s4 1s infinite steps(10);
+        }
+        @keyframes s4 {to{transform: rotate(1turn)}}
+
+        .spinner-small {
+          width: 30px;
+          --b: 6px; /* the border thickness */
+          aspect-ratio: 1;
+          border-radius: 50%;
+          padding: 1px;
+          background: conic-gradient(#0000 10%,var(--accent-color-interaction)) content-box;
+          -webkit-mask:
+            repeating-conic-gradient(#0000 0deg,#000 1deg 20deg,#0000 21deg 36deg),
+            radial-gradient(farthest-side,#0000 calc(100% - var(--b) - 1px),#000 calc(100% - var(--b)));
+          -webkit-mask-composite: destination-in;
+          mask-composite: intersect;
+          animation:s4 1s infinite steps(10);
+        }
+        @keyframes s4 {to{transform: rotate(1turn)}}
+
   </style>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <script src="{{url_for('static', filename='default/jquery-3.6.3.js') }}"></script>
   <script src="{{url_for('static', filename='default/dropzone.min.js') }}"></script>
+  <script src="{{url_for('static', filename='default/js/socket.io.min.js') }}"></script>
   <link
       rel="stylesheet"
       src="{{url_for('static', filename='default/dropzone.min.css') }}"
@@ -520,7 +576,6 @@
       fakeButton = document.getElementById("edit-title-button");
       toggleTextField("title-name", fakeButton, "update_title");
     }
-
 
     function toggleTextFieldDescription() {
       fakeButton = document.getElementById("edit-description-button");
@@ -549,22 +604,22 @@
     ////////////////////////////////////////
 
     function disableProcessButton() {
-      document.getElementById("startProcessingButton").disabled = true;
-      document.getElementById("startProcessingButton").style.backgroundColor = "var(--bg-color-b)";
-      document.getElementById("startProcessingButton").style.cursor = "not-allowed";
-      document.getElementById("startProcessingButton").classList.remove("button_active");
+      document.getElementById("startSlamButton").disabled = true;
+      document.getElementById("startSlamButton").style.backgroundColor = "var(--bg-color-b)";
+      document.getElementById("startSlamButton").style.cursor = "not-allowed";
+      document.getElementById("startSlamButton").classList.remove("button_active");
     }
 
     function enableProcessButton() {
-      document.getElementById("startProcessingButton").disabled = false;
-      document.getElementById("startProcessingButton").style.backgroundColor = "var(--accent-color-interaction)";
-      document.getElementById("startProcessingButton").style.cursor = "pointer";
-      document.getElementById("startProcessingButton").classList.add("button_active");
+      document.getElementById("startSlamButton").disabled = false;
+      document.getElementById("startSlamButton").style.backgroundColor = "var(--accent-color-interaction)";
+      document.getElementById("startSlamButton").style.cursor = "pointer";
+      document.getElementById("startSlamButton").classList.add("button_active");
     }
 
 
   </script>
-  <!--{% include 'headerReport.html' %}-->
+  {% include 'headerReport.html' %}
 
   <div class="bodyDiv">
     <br>
@@ -601,47 +656,30 @@
 
     <br>
 
-    <!--<form id='processingForm' style="position: relative" method="post" action="/{{ id }}/processFromUpload">
+    <form id='processingForm' style="position: relative" method="post" action="/{{ id }}/startSlamProcess"> <!-- start slam-->
       <div class="settings">
         <hr class="separator">
-        <h3>Settings</h3>
+        <h3>VSLAM Settings</h3>
 
         <div class="option">
-          <input type="checkbox" id="with_mapping" name="with_mapping" value="mapping" checked>
-          <label for="with_mapping">Fast Orthophoto</label>
+          <input type="checkbox" id="no_sleep" name="no_sleep" value="no_sleep">
+          <label for="no_sleep">No sleep</label>
         </div>
         <div class="option">
-          <select id="map_res" name="map resolution">
-            <option value="low">Low</option>
-            <option value="med">Medium</option>
-            <option selected="selected" value="high">High</option>
-            <option value="ultra">Ultra</option>
-          </select>
-          <label for="map_res">Orthophoto Resolution</label>
-        </div>
-        <br>
-        <div class="option">
-          <input type="checkbox" id="with_odm" name="with_odm" value="odm">
-          <label for="with_odm">ODM Orthophoto</label>
+          <input type="number" id="frame_skip" name="frame_skip" min="1" max="99" value="1">
+          <label for="frame_skip">Frame skip</label>
         </div>
         <hr class="separator">
       </div>
 
       <div class="button-container">
-        <button id="startProcessingButton">Start Processing</button>
+        <div style="float: left; margin: auto 8px auto 0;">
+          <div id="slamRunningCircle" class="spinner-small" style="display: none;"></div>
+        </div>
+        <button id="startSlamButton">Start VSLAM</button>
       </div>
-    </form>-->
+    </form>
 
-
-    <div class="progress-bar-container">
-      <div id="progress-bar" class="progress-bar"></div>
-      <a id="progress-bar-label"> Preprocessing-Progress </a>
-    </div>
-
-    <div id="uploadSummary">    
-      <div id="summaryContent">New Uploaded Files: 0 </div>
-      <div style="width: 1%;margin: auto;"></div>
-    </div>
     <div class="upload-area" id="upload-area">
       <div class="small-upload-area" id="video-upload-area">
         <div class="upload-area__label" id="video-upload-label">Upload 360°Video</div>
@@ -653,7 +691,19 @@
         <label for="video-file-input" class="custom-file-upload" id="video-file-upload-label">Select video</label>
         <input type="file" id="video-file-input">
         <div class="uploaded-videos" id="uploaded-videos"></div>
+          <!--<form class="dropzone needsclick" id="video-file-upload-dropzone" action="/{{ id }}/uploadVideoFileWithDropzone">
+            <div class="dz-message needsclick">
+                Drag and drop the video file here or use the file browser<br>
+                <span class="note needs click">
+                    (Upload a video file with up to x gb)
+                </span>
+            </div>
+        </form>-->
       </div>
+        <div class="dropzone" id="video-file-upload-dropzone">
+            <div id="dropzone-text" class="dz-message" data-dz-message><span>Drag and drop the video here or click in the area to open the file explorer.</span></div>
+        <!--<form class="dropzone" id="video-file-upload-dropzone" action="/{{ id }}/uploadVideoFileWithDropzone"></form>-->
+        </div>
       <div class="small-upload-area" id="orb-vocab-upload-area">
         <div class="upload-area__label" id="orb-vocab-upload-label">Upload Orb Vocab</div>
         <br>
@@ -680,13 +730,88 @@
 
 
     
-    
   </div>
 
-
-  
-
   <script>
+
+    //dropzone
+
+    Dropzone.autoDiscover = false;
+
+    const uploadArea = document.getElementById('upload-area');
+
+    var videoUploading = false;
+    var videoUploadedSuccessfully = false;
+    var videoFileName = "";
+
+    let videoFileDropzone = new Dropzone("#video-file-upload-dropzone",{
+        paramName: "video",
+        maxFilesize: 5000, //MB
+        acceptedFiles: '.mp4',
+        accept: function(file,done) {
+            done();
+        },
+        url: "/{{ id }}/uploadVideoFileDropzone",
+        method: "post",
+        forceChunking: true,
+        init: function() {
+            this.on('addedfile', (file) => {
+                videoUploading = true;
+                this.emit('thumbnail', file, "{{ url_for('static', filename='default/placeholder_video.png') }}");
+            });
+
+            this.on('success', (file, response) => {
+                videoUploadedSuccessfully = true;
+                var progressBar = file.previewElement.querySelector(".dz-progress");
+                progressBar.classList.add("hidden");
+                var thumbnail = file.previewElement.querySelector(".dz-image");
+                thumbnail.removeChild(thumbnail.firstChild);
+
+                const vid = document.createElement('video');
+                vid.style = "outline:none; width:100%;height:100%;";
+                vid.setAttribute("controls","controls");
+                vid.setAttribute("muted","muted");
+                const source = document.createElement('source')
+                source.id = "videoSource";
+                source.src = JSON.parse(response).path;
+                vid.appendChild(source);
+                thumbnail.appendChild(vid);
+                // Create the uploaded image container
+                const uploadedVideo = document.createElement('div');
+                uploadedVideo.className = 'uploaded-video';
+
+                // Create the delete button
+                const deleteButton = document.createElement('div');
+                deleteButton.className = 'delete-button';
+                deleteButton.innerHTML = '<a style="font-size: 17px; margin-top: auto; color: var(--font-color-b);">✖</a>';
+
+                const filenameText = document.createElement('div');
+                filenameText.className = 'filename-text';
+                filenameText.textContent = getFilenameFromPath(file.name);
+
+                console.log(file);
+                console.log(getFilenameFromPath(file.name));
+
+                //make deletebutton appear inactive
+                deleteButton.style.backgroundColor = 'var(--bg-color-b)';
+                deleteButton.style.cursor = 'not-allowed';
+
+                // Append elements to the uploaded image container
+                uploadedVideo.appendChild(vid);
+                uploadedVideo.appendChild(deleteButton);
+                uploadedVideo.appendChild(filenameText);
+
+                // Append the uploaded image container to the uploaded images container
+                thumbnail.appendChild(uploadedVideo);
+
+                updateUploadProgress();
+            });
+
+            this.on('error', (file, errorMessage) => {
+                console.log(errorMessage);
+            })
+        }
+    });
 
     ////////////////////////////////////////////
     // file upload
@@ -694,14 +819,7 @@
 
     // video file
 
-    var videoUploading = false;
-    var videoUploadedSuccessfully = false;
-    var videoFileName = "";
-    var numberOfFilesUploading = 0;
-    var numberOfFilesUploadedSuccessfully = 0;
-
     // Get the necessary DOM elements
-    const uploadArea = document.getElementById('upload-area');
     const videoUploadArea = document.getElementById('video-upload-area');
     const videoUploadLabel = document.getElementById('video-upload-label');
     const videoFileInput = document.getElementById('video-file-input');
@@ -735,7 +853,7 @@
           // Handle response from the server if needed
           if (xhr.status === 200) {
             uploadedVideo.querySelector('.loading-indicator').style.display = 'none';
-            numberOfFilesUploadedSuccessfully++;
+            videoUploadedSuccessfully = true;
             updateUploadProgress();
             //enableProcessButton();
 
@@ -753,37 +871,6 @@
 
       xhr.send(formData);
     }
-
-    /*function deleteVideoFile(filename, uploadedVideo) {
-      const xhr = new XMLHttpRequest();
-      xhr.open('POST', '/{{ id }}/deleteVideoFile', true); //fix in server.py
-      xhr.setRequestHeader('Content-Type', 'application/json');
-
-      xhr.onreadystatechange = function () {
-        if (xhr.readyState === XMLHttpRequest.DONE) {
-          if (xhr.status === 200) {
-            console.log(xhr.responseText);
-            console.log('File deleted successfully.');
-
-            if (uploadedVideo.querySelector('.loading-indicator').style.display == 'none') {
-            }
-            numberOfFilesUploadedSuccessfully--;
-            updateUploadProgress();
-
-            uploadedVideo.remove();
-            allVideos = document.querySelectorAll('.uploaded-video');
-            if (numberOfFilesUploadedSuccessfully < 3) {
-              disableProcessButton();
-            }
-          } else {
-            console.error('Failed to delete file:', xhr.status);
-          }
-        }
-      };
-
-      const data = JSON.stringify({ 'filename': filename });
-      xhr.send(data);
-    }*/
 
     // Function to get the filename from the file path
     function getFilenameFromPath(path) {
@@ -821,8 +908,6 @@
           return function (e) {
             // Check if the filename is already uploaded
             if (isFilenameAlreadyUploaded(videoFile.name)) {
-              //videoFileName = videoFile.name;
-              numberOfFilesUploading--;
               updateUploadProgress();
             }
             else {
@@ -948,7 +1033,7 @@
           // Handle response from the server if needed
           if (xhr.status === 200) {
             uploadedOrbVocab.querySelector('.loading-indicator').style.display = 'none';
-            numberOfFilesUploadedSuccessfully++;
+            orbVocabUploadedSuccessfully = true;
             updateUploadProgress();
             //enableProcessButton();
 
@@ -964,37 +1049,6 @@
 
       xhr.send(formData);
     }
-
-    /*function deleteOrbVocabFile(filename, uploadedOrbVocab) {
-      const xhr = new XMLHttpRequest();
-      xhr.open('POST', '/{{ id }}/deleteOrbVocabFile', true);
-      xhr.setRequestHeader('Content-Type', 'application/json');
-
-      xhr.onreadystatechange = function () {
-        if (xhr.readyState === XMLHttpRequest.DONE) {
-          if (xhr.status === 200) {
-            console.log(xhr.responseText);
-            console.log('File deleted successfully.');
-
-            if (uploadedOrbVocab.querySelector('.loading-indicator').style.display == 'none') {
-            }
-            numberOfFilesUploadedSuccessfully--;
-            updateUploadProgress();
-
-            uploadedOrbVocab.remove();
-            allOrbVocab = document.querySelectorAll('.uploaded-orb_vocab');
-            if (allVideos.length < 1) {
-              disableProcessButton();
-            }
-          } else {
-            console.error('Failed to delete file:', xhr.status);
-          }
-        }
-      };
-
-      const data = JSON.stringify({ 'filename': filename });
-      xhr.send(data);
-    }*/
 
     // Function to handle file selection
     function handleFbowFileSelect(event) { //rename
@@ -1023,8 +1077,6 @@
           return function (e) {
             // Check if the filename is already uploaded
             if (isFilenameAlreadyUploaded(orbVocabFile.name)) {
-              //orbVocabFileName = orbVocabFile.name; should save it in a var for double files
-              numberOfFilesUploading--;
               updateUploadProgress();
             } else {
               // Create the video element
@@ -1112,7 +1164,7 @@
           // Handle response from the server if needed
           if (xhr.status === 200) {
             uploadedConfig.querySelector('.loading-indicator').style.display = 'none';
-            numberOfFilesUploadedSuccessfully++;
+            configUploadedSuccessfully = true;
             updateUploadProgress();
             //enableProcessButton();
 
@@ -1165,7 +1217,7 @@
               img.onload = function () {
                 uploadConfig(configFile, uploadedConfig);
               };
-              img.src = "{{ url_for('static', filename='default/yaml_file.png') }}";
+              img.src = "{{ url_for('static', filename='default/config_file.png') }}";
               // Create the uploaded image container
               const uploadedConfig = document.createElement('div');
               uploadedConfig.className = 'uploaded-config';
@@ -1209,42 +1261,14 @@
     var changedPaths = {};
 
     function updateUploadProgress() {
-      const progressBarLabel = document.getElementById('progress-bar-label');
-      var progress = Math.round((numberOfFilesUploadedSuccessfully / numberOfFilesUploading) * 100);
-
-      progressBarLabel.innerHTML = 'UPLOADING...';
-      //updateProgressBar(progress);
-      if (progress > 99.9) {
-        /*if (doubleNames.length > 0) {
-          alert('The following images were not uploaded because they already exist: ' + doubleNames.join(', '));
-          doubleNames = [];
-        }*/
-
         $.post("/{{ id }}/checkUploadedFiles", function (response) {
-        // go through every changed path in response.pathChanges an update the according a href of the image with the old path as href
-        // handle changed paths in here
           if(response.video != null) {
             const uploadedVideo = document.getElementsByClassName('uploaded-video'); //fix this code, also in server.py
             if (uploadedVideo.length > 0) {
-              /*var ref = uploadedVideos[0].querySelector('a').href;
-              ref = './static' + ref.split('static').pop();
-              console.log(ref);
-              console.log(response.video);
-              changedPaths = response.pathChanges;
-              if (response.video != null) {
-                new_ref = response.pathChanges[ref];
-                // cut away the first character of the new_ref
-                console.log(new_ref);
-                new_ref = new_ref.slice(1);
-                console.log(new_ref);
-                address = window.location.href.split('/');
-                new_ref = address[0] + '//' + address[2] + new_ref;
-                console.log(new_ref);
-                uploadedVideos[j].querySelector('a').href = new_ref;*/
                 activateDeleteButton(uploadedVideo[0], response.video);
-              //}
             }
-            if (response.orb_vocab != null) {
+          }
+          if (response.orb_vocab != null) {
               const uploadedOrbVocab = document.getElementsByClassName('uploaded-orb-vocab');
               if(uploadedOrbVocab.length > 0) {
                 activateDeleteButton(uploadedOrbVocab[0], response.orb_vocab);
@@ -1256,41 +1280,28 @@
                 activateDeleteButton(uploadedConfig[0], response.config);
               }
             }
-          }
         }, "json");
-      }
 
-
-      //showProgressBar();
+      updateProcessButtonEnabling();
     }
-
-    /*function drawSummary(summaryData){
-      console.log(summaryData);
-      var summaryContent = document.getElementById('summaryContent');
-      summaryContent.innerHTML = '<a>New Uploaded Videos:</a>';
-      for (var key in summaryData) {
-        if (summaryData.hasOwnProperty(key)) {
-          if (key == 'ir_readable') {
-            continue;
-          }
-          summaryContent.innerHTML += '<a>' + key + ': ' + summaryData[key] + '</a>';
-        }
-      }
-    }*/
 
     function deleteFile(filename, uploadedFile) {
       const xhr = new XMLHttpRequest();
-      console.log(uploadedFile.className);
+      let fileTypeDeleted = "";
       switch (uploadedFile.className) {
         case "uploaded-video":
-        xhr.open('POST', '/{{ id }}/deleteVideoFile', true);
+          xhr.open('POST', '/{{ id }}/deleteVideoFile', true);
+          fileTypeDeleted = "video";
           break;
         case "uploaded-orb-vocab":
-        xhr.open('POST', '/{{ id }}/deleteOrbVocabFile', true);
+          xhr.open('POST', '/{{ id }}/deleteOrbVocabFile', true);
+          fileTypeDeleted = "orb_vocab";
+          console.log('deleting orb vocab');
           break;
-          case "uploaded-config":
-              xhr.open('POST', '/{{ id }}/deleteConfigFile', true);
-          break;
+        case "uploaded-config":
+          xhr.open('POST', '/{{ id }}/deleteConfigFile', true);
+          fileTypeDeleted = "config";
+        break;
       }
       xhr.setRequestHeader('Content-Type', 'application/json');
 
@@ -1300,17 +1311,32 @@
             console.log(xhr.responseText);
             console.log('File deleted successfully.');
 
-            if (uploadedFile.querySelector('.loading-indicator').style.display == 'none') {
-              numberOfFilesUploadedSuccessfully--;
+            if (uploadedFile.querySelector('.loading-indicator') == null || uploadedFile.querySelector('.loading-indicator').style.display == 'none') {
+                switch(fileTypeDeleted) {
+                    case "video" :
+                        videoUploading = false;
+                        videoUploadedSuccessfully = false;
+                        break;
+                    case "orb_vocab" :
+                        orbVocabUploading = false;
+                        orbVocabUploadedSuccessfully = false;
+                        break;
+                    case "config" :
+                        configUploading = false;
+                        configUploadedSuccessfully = false;
+                        break;
+                }
             }
-            numberOfFilesUploading--;
             updateUploadProgress();
 
-
-            uploadedFile.remove();
-            if (numberOfFilesUploading < 3) {
-              disableProcessButton();
+            if(fileTypeDeleted == "video") {
+                videoFileDropzone.removeAllFiles(true);
+            } else {
+                uploadedFile.remove();
             }
+            /*if (numberOfFilesUploading < 3) {
+              disableProcessButton();
+            }*/
           } else {
             console.error('Failed to delete file:', xhr.status);
           }
@@ -1321,22 +1347,13 @@
       xhr.send(data);
     }
 
-    /*function removeIRSettingsSummary() {
-      var settingsPlaceholder = document.getElementById('settingsPlaceholder');
-      settingsPlaceholder.innerHTML = 'Manual thermal image settings not needed';
-
-      var button = document.getElementById('editBtn');
-      button.style.backgroundColor = 'var(--bg-color-b)';
-      button.style.cursor = 'not-allowed';
-    }*/
-
     function activateDeleteButton(uploadedFile, file) {
       console.log(uploadedFile);
       const deleteButton = uploadedFile.querySelector('.delete-button'); //fix
       deleteButton.addEventListener('click', function (event) {
         event.stopPropagation();
         const uploadedFile = this.parentNode;
-        const filename = uploadedFile.querySelector('filename-text').innerHTML;
+        const filename = uploadedFile.querySelector('.filename-text').innerHTML;
         deleteFile(filename, uploadedFile);
       });
 
@@ -1346,15 +1363,11 @@
     }
 
     function updateProcessButtonEnabling() {
-      if (numberOfVideosUploading < 1) {
-        disableProcessButton();
+      if (videoUploadedSuccessfully && orbVocabUploadedSuccessfully && configUploadedSuccessfully) {
+        enableProcessButton();
         return;
       }
-      if (numberOfVideosUploadedSuccessfully < numberOfVideosUploading) {
-        disableProcessButton();
-        return;
-      }
-      enableProcessButton();
+      disableProcessButton();
     }
 
     function disableUpload() {
@@ -1371,77 +1384,86 @@
       uploadArea.style.cursor = 'not-allowed';
     }
 
-    /*function applySettings() {
-      const minTemp = document.getElementById('minTemp').value;
-      const maxTemp = document.getElementById('maxTemp').value;
-      const irPalette = document.getElementById('ir-palette-chooser').value;
-
-      $.get( "/update_ir_settings/{{ id }}/" + Number(minTemp) + "," + Number(maxTemp) + "," + Number(irPalette.match(/\d+$/)));
-    
-
-      // Update the placeholder content with the selected settings
-      const placeholder = document.getElementById('settingsPlaceholder');
-      placeholder.innerHTML = `Min Temperature: ${minTemp}, Max Temperature: ${maxTemp}, Color Scheme: ${irPalette}`;
-
-      // Close the popup after applying settings
-      closePopup();
-    }*/
-
-    /*$("#ir-palette-chooser").change(function() {
-        $("#ir-palette-chooser option:selected").each(function() {
-            var ir_palette = $(this).val();
-            console.log(ir_palette);
-            $("#grad").removeClass();
-            $("#grad").addClass(ir_palette);
-            numbr_at_end_of_value = ir_palette.match(/\d+$/);
-        });
-    });*/
-
-
     //areas if files have beed uploaded
     ////////////////////////////////////////////
     // file upload area if already uploaded
     ////////////////////////////////////////////
 
-    /*const file_paths = {{ file_names| tojson }};
-    const urls_thumbnails = [];
-    const urls = [];
-    {% for file_name in file_names %}
-    urls_thumbnails.push("{{ global_for(thumbnail_for(file_name)) }}");
-    urls.push("{{ global_for(file_name) }}");
-    {% endfor %}
+    const video_file_path = {{ video| tojson }};
+    const orb_vocab_file_path = {{ orb_vocab| tojson }};
+    const config_file_path = {{ config| tojson }};
     // Process each selected file and create an uploadImage
-    for (let i = 0; i < file_paths.length; i++) {
-      numberOfVideosUploading++;
-      const vid = document.createElement('vid');
-      vid.src = urls_thumbnails[i];
-      vid.onload = function () {
-        // remove the loading indicator
-        const loadingIndicator = uploadedVideo.querySelector('.loading-indicator');
+    if (video_file_path.length > 0) {
+        const vid = document.createElement('video');
+        vid.style = "outline:none; width:100%;height:100%;";
+        vid.setAttribute("controls", "controls");
+        vid.setAttribute("muted", "muted");
+        vid.onloadstart = function () {
+            const loadingIndicator = uploadedVideo.querySelector('.loading-indicator');
+            loadingIndicator.style.display = 'none';
+        };
+        const source = document.createElement('source')
+        source.id = "videoSource";
+        source.src = video_file_path[0];
+        vid.appendChild(source);
+        // Create the uploaded image container
+        const uploadedVideo = document.createElement('div');
+        uploadedVideo.className = 'uploaded-video';
+        a = document.createElement('a'); //set href
+
+        // Open the video in big size on click
+        uploadedVideo.addEventListener('click', function (event) {
+            event.stopPropagation();
+            video = this.querySelector('a');
+            console.log(video);
+            window.open(video);
+        });
+
+        // Create the filename text element
+        const filenameText = document.createElement('div');
+        filenameText.className = 'filename-text';
+        filenameText.textContent = getFilenameFromPath(video_file_path[0]);
+
+        // Create the loading indicator
+        const loadingIndicator = document.createElement('div');
+        loadingIndicator.className = 'loading-indicator';
+        loadingIndicator.textContent = 'Uploading...';
+
+        // Create the delete button
+        const deleteButton = document.createElement('div');
+        deleteButton.className = 'delete-button';
+        deleteButton.innerHTML = '<a style="font-size: 17px; margin-top: auto; color: var(--font-color-b);">✖</a>';
+
+        //make deletebutton appear inactive
+        deleteButton.style.backgroundColor = 'var(--bg-color-b)';
+        deleteButton.style.cursor = 'not-allowed';
+
+        // Append elements to the uploaded image container
+        uploadedVideo.appendChild(vid);
+        uploadedVideo.appendChild(a);
+        uploadedVideo.appendChild(loadingIndicator);
+        uploadedVideo.appendChild(deleteButton);
+        uploadedVideo.appendChild(filenameText);
+
+        // Append the uploaded image container to the uploaded images container
+        uploadedVideos.appendChild(uploadedVideo);
+        videoUploadedSuccessfully = true;
+    }
+    if (orb_vocab_file_path.length > 0) {
+      const img = document.createElement('img');
+      img.onload = function () {
+        const loadingIndicator = uploadedOrbVocab.querySelector('.loading-indicator');
         loadingIndicator.style.display = 'none';
-        numberOfVideosUploadedSuccessfully++;
       };
-
-
+      img.src = "{{ url_for('static', filename='default/orb_vocab.png') }}";
       // Create the uploaded image container
-      const uploadedVideo = document.createElement('div');
-      uploadedVideo.className = 'uploaded-video';
-      a = document.createElement('a');
-      a.href = urls[i];
-
-
-      // Open the image in big size on click
-      uploadedVideo.addEventListener('click', function (event) {
-        event.stopPropagation();
-        video = this.querySelector('a');
-        console.log(video);
-        window.open(video);
-      });
+      const uploadedOrbVocab = document.createElement('div');
+      uploadedOrbVocab.className = 'uploaded-orb-vocab';
 
       // Create the filename text element
       const filenameText = document.createElement('div');
       filenameText.className = 'filename-text';
-      filenameText.textContent = getFilenameFromPath(file_paths[i]);
+      filenameText.textContent = getFilenameFromPath(orb_vocab_file_path[0]);
 
       // Create the loading indicator
       const loadingIndicator = document.createElement('div');
@@ -1453,143 +1475,119 @@
       deleteButton.className = 'delete-button';
       deleteButton.innerHTML = '<a style="font-size: 17px; margin-top: auto; color: var(--font-color-b);">✖</a>';
 
-      deleteButton.addEventListener('click', function (event) {
-        event.stopPropagation();
-        const uploadedVideo = this.parentNode;
-        const vid = uploadedVideo.querySelector('vid');
-        const filename = uploadedVideo.querySelector('.filename-text').innerHTML;
-        console.log(filename);
-        deleteFile(filename, uploadedVideo);
-      });
+      //make deletebutton appear inactive
+      deleteButton.style.backgroundColor = 'var(--bg-color-b)';
+      deleteButton.style.cursor = 'not-allowed';
 
       // Append elements to the uploaded image container
-      uploadedVideo.appendChild(vid);
-      uploadedVideo.appendChild(a);
-      uploadedVideo.appendChild(loadingIndicator);
-      uploadedVideo.appendChild(deleteButton);
-      uploadedVideo.appendChild(filenameText);
+      uploadedOrbVocab.appendChild(img);
+      uploadedOrbVocab.appendChild(loadingIndicator);
+      uploadedOrbVocab.appendChild(deleteButton);
+      uploadedOrbVocab.appendChild(filenameText);
 
       // Append the uploaded image container to the uploaded images container
-      uploadedVideos.appendChild(uploadedVideo);
-
+      uploadedOrbVocabs.appendChild(uploadedOrbVocab);
+      orbVocabUploadedSuccessfully = true;
     }
+    if (config_file_path.length > 0) {
+      const img = document.createElement('img');
+      img.onload = function () {
+        const loadingIndicator = uploadedConfig.querySelector('.loading-indicator');
+        loadingIndicator.style.display = 'none';
+      };
+      img.src = "{{ url_for('static', filename='default/config_file.png') }}";
+      // Create the uploaded image container
+      const uploadedConfig = document.createElement('div');
+      uploadedConfig.className = 'uploaded-config';
 
+      // Create the filename text element
+      const filenameText = document.createElement('div');
+      filenameText.className = 'filename-text';
+      filenameText.textContent = getFilenameFromPath(config_file_path[0]);
+
+      // Create the loading indicator
+      const loadingIndicator = document.createElement('div');
+      loadingIndicator.className = 'loading-indicator';
+      loadingIndicator.textContent = 'Uploading...';
+
+      // Create the delete button
+      const deleteButton = document.createElement('div');
+      deleteButton.className = 'delete-button';
+      deleteButton.innerHTML = '<a style="font-size: 17px; margin-top: auto; color: var(--font-color-b);">✖</a>';
+
+      //make deletebutton appear inactive
+      deleteButton.style.backgroundColor = 'var(--bg-color-b)';
+      deleteButton.style.cursor = 'not-allowed';
+
+      // Append elements to the uploaded image container
+      uploadedConfig.appendChild(img);
+      uploadedConfig.appendChild(loadingIndicator);
+      uploadedConfig.appendChild(deleteButton);
+      uploadedConfig.appendChild(filenameText);
+
+      // Append the uploaded image container to the uploaded images container
+      uploadedConfigs.appendChild(uploadedConfig);
+      configUploadedSuccessfully = true;
+    }
+    updateUploadProgress();
 
     ////////////////////////////////////////////
     // Start Progress and process bar
     ////////////////////////////////////////////
 
-    allVideos = document.querySelectorAll('.uploaded-video');
-    if (allVideos.length < 0) {
-      disableProcessButton();
-    } else {
-      enableProcessButton();
-    }
-
-    // Function to update the loading bar
-    function updateProgressBar(progress) {
-      const progressBar = document.getElementById('progress-bar');
-      progressBar.style.width = `${progress}%`;
-      console.log(progress);
-      if (progress >= 99.9) {
-        progressBarLabel = document.getElementById('progress-bar-label');
-        progressBarLabel.innerHTML = 'DONE';
-        progressBar.style.backgroundColor = 'var(--bg-color-b)';
-      }
-      else {
-        progressBar.style.backgroundColor = 'var(--accent-color-green)';
-      }
-    }
-
-    // Function to check if progress is running
-    function checkProgress() {
-      // Make an AJAX request to the server to retrieve the progress value
-      const xhr = new XMLHttpRequest();
-      xhr.open('GET', '/{{ id }}/preprocessProgress', true);
-
-      xhr.onreadystatechange = function () {
-        if (xhr.readyState === XMLHttpRequest.DONE) {
-          if (xhr.status === 200) {
-            const progress = parseInt(xhr.responseText);
-            if (progress >= 0 && progress <= 100) {
-              updateProgressBar(progress);
-            }
-            if (progress >= 100) {
-              updateProgressBar(100);
-              stopCheckingProgress();
-              window.location.href = '/{{ id }}';
-            } else if (progress < 0) {
-              console.error('Invalid progress value:', progress);
-            }
-          } else {
-            console.error('Failed to retrieve progress:', xhr.status);
-          }
-        }
-      };
-
-      xhr.send();
-    }
-
-    // Store the interval ID globally
-    let progressInterval;
-
-    // Function to start checking progress
-    function startCheckingProgress() {
-      //show the progress bar
-      var progressBarLabel = document.getElementById('progress-bar-label');
-      showProgressBar();
-
-      progressBarLabel.innerHTML = 'PREPROCESSING...';
-      updateProgressBar(0);
-      disableUpload();
-
-      // Check progress initially when the page loads
-      checkProgress();
-
-      // Set an interval to check progress periodically (e.g., every 2 seconds)
-      progressInterval = setInterval(checkProgress, 1000);
-    }
-
-    // Function to stop checking progress
-    function stopCheckingProgress() {
-      clearInterval(progressInterval);
-    }
-
-    {% if processing %}
-    // Call startCheckingProgress to begin checking progress
-    startCheckingProgress();
-    {% endif %}
-
+    var intervalIDSlam = null;
 
     // Add event listener to form submission
     const processingForm = document.getElementById('processingForm');
-    processingForm.addEventListener('submit', function (event) {
+    processingForm.addEventListener('submit', (event) => {
       event.preventDefault(); // Prevent the form from being submitted
-
       const formData = $(processingForm).serialize();
-
+      var button = document.getElementById("startSlamButton");
+      var spinner = document.getElementById("slamRunningCircle");
+      spinner.style.display = "inline-block";
+      button.innerHTML = 'Running VSLAM...';
+      button.disabled = true;
+      button.style.backgroundColor = "var(--bg-color-b)";
+      button.style.cursor = "wait";
+      button.classList.remove("button_active");
       // Send the form data using $.post
-      $.post($(processingForm).attr('action'), formData, function (response) {
-        console.log(response);
+      $.post($(processingForm).attr('action'), formData, (response) => {
+          //console.log(response);
       });
 
-      // Call the startCheckingProgress function
-      startCheckingProgress();
+      check_status_slam();
+
+      intervalIDSlam = setInterval(check_status_slam, 1000);
     });
 
-    function showProgressBar() {
-      var progressBar = document.getElementById('progress-bar');
-      var progressBarContainer = document.getElementsByClassName('progress-bar-container')[0];
-      progressBar.style.display = 'block';
-      progressBarContainer.style.display = 'block';
-    }*/
+    function check_status_slam() {
+        const xhr = new XMLHttpRequest();
+        xhr.open('GET', '/slam_status/{{ id }}', true);
+
+        xhr.onreadystatechange = function () {
+            if (xhr.readyState === XMLHttpRequest.DONE) {
+                if (xhr.status === 200) {
+                    const status = xhr.responseText
+                    if (status == "finished") {
+                        clearInterval(intervalIDSlam);
+                        spinner = document.getElementById("slamRunningCircle");
+                        spinner.style.display = "none";
+                        window.location.href = '/{{ id }}';
+                    }
+                } else {
+                    console.error('Failed to retrieve progress:', xhr.status);
+                }
+            }
+        };
+        xhr.send();
+    }
 
 
 
 
   </script>
 
-  <!--{% include 'footer.html' %}-->
+  {% include 'footer.html' %}
 </body>
 
 </html>
