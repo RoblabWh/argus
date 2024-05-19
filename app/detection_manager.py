@@ -4,6 +4,7 @@ class DetectionManager:
         self.address = address
         self.port = port
         self.url = 'http://' + self.address + ':' + str(self.port)
+        print(self.url, flush=True)
 
 
     def detect_objects(self, options, report_id, image_folder, ann_path):

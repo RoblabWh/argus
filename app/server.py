@@ -30,7 +30,7 @@ import urllib.request
 #         return self.application
 
 class ArgusServer:
-    def __init__(self, address, port, project_manager, nodeodm_manager, webodm_manager, detection_manager):
+    def __init__(self, address, port, project_manager, nodeodm_manager, webodm_manager, detection_manager, slam_manager):
         self.app = Flask(__name__)
         self.app.jinja_env.globals.update(global_for=self.global_for)
         self.app.jinja_env.globals.update(thumbnail_for=self.thumbnail_for)
@@ -38,11 +38,10 @@ class ArgusServer:
         self.app.secret_key = "DasIstBlauesLicht-UndWasMachtEs?-EsLeuchtetBlau"
         self.app.config['UPLOAD_FOLDER'] = project_manager.projects_path
         self.app.config['MAX_CONTENT_LENGTH'] = 500 * 10000 * 10000
-        self.ALLOWED_EXTENSIONS = set(['mp4', 'fbow', 'yaml', 'MP4', 'FBOW', 'YAML'])
+        self.ALLOWED_EXTENSIONS = set(['png', 'jpg', 'jpeg', 'PNG', 'JPG', 'JPEG'])
         self.ALLOWED_VIDEO_EXTENSIONS = set(['mp4', 'MP4'])
         self.ALLOWED_ORB_VOCAB_EXTENSIONS = set(['fbow', 'FBOW'])
         self.ALLOWED_CONFIG_EXTENSIONS = set(['yaml', 'YAML'])
-        #self.ALLOWED_EXTENSIONS = set(['png', 'jpg', 'jpeg', 'PNG', 'JPG', 'JPEG'])
         self.ALLOWED_EXTENSIONS_PROJECT = set(['zip'])
 
         self.threads = []
@@ -56,6 +55,7 @@ class ArgusServer:
         self.nodeodm_manager = nodeodm_manager
         self.webodm_manager = webodm_manager
         self.detection_manager = detection_manager
+        self.slam_manager = slam_manager
         self.thermal_analyser = ThermalAnalyser(project_manager)
 
         self.setup_routes()
@@ -69,8 +69,12 @@ class ArgusServer:
                               view_func=self.delete_report)
         self.app.add_url_rule('/<int:report_id>',
                               view_func=self.render_report)
+        self.app.add_url_rule('/<int:report_id>/uploadFile', methods=['POST'],
+                              view_func=self.upload_image_file)
         self.app.add_url_rule('/<int:report_id>/uploadVideoFile', methods=['POST'],
                               view_func=self.upload_video_file)
+        self.app.add_url_rule('/<int:report_id>/uploadVideoFileDropzone', methods=['POST'],
+                              view_func=self.upload_video_file_dropzone)
         self.app.add_url_rule('/<int:report_id>/uploadOrbVocabFile', methods=['POST'],
                               view_func=self.upload_orb_vocab_file)
         self.app.add_url_rule('/<int:report_id>/uploadConfigFile', methods=['POST'],
@@ -89,10 +93,18 @@ class ArgusServer:
                               view_func=self.check_upload_processing_progress_slam)
         self.app.add_url_rule('/<int:report_id>/processFromUpload', methods=['POST', 'GET'],
                               view_func=self.initial_process)
+        self.app.add_url_rule('/<int:report_id>/startSlamProcess', methods=['POST', 'GET'],
+                              view_func=self.start_slam)
+        self.app.add_url_rule('/slam_map_update', methods=['POST', 'GET'],
+                              view_func=self.slam_map_update)
+        self.app.add_url_rule('/<int:report_id>/updateSlam', methods=['POST'],
+                              view_func=self.update_slam)
         self.app.add_url_rule('/<int:report_id>/preprocessProgress', methods=['GET', 'POST'],
                               view_func=self.check_preprocess_progress)
         self.app.add_url_rule('/<int:report_id>/process_status', methods=['GET', 'POST'],
                               view_func=self.check_preprocess_status)
+        self.app.add_url_rule('/slam_status/<int:report_id>', methods=['GET', 'POST'],
+                              view_func=self.check_slam_status)
         self.app.add_url_rule('/<int:report_id>/edit', methods=['POST', 'GET'],
                               view_func=self.edit_report)
         self.app.add_url_rule('/get_map/<int:report_id>/<int:map_index>', methods=['GET', 'POST'],
@@ -139,6 +151,8 @@ class ArgusServer:
                               view_func=self.import_project)
         self.app.add_url_rule('/ir_temp_data_of_image/<int:report_id>', methods=['GET', 'POST'],
                               view_func=self.get_ir_temp_data_of_image)
+        self.app.add_url_rule("/get_slam_map/<int:report_id>", methods=['GET', 'POST'],
+                              view_func=self.get_slam_map)
         # self.app.add_url_rule('/<int:report_id>/upload', methods=['POST'],
         #                       view_func=self.upload_image)
         # self.app.add_url_rule('/<int:report_id>/process', methods=['GET', 'POST'],
@@ -175,8 +189,11 @@ class ArgusServer:
                     # return render_standard_report(report_id, template='startProcessing.html')
                 return self.render_standard_report(report_id)
             elif self.project_manager.get_project(report_id)['type'] == "slam_project":
-                #add something to check if the project was already existing#
-                return self.render_slam_report(report_id, template='stella_vslam_Upload.html')
+                try:
+                    keyfrm_file_path = self.project_manager.get_project(report_id)['data']['keyframe_file_path']
+                    return self.render_slam_report(report_id, template='stella_vslam_report.html')
+                except:
+                    return self.render_slam_report(report_id, template='stella_vslam_upload.html')
         else:
             projects_dict_list = self.project_manager.get_projects()
             order_by_filght_date = self.calculate_order_based_on_flight_date(projects_dict_list)
@@ -228,9 +245,27 @@ class ArgusServer:
             flash('Allowed video types are -> mp4')
             return json.dumps({'success': False}), 415, {'ContentType': 'application/json'}
 
-        self.project_manager.update_file_names(report_id, file_name)
-        self.project_manager.set_unprocessed_changes(report_id, True)  #look into file saving for the project
         self.project_manager.set_video_file(report_id, file_name)  #maybe create a thread to read video file metadata
+
+        return json.dumps({'success': True, 'path': save_path}), 200, {'ContentType': 'application/json'}
+
+    def upload_video_file_dropzone(self, report_id):
+        print("upload_video_file_dropzone " + str(report_id), flush=True)
+        if 'video' not in request.files:
+            print('no "video" found in request.files:', request.files, flush=True)
+            return json.dumps({'success': False}), 418, {'ContentType': 'application/json'}
+        file = request.files['video']
+        file_name = []
+        if file and self.allowed_video_file(file.filename):
+            filename = secure_filename(file.filename)
+            save_path = os.path.join(self.project_manager.projects_path, str(report_id), filename)
+            file_name.append(save_path)
+            file.save(save_path)
+        else:
+            flash('Allowed video types are -> mp4')
+            return json.dumps({'success': False}), 415, {'ContentType': 'application/json'}
+
+        self.project_manager.set_video_file(report_id, file_name)  # maybe create a thread to read video file metadata
 
         return json.dumps({'success': True, 'path': save_path}), 200, {'ContentType': 'application/json'}
 
@@ -250,8 +285,6 @@ class ArgusServer:
             flash('Allowed orb vocab types are -> fbow')
             return json.dumps({'success': False}), 415, {'ContentType': 'application/json'}
 
-        self.project_manager.update_file_names(report_id, file_name)
-        self.project_manager.set_unprocessed_changes(report_id, True)  #look into file saving for the project
         self.project_manager.set_orb_vocab_file(report_id, file_name)
 
         return json.dumps({'success': True, 'path': save_path}), 200, {'ContentType': 'application/json'}
@@ -272,8 +305,6 @@ class ArgusServer:
             flash('Allowed config types are -> yaml')
             return json.dumps({'success': False}), 415, {'ContentType': 'application/json'}
 
-        self.project_manager.update_file_names(report_id, file_name)
-        self.project_manager.set_unprocessed_changes(report_id, True)  # look into file saving for the project
         self.project_manager.set_config_file(report_id, file_name)  # maybe create a thread to read video file metadata
 
         return json.dumps({'success': True, 'path': save_path}), 200, {'ContentType': 'application/json'}
@@ -309,18 +340,13 @@ class ArgusServer:
 
     def delete_video_file(self, report_id):
         data = request.get_json()
-        filename = data.get('filename')
         project = self.project_manager.get_project(report_id)
         video_file = project['data']['video']
-        self.project_manager.set_unprocessed_changes(report_id, True)
+        print(video_file, flush=True) #type list
         print("len of file_names: ", len(video_file))
         if video_file:
 
-            if self.delete_video_file_in_folder(report_id, filename, "/"):
-                return 'File deleted successfully.'
-
-            if self.delete_vide_file_in_folder(report_id, filename, "/video/"):
-                #self.project_manager.delete_image_object(report_id, filename, rgb=True)
+            if self.delete_video_file_in_folder(report_id, video_file[0]):
                 return 'File deleted successfully.'
 
             return 'File not found.'
@@ -330,26 +356,13 @@ class ArgusServer:
 
     def delete_orb_vocab_file(self, report_id):
         data = request.get_json()
-        filename = data.get('filename')
         project = self.project_manager.get_project(report_id)
-        file_names = project['data']['orb_vocab']
+        orb_vocab_file = project['data']['orb_vocab']
         self.project_manager.set_unprocessed_changes(report_id, True)
-        print("len of file_names: ", len(file_names))
-        if filename:
+        print("len of file_names: ", len(orb_vocab_file))
+        if orb_vocab_file:
 
-            if self.delete_file_in_folder(report_id, filename, "/"):
-                return 'File deleted successfully.'
-
-            if self.delete_file_in_folder(report_id, filename, "/rgb/"):
-                self.project_manager.delete_image_object(report_id, filename, rgb=True)
-                return 'File deleted successfully.'
-
-            if self.delete_file_in_folder(report_id, filename, "/ir/"):
-                self.project_manager.delete_image_object(report_id, filename, ir=True)
-                return 'File deleted successfully.'
-
-            if self.delete_file_in_folder(report_id, filename, "/panos/"):
-                self.project_manager.delete_image_object(report_id, filename, pano=True)
+            if self.delete_orb_vocab_file_in_folder(report_id, orb_vocab_file[0]):
                 return 'File deleted successfully.'
 
             return 'File not found.'
@@ -359,26 +372,13 @@ class ArgusServer:
 
     def delete_config_file(self, report_id): #fix the delete methods on the server py and project manager
         data = request.get_json()
-        filename = data.get('filename')
         project = self.project_manager.get_project(report_id)
         config_file = project['data']['config']
         self.project_manager.set_unprocessed_changes(report_id, True)
         print("len of file_names: ", len(config_file))
         if config_file:
 
-            if self.delete_file_in_folder(report_id, filename, "/"):
-                return 'File deleted successfully.'
-
-            if self.delete_file_in_folder(report_id, filename, "/rgb/"):
-                self.project_manager.delete_image_object(report_id, filename, rgb=True)
-                return 'File deleted successfully.'
-
-            if self.delete_file_in_folder(report_id, filename, "/ir/"):
-                self.project_manager.delete_image_object(report_id, filename, ir=True)
-                return 'File deleted successfully.'
-
-            if self.delete_file_in_folder(report_id, filename, "/panos/"):
-                self.project_manager.delete_image_object(report_id, filename, pano=True)
+            if self.delete_config_file_in_folder(report_id, config_file[0]):
                 return 'File deleted successfully.'
 
             return 'File not found.'
@@ -445,11 +445,15 @@ class ArgusServer:
         video = []
         orb_vocab = []
         config_file = []
+        video_width = []
+        video_height = []
         mask = []
         project = self.project_manager.get_project(report_id)
         data = project["data"]
         if data["video"]:
             video = data["video"]
+            video_width = data["width"]
+            video_height = data["height"]
         if data["orb_vocab"]:
             orb_vocab = data["orb_vocab"]
         if data["config"]:
@@ -488,6 +492,47 @@ class ArgusServer:
             thread.start()
             print("process started")
             return jsonify(thread.get_progress_preprocess())
+
+    def start_slam(self, report_id):
+        if request.method == 'POST':
+            no_sleep = request.form.get('no_sleep')
+            frame_skip = request.form.get('frame_skip')
+            no_sleep = True if no_sleep is not None else False
+            slam_settings = {"no_sleep": no_sleep, "frame_skip": frame_skip}
+            self.project_manager.set_slam_settings(report_id, slam_settings)
+
+            project = self.project_manager.get_project(report_id)
+            data = project['data']
+
+            print("starting slam " + str(report_id), "no sleep: " + str(no_sleep),
+                  "frame_skip: " + str(frame_skip), flush=True)
+
+            print(self.project_manager.get_keyframe_file_path(report_id), flush=True)
+            print(self.project_manager.get_landmark_file_path(report_id), flush=True)
+            print(self.project_manager.get_slam_output_file_path(report_id), flush=True)
+
+            #slam thread or smth
+            self.slam_manager.start_slam(report_id=report_id,
+                video=data["video"],
+                orb_vocab=data["orb_vocab"],
+                config=data["config"],
+                slam_options={"no_sleep": no_sleep, "frame_skip": frame_skip},
+                keyfrm_path=self.project_manager.get_keyframe_file_path(report_id),
+                landmark_path=self.project_manager.get_landmark_file_path(report_id),
+                keyfrm_folder_path = self.project_manager.get_keyframe_folder(report_id),
+                slam_output_path = self.project_manager.get_slam_output_file_path(report_id))
+        return jsonify("null") #self.render_slam_report(report_id, start_slam=True, template='stella_vslam_upload.html');
+
+    def slam_map_update(self):
+        data = request.get_json()
+        report_id = data["report_id"]
+        map_msg = data["map_publish"]
+        print(report_id)
+        return jsonify("null")
+
+    def update_slam(self, report_id, slam_data):
+        print(report_id)
+        print(slam_data)
 
     def check_preprocess_progress(self, report_id):
         print('asking for preprocessing progress of report ' + str(report_id))
@@ -624,6 +669,8 @@ class ArgusServer:
             if processing_setting == "one_split":
                 max_splits = 1
 
+        print(self.project_manager.project_path(report_id), flush=True)
+        print(self.project_manager.get_annotation_file_path(report_id), flush=True)
         self.detection_manager.detect_objects(options={"numbr_of_models": numbr_of_models, "max_splits": max_splits},
                                               report_id=report_id,
                                               image_folder=self.project_manager.project_path(report_id),
@@ -645,6 +692,22 @@ class ArgusServer:
         print('asking for detection status of report ' + str(report_id) + " with " + str(
             len(self.detection_threads)) + " threads")
         return self.detection_manager.get_detection_status(report_id)
+
+    def check_slam_status(self, report_id):
+        status = self.slam_manager.get_slam_status(report_id)
+        if status == "finished":
+            try:
+                keyfrms = self.project_manager.get_keyframe_file_path(report_id)
+                landmarks = self.project_manager.get_landmark_file_path(report_id)
+                self.project_manager.load_keyframe_images(report_id)
+                return status
+            except:
+                return jsonify("something went wrong with slam")
+        return status
+
+    def get_slam_map(self, report_id):
+        print('asking for slam map of report ' + str(report_id))
+        return self.slam_manager.get_slam_map(report_id)
 
     def load_detection_results(self, report_id):
         #get path of projects annotation file
@@ -871,18 +934,39 @@ class ArgusServer:
         indices = sorted(range(len(times)), key=lambda i: times[i], reverse=True)
         return indices
 
-    def render_slam_report(self, report_id, thread=None, template="baseReport.html"):  #need new slamReport.html
+    def render_slam_report(self, report_id, thread=None, template="stella_vslam_report.html"):  #need new slamReport.html
         data = self.project_manager.get_project(report_id)['data']
-        print(data, flush=True)
         video = data["video"]
         orb_vocab = data["orb_vocab"]
         config = data["config"]
-        file_names = data["file_names"]
         mask = data["mask"]
         slam_settings = data["slam_settings"]
-        keyframes = data["keyframes"]
+        keyframe_images = data["keyframes"]
         map_db = data["map_db"]
         point_cloud = data["point_cloud"]
+        keyframe_folder = self.project_manager.get_keyframe_folder(report_id)
+        if (len(keyframe_images) > 0):
+            has_keyframe_images = True
+        else:
+            has_keyframe_images = False
+
+        try:
+            keyfrms_path = data["keyframe_file_path"]
+            keyfrms = json.load(open(keyfrms_path))
+        except:
+            keyfrms = None
+
+        try:
+            landmark_path = data["landmark_file_path"]
+            landmarks = json.load(open(landmark_path))
+        except:
+            landmarks = None
+
+        try:
+            slam_output_path = data['slam_output_file_path']
+            slam_output = json.load(open(slam_output_path))
+        except:
+            slam_output = None
 
         message = None
         processing = False
@@ -902,9 +986,11 @@ class ArgusServer:
         project = {"id": report_id, "name": self.project_manager.get_project_name(report_id),
                    "description": self.project_manager.get_project_description(report_id),
                    'creation_time': self.project_manager.get_project_creation_time(report_id)}
-        return render_template(template, id=report_id, file_names=file_names,
-                               video=video, orb_vocab=orb_vocab, config=config, mask=mask,
-                               slam_settings=slam_settings, keyframes=keyframes, map_db=map_db,
+        return render_template(template, id=report_id, video=video, orb_vocab=orb_vocab, config=config, mask=mask,
+                               slam_settings=slam_settings, keyframe_images=keyframe_images, map_db=map_db,
+                               has_keyframe_images = has_keyframe_images,
+                               keyfrms = keyfrms, landmarks=landmarks, slam_output = slam_output,
+                               keyframe_folder = keyframe_folder,
                                point_cloud=point_cloud, project=project, message=message,
                                gradient_lut=gradient_lut)  #create a different render template maybe
 
@@ -1046,18 +1132,31 @@ class ArgusServer:
             return True
         return False
 
-    def delete_video_file_in_folder(self, report_id, filename, subfolder):
-        # project_path = self.project_manager.project_path(report_id)
-        # file_path = os.path.join(project_path, subfolder)
-        # print('project_path:', project_path, 'file_path', file_path)
-        # file_path = os.path.join(file_path, filename)
-        # print("trying to delete file in folder ", file_path)
-        # since os.path.join does noot want to put the project_path into the path, we have to do it manually
-        file_path = self.project_manager.project_path(report_id) + subfolder + filename
+    def delete_video_file_in_folder(self, report_id, filename):
+        file_path = filename
+        print(file_path,flush=True)
         if os.path.exists(file_path):
             os.remove(file_path)
             print("file deleted @" + file_path)
             self.project_manager.remove_from_file_name_video(report_id, file_path)
+            return True
+        return False
+
+    def delete_orb_vocab_file_in_folder(self, report_id, filename):
+        file_path = filename
+        if os.path.exists(file_path):
+            os.remove(file_path)
+            print("file deleted @" + file_path)
+            self.project_manager.remove_from_file_name_orb_vocab(report_id, file_path)
+            return True
+        return False
+
+    def delete_config_file_in_folder(self, report_id, filename):
+        file_path = filename
+        if os.path.exists(file_path):
+            os.remove(file_path)
+            print("file deleted @" + file_path)
+            self.project_manager.remove_from_file_name_config(report_id, file_path)
             return True
         return False
 

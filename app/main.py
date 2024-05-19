@@ -3,6 +3,7 @@ from project_manager import ProjectManager
 from nodeodm_manager import NodeodmManager
 from webodm_manager import WebodmManager
 from detection_manager import DetectionManager
+from slam_manager import SlamManager
 from server import ArgusServer
 
 def main():
@@ -16,8 +17,9 @@ def main():
     if token is not None:
         webodm_manager.configure_node(token, nodeodm_manager.address, nodeodm_manager.port)
     detection_manager = DetectionManager('argus_detection', 6000)
+    slam_manager = SlamManager('argus_vslam', 7000)
 
-    server = ArgusServer("0.0.0.0", 5000, project_manager, nodeodm_manager, webodm_manager, detection_manager)
+    server = ArgusServer("0.0.0.0", 5000, project_manager, nodeodm_manager, webodm_manager, detection_manager, slam_manager)
     server.run()
 
 

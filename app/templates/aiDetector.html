@@ -124,7 +124,7 @@
         }
 
         function check_status_detection(){
-            $.post("/detection_status/{{ id }}", function(detection_status){
+            $.post("/detection_status/{{ id }}", (detection_status) => {
                 console.log("Progress: " + detection_status );
                 if(detection_status == "finished"){
                     clearInterval(intervalIDDetection);
