@@ -681,7 +681,7 @@
     </form>
 
     <div class="upload-area" id="upload-area">
-      <div class="small-upload-area" id="video-upload-area">
+      <!--<div class="small-upload-area" id="video-upload-area">
         <div class="upload-area__label" id="video-upload-label">Upload 360°Video</div>
         <br>
         <a> Drag and drop the video here or use the file browser to select your video.</a>
@@ -690,7 +690,7 @@
         <br>
         <label for="video-file-input" class="custom-file-upload" id="video-file-upload-label">Select video</label>
         <input type="file" id="video-file-input">
-        <div class="uploaded-videos" id="uploaded-videos"></div>
+        <div class="uploaded-videos" id="uploaded-videos"></div>-->
           <!--<form class="dropzone needsclick" id="video-file-upload-dropzone" action="/{{ id }}/uploadVideoFileWithDropzone">
             <div class="dz-message needsclick">
                 Drag and drop the video file here or use the file browser<br>
@@ -699,13 +699,14 @@
                 </span>
             </div>
         </form>-->
-      </div>
+      <!--</div>-->
         <div class="dropzone" id="video-file-upload-dropzone">
+            <h2>Video File Upload</h2>
             <div id="dropzone-text" class="dz-message" data-dz-message><span>Drag and drop the video here or click in the area to open the file explorer.</span></div>
         <!--<form class="dropzone" id="video-file-upload-dropzone" action="/{{ id }}/uploadVideoFileWithDropzone"></form>-->
         </div>
       <div class="small-upload-area" id="orb-vocab-upload-area">
-        <div class="upload-area__label" id="orb-vocab-upload-label">Upload Orb Vocab</div>
+        <div class="upload-area__label" id="orb-vocab-upload-label">Orb Vocab Upload</div>
         <br>
         <a> Drag and drop the vocab here or use the file browser to select the vocab.</a>
         <br>
@@ -716,7 +717,7 @@
         <div class="uploaded-orb-vocabs" id="uploaded-orb-vocabs"></div>
       </div>
       <div class="small-upload-area" id="config-upload-area">
-        <div class="upload-area__label" id="config-upload-label">Upload Config file</div>
+        <div class="upload-area__label" id="config-upload-label">Config file Upload</div>
         <br>
         <a> Drag and drop the Config here or use the file browser to select the Config.</a>
         <br>
@@ -734,7 +735,7 @@
 
   <script>
 
-    //dropzone
+    //video file upload gets handled by dropzone
 
     Dropzone.autoDiscover = false;
 
@@ -748,6 +749,7 @@
         paramName: "video",
         maxFilesize: 5000, //MB
         acceptedFiles: '.mp4',
+        maxFiles: 1,
         accept: function(file,done) {
             done();
         },
@@ -775,10 +777,13 @@
                 source.id = "videoSource";
                 source.src = JSON.parse(response).path;
                 vid.appendChild(source);
-                thumbnail.appendChild(vid);
+                
                 // Create the uploaded image container
                 const uploadedVideo = document.createElement('div');
                 uploadedVideo.className = 'uploaded-video';
+
+                const fallbackImg = document.createElement('img');
+                fallbackImg.src = "{{ url_for('static', filename='default/placeholder_video.png') }}";
 
                 // Create the delete button
                 const deleteButton = document.createElement('div');
@@ -789,208 +794,53 @@
                 filenameText.className = 'filename-text';
                 filenameText.textContent = getFilenameFromPath(file.name);
 
-                console.log(file);
-                console.log(getFilenameFromPath(file.name));
-
                 //make deletebutton appear inactive
                 deleteButton.style.backgroundColor = 'var(--bg-color-b)';
                 deleteButton.style.cursor = 'not-allowed';
 
-                // Append elements to the uploaded image container
                 uploadedVideo.appendChild(vid);
                 uploadedVideo.appendChild(deleteButton);
                 uploadedVideo.appendChild(filenameText);
 
                 // Append the uploaded image container to the uploaded images container
                 thumbnail.appendChild(uploadedVideo);
-
                 updateUploadProgress();
+                document.getElementById('video-file-upload-dropzone').style.cursor = 'default';
+                this.disable();
             });
 
             this.on('error', (file, errorMessage) => {
                 console.log(errorMessage);
             })
+
+            this.on('maxfilesexceeded', (file) => {
+                this.removeFile(file);
+            });
         }
     });
 
-    ////////////////////////////////////////////
-    // file upload
-    ////////////////////////////////////////////
-
-    // video file
-
-    // Get the necessary DOM elements
-    const videoUploadArea = document.getElementById('video-upload-area');
-    const videoUploadLabel = document.getElementById('video-upload-label');
-    const videoFileInput = document.getElementById('video-file-input');
-    const uploadedVideos = document.getElementById('uploaded-videos');
-
-    // Event listeners for file selection
-    videoFileInput.addEventListener('change', handleVideoFileSelect);
-    videoUploadArea.addEventListener('drop', handleVideoFileSelect);
-
-    // Prevent default behavior on dragover event to enable drop
-    videoUploadArea.addEventListener('dragover', function (event) {
-      event.preventDefault();
-    });
-
-    // Event listener for click on upload area
-    //uploadArea.addEventListener('click', function() {
-    //  fileInput.click();
-    //});
-
-
-    function uploadVideo(file, uploadedVideo) {
-      const formData = new FormData();
-      formData.append('video', file);
-      console.log(file);
-
-      const xhr = new XMLHttpRequest();
-      xhr.open('POST', '/{{ id }}/uploadVideoFile', true);
-
-      xhr.onreadystatechange = function () {
-        if (xhr.readyState === XMLHttpRequest.DONE) {
-          // Handle response from the server if needed
-          if (xhr.status === 200) {
-            uploadedVideo.querySelector('.loading-indicator').style.display = 'none';
-            videoUploadedSuccessfully = true;
-            updateUploadProgress();
-            //enableProcessButton();
-
-            //on click on uploaded video open the image in a new tab
-            response = JSON.parse(xhr.responseText);
-            console.log(response.path);
-            path = response.path;
-            uploadedVideo.querySelector('a').href = path;
-
-          } else {
-            console.error('Video upload failed:', xhr.status);
-          }
-        }
-      };
-
-      xhr.send(formData);
-    }
-
-    // Function to get the filename from the file path
     function getFilenameFromPath(path) {
       return path.split('\\').pop().split('/').pop();
     }
 
-
-    // Function to handle file selection
-    function handleVideoFileSelect(event) {
-      event.preventDefault();
-      /*if (processing) {
-        return;
-      }*/
-
-      //showProgressBar();
-
-      const files = event.target.files || event.dataTransfer.files;
-      videoUploading = true;
-      videoFileName = "";
-
-      // Process each selected file
-      const file = files[0];
-      const videoType = /^video\//;
-
-      // Check if the file is an image
-      if (!videoType.test(file.type)) {
-        console.error('File', file.name, 'is not a video.');
-        
-      } else {
-
-        const reader = new FileReader();
-
-        // Function to handle video loading
-        reader.onload = ((videoFile) => {
-          return function (e) {
-            // Check if the filename is already uploaded
-            if (isFilenameAlreadyUploaded(videoFile.name)) {
-              updateUploadProgress();
-            }
-            else {
-              // Create the video element
-              const vid = document.createElement('video');
-              vid.style = "outline:none; width:100%;height:100%;";
-              vid.setAttribute("controls","controls");
-              vid.setAttribute("muted","muted");
-              vid.onloadstart = function () {
-                uploadVideo(videoFile, uploadedVideo);
-              };
-              const source = document.createElement('source')
-              source.id = "videoSource";
-              source.src = URL.createObjectURL(videoFile);
-              vid.appendChild(source);
-              // Create the uploaded image container
-              const uploadedVideo = document.createElement('div');
-              uploadedVideo.className = 'uploaded-video';
-              a = document.createElement('a');
-
-              // Open the video in big size on click
-              uploadedVideo.addEventListener('click', function (event) {
-                event.stopPropagation();
-                video = this.querySelector('a');
-                console.log(video);
-                window.open(video);
-              });
-
-              // Create the filename text element
-              const filenameText = document.createElement('div');
-              filenameText.className = 'filename-text';
-              filenameText.textContent = getFilenameFromPath(file.name);
-
-              // Create the loading indicator
-              const loadingIndicator = document.createElement('div');
-              loadingIndicator.className = 'loading-indicator';
-              loadingIndicator.textContent = 'Uploading...';
-
-              // Create the delete button
-              const deleteButton = document.createElement('div');
-              deleteButton.className = 'delete-button';
-              deleteButton.innerHTML = '<a style="font-size: 17px; margin-top: auto; color: var(--font-color-b);">✖</a>';
-              
-              //make deletebutton appear inactive
-              deleteButton.style.backgroundColor = 'var(--bg-color-b)';
-              deleteButton.style.cursor = 'not-allowed';
-
-              // Append elements to the uploaded image container
-              uploadedVideo.appendChild(vid);
-              uploadedVideo.appendChild(a);
-              uploadedVideo.appendChild(loadingIndicator);
-              uploadedVideo.appendChild(deleteButton);
-              uploadedVideo.appendChild(filenameText);
-
-              // Append the uploaded image container to the uploaded images container
-              uploadedVideos.appendChild(uploadedVideo);
-            }
-          };
-        })(file);
-
-        // Read the image file
-        reader.readAsDataURL(file);
-      }
-    }
-
-    function isFilenameAlreadyUploaded(filename) {
-      //check all files or just video files and rename the method correspondingly
-      var uploadedVideos = document.getElementsByClassName('uploaded-video');
-      if (uploadedVideos.length > 0 ) {
-        var uploadedFilename = uploadedVideos[0].querySelector('.filename-text').innerHTML;
-        if (uploadedFilename == filename) {
-          console.log("found duplicate with name " + filename + " and existing video " + uploadedFilename);
-          return true;
-        }
-      }
-      var uploadedOrbVocabs = document.getElementsByClassName('uploaded-orb-vocab');
+    function isFilenameAlreadyUploaded(filename) { //should check for config file as well
+      //check orb vocab files and config files; might be removed in the future
+      let uploadedOrbVocabs = document.getElementsByClassName('uploaded-orb-vocab');
       if(uploadedOrbVocabs.length > 0) {
-        var uploadedFileName = uploadedOrbVocabs[0].querySelector('.filename-text').innerHTML;
-        if(uploadedFileName == filename) {
+        let uploadedFileName = uploadedOrbVocabs[0].querySelector('.filename-text').innerHTML;
+        if(uploadedFileName === filename) {
           console.log("found duplicate with name " + filename + " and existing orb vocab " + uploadedFilename);
           return true;
         }
-      } 
+      }
+      let uploadedConfigs = document.getElementsByClassName('uploaded-config');
+      if (uploadedConfigs.length > 0) {
+         let uploadedFileName = uploadedConfigs[0].querySelector('.filename-text').innerHTML;
+         if(uploadedFileName === filename) {
+           console.log("found duplicate with name " + filename + " and existing orb vocab " + uploadedFileName);
+           return true;
+         }
+      }
       return false;
     }
 
@@ -1311,11 +1161,10 @@
             console.log(xhr.responseText);
             console.log('File deleted successfully.');
 
-            if (uploadedFile.querySelector('.loading-indicator') == null || uploadedFile.querySelector('.loading-indicator').style.display == 'none') {
+            if (uploadedFile.querySelector('.loading-indicator') === null || uploadedFile.querySelector('.loading-indicator').style.display === 'none') {
                 switch(fileTypeDeleted) {
                     case "video" :
                         videoUploading = false;
-                        videoUploadedSuccessfully = false;
                         break;
                     case "orb_vocab" :
                         orbVocabUploading = false;
@@ -1329,8 +1178,16 @@
             }
             updateUploadProgress();
 
-            if(fileTypeDeleted == "video") {
-                videoFileDropzone.removeAllFiles(true);
+            if(fileTypeDeleted === "video") {
+                if (videoFileDropzone.files.length === 0 && videoUploadedSuccessfully) {
+                    let thumbnail = document.getElementById("video-file-upload-dropzone").children[2]
+                    thumbnail.remove();
+                } else {
+                    videoFileDropzone.removeAllFiles(true);
+                }
+                videoFileDropzone.enable();
+                document.getElementById('video-file-upload-dropzone').style.cursor = 'cursor';
+                videoUploadedSuccessfully = false;
             } else {
                 uploadedFile.remove();
             }
@@ -1353,6 +1210,7 @@
       deleteButton.addEventListener('click', function (event) {
         event.stopPropagation();
         const uploadedFile = this.parentNode;
+        console.log(uploadedFile);
         const filename = uploadedFile.querySelector('.filename-text').innerHTML;
         deleteFile(filename, uploadedFile);
       });
@@ -1392,16 +1250,18 @@
     const video_file_path = {{ video| tojson }};
     const orb_vocab_file_path = {{ orb_vocab| tojson }};
     const config_file_path = {{ config| tojson }};
+    const video_file_size = {{ video_file_size| tojson }};
     // Process each selected file and create an uploadImage
-    if (video_file_path.length > 0) {
+    if (video_file_path.length > 0) { //change it do dropzone
+        videoFileDropzone.emit('addedfile', {name: video_file_path[0], size: video_file_size});
+        //get the thumbnail element
+        let thumbnail = document.getElementById("video-file-upload-dropzone").children[2].querySelector(".dz-image"); //as children[0] is the tooltip text of the dropzone div
+        thumbnail.removeChild(thumbnail.firstChild);
+
         const vid = document.createElement('video');
         vid.style = "outline:none; width:100%;height:100%;";
         vid.setAttribute("controls", "controls");
         vid.setAttribute("muted", "muted");
-        vid.onloadstart = function () {
-            const loadingIndicator = uploadedVideo.querySelector('.loading-indicator');
-            loadingIndicator.style.display = 'none';
-        };
         const source = document.createElement('source')
         source.id = "videoSource";
         source.src = video_file_path[0];
@@ -1409,25 +1269,11 @@
         // Create the uploaded image container
         const uploadedVideo = document.createElement('div');
         uploadedVideo.className = 'uploaded-video';
-        a = document.createElement('a'); //set href
-
-        // Open the video in big size on click
-        uploadedVideo.addEventListener('click', function (event) {
-            event.stopPropagation();
-            video = this.querySelector('a');
-            console.log(video);
-            window.open(video);
-        });
 
         // Create the filename text element
         const filenameText = document.createElement('div');
         filenameText.className = 'filename-text';
         filenameText.textContent = getFilenameFromPath(video_file_path[0]);
-
-        // Create the loading indicator
-        const loadingIndicator = document.createElement('div');
-        loadingIndicator.className = 'loading-indicator';
-        loadingIndicator.textContent = 'Uploading...';
 
         // Create the delete button
         const deleteButton = document.createElement('div');
@@ -1440,13 +1286,13 @@
 
         // Append elements to the uploaded image container
         uploadedVideo.appendChild(vid);
-        uploadedVideo.appendChild(a);
-        uploadedVideo.appendChild(loadingIndicator);
         uploadedVideo.appendChild(deleteButton);
         uploadedVideo.appendChild(filenameText);
 
         // Append the uploaded image container to the uploaded images container
-        uploadedVideos.appendChild(uploadedVideo);
+        thumbnail.appendChild(uploadedVideo);
+        videoFileDropzone.disable();
+        document.getElementById('video-file-upload-dropzone').style.cursor = 'default';
         videoUploadedSuccessfully = true;
     }
     if (orb_vocab_file_path.length > 0) {

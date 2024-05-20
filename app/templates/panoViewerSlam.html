@@ -123,6 +123,8 @@ function updateHotspots(viewer) {
             break;
         }
     }
+    let keyframeStats = [];
+    let sortedKeyframesByDistance;
     if(currentPose != undefined) {
         for (let keyframe of keyframes) {
             if(keyframe.id == id) {
@@ -146,7 +148,14 @@ function updateHotspots(viewer) {
             let pitch = 90 - Math.acos(-y / distance) * (180 / Math.PI);
             let yaw = Math.atan2(x, z) * (180 / Math.PI);
 
-            let css = updateCss(keyframe.id, distance);
+            keyframeStats[keyframe.id] = {
+                "pitch": pitch,
+                "yaw": yaw,
+                "clickHandlerArgs": [keyframe.id, pitch, yaw, distance, currentPose, keyframe.pose],
+                "distance": distance
+            };
+
+            /*let css = updateCss(keyframe.id, distance);
             viewer.addHotSpot({
                 "pitch": pitch,
                 "yaw": yaw,
@@ -156,8 +165,28 @@ function updateHotspots(viewer) {
                 "clickHandlerArgs": [keyframe.id, pitch, yaw, distance, currentPose, keyframe.pose],
                 "id": keyframe.id,
                 "scale": true
+            }, viewer.getScene());*/
+            //hotspotsInScene.push(keyframe.id);
+        }
+        sortedKeyframesByDistance = keyframeStats.sort((a,b) => {
+            return b.distance - a.distance; //sorting so that the further distance gets places earlier
+        });
+        for (let keyframe of sortedKeyframesByDistance) {
+            if(keyframe === undefined) {
+                continue;
+            }
+            let css = updateCss(keyframe.clickHandlerArgs[0], keyframe.distance);
+            viewer.addHotSpot({
+                "pitch": keyframe.pitch,
+                "yaw": keyframe.yaw,
+                "type": "info",
+                "clickHandlerFunc": swapScene,
+                "cssClass": css,
+                "clickHandlerArgs": keyframe.clickHandlerArgs,
+                "id": keyframe.clickHandlerArgs[0],
+                "scale": true
             }, viewer.getScene());
-            hotspotsInScene.push(keyframe.id);
+            hotspotsInScene.push(keyframe.clickHandlerArgs[0]);
         }
     }
 }

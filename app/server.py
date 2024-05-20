@@ -937,6 +937,10 @@ class ArgusServer:
     def render_slam_report(self, report_id, thread=None, template="stella_vslam_report.html"):  #need new slamReport.html
         data = self.project_manager.get_project(report_id)['data']
         video = data["video"]
+        try:
+            video_file_size = os.path.getsize(video[0])
+        except:
+            video_file_size = None
         orb_vocab = data["orb_vocab"]
         config = data["config"]
         mask = data["mask"]
@@ -986,7 +990,7 @@ class ArgusServer:
         project = {"id": report_id, "name": self.project_manager.get_project_name(report_id),
                    "description": self.project_manager.get_project_description(report_id),
                    'creation_time': self.project_manager.get_project_creation_time(report_id)}
-        return render_template(template, id=report_id, video=video, orb_vocab=orb_vocab, config=config, mask=mask,
+        return render_template(template, id=report_id, video=video, video_file_size=video_file_size, orb_vocab=orb_vocab, config=config, mask=mask,
                                slam_settings=slam_settings, keyframe_images=keyframe_images, map_db=map_db,
                                has_keyframe_images = has_keyframe_images,
                                keyfrms = keyfrms, landmarks=landmarks, slam_output = slam_output,
