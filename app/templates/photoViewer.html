@@ -1409,6 +1409,12 @@
         return ((r << 16) | (g << 8) | b).toString(16);
     }
 
+    function rgbaToHex(r, g, b, a) {
+        if (r > 255 || g > 255 || b > 255 || a > 255)
+            throw "Invalid color component";
+        return ((r << 24) | (g << 16) | (b << 8) | a).toString(24);
+    }
+
 
         function resizeCanvas(){
         //get all objects with class "annotaionsCanvas"
@@ -1703,6 +1709,12 @@
         interactive: false
     });
     dynamicAnnotationsCanvas.hoverCursor = 'pointer';
+
+    dynamicAnnotationsCanvas.on('mouse:down', function(options) {
+        if (! options.target) {
+            unselectAnnotations();    
+        }
+    });
 
     for (var i = 0; i < slideshowCouples.length; i++) {
         if (slideshowCouples[i][0] != "" ) {

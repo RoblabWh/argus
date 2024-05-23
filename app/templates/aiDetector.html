@@ -726,28 +726,170 @@
                     height: h,
                     opacity: 0.5,
                     selectable: false,
+                    myActive: false,
+                    myCategoryName: category.name,
                 })
                 rect.on('mouseover', function(options) {
                     dynamicAnnotationsCanvas.setCursor('pointer');
-                    this.set('fill', color);
-                    dynamicAnnotationsCanvas.renderAll();
+                    if (!this.myActive){
+                        this.set('fill', color);
+                        dynamicAnnotationsCanvas.renderAll();
+                    }
                 });
                 rect.on('mouseout', function(options) {
                     dynamicAnnotationsCanvas.setCursor('default');
-                    this.set('fill', 'rgba(0,0,0,0)');
-                    dynamicAnnotationsCanvas.renderAll();
+                    if (!this.myActive){
+                        this.set('fill', 'rgba(0,0,0,0)');
+                        dynamicAnnotationsCanvas.renderAll();
+                    }
+                });
+                rect.on('mousedown', function(options) {
+                    selectAnnotation(this, annotation);
                 });
                 dynamicAnnotationsCanvas.add(rect);
-
             }
             dynamicAnnotationsCanvas.renderAll();
         }
 
-        function removeAnnotations(){
-            //var canvas = document.getElementById("dynamic-slide").getElementsByTagName('canvas')[0];
-            //var ctx = canvas.getContext("2d");
-            //ctx.clearRect(0, 0, canvas.width, canvas.height);
+        function selectAnnotation(rect, annotation){
+            console.log("selectAnnotation");
+            console.log(annotation);
+            console.log(rect);
+            //close all active ones
+            unselectAnnotations();
+            //set this one to active
+            
+            let category = rect.myCategoryName;
+            let color = document.getElementById("color" + category).value;
+            fill = hexToRGB(color);
+            fillString = 'rgba(' + fill.r + ',' + fill.g + ',' + fill.b + ',0.5)';
 
+            rect.set('myActive', true);
+            rect.set('fill', fillString);
+            rect.set('stroke', 'rgba(0,0,0,1)');
+            rect.set('opacity', 1);
+
+            //display options
+            activateAnnotationsOptions(rect, annotation);
+
+            dynamicAnnotationsCanvas.renderAll();
+        }
+
+        function unselectAnnotations(){
+            //close all active ones
+            let objects = dynamicAnnotationsCanvas.getObjects();
+            for (let i = 0; i < objects.length; i++){
+                if (objects[i].myActive){
+                    let category = objects[i].myCategoryName;
+                    let color = document.getElementById("color" + category).value;
+
+                    objects[i].set('myActive', false);
+                    objects[i].set('fill', 'rgba(0,0,0,0)');
+                    objects[i].set('stroke', color);
+                    objects[i].set('opacity', 0.5);
+
+                }
+            }
+
+            deactivateAnnotationsOptions();
+
+            dynamicAnnotationsCanvas.renderAll();
+        }
+
+        function activateAnnotationsOptions(rect, annotation){
+            // show an red cicle with an x to delete the annotation in the top right corner
+            // below show a circle with a share symbole that opens a popup on click
+            
+            let iconSize = 30;
+            let gap = 2;
+            let btnLeft = rect.oCoords.tr.x + 10;
+            let btnTop = rect.oCoords.tr.y - 10;
+
+            //check if the buttons are outside of the canvas
+            if (btnLeft + iconSize/2 >= dynamicAnnotationsCanvas.width){
+                btnLeft = dynamicAnnotationsCanvas.width - iconSize/2 - 1;
+            }
+            if (btnTop - iconSize/2 <= 0){
+                btnTop = iconSize/2 + 1;
+            }
+            if (btnTop + 1.5*iconSize + gap >= dynamicAnnotationsCanvas.height){
+                btnTop = dynamicAnnotationsCanvas.height - 1.5*iconSize - gap - 1;
+            }
+            if (btnLeft <= iconSize/2){
+                btnLeft = iconSize/2 + 1;
+            }
+
+            fabric.Image.fromURL('{{ global_for("static/default/delete_icon_test.png")}}', function(img) {
+                img.scaleToWidth(iconSize);
+                img.scaleToHeight(iconSize);
+                img.set({
+                    left: btnLeft,
+                    top: btnTop,
+                    originX: 'center',
+                    originY: 'center',
+                    selectable: false,
+                    myType: 'delete',
+                });
+
+                dynamicAnnotationsCanvas.add(img);
+
+                img.on('mousedown', function(options) {
+                    console.log("deleteIcon");
+                    console.log(annotation);
+                    alert("implementation missing (coming soon)");
+                    //$.post("/delete_annotation/{{ id }}", {annotation_id: annotation.id}, function(){
+                    //    //load data
+                    //    $.post("/load_detection_results/{{ id }}", function(data){
+                    //        detections = data;
+                    //        generateDetectionTable(data);
+                    //        generateAnnotationSettings(data);
+                    //        var currentImageName = document.getElementById("dynamic-slide").getElementsByTagName('a')[0].innerHTML.split(": ")[1];
+                    //        generateAnnotationsLayerTableForImage(currentImageName);
+                    //        detections = data;
+                    //    });
+                    //});
+                });
+            })
+
+
+            fabric.Image.fromURL('{{ global_for("static/default/share_icon_test.png")}}', function(img) {
+                img.scaleToWidth(iconSize);
+                img.scaleToHeight(iconSize);
+                img.set({
+                    left: btnLeft,
+                    top: btnTop + iconSize + gap,
+                    originX: 'center',
+                    originY: 'center',
+                    selectable: false,
+                    myType: 'share',
+                });
+
+                dynamicAnnotationsCanvas.add(img);
+
+                img.on('mousedown', function(options) {
+                    console.log("shareIcon");
+                    console.log(annotation);
+                    alert("implementation missing (coming soon)");
+                });
+            })
+
+            dynamicAnnotationsCanvas.renderAll();
+            //var deleteBtn = '<img src="" class="deleteBtn" style="position:absolute;top:'+btnTop+'px;left:'+btnLeft+'px;cursor:pointer;width:20px;height:20px;"/>';
+            
+        }
+
+        function deactivateAnnotationsOptions(){
+            let objects = dynamicAnnotationsCanvas.getObjects();
+            for (let i = 0; i < objects.length; i++){
+                if (objects[i].myType === 'delete' || objects[i].myType === 'share'){
+                    dynamicAnnotationsCanvas.remove(objects[i]);
+                }
+            }
+        }
+            
+
+
+        function removeAnnotations(){
 
             if (dynamicAnnotationsCanvas != null){
                 let canvasContainer = document.getElementsByClassName("canvas-container")[0];
@@ -757,6 +899,8 @@
             }
 
         }
+
+
 
         function hslToHex(h, s, l) {
             l /= 100;
@@ -812,6 +956,15 @@
             l = +(l * 100).toFixed(1);
 
             return [h, s, l];
+        }
+
+        function hexToRGB(hex){
+            var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+            return result ? {
+                r: parseInt(result[1], 16),
+                g: parseInt(result[2], 16),
+                b: parseInt(result[3], 16)
+            } : null;
         }
 
     </script>
