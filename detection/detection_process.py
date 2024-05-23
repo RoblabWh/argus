@@ -28,9 +28,10 @@ class DetectionProcess(threading.Thread):
     def run(self):
         self.started = True
 
-        args = self.generate_args()
+        #args = self.generate_args()
 
-        datahandler = DataHandler(args=args)
+        # datahandler = DataHandler(args=args)
+        datahandler = DataHandler()
         inferencer = Inferencer(score_thr=0.4)
         models = inferencer.which_models_are_available()
         for model in models:
@@ -41,6 +42,8 @@ class DetectionProcess(threading.Thread):
         #              "/home/nex/Bilder/Datasets/micro-test/images/DJI_0875.JPG"]
 
         datahandler.set_image_paths(self.image_folder)
+        datahandler.args.split = True
+        datahandler.args.max_splitting_steps = self.max_splits
 
         datahandler.preprocess()
         data = datahandler.get_data()
@@ -92,3 +95,5 @@ class DetectionProcess(threading.Thread):
             'max_splitting_steps': self.max_splits,
         }
         args = Namespace(**default_args)
+
+        return args

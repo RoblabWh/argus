@@ -57,6 +57,8 @@
         var filteredSelection = [];
         var intervalIDDetection = null;
 
+        
+
         function showTableByCategory(category) {
             var x = document.getElementById("table" + category);
             if (x.style.display === "none") {
@@ -679,9 +681,12 @@
 
 
         function drawAnnotationsOnCurrentSlide(){
+
+            let canvasContainer = document.getElementsByClassName("canvas-container")[0];
+
             filename = currentImageName;
-            var canvas = document.getElementById("dynamic-canvas");
-            var ctx = canvas.getContext("2d");
+            //var canvas = document.getElementById("dynamic-canvas");
+            //var ctx = canvas.getContext("2d");
             var img = document.getElementById("dynamic-image-RGB").getElementsByTagName("img")[0];
 
             //scale based on images source size and the current size of the image
@@ -690,35 +695,67 @@
             imageIndex = getImageIndexByName(filename);
             //annotationData = detections["annotations"][imageIndex];
 
-            canvas.width = img.width;
-            canvas.height = img.height;
+            dynamicAnnotationsCanvas.setWidth(img.width);
+            dynamicAnnotationsCanvas.setHeight(img.height);
+
 
             console.log("Drawing " + filteredSelection.length + " annotations on " + filename);
+            removeAnnotations();
+            canvasContainer.style.zIndex = 5;
 
             for (let i = 0; i < filteredSelection.length; i++){
-                var annotation = currentImageAnnotations[filteredSelection[i]];
-                var categoryID = annotation.category_id;
-                var category = detections["categories"][categoryID-1];
-                var color = document.getElementById("color" + category.name).value;
-                //if (annotation.image_id === imageIndex){
-                    var x, y, w, h;
-                    x = annotation.bbox[0] * scale;
-                    y = annotation.bbox[1] * scale;
-                    w = annotation.bbox[2] * scale;
-                    h = annotation.bbox[3] * scale;
-                    ctx.lineWidth = document.getElementById("annotationsLineWidth").value;
-                    ctx.strokeStyle = color;
-                    //ctx.clearRect(x, y, w, h);
-                    ctx.strokeRect(x, y, w, h);
+                let annotation = currentImageAnnotations[filteredSelection[i]];
+                let categoryID = annotation.category_id;
+                let category = detections["categories"][categoryID-1];
+                let color = document.getElementById("color" + category.name).value;
+                let strokeWidth = document.getElementById("annotationsLineWidth").value;
+                
+                var x, y, w, h;
+                x = annotation.bbox[0] * scale;
+                y = annotation.bbox[1] * scale;
+                w = annotation.bbox[2] * scale;
+                h = annotation.bbox[3] * scale;
 
-                //}
+                rect = new fabric.Rect({
+                    left: x,
+                    top: y,
+                    stroke: color,
+                    strokeWidth: strokeWidth,
+                    fill: 'rgba(0,0,0,0)',
+                    width: w,
+                    height: h,
+                    opacity: 0.5,
+                    selectable: false,
+                })
+                rect.on('mouseover', function(options) {
+                    dynamicAnnotationsCanvas.setCursor('pointer');
+                    this.set('fill', color);
+                    dynamicAnnotationsCanvas.renderAll();
+                });
+                rect.on('mouseout', function(options) {
+                    dynamicAnnotationsCanvas.setCursor('default');
+                    this.set('fill', 'rgba(0,0,0,0)');
+                    dynamicAnnotationsCanvas.renderAll();
+                });
+                dynamicAnnotationsCanvas.add(rect);
+
             }
+            dynamicAnnotationsCanvas.renderAll();
         }
 
         function removeAnnotations(){
-            var canvas = document.getElementById("dynamic-slide").getElementsByTagName('canvas')[0];
-            var ctx = canvas.getContext("2d");
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            //var canvas = document.getElementById("dynamic-slide").getElementsByTagName('canvas')[0];
+            //var ctx = canvas.getContext("2d");
+            //ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+
+            if (dynamicAnnotationsCanvas != null){
+                let canvasContainer = document.getElementsByClassName("canvas-container")[0];
+                canvasContainer.style.zIndex = 0;
+
+                dynamicAnnotationsCanvas.clear();
+            }
+
         }
 
         function hslToHex(h, s, l) {
