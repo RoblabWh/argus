@@ -869,7 +869,9 @@
                 img.on('mousedown', function(options) {
                     console.log("shareIcon");
                     console.log(annotation);
-                    alert("implementation missing (coming soon)");
+                    category = detections["categories"][annotation.category_id-1];
+                    coordinates = ('50.712776, 14.005974');
+                    openSharePopup(category.name, annotation.score, coordinates);
                 });
             })
 
@@ -994,6 +996,7 @@
     </div>
     <div id="detectionTableContainer">
     </div>
+
     {% if detections %}
     <div id="initialDetectionsLoading">
         <div class="spinner"></div>
@@ -1002,5 +1005,6 @@
     <script>
 
     </script>
+
 </body>
 </html>
