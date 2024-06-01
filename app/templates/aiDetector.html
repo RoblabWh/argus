@@ -728,8 +728,14 @@
                     height: h,
                     opacity: 0.5,
                     selectable: false,
+                    lockRotation: true,
                     myActive: false,
                     myCategoryName: category.name,
+                    myEdit: false,
+                    myStartX: x,
+                    myStartY: y,
+                    myStartW: w,
+                    myStartH: h,
                 })
                 rect.on('mouseover', function(options) {
                     dynamicAnnotationsCanvas.setCursor('pointer');
@@ -746,7 +752,16 @@
                     }
                 });
                 rect.on('mousedown', function(options) {
-                    selectAnnotation(this, annotation);
+                    if (!this.myActive){
+                        
+                        selectAnnotation(this, annotation);
+                    }
+                });
+                rect.on('mouseup', function(options) {
+                    if (this.myEdit){
+                        deactivateAllAnnotationsOptions();
+                        activateAnnotationsEditButtons(this, annotation);
+                    }
                 });
                 rect.setCoords();
 
@@ -792,10 +807,16 @@
                     objects[i].set('stroke', color);
                     objects[i].set('opacity', 0.5);
 
+                    if(objects[i].myEdit){
+                        //reset slide
+                        objects[i].set('myEdit', false);
+                        resetAnnotationsRect(objects[i]);
+                    }
+
                 }
             }
 
-            deactivateAnnotationsOptions();
+            deactivateAllAnnotationsOptions();
 
             dynamicAnnotationsCanvas.renderAll();
         }
@@ -806,8 +827,8 @@
             
             let iconSize = 30;
             let gap = 2;
-            let btnLeft = rect.oCoords.tr.x + 10;
-            let btnTop = rect.oCoords.tr.y - 10;
+            let btnLeft = rect.oCoords.tr.x + 15;
+            let btnTop = rect.oCoords.tr.y - 15;
 
             //check if the buttons are outside of the canvas
             if (btnLeft + iconSize/2 >= dynamicAnnotationsCanvas.width){
@@ -816,8 +837,8 @@
             if (btnTop - iconSize/2 <= 0){
                 btnTop = iconSize/2 + 1;
             }
-            if (btnTop + 1.5*iconSize + gap >= dynamicAnnotationsCanvas.height){
-                btnTop = dynamicAnnotationsCanvas.height - 1.5*iconSize - gap - 1;
+            if (btnTop + 2.5*iconSize + gap >= dynamicAnnotationsCanvas.height){
+                btnTop = dynamicAnnotationsCanvas.height - 2.5*iconSize - gap - 1;
             }
             if (btnLeft <= iconSize/2){
                 btnLeft = iconSize/2 + 1;
@@ -889,18 +910,210 @@
                 });
             })
 
+            //add edit image button
+            fabric.Image.fromURL('{{ global_for("static/default/edit_icon_test.png")}}', function(img) {
+                img.scaleToWidth(iconSize);
+                img.scaleToHeight(iconSize);
+                img.set({
+                    left: btnLeft,
+                    top: btnTop + 2*(iconSize + gap),
+                    originX: 'center',
+                    originY: 'center',
+                    selectable: false,
+                    myType: 'edit',
+                });
+
+                dynamicAnnotationsCanvas.add(img);
+
+                img.on('mousedown', function(options) {
+                    console.log("editIcon");
+
+                    deactivateAllAnnotationsOptions();
+                    activateAnnotationsEditButtons(rect, annotation);
+
+                    rect.set('selectable', true);
+                    console.log("rect.selectable: " + rect.selectable);
+                    dynamicAnnotationsCanvas.setActiveObject(rect);
+                    
+                });
+            })
+
             dynamicAnnotationsCanvas.renderAll();
             //var deleteBtn = '<img src="" class="deleteBtn" style="position:absolute;top:'+btnTop+'px;left:'+btnLeft+'px;cursor:pointer;width:20px;height:20px;"/>';
             
         }
 
-        function deactivateAnnotationsOptions(){
+        function deactivateAllAnnotationsOptions(){
             let objects = dynamicAnnotationsCanvas.getObjects();
             for (let i = 0; i < objects.length; i++){
-                if (objects[i].myType === 'delete' || objects[i].myType === 'share'){
+                if (objects[i].myType === 'delete' || objects[i].myType === 'share' || objects[i].myType === 'edit' || objects[i].myType === 'cancel' || objects[i].myType === 'confirm' || objects[i].myType === 'type'){
+                    dynamicAnnotationsCanvas.remove(objects[i]);
+                }
+                if (objects[i].selectable === true){
+                    objects[i].set('selectable', false);
+                }
+            }
+        }
+
+        function activateAnnotationsEditButtons(rect, annotation){
+            rect.set('myEdit', true);
+            
+            //add a cancel and confirm button and one for the type of annotation
+            let iconSize = 30;
+            let gap = 2;
+            let btnLeft = rect.oCoords.tr.x + 10;
+            let btnTop = rect.oCoords.tr.y - 10;
+
+            //check if the buttons are outside of the canvas
+            if (btnLeft + iconSize/2 >= dynamicAnnotationsCanvas.width){
+                btnLeft = dynamicAnnotationsCanvas.width - iconSize/2 - 1;
+            }
+            if (btnTop - iconSize/2 <= 0){
+                btnTop = iconSize/2 + 1;
+            }
+            if (btnTop + 2.5*iconSize + gap >= dynamicAnnotationsCanvas.height){
+                btnTop = dynamicAnnotationsCanvas.height - 2.5*iconSize - gap - 1;
+            }
+            if (btnLeft <= iconSize/2){
+                btnLeft = iconSize/2 + 1;
+            }
+
+            fabric.Image.fromURL('{{ global_for("static/default/cancel_icon_test.png")}}', function(img) {
+                img.scaleToWidth(iconSize);
+                img.scaleToHeight(iconSize);
+                img.set({
+                    left: btnLeft,
+                    top: btnTop,
+                    originX: 'center',
+                    originY: 'center',
+                    selectable: false,
+                    myType: 'cancel',
+                });
+
+                dynamicAnnotationsCanvas.add(img);
+
+                img.on('mousedown', function(options) {
+                    console.log("cancelIcon");
+                    console.log(img);
+                    console.log(rect);
+                    deactivateAnnotationsEditButtons(rect);
+                    rect.set('selectable', false);
+                    resetAnnotationsRect(rect);
+                    dynamicAnnotationsCanvas.setActiveObject(null);
+                    //reset slide
+                    selectAnnotation(rect, annotation);
+                });
+            })
+
+            fabric.Image.fromURL('{{ global_for("static/default/confirm_icon_test.png")}}', function(img) {
+                img.scaleToWidth(iconSize);
+                img.scaleToHeight(iconSize);
+                img.set({
+                    left: btnLeft,
+                    top: btnTop + iconSize + gap,
+                    originX: 'center',
+                    originY: 'center',
+                    selectable: false,
+                    myType: 'confirm',
+                });
+
+                dynamicAnnotationsCanvas.add(img);
+
+                img.on('mousedown', function(options) {
+                    console.log("confirmIcon");
+
+                    deactivateAnnotationsEditButtons(rect);
+                    rect.set('selectable', false);
+                    dynamicAnnotationsCanvas.setActiveObject(null);
+                    dynamicAnnotationsCanvas.renderAll();
+
+
+                    //send changes to server endpoint '/edit_Annotation/<int:report_id>'
+                    let img = document.getElementById("dynamic-image-RGB").getElementsByTagName("img")[0];
+                    let invertedScale = img.naturalWidth / img.width;
+                    let bbox = rect.getBoundingRect();
+                    let annotationID = annotation.id;
+                    let categoryID = annotation.category_id;
+                    bboxScaled = [Math.round(bbox.left * invertedScale), Math.round(bbox.top * invertedScale), Math.round(bbox.width * invertedScale), Math.round(bbox.height * invertedScale)];
+                    console.log("bboxScaled: " + bboxScaled);
+                    $.post("/edit_annotation/{{ id }}", {annotation_id: annotationID, category_id: categoryID, annotation_bbox: JSON.stringify(bboxScaled)}, function(response){
+                        //load data
+                        console.log("Data: " + response );
+                        if (response == "success"){
+                        
+                            $.post("/load_detection_results/{{ id }}", function(data){
+                                detections = data;
+                                generateDetectionTable(data);
+                                generateAnnotationSettings(data);
+                                var currentImageName = document.getElementById("dynamic-slide").getElementsByTagName('a')[0].innerHTML.split(": ")[1];
+                                generateAnnotationsLayerTableForImage(currentImageName);
+                                detections = data;
+                                showCurrentSlide();
+                            });
+                        
+                        }
+                    });
+
+                });
+            })
+
+            //add a button for the type of annotation
+            let image_file = '{{ global_for("static/default/signs/icon/Brand-L.png")}}';
+            if (rect.myCategoryName == 'human'){
+                image_file = '{{ global_for("static/default/signs/icon/Person-L.png")}}';
+            } else if (rect.myCategoryName == 'vehicle'){
+                image_file = '{{ global_for("static/default/signs/icon/Fahrzeug-L.png")}}';
+            } 
+
+            fabric.Image.fromURL(image_file, function(img) {
+                img.scaleToWidth(iconSize);
+                img.scaleToHeight(iconSize);
+                img.set({
+                    left: btnLeft,
+                    top: btnTop + 2*(iconSize + gap),
+                    originX: 'center',
+                    originY: 'center',
+                    selectable: false,
+                    myType: 'type',
+                });
+
+                dynamicAnnotationsCanvas.add(img);
+
+                img.on('mousedown', function(options) {
+                    console.log("typeIcon");
+                    console.log(img);
+                    console.log(rect);
+                    //open a popup to change the type of the annotation
+                    alert("change type of annotation is not implemented yet");
+                });
+            })
+            dynamicAnnotationsCanvas.renderAll();
+
+        }
+
+       
+        function deactivateAnnotationsEditButtons(rect){
+            rect.set('myEdit', false);
+            //remove the edit buttons
+            let objects = dynamicAnnotationsCanvas.getObjects();
+            for (let i = 0; i < objects.length; i++){
+                if (objects[i].myType === 'cancel' || objects[i].myType === 'share' || objects[i].myType === 'edit' || objects[i].myType === 'confirm' || objects[i].myType === 'type'){
                     dynamicAnnotationsCanvas.remove(objects[i]);
                 }
             }
+        }
+
+        function resetAnnotationsRect(rect){
+            rect.set({
+                    'width': rect.myStartW,
+                    'height': rect.myStartH,
+                    'scaleX': 1,
+                    'scaleY': 1
+            });
+            rect.set('left', rect.myStartX);
+            rect.set('top', rect.myStartY);
+            rect.setCoords();
+            dynamicAnnotationsCanvas.renderAll();
         }
             
 

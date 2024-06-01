@@ -114,6 +114,7 @@
         .share-dropdown-content a:hover {
             background-color: var(--accent-color-interaction);
             color: var(--font-color-b);
+            border-radius: 6px;
         }
 
     </style>
@@ -244,15 +245,11 @@
 
             let subject = encodeURIComponent(`New detection of ${data.type}`);
             let body = encodeURIComponent(`A detection from ARGUS AI was made with the following details: \n\n${jsonString}`);
-            //let mailtoLink = `mailto:?subject=${subject}&body=${body}`;
-            //link for ubuntu and thunderbird
             let mailToLink2 = `mailto:?to=&body=${body},&subject=${subject}`;
-;
-
 
             window.open(mailToLink2, '_blank');
 
-
+            document.getElementById('popupOverlay').style.display = 'none';
         }
 
         function shareDetectionBackend() {

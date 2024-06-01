@@ -1712,9 +1712,21 @@
     const dynamicAnnotationsCanvas = new fabric.Canvas('dynamic-canvas', {
         selection: false,
         backgroundColor: 'rgba(0,0,0,0)',
-        interactive: false
+        interactive: true
     });
     dynamicAnnotationsCanvas.hoverCursor = 'pointer';
+    fabric.Object.prototype.cornerStyle = 'circle';//default rect
+    fabric.Object.prototype.setControlsVisibility({
+        mt: true,
+        mb: true,
+        ml: true,
+        mr: true,
+        bl: true,
+        br: true,
+        tl: true,
+        tr: true,
+        mtr: false,
+    });
 
     dynamicAnnotationsCanvas.on('mouse:down', function(options) {
         if (! options.target) {

@@ -485,11 +485,13 @@ class ArgusServer:
         return "success"
 
     def edit_annotation(self, report_id):
+        print("complete request form: " + str(request.form), flush=True)
         annotation_id = request.form.get('annotation_id')
-        annotation_class = request.form.get('annotation_class')
+        category_id = request.form.get('category_id')
         annotation_bbox = request.form.get('annotation_bbox')
-        print("edit_annotation for id" + str(report_id) + " with: " + str(annotation_id), flush=True)
-        self.project_manager.edit_annotation(report_id, annotation_id, annotation_class, annotation_bbox)
+        annotation_bbox = json.loads(annotation_bbox)
+        print("edit_annotation for id" + str(report_id) + " with: " + str(annotation_id) + " and " + str(category_id) + " and " + str(annotation_bbox), flush=True)
+        self.project_manager.edit_annotation(report_id, annotation_id, category_id, annotation_bbox)
         return "success"
 
     def add_annotation(self, report_id):
