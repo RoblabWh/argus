@@ -104,6 +104,12 @@ class ArgusServer:
                                 view_func=self.load_detection_results)
         self.app.add_url_rule('/detection_status/<int:report_id>', methods=['GET', 'POST'],
                                 view_func=self.check_detection_status)
+        self.app.add_url_rule('/delete_annotation/<int:report_id>', methods=['POST'],
+                                view_func=self.delete_annotation)
+        self.app.add_url_rule('/edit_annotation/<int:report_id>', methods=['POST'],
+                                view_func=self.edit_annotation)
+        self.app.add_url_rule('/add_annotation/<int:report_id>', methods=['POST'],
+                                view_func=self.add_annotation)
         self.app.add_url_rule('/process_in_webodm/<int:report_id>', methods=['GET', 'POST'],
                                 view_func=self.process_in_webodm)
         self.app.add_url_rule('/get_webodm_port', methods=['GET', 'POST'],
@@ -132,6 +138,7 @@ class ArgusServer:
                                 view_func=self.get_POI_list)
         self.app.add_url_rule('/delete_poi', methods=['POST'],
                                 view_func=self.delete_POI)
+
         # self.app.add_url_rule('/<int:report_id>/upload', methods=['POST'],
         #                       view_func=self.upload_image)
         # self.app.add_url_rule('/<int:report_id>/process', methods=['GET', 'POST'],
@@ -471,6 +478,27 @@ class ArgusServer:
         print('asking for detection status of report ' + str(report_id) + " with " + str(len(self.detection_threads)) + " threads")
         return self.detection_manager.get_detection_status(report_id)
 
+    def delete_annotation(self, report_id):
+        annotation_id = request.form.get('annotation_id')
+        print("delete_annotation for id" + str(report_id) + " with: " + str(annotation_id), flush=True)
+        self.project_manager.delete_annotation(report_id, annotation_id)
+        return "success"
+
+    def edit_annotation(self, report_id):
+        annotation_id = request.form.get('annotation_id')
+        annotation_class = request.form.get('annotation_class')
+        annotation_bbox = request.form.get('annotation_bbox')
+        print("edit_annotation for id" + str(report_id) + " with: " + str(annotation_id), flush=True)
+        self.project_manager.edit_annotation(report_id, annotation_id, annotation_class, annotation_bbox)
+        return "success"
+
+    def add_annotation(self, report_id):
+        annotation_class = request.form.get('annotation_class')
+        annotation_bbox = request.form.get('annotation_bbox')
+        annotation_imageid = request.form.get('annotation_imageid')
+        print("add_annotation for id" + str(report_id) + " with: " + str(annotation_class), flush=True)
+        self.project_manager.add_annotation(report_id, annotation_class, annotation_bbox, annotation_imageid)
+        return "success"
 
     def load_detection_results(self, report_id):
         #get path of projects annotation file

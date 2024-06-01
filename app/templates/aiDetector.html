@@ -200,7 +200,7 @@
                 }
             }
 
-            console.log(imagesWithDetectionsByCategory);
+            //console.log(imagesWithDetectionsByCategory);
             
 
 
@@ -322,7 +322,7 @@
                 }
                 var cell = cells[1];
                 cell.innerHTML = sum;
-                console.log("categoryID: " + categoryID + " categoryName: " + categoryName + " imageID: " + imageID + " imageName: " + imageName + " sum: " + sum);
+                //console.log("categoryID: " + categoryID + " categoryName: " + categoryName + " imageID: " + imageID + " imageName: " + imageName + " sum: " + sum);
                 categorySum += sum;
             }
             sumCell = document.getElementById("detectionTable").rows[(categoryID)*2].cells[1];
@@ -535,7 +535,7 @@
 
         function filterSelection(){
             filteredSelection = [];
-            console.log("filterSelection");
+            //console.log("filterSelection");
             var categories = detections["categories"];
             for(let i = 0; i < categories.length; i++){
                 var category = categories[i];
@@ -600,7 +600,7 @@
                 drawAnnotationsOnCurrentSlide();
             }
 
-            console.log(colors);
+            //console.log(colors);
 
             $.post("/update_detections_colors/{{ id }}", {colorH: colorHSL[0], colorS: colorHSL[1], colorL: colorHSL[2], category_name: category});
         }
@@ -624,8 +624,8 @@
                 return;
             }
             if (rows[1].cells.length == 1){
-                console.log(rows[1].cells);
-                console.log("returing");
+                //console.log(rows[1].cells);
+                //console.log("returing");
                 return;
             }
             for (let i = 1; i < rows.length; i++){
@@ -691,17 +691,18 @@
 
             //scale based on images source size and the current size of the image
             var scale = img.width/ img.naturalWidth;
+            console.log("scale: " + scale + " img.width: " + img.width + " img.naturalWidth: " + img.naturalWidth);
 
             imageIndex = getImageIndexByName(filename);
             //annotationData = detections["annotations"][imageIndex];
 
             dynamicAnnotationsCanvas.setWidth(img.width);
             dynamicAnnotationsCanvas.setHeight(img.height);
+            canvasContainer.style.zIndex = 5;
 
 
             console.log("Drawing " + filteredSelection.length + " annotations on " + filename);
-            removeAnnotations();
-            canvasContainer.style.zIndex = 5;
+            dynamicAnnotationsCanvas.clear();
 
             for (let i = 0; i < filteredSelection.length; i++){
                 let annotation = currentImageAnnotations[filteredSelection[i]];
@@ -715,6 +716,7 @@
                 y = annotation.bbox[1] * scale;
                 w = annotation.bbox[2] * scale;
                 h = annotation.bbox[3] * scale;
+                console.log("x: " + x + " y: " + y + " w: " + w + " h: " + h);
 
                 rect = new fabric.Rect({
                     left: x,
@@ -746,6 +748,8 @@
                 rect.on('mousedown', function(options) {
                     selectAnnotation(this, annotation);
                 });
+                rect.setCoords();
+
                 dynamicAnnotationsCanvas.add(rect);
             }
             dynamicAnnotationsCanvas.renderAll();
@@ -836,18 +840,25 @@
                 img.on('mousedown', function(options) {
                     console.log("deleteIcon");
                     console.log(annotation);
-                    alert("implementation missing (coming soon)");
-                    //$.post("/delete_annotation/{{ id }}", {annotation_id: annotation.id}, function(){
-                    //    //load data
-                    //    $.post("/load_detection_results/{{ id }}", function(data){
-                    //        detections = data;
-                    //        generateDetectionTable(data);
-                    //        generateAnnotationSettings(data);
-                    //        var currentImageName = document.getElementById("dynamic-slide").getElementsByTagName('a')[0].innerHTML.split(": ")[1];
-                    //        generateAnnotationsLayerTableForImage(currentImageName);
-                    //        detections = data;
-                    //    });
-                    //});
+                    console.log(img);
+                    // response has to be "success" to continue
+                    $.post("/delete_annotation/{{ id }}", {annotation_id: annotation.id}, function(response){
+                        //load data
+                        console.log("Data: " + response );
+                        if (response == "success"){
+                        
+                            $.post("/load_detection_results/{{ id }}", function(data){
+                                detections = data;
+                                generateDetectionTable(data);
+                                generateAnnotationSettings(data);
+                                var currentImageName = document.getElementById("dynamic-slide").getElementsByTagName('a')[0].innerHTML.split(": ")[1];
+                                generateAnnotationsLayerTableForImage(currentImageName);
+                                detections = data;
+                                showCurrentSlide();
+                            });
+                        
+                        }
+                    });
                 });
             })
 
@@ -869,6 +880,9 @@
                 img.on('mousedown', function(options) {
                     console.log("shareIcon");
                     console.log(annotation);
+                    console.log(img);
+                    console.log(rect);
+
                     category = detections["categories"][annotation.category_id-1];
                     coordinates = ('50.712776, 14.005974');
                     openSharePopup(category.name, annotation.score, coordinates);

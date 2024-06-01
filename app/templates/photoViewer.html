@@ -1100,7 +1100,7 @@
     }
 
     function remagnify() {
-        if(!displayingIR){
+        if(magnifiying){
             zoomValue = document.getElementById("zoomRange").value/10;
             magnify(slideIndex, zoomValue);
         }
@@ -1426,6 +1426,10 @@
             var canvas = canvases[i];
             canvas.width = img.width;
             canvas.height = img.height;
+
+            let body_width = document.getElementsByClassName("container")[0].offsetWidth;
+            dynamicAnnotationsCanvas.setWidth(body_width);
+            dynamicAnnotationsCanvas.setHeight(imgA.height * ( body_width/ imgA.width));
         }
 
         if (displayingAI){
@@ -1699,6 +1703,7 @@
     var displayingIR = false;
     var displayingAI = false;
     var magnifiying = true;
+    remagnify();
     var lastSlide = 0;
     var allImages = [];
     var allTemperaturesIR = [];
