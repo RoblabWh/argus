@@ -63,18 +63,17 @@ class ExifHeader:
     def read_creation_time(self):
         try:
             self.creation_time_str = (str(self._get_if_exist(self.python_dict, 'EXIF:CreateDate')))
-            creation_time = self.creation_time_str.replace(':', '')
-            creation_time = creation_time.replace(' ', '')
-            self.creation_time = int(creation_time) % 1000000
+            print("creation_time_str: '" + self.creation_time_str + "' (from EXIF:CreateDate)")
+            # use dt to convert to timestamp
+            self.creation_time = dt.datetime.strptime(self.creation_time_str, '%Y:%m:%d %H:%M:%S').timestamp()
+            #creation_time = self.creation_time_str.replace(':', '')
+            #creation_time = creation_time.replace(' ', '')
+            #self.creation_time = int(creation_time) % 1000000
             # print("creation_time_str: '" + self.creation_time_str + "' (from EXIF:CreateDate)" + " creation_time: " + str(self.creation_time) + "time wo modulo" + str(int(creation_time)))
         except:
-            self.creation_time_str = str(dt.datetime.fromtimestamp(os.path.getmtime(__file__)))
-            # print("creation_time_str: '" + self.creation_time_str + "' (from file creation time)")
-            creation_time = self.creation_time_str.replace(':', '')
-            creation_time = creation_time.replace('-', '')
-            creation_time = creation_time.replace(' ', '')
-            self.creation_time = int(creation_time.split(".")[0]) % 1000000
-            # print("creation_time_str: '" + creation_time + "' (from file creation time)" + " creation_time: " + str(self.creation_time))
+            #trying to read the creation time from the file itself
+            self.creation_time = os.path.getmtime(self.image_path)
+            self.creation_time_str = dt.datetime.fromtimestamp(self.creation_time).strftime('%Y:%m:%d %H:%M:%S')
 
 
 

@@ -61,7 +61,10 @@ class ImageMapper:
     def generate_map_elements_and_scaler(self, images):
         #print(images, flush=True)
         filtered_images = [image for image in images if image.get_exif_header().usable]
+        filtered_images = self.filter_unplausible_images_by_time(filtered_images)
         filtered_images = GimbalPitchFilter(89 - self.max_gimbal_pitch_deviation).filter(filtered_images)
+
+
         if len(filtered_images) < self.minimum_number_of_images:
             return None, []
         map_scaler = MapScaler(filtered_images, self.map_width_px, self.map_height_px)
@@ -557,3 +560,38 @@ class ImageMapper:
         except:
             print("Error: Fallback GPS failed!")
             return False
+
+    def filter_unplausible_images_by_time(self, filtered_images):
+        if len(filtered_images) < 3:
+            return []
+        time_list = [image.get_exif_header().get_creation_time() for image in filtered_images]
+
+        time_diff = [time_list[i+1] - time_list[i] for i in range(len(time_list)-1)]
+        median_time = time_diff[len(time_diff)//2]
+
+        list_of_connected_flights = []
+        plausible_flight = []
+
+        for i in range(len(filtered_images)-1):
+
+            plausible_flight.append(filtered_images[i])
+            if time_diff[i] > 4*median_time:
+                print("~p not plausible flight! with time diff: ", time_diff[i], " and median time: ", median_time, flush=True)
+                list_of_connected_flights.append(plausible_flight.copy())
+                plausible_flight = []
+
+        plausible_flight.append(filtered_images[-1])
+
+        list_of_connected_flights.append(plausible_flight)
+
+        print("Connected flights: ", list_of_connected_flights, flush=True)
+
+        return max(list_of_connected_flights, key=len)
+
+
+
+
+
+
+
+

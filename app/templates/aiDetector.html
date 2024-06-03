@@ -844,10 +844,11 @@
                 btnLeft = iconSize/2 + 1;
             }
 
-            fabric.Image.fromURL('{{ global_for("static/default/delete_icon_test.png")}}', function(img) {
-                img.scaleToWidth(iconSize);
-                img.scaleToHeight(iconSize);
-                img.set({
+            fabric.loadSVGFromURL('{{ global_for("static/default/ui-elements/icon-delete.svg")}}', function(objects, options) {
+                let shape = fabric.util.groupSVGElements(objects, options);
+                shape.scaleToWidth(iconSize);
+                shape.scaleToHeight(iconSize);
+                shape.set({
                     left: btnLeft,
                     top: btnTop,
                     originX: 'center',
@@ -856,13 +857,19 @@
                     myType: 'delete',
                 });
 
-                dynamicAnnotationsCanvas.add(img);
+                let bgShape = shape._objects[0];
+                let color_bg = getComputedStyle(document.documentElement).getPropertyValue('--accent-color-red');
+                bgShape.set('fill', color_bg);
+                bgShape.set('opacity', 0.5);
 
-                img.on('mousedown', function(options) {
-                    console.log("deleteIcon");
-                    console.log(annotation);
-                    console.log(img);
-                    // response has to be "success" to continue
+                dynamicAnnotationsCanvas.add(shape);
+
+                shape.on('mousedown', function(options) {
+
+                    if (!confirm("Do you really want to delete this detected object?")){
+                        return;
+                    }
+
                     $.post("/delete_annotation/{{ id }}", {annotation_id: annotation.id}, function(response){
                         //load data
                         console.log("Data: " + response );
@@ -881,13 +888,29 @@
                         }
                     });
                 });
+
+                shape.on('mouseover', function() {
+                    let bgShape = shape._objects[0];
+                    bgShape.set('opacity', 1.0);
+
+                    dynamicAnnotationsCanvas.renderAll();
+                });
+
+                shape.on('mouseout', function() {
+                    let bgShape = shape._objects[0];
+                    bgShape.set('opacity', 0.5);
+
+                    dynamicAnnotationsCanvas.renderAll();
+
+                });
             })
 
 
-            fabric.Image.fromURL('{{ global_for("static/default/share_icon_test.png")}}', function(img) {
-                img.scaleToWidth(iconSize);
-                img.scaleToHeight(iconSize);
-                img.set({
+            fabric.loadSVGFromURL('{{ global_for("static/default/ui-elements/icon-share.svg")}}', function(objects, options) {
+                let shape = fabric.util.groupSVGElements(objects, options);
+                shape.scaleToWidth(iconSize);
+                shape.scaleToHeight(iconSize);
+                shape.set({
                     left: btnLeft,
                     top: btnTop + iconSize + gap,
                     originX: 'center',
@@ -896,25 +919,42 @@
                     myType: 'share',
                 });
 
-                dynamicAnnotationsCanvas.add(img);
+                let bgShape = shape._objects[0];
+                let color_bg = getComputedStyle(document.documentElement).getPropertyValue('--accent-color-interaction');
+                bgShape.set('fill', color_bg);
+                bgShape.set('opacity', 0.5);
 
-                img.on('mousedown', function(options) {
-                    console.log("shareIcon");
-                    console.log(annotation);
-                    console.log(img);
-                    console.log(rect);
+                dynamicAnnotationsCanvas.add(shape);
+
+                shape.on('mousedown', function(options) {
 
                     category = detections["categories"][annotation.category_id-1];
                     coordinates = ('50.712776, 14.005974');
                     openSharePopup(category.name, annotation.score, coordinates);
                 });
+
+                shape.on('mouseover', function() {
+                    let bgShape = shape._objects[0];
+                    bgShape.set('opacity', 1.0);
+
+                    dynamicAnnotationsCanvas.renderAll();
+                });
+
+                shape.on('mouseout', function() {
+                    let bgShape = shape._objects[0];
+                    bgShape.set('opacity', 0.5);
+
+                    dynamicAnnotationsCanvas.renderAll();
+
+                });
             })
 
             //add edit image button
-            fabric.Image.fromURL('{{ global_for("static/default/edit_icon_test.png")}}', function(img) {
-                img.scaleToWidth(iconSize);
-                img.scaleToHeight(iconSize);
-                img.set({
+            fabric.loadSVGFromURL('{{ global_for("static/default/ui-elements/icon-edit.svg")}}', function(objects, options) {
+                let shape = fabric.util.groupSVGElements(objects, options);
+                shape.scaleToWidth(iconSize);
+                shape.scaleToHeight(iconSize);
+                shape.set({
                     left: btnLeft,
                     top: btnTop + 2*(iconSize + gap),
                     originX: 'center',
@@ -923,9 +963,14 @@
                     myType: 'edit',
                 });
 
-                dynamicAnnotationsCanvas.add(img);
+                let bgShape = shape._objects[0];
+                let color_bg = getComputedStyle(document.documentElement).getPropertyValue('--accent-color-interaction');
+                bgShape.set('fill', color_bg);
+                bgShape.set('opacity', 0.5);
 
-                img.on('mousedown', function(options) {
+                dynamicAnnotationsCanvas.add(shape);
+
+                shape.on('mousedown', function(options) {
                     console.log("editIcon");
 
                     deactivateAllAnnotationsOptions();
@@ -935,6 +980,21 @@
                     console.log("rect.selectable: " + rect.selectable);
                     dynamicAnnotationsCanvas.setActiveObject(rect);
                     
+                });
+
+                shape.on('mouseover', function() {
+                    let bgShape = shape._objects[0];
+                    bgShape.set('opacity', 1.0);
+
+                    dynamicAnnotationsCanvas.renderAll();
+                });
+
+                shape.on('mouseout', function() {
+                    let bgShape = shape._objects[0];                    
+                    bgShape.set('opacity', 0.5);
+
+                    dynamicAnnotationsCanvas.renderAll();
+
                 });
             })
 
@@ -961,12 +1021,14 @@
             //add a cancel and confirm button and one for the type of annotation
             let iconSize = 30;
             let gap = 2;
-            let btnLeft = rect.oCoords.tr.x + 10;
-            let btnTop = rect.oCoords.tr.y - 10;
+            let btnLeft = rect.oCoords.tr.x + 15 + gap;
+            let btnTop = rect.oCoords.tr.y - iconSize/2;
 
             //check if the buttons are outside of the canvas
             if (btnLeft + iconSize/2 >= dynamicAnnotationsCanvas.width){
-                btnLeft = dynamicAnnotationsCanvas.width - iconSize/2 - 1;
+                //btnLeft = dynamicAnnotationsCanvas.width - iconSize/2 - 1;
+                //place Icons on the left side of the rect
+                btnLeft = rect.oCoords.tl.x - iconSize - gap;
             }
             if (btnTop - iconSize/2 <= 0){
                 btnTop = iconSize/2 + 1;
@@ -978,10 +1040,11 @@
                 btnLeft = iconSize/2 + 1;
             }
 
-            fabric.Image.fromURL('{{ global_for("static/default/cancel_icon_test.png")}}', function(img) {
-                img.scaleToWidth(iconSize);
-                img.scaleToHeight(iconSize);
-                img.set({
+            fabric.loadSVGFromURL('{{ global_for("static/default/ui-elements/icon-back.svg")}}', function(objects, options) {
+                let shape = fabric.util.groupSVGElements(objects, options);
+                shape.scaleToWidth(iconSize);
+                shape.scaleToHeight(iconSize);
+                shape.set({
                     left: btnLeft,
                     top: btnTop,
                     originX: 'center',
@@ -990,12 +1053,14 @@
                     myType: 'cancel',
                 });
 
-                dynamicAnnotationsCanvas.add(img);
+                let bgShape = shape._objects[0];
+                let color_bg = getComputedStyle(document.documentElement).getPropertyValue('--accent-color-red');
+                bgShape.set('fill', color_bg);
+                bgShape.set('opacity', 0.5);
 
-                img.on('mousedown', function(options) {
-                    console.log("cancelIcon");
-                    console.log(img);
-                    console.log(rect);
+                dynamicAnnotationsCanvas.add(shape);
+
+                shape.on('mousedown', function(options) {
                     deactivateAnnotationsEditButtons(rect);
                     rect.set('selectable', false);
                     resetAnnotationsRect(rect);
@@ -1003,12 +1068,28 @@
                     //reset slide
                     selectAnnotation(rect, annotation);
                 });
+
+                shape.on('mouseover', function() {
+                    let bgShape = shape._objects[0];                    
+                    bgShape.set('opacity', 1.0);
+
+                    dynamicAnnotationsCanvas.renderAll();
+                });
+
+                shape.on('mouseout', function() {
+                    let bgShape = shape._objects[0];
+                    bgShape.set('opacity', 0.5);
+
+                    dynamicAnnotationsCanvas.renderAll();
+
+                });
             })
 
-            fabric.Image.fromURL('{{ global_for("static/default/confirm_icon_test.png")}}', function(img) {
-                img.scaleToWidth(iconSize);
-                img.scaleToHeight(iconSize);
-                img.set({
+            fabric.loadSVGFromURL('{{ global_for("static/default/ui-elements/icon-confirm.svg")}}', function(objects, options) {
+                let shape = fabric.util.groupSVGElements(objects, options);
+                shape.scaleToWidth(iconSize);
+                shape.scaleToHeight(iconSize);
+                shape.set({
                     left: btnLeft,
                     top: btnTop + iconSize + gap,
                     originX: 'center',
@@ -1017,9 +1098,14 @@
                     myType: 'confirm',
                 });
 
-                dynamicAnnotationsCanvas.add(img);
+                let bgShape = shape._objects[0];
+                let color_bg = getComputedStyle(document.documentElement).getPropertyValue('--accent-color-interaction');
+                bgShape.set('fill', color_bg);
+                bgShape.set('opacity', 0.5);
 
-                img.on('mousedown', function(options) {
+                dynamicAnnotationsCanvas.add(shape);
+
+                shape.on('mousedown', function(options) {
                     console.log("confirmIcon");
 
                     deactivateAnnotationsEditButtons(rect);
@@ -1055,6 +1141,21 @@
                     });
 
                 });
+
+                 shape.on('mouseover', function() {
+                    let bgShape = shape._objects[0];
+                    bgShape.set('opacity', 1.0);
+
+                    dynamicAnnotationsCanvas.renderAll();
+                });
+
+                shape.on('mouseout', function() {
+                    let bgShape = shape._objects[0];
+                    bgShape.set('opacity', 0.5);
+
+                    dynamicAnnotationsCanvas.renderAll();
+
+                });
             })
 
             //add a button for the type of annotation
@@ -1069,23 +1170,55 @@
                 img.scaleToWidth(iconSize);
                 img.scaleToHeight(iconSize);
                 img.set({
+                    selectable: false,
+                    myType: 'type',
+                    opacity: 0.5,
+                });
+
+                //add a black border
+                let cirlce = new fabric.Circle({
+                    stroke: 'black',
+                    strokeWidth: 2,
+                    fill: 'transparent',
+                    radius: iconSize/2,
+                    selectable: false,
+                });
+                console.log(cirlce);
+
+                typeGroup = new fabric.Group([img, cirlce], {
                     left: btnLeft,
                     top: btnTop + 2*(iconSize + gap),
+                    selectable: false,
+
                     originX: 'center',
                     originY: 'center',
-                    selectable: false,
                     myType: 'type',
                 });
 
-                dynamicAnnotationsCanvas.add(img);
+                dynamicAnnotationsCanvas.add(typeGroup);
 
-                img.on('mousedown', function(options) {
+            
+                typeGroup.on('mousedown', function(options) {
                     console.log("typeIcon");
-                    console.log(img);
+                    console.log(typeGroup);
                     console.log(rect);
                     //open a popup to change the type of the annotation
                     alert("change type of annotation is not implemented yet");
                 });
+
+                typeGroup.on('mouseover', function() {
+                    img.set('opacity', 1.0);
+
+                    dynamicAnnotationsCanvas.renderAll();
+                });
+
+                typeGroup.on('mouseout', function() {
+                    img.set('opacity', 0.5);
+
+                    dynamicAnnotationsCanvas.renderAll();
+
+                });
+
             })
             dynamicAnnotationsCanvas.renderAll();
 
