@@ -567,6 +567,27 @@ class ProjectManager:
         with open(path, "w") as json_file:
             json.dump(detections, json_file)
 
+    def edit_annotation_category(self, report_id, annotation_id, new_category_id):
+        project = self.get_project(report_id)
+        annotation_id = int(annotation_id)
+        new_category_id = int(new_category_id)
+        path = project['data']['annotation_file_path']
+
+        with open(path, "r") as json_file:
+            detections = json.load(json_file)
+            annotations = detections['annotations']
+
+            for i in range(len(annotations)):
+                if(annotations[i]['id'] == annotation_id):
+                    annotations[i]['category_id'] = new_category_id
+                    annotations[i]['manual'] = True
+                    break
+
+            detections['annotations'] = annotations
+
+        with open(path, "w") as json_file:
+            json.dump(detections, json_file)
+
     def add_annotation(self, report_id, category_id, bbox, image_id):
         project = self.get_project(report_id)
         path = project['data']['annotation_file_path']
@@ -581,7 +602,7 @@ class ProjectManager:
                     new_id = annotation['id']
             new_id += 1
 
-            new_annotation = {"id": new_id, "image_id": image_id,  "bbox": bbox, "score": 1.0, "category_id": category_id, "segmentation": [], "manual": "true"}
+            new_annotation = {"id": new_id, "image_id": image_id,  "bbox": bbox, "score": 1.0, "category_id": category_id, "segmentation": [], "manual": True}
             annotations.append(new_annotation)
 
             detections['annotations'] = annotations

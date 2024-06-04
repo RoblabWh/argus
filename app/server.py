@@ -108,6 +108,8 @@ class ArgusServer:
                                 view_func=self.delete_annotation)
         self.app.add_url_rule('/edit_annotation/<int:report_id>', methods=['POST'],
                                 view_func=self.edit_annotation)
+        self.app.add_url_rule('/edit_annotation_type/<int:report_id>', methods=['POST'],
+                                view_func=self.edit_annotation_type)
         self.app.add_url_rule('/add_annotation/<int:report_id>', methods=['POST'],
                                 view_func=self.add_annotation)
         self.app.add_url_rule('/process_in_webodm/<int:report_id>', methods=['GET', 'POST'],
@@ -492,6 +494,13 @@ class ArgusServer:
         annotation_bbox = json.loads(annotation_bbox)
         print("edit_annotation for id" + str(report_id) + " with: " + str(annotation_id) + " and " + str(category_id) + " and " + str(annotation_bbox), flush=True)
         self.project_manager.edit_annotation(report_id, annotation_id, category_id, annotation_bbox)
+        return "success"
+
+    def edit_annotation_type(self, report_id):
+        annotation_id = request.form.get('annotation_id')
+        category_id = request.form.get('category_id')
+        print("edit_annotation_type for id" + str(report_id) + " with: " + str(annotation_id) + " and " + str(category_id), flush=True)
+        self.project_manager.edit_annotation_category(report_id, annotation_id, category_id)
         return "success"
 
     def add_annotation(self, report_id):

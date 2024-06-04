@@ -1199,11 +1199,7 @@
 
             
                 typeGroup.on('mousedown', function(options) {
-                    console.log("typeIcon");
-                    console.log(typeGroup);
-                    console.log(rect);
-                    //open a popup to change the type of the annotation
-                    alert("change type of annotation is not implemented yet");
+                    openEditTypePopup(annotation, rect.myCategoryName);
                 });
 
                 typeGroup.on('mouseover', function() {

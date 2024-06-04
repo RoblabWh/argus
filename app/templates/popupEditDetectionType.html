@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Popup Form</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+
+        /* The overlay background */
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        /* The form container */
+        .form-container {
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            width: 40%;
+            min-width: 400px;
+            position: relative;
+        }
+
+        .form-container label {
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .form-container input,
+        .form-container select,
+        .form-container textarea {
+            width: 100%;
+            padding: 8px 0 8px 0;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        .form-container .close-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            cursor: pointer;
+            font-size: 18px;
+        }
+
+
+        .form-container button:hover {
+            background-color: #f1f1f1;
+        }
+
+
+    </style>
+</head>
+<body>
+
+    <div class="overlay" id="popupTypeOverlay">
+        <div class="form-container">
+            <span class="close-btn" id="closeTypePopup">&times;</span>
+            <h2>Change Detection Type</h2>
+            <form id="popupTypeForm" onsubmit="return false;">
+
+                <div style="display: flex; justify-content: space-between;">
+                    <p> Editing detection with ID:</p>
+                    <p id="popupDetectionID"> </p>
+                </div>
+
+                <label for="detectedObjectTypeA">Type</label>
+                <select id="detectedObjectTypeA" name="type">
+                    <option value="fire">Fire</option>
+                    <option value="human">Human</option>
+                    <option value="vehicle">Vehicle</option>
+                </select>
+
+                <div style="display: flex; justify-content: space-between;">
+                    <p id ="popupDetectionText"> object was detected as a with a confidece score of:</p>
+                    <p id="confidenceScoreA"> </p>
+                </div>
+
+                <button class="big_button" type="button" onclick="changeDetectionType()">Save Changes</button>
+
+                
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function openEditTypePopup(annotation, myCategoryName) {// need detection
+            console.log(annotation);
+            let score = annotation.score;
+            let id = annotation.id;
+
+            document.getElementById('popupDetectionID').innerText = id;
+
+            if (annotation.manual) {
+                let description = `Object was marked as a ${myCategoryName} by the user`;
+                document.getElementById('popupDetectionText').innerText = description;
+                document.getElementById('confidenceScoreA').innerText = '';
+            }
+            else {
+                let description = `Object was detected as a ${myCategoryName} with a confidece score of`;
+                document.getElementById('popupDetectionText').innerText = description;
+                document.getElementById('confidenceScoreA').innerText = score;
+            }
+            
+            document.getElementById('detectedObjectTypeA').value = myCategoryName;
+            document.getElementById('popupTypeOverlay').style.display = 'flex';
+        }
+
+
+        document.getElementById('closeTypePopup').onclick = function() {
+            document.getElementById('popupTypeOverlay').style.display = 'none';
+        }
+
+
+        document.getElementById('popupTypeOverlay').onclick = function(event) {
+            if (event.target === document.getElementById('popupTypeOverlay')) {
+                document.getElementById('popupTypeOverlay').style.display = 'none';
+            }
+        }
+
+        function changeDetectionType() {
+            event.preventDefault();
+            
+            let newType = document.getElementById('detectedObjectTypeA').value;
+            let annotationID = Number(document.getElementById('popupDetectionID').innerText);
+            let categoryID = -1;
+
+            for (let i = 0; i < detections["categories"].length; i++) {
+                console.log(detections["categories"][i]["name"] + " vs. " + newType);
+                if (detections["categories"][i]["name"] === newType) {
+                    categoryID = detections["categories"][i]["id"];
+                    break;
+                }
+            }
+
+            if (categoryID === -1) {
+                alert("Something went wrong, category not found");
+                return;
+            }
+
+            $.post("/edit_annotation_type/{{ id }}", {annotation_id: annotationID, category_id: categoryID}, function(response){
+                //load data
+                console.log("Data: " + response );
+                if (response == "success"){
+                
+                    $.post("/load_detection_results/{{ id }}", function(data){
+                        detections = data;
+                        generateDetectionTable(data);
+                        generateAnnotationSettings(data);
+                        var currentImageName = document.getElementById("dynamic-slide").getElementsByTagName('a')[0].innerHTML.split(": ")[1];
+                        generateAnnotationsLayerTableForImage(currentImageName);
+                        detections = data;
+                        showCurrentSlide();
+                    });
+                
+                }
+            });
+
+            document.getElementById('popupTypeOverlay').style.display = 'none';
+        }
+
+
+
+
+    </script>
+</body>
+</html>
