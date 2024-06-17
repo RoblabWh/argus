@@ -504,12 +504,18 @@ class ArgusServer:
         return "success"
 
     def add_annotation(self, report_id):
-        annotation_class = request.form.get('annotation_class')
+        annotation_class = int(request.form.get('annotation_class'))
         annotation_bbox = request.form.get('annotation_bbox')
-        annotation_imageid = request.form.get('annotation_imageid')
+        #convert string to list
+        annotation_bbox = json.loads(annotation_bbox)
+        annotation_imageid = int(request.form.get('annotation_imageid'))
+        #parse string to int
+        annotation_imageid = int(annotation_imageid)
         print("add_annotation for id" + str(report_id) + " with: " + str(annotation_class), flush=True)
-        self.project_manager.add_annotation(report_id, annotation_class, annotation_bbox, annotation_imageid)
-        return "success"
+        ann_id = self.project_manager.add_annotation(report_id, annotation_class, annotation_bbox, annotation_imageid)
+        #return the id of the new annotation and success
+        return jsonify({"success": True, "annotation_id": ann_id})
+        #return "success"
 
     def load_detection_results(self, report_id):
         #get path of projects annotation file

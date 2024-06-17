@@ -345,6 +345,7 @@
         function generateAnnotationSettings(detectionData){
             //check if slideshow-settings-annotaions-tablink exists
             var x = document.getElementById("slideshow-settings-annotaions-tablink");
+            console.log("generateAnnotationSettings");
             if (x === null) {
                 //create slideshow-settings-annotaions-tablink
                 var tabsDiv = document.getElementById("slideshow-settings-tabs-links");
@@ -354,7 +355,25 @@
                 tabLink.innerHTML = "AI-Detections";
                 //call openSettings(event,'slideshow-settings-Annotations')
                 tabLink.onclick = function() {openSettings(event,'slideshow-settings-Annotations')};
-                tabsDiv.appendChild(tabLink);
+                tabsDiv.appendChild(tabLink);                
+            }
+            populateAddAnnotationCategoryDropdown(detectionData);
+
+        }
+
+        function populateAddAnnotationCategoryDropdown(detectionData){
+            let addAnnotationDropdown = document.getElementById("addAnnotationDropdown");
+            let categories = detectionData["categories"];
+            console.log("populateAddAnnotationCategoryDropdown");
+            addAnnotationDropdown.innerHTML = "";
+
+            for (let i = 0; i < categories.length; i++){
+                let category = categories[i];
+                let option = document.createElement("option");
+                option.value = category.id;
+                option.innerHTML = category.name;
+                addAnnotationDropdown.appendChild(option);
+                console.log("added category: " + category.name);
             }
         }
 
@@ -393,9 +412,7 @@
             }
             console.log("currentImageAnnotations: " + currentImageAnnotations.length);
             
-            //currentImageAnnotations = detections["annotations"][getImageIndexByName(fileName)];
             var categories = detections["categories"];
-            //currentImageAnnotations = annotations;
 
             annotationColorOffset = parseInt(360/categories.length);
             filteredSelection = [];
@@ -694,7 +711,6 @@
             console.log("scale: " + scale + " img.width: " + img.width + " img.naturalWidth: " + img.naturalWidth);
 
             imageIndex = getImageIndexByName(filename);
-            //annotationData = detections["annotations"][imageIndex];
 
             dynamicAnnotationsCanvas.setWidth(img.width);
             dynamicAnnotationsCanvas.setHeight(img.height);
@@ -711,7 +727,7 @@
                 let color = document.getElementById("color" + category.name).value;
                 let strokeWidth = document.getElementById("annotationsLineWidth").value;
                 
-                var x, y, w, h;
+                let x, y, w, h;
                 x = annotation.bbox[0] * scale;
                 y = annotation.bbox[1] * scale;
                 w = annotation.bbox[2] * scale;
@@ -736,6 +752,7 @@
                     myStartY: y,
                     myStartW: w,
                     myStartH: h,
+                    myAnnotationID: annotation.id,
                 })
                 rect.on('mouseover', function(options) {
                     dynamicAnnotationsCanvas.setCursor('pointer');
@@ -770,7 +787,7 @@
             dynamicAnnotationsCanvas.renderAll();
         }
 
-        function selectAnnotation(rect, annotation){
+        function selectAnnotation(rect, annotation, activateEdit=false){
             console.log("selectAnnotation");
             console.log(annotation);
             console.log(rect);
@@ -778,6 +795,7 @@
             unselectAnnotations();
             //set this one to active
             
+
             let category = rect.myCategoryName;
             let color = document.getElementById("color" + category).value;
             fill = hexToRGB(color);
@@ -788,8 +806,13 @@
             rect.set('stroke', 'rgba(0,0,0,1)');
             rect.set('opacity', 1);
 
-            //display options
-            activateAnnotationsOptions(rect, annotation);
+            if (activateEdit){
+                deactivateAllAnnotationsOptions();
+                activateAnnotationsEditButtons(rect, annotation);
+            }
+            else{
+                activateAnnotationsOptions(rect, annotation);
+            }
 
             dynamicAnnotationsCanvas.renderAll();
         }
@@ -1218,6 +1241,65 @@
             })
             dynamicAnnotationsCanvas.renderAll();
 
+        }
+
+        function addDetection(){
+            //tell the server to add a new detection on current image then rerender the canvas and set the new detection to active
+            let annotation_imageid = getImageIndexByName(currentImageName);
+            let annotation_category = document.getElementById("addAnnotationDropdown").value;
+
+            
+            let image = document.getElementById("dynamic-image-RGB").getElementsByTagName("img")[0];
+            let scale = image.naturalWidth / image.width;
+            let centerX_scaled = image.width / 2 * scale;
+            let centerY = image.height / 2 * scale;
+            let annotation_bbox = [centerX_scaled - 100, centerY - 100, 200, 200];
+
+            //let annotation_bbox = [100,100,100,100];
+            
+            $.post("/add_annotation//{{ id }}", {annotation_class: annotation_category, annotation_bbox: JSON.stringify(annotation_bbox), annotation_imageid: annotation_imageid}, function(response){
+                //load data
+                console.log("---RESPONSE : ")
+                console.log(response );
+                if (response.success){
+                    $.post("/load_detection_results/{{ id }}", function(data){
+                        detections = data;
+                        generateDetectionTable(data);
+                        generateAnnotationSettings(data);
+                        var currentImageName = document.getElementById("dynamic-slide").getElementsByTagName('a')[0].innerHTML.split(": ")[1];
+                        generateAnnotationsLayerTableForImage(currentImageName);
+                        detections = data;
+                        showCurrentSlide();
+
+                        //set the new detection to active
+                        let annID = response.annotation_id;
+                        let annotation = (function(){
+                            for (let i = 0; i < detections["annotations"].length; i++){
+                                if (detections["annotations"][i].id === annID){
+                                    return detections["annotations"][i];
+                                }
+                            }
+                        })();
+
+                        let objects = dynamicAnnotationsCanvas.getObjects();
+                        for (let i = 0; i < objects.length; i++){
+                            if (objects[i].myAnnotationID === annID){
+                                let rect = objects[i];
+                                selectAnnotation(rect, annotation, true);
+
+                                
+                                dynamicAnnotationsCanvas.setActiveObject(rect);
+                            }
+                        }
+                    });
+                
+                }
+            });
+
+            
+
+
+            
         }
 
        

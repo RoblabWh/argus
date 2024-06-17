@@ -20,6 +20,7 @@
             justify-content: center;
             align-items: center;
             z-index: 1000;
+            transition: all 0.3s ease-in-out;
         }
 
         /* The form container */
@@ -55,11 +56,15 @@
             font-size: 18px;
         }
 
+        .form-container button {
+            transition: all 0.3s ease-in-out;
 
-        .form-container .send-dropdown-content button:hover {
-            background-color: #f1f1f1;
         }
 
+        .form-container button:hover {
+            color: var(--font-color-a);
+            font-weight: bold;
+        }
 
 
         .shareDropdown {

@@ -591,12 +591,13 @@ class ProjectManager:
     def add_annotation(self, report_id, category_id, bbox, image_id):
         project = self.get_project(report_id)
         path = project['data']['annotation_file_path']
+        new_id = 0
 
         with open(path, "r") as json_file:
             detections = json.load(json_file)
             annotations = detections['annotations']
 
-            new_id = 0
+
             for annotation in annotations:
                 if annotation['id'] > new_id:
                     new_id = annotation['id']
@@ -609,6 +610,8 @@ class ProjectManager:
 
         with open(path, "w") as json_file:
             json.dump(detections, json_file)
+
+        return new_id
 
     def set_unprocessed_changes(self, report_id, unprocessed_changes):
         self.update_data_by_keyword(report_id, 'unprocessed_changes', unprocessed_changes)

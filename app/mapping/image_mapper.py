@@ -575,7 +575,9 @@ class ImageMapper:
         for i in range(len(filtered_images)-1):
 
             plausible_flight.append(filtered_images[i])
-            if time_diff[i] > 4*median_time:
+            compare_time = 4*median_time if 4*median_time > 45.0 else 45.0
+            print("Time diff: ", time_diff[i], " Median time: ", median_time, " Compare time: ", compare_time, flush=True)
+            if time_diff[i] > compare_time:
                 print("~p not plausible flight! with time diff: ", time_diff[i], " and median time: ", median_time, flush=True)
                 list_of_connected_flights.append(plausible_flight.copy())
                 plausible_flight = []

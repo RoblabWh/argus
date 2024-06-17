@@ -1560,10 +1560,14 @@
             </div>
             <div id="slideshow-settings-Annotations" class="tabcontent-vertical">
                 <div class="slideshow-settings-item-unstructured">
-                    <div>
+                    <div style="display: flex; align-items: baseline;">
                         Annotations line width:
                         <input type="number" id="annotationsLineWidth" name="lineWidth" min="1" max="100" value="2"
-                               style="width: 60px; margin-bottom: 10px; border: 0px; border-radius: 4px;">
+                               style="width: 60px; margin: 0 6px; border: 0px; border-radius: 4px; padding: 4px">
+                        <div style="width: 2px; margin: auto"></div>
+                        <select id="addAnnotationDropdown" style="width: min(80px, 15%); margin: 0 8px; padding: 2px; border-radius: 4px;">
+                            <option>placeholder</select>
+                        <input class="big_button" style="float: right;height: auto;margin: 0 0 10px;" type="button" value="Add Detection" onclick="addDetection()">
                     </div>
                     <div id="layer-table-container">
                         <table>
