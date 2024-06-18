@@ -120,6 +120,7 @@ class Metadata:
             height = int(image_size[1])
             image_size = (width, height)
         except KeyError:
+            print("__UNUSABLE__ Error while loading image size", flush=True)
             image_size = None
             self.usable = False
         return image_size
@@ -172,6 +173,7 @@ class Metadata:
         try:
             relative_altitude = float(self._get_if_exist(self.data_dict, keys['relative_altitude']))
         except:
+            print('___UNUSABLE___ Error while loading relative altitude', flush=True)
             relative_altitude = 1
             self.usable = False
         try:
@@ -183,6 +185,7 @@ class Metadata:
             longitude = GPS.gms_to_dg(longitude_gms)
             return GPS(relative_altitude, latitude, longitude)
         except:
+            print('___UNUSABLE___ Error while loading GPS', flush=True)
             self.usable = False
             return None
 
@@ -228,12 +231,11 @@ class Metadata:
         """
 
 
-        camera_model_name = self.camera_model + "_ir" if ir else self.camera_model
+        camera_model_name = self.camera_model + "_IR" if ir else self.camera_model
         try:
-            focal_length = self.get_data_from_camera_specs(camera_model_name, 'focal_length')
-            fov = self.get_data_from_camera_specs(camera_model_name, 'fov')
-            print("Using camera_specs.json: " + camera_model_name, flush=True)
-            camera_properties = CameraProperties(camera_model_name, focal_length, fov,)
+            focal_length = self.get_data_from_camera_specs(camera_model_name, keys['focal_length'])
+            fov = self.get_data_from_camera_specs(camera_model_name, keys['fov'])
+            camera_properties = CameraProperties(camera_model_name, fov, focal_length)
             return camera_properties
         except Exception as e:
             try:
@@ -247,6 +249,7 @@ class Metadata:
                 return camera_properties
 
             except Exception as e:
+                print('__UNUSABLE__ Error while loading camera properties: ' + str(e), flush=True)
                 self.usable = False
                 return None
 
@@ -271,7 +274,7 @@ class Metadata:
                                     gimbal_pitch_degree, gimbal_roll_degree)
             return xmp_metadata
         except Exception as e:
-            print("Error while loading orientation: " + str(e), flush=True)
+            print("__UNUSABLE__ Error while loading orientation: " + str(e), flush=True)
             self.usable = False
             return None
 
@@ -292,8 +295,12 @@ class Metadata:
     def get_data_from_camera_specs(self,camera_model_name, key):
         with open('./mapping/camera_specs.json') as f:
                 data = json.load(f)
+                print("Camera model name: " + camera_model_name, flush=True)
+                print("Key: " + key, flush=True)
+                print("Data: " + str(data), flush=True)
                 if camera_model_name in data:
                     val = float(data[camera_model_name][key])
+                    print("Value: " + str(val) + " for key: " + key + " with model: " + camera_model_name, flush=True)
                     msg = "Using camera_specs.json..."
                     f.close()
                 else:

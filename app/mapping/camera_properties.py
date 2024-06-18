@@ -54,6 +54,9 @@ class CameraProperties:
         """
         return self.fl
 
+    def get_model(self):
+        return self.model
+
     def get_sensor_size(self):
         return (self.sensor_width, self.sensor_height)
 

@@ -68,7 +68,7 @@
     "ir": {
         "ir": "",
         "ir_value": "",
-        "ir_image_size": {"x":640,"y":640},
+        "ir_image_size": {"x":640,"y":480},
         "filename_suffix": ""
     },
     "camera_properties": {
