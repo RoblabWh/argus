@@ -58,6 +58,16 @@ class Keyframes:
         else:
             self.changeKeyframePos(index, pose)
 
+    def getKeyframePose(self, id):
+        try:
+            index = self.keyframeIndices[id]
+        except:
+            index = None
+        if (index is None or index < 0):
+            return None
+        else:
+            return self.keyframePoses[index]
+
     def getAllKeyframes(self):
         allKeyframes = []
         for i in range(len(self.keyframeIndices)):

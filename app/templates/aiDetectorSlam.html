@@ -133,11 +133,7 @@
                     $.post("/load_detection_results/{{ id }}", function(data){
                         console.log(data);
                         detections = data;
-                        generateDetectionTable(data);
-                        generateAnnotationSettings(data);
-                        var currentImageName = document.getElementById("dynamic-slide").getElementsByTagName('a')[0].innerHTML.split(": ")[1];
-                        generateAnnotationsLayerTableForImage(currentImageName);
-                        detections = data;
+                        loadDetections(data);
                     });
 
                     var button = document.getElementById("runDetectionButton");
@@ -199,7 +195,7 @@
             }
 
             console.log(imagesWithDetectionsByCategory);
-            
+
 
 
             //for every "category" in detection data create a row
@@ -263,7 +259,7 @@
                 var selectedImages = imagesWithDetectionsByCategory[category.name];
                 for (let j = 0; j < selectedImages.length; j++){
                     var image = images[selectedImages[j]];
-                    
+
                     var subTableRow = subTable.insertRow();
                     var lineHeading = document.createElement('th');
                     lineHeading.innerHTML = image.file_name;
@@ -275,7 +271,7 @@
                         showImageByFileName(opt);
                         };
                     })(image.file_name);
-                    
+
                 }
 
                 subTableCell.appendChild(subTable);
@@ -390,7 +386,7 @@
                 }
             }
             console.log("currentImageAnnotations: " + currentImageAnnotations.length);
-            
+
             //currentImageAnnotations = detections["annotations"][getImageIndexByName(fileName)];
             var categories = detections["categories"];
             //currentImageAnnotations = annotations;
@@ -788,9 +784,8 @@
         </select>
         <label for="ai_model_options" style="margin: auto auto auto 16px; display: none"> Detection Quality </label>
         <select name="Processing Options" id="processing_options" style="margin: auto 0 auto 0">
-            <option selected="full" value="full">Full image (Faster but coarse analysis)</option>
-            <option value="one_split">Single split (Enhanced analysis)</option>
-            <option value="split">Multiple splits (Detailed analysis but slower)</option>
+            <option selected="full" value="full">Full keyframe (Faster but coarse analysis)</option>
+            <option value="one_split">Split into 4 Faces (Enhanced analysis) (not yet working>)</option>
         </select>
         <label for="processing_options" style="margin: auto auto auto 16px"> Processing Options </label>
         <div style="float: right; margin: auto 8px auto 0">
@@ -804,11 +799,6 @@
     </div>
     <div id="detectionTableContainer">
     </div>
-    {% if detections %}
-    <div id="initialDetectionsLoading">
-        <div class="spinner"></div>
-    </div>
-    {% endif %}
     <script>
 
     </script>

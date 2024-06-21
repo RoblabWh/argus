@@ -31,6 +31,34 @@
     .ctrl:hover {
         background: rgba(200, 200, 200, 1);
     }
+    div.objectLabel span {
+        visibility: hidden;
+        position: absolute;
+        border-radius:3px;
+        background-color:#fff;
+        font-size: 14px;
+        color:#000;
+        text-align:center;
+        max-width: 200px;
+        padding: 5px 10px;
+        margin-left: -220px;
+        cursor:default;
+    }
+    div.objectLabel:hover span{
+        visibility: visible;
+    }
+    div.objectLabel span:after {
+        content: '';
+        position: absolute;
+        width: 0;
+        height: 0;
+        border-width: 10px;
+        border-style: solid;
+        border-color: #fff transparent transparent transparent;
+        bottom: -20px;
+        left: -10px;
+        margin: 0 50%;
+    }
     </style>
 </head>
 <body>
@@ -46,8 +74,13 @@
         <div class="ctrl" id="zoom-out">&minus;</div>
         <div class="ctrl" id="fullscreen">&#x2922;</div>
         <div class="ctrl" id="toggleHotspots">
+            <i class="fa fa-circle" id="icon"></i>
+        </div>
+        {% if detections %}
+        <div class="ctrl" id="toggleDetections">
             <i class="fa fa-eye" id="icon"></i>
         </div>
+        {% endif %}
         <div class="ctrl" id="load-next-pano">&#9655;</div>
 
     </div>
@@ -57,6 +90,17 @@
 var keyframe_images = {{ keyframe_images | tojson }};
 var keyframe_folder = {{ keyframe_folder | tojson }};
 var keyframes = {{ keyfrms | tojson }};
+var detections = {{ detections | tojson }};
+var detection_data = [];
+var remove_mask_imgs = [];
+for (let i = 0; i < keyframe_images.length; i++) {
+    if (keyframe_images[i].includes('mask')) {
+        remove_mask_imgs.push(keyframe_images[i]);
+    }
+}
+for (let remove_mask_img of remove_mask_imgs) {
+    keyframe_images.splice(keyframe_images.indexOf(remove_mask_img), 1);
+}
 var keyframes_sort = keyframe_images.sort((a,b) => {
         let int_a = a.replace(/\D/g,'');
         let int_b = b.replace(/\D/g,'');
@@ -78,6 +122,7 @@ const sigma = 0.005;
 const customSize = 20;
 const minDistCss = 0;
 const maxDistCss = 10;
+const minDetectionScore = 0.8;
 
 var pannellum_settings = {
     "default": {
@@ -108,26 +153,27 @@ viewer = pannellum.viewer('panorama', pannellum_settings);
 let hotspotsInScene = [];
 
 function updateHotspots(viewer) {
-    //get current Scene nr
-    let id = viewer.getScene();
+    hotspotsInScene = [];
+    let id = parseInt(viewer.getScene());
     let currentPose = undefined;
     let someMatrix = undefined;
 
     for (let keyframe of keyframes) {
-        if(keyframe.id == id) {
+        if(keyframe.id === id) {
             currentPose = getInverseOfPose(keyframe.pose);
             someMatrix = new THREE.Matrix4().set(currentPose.elements[0],currentPose.elements[1],currentPose.elements[2], 0,
                                            currentPose.elements[4],currentPose.elements[5],currentPose.elements[6], 0,
                                            currentPose.elements[8],currentPose.elements[9],currentPose.elements[10], 0,
                                                         0,             0,             0, 1);
+            console.log(someMatrix);
             break;
         }
     }
     let keyframeStats = [];
     let sortedKeyframesByDistance;
-    if(currentPose != undefined) {
+    if(currentPose !== undefined) {
         for (let keyframe of keyframes) {
-            if(keyframe.id == id) {
+            if(keyframe.id === id) {
                 continue;
             }
             //calculate inverse pose matrix
@@ -154,22 +200,9 @@ function updateHotspots(viewer) {
                 "clickHandlerArgs": [keyframe.id, pitch, yaw, distance, currentPose, keyframe.pose],
                 "distance": distance
             };
-
-            /*let css = updateCss(keyframe.id, distance);
-            viewer.addHotSpot({
-                "pitch": pitch,
-                "yaw": yaw,
-                "type": "info",
-                "clickHandlerFunc": swapScene,
-                "cssClass": css,
-                "clickHandlerArgs": [keyframe.id, pitch, yaw, distance, currentPose, keyframe.pose],
-                "id": keyframe.id,
-                "scale": true
-            }, viewer.getScene());*/
-            //hotspotsInScene.push(keyframe.id);
         }
         sortedKeyframesByDistance = keyframeStats.sort((a,b) => {
-            return b.distance - a.distance; //sorting so that the further distance gets places earlier
+            return b.distance - a.distance;
         });
         for (let keyframe of sortedKeyframesByDistance) {
             if(keyframe === undefined) {
@@ -194,9 +227,9 @@ function updateHotspots(viewer) {
 function getInverseOfPose(pose) {
     let matrix = new THREE.Matrix4();
     matrix.set(pose[0],pose[1],pose[2],pose[3],
-                       pose[4],pose[5],pose[6],pose[7],
-                       pose[8],pose[9],pose[10],pose[11],
-                       pose[12],pose[13],pose[14],pose[15]);
+               pose[4],pose[5],pose[6],pose[7],
+               pose[8],pose[9],pose[10],pose[11],
+               pose[12],pose[13],pose[14],pose[15]);
     let matrix2 = new THREE.Matrix4().getInverse(matrix);
     return matrix2;
 }
@@ -276,6 +309,70 @@ function calculateOrientation(currentPose, keyframepose) {
     return [pitch, yaw];
 }
 
+let detectionsInScene = [];
+
+function generateDetectionsForCurrentScene(data) {
+    detectionsInScene = [];
+    let detection_image_id = undefined;
+    let detections_in_current_image = [];
+    let cImage = undefined;
+    for (let image of data.images) {
+        if(parseInt(viewer.getScene()) === parseInt(image.file_name.replace(/\D/g,''))) {
+            detection_image_id = parseInt(image.id);
+            cImage = image;
+        }
+    }
+    for (let annotation of data.annotations) {
+        if(annotation.image_id === detection_image_id) {
+            detections_in_current_image.push(annotation);
+        }
+    }
+    for (let object of detections_in_current_image) {
+        if(object.score < minDetectionScore) {
+            continue;
+        }
+        let category = detections.categories[object.category_id].name;
+        let normXMid = (object.bbox[0] + (object.bbox[2]/2)) - (cImage.width/2);
+        let normYMid = -(object.bbox[1] + (object.bbox[3]/2) - (cImage.height/2));
+        let yaw = normXMid/(cImage.width/2)*180;
+        let pitch = normYMid/(cImage.height/2)*90;
+        let cssName = createObjectCss(object.bbox[2], object.bbox[3], detections.categories[object.category_id].colorHSL, object.id, category);
+        viewer.addHotSpot({
+            "pitch": pitch,
+            "yaw": yaw,
+            "type": "info",
+            "id": "" + viewer.getScene() + "_obj_" + category,
+            "cssClass": cssName,
+            "createTooltipFunc": objectLabel,
+            "createTooltipArgs": [category, object.score],
+            "scale": true
+        }, viewer.getScene()); //add detection score to label
+        detectionsInScene.push("" + viewer.getScene() + "_obj_" + category);
+    }
+}
+
+function objectLabel(hotSpotDiv, args) {
+    hotSpotDiv.classList.add("objectLabel");
+    let span = document.createElement("span");
+    hotSpotDiv.appendChild(span);
+    span.innerHTML = (Math.round(args[1]*100)/100) + " : " + args[0];
+    span.style.width = span.scrollWidth - 20 + 'px';
+    span.style.marginLeft = - (span.scrollWidth - hotSpotDiv.offsetWidth)/2+'px';
+    span.style.marginTop = - span.scrollHeight - 12 + 20 + 'px';
+}
+
+function createObjectCss(width, height, color, index, label) {
+    let styleClassName = label + index;
+    let cssSize = (20/190000)*(width*height)+(23.95);
+    let style = document.createElement('style');
+    style.id = styleClassName;
+    style.type = "text/css";
+    style.innerHTML = '.' + styleClassName + '{ height: ' + height + 'px; width: ' + width + 'px; border-color:rgba(' + color[0] + ',' + color[1] + ',' + color[2] +'); border-style: solid; border-width: thick;}';
+	//style.innerHTML = '.' + styleClassName + '{ height: ' + cssSize + 'px; width: ' + cssSize + 'px; background:rgba(' + color[0] + ',' + color[1] + ',' + color[2] +',0.5); border-color:rgba(' + color[0] + ',' + color[1] + ',' + color[2] +',0.5); border-style: solid; border-width: thin;}';
+    document.getElementsByTagName('head')[0].appendChild(style);
+	return styleClassName;
+}
+
 var numOfPanos = {{ keyframe_images | length }};
 
 // Make buttons work
@@ -303,7 +400,6 @@ document.getElementById('fullscreen').addEventListener('click', function(e) {
 document.getElementById('load-previous-pano').addEventListener('click', function(e) {
     index = keyframe_indices.indexOf(parseInt(viewer.getScene()))
     viewer.loadScene(keyframe_indices[(index - 1).mod(keyframe_indices.length)]);
-    console.log((index - 1).mod(keyframe_indices.length));
 });
 document.getElementById('load-next-pano').addEventListener('click', function(e) {
     index = keyframe_indices.indexOf(parseInt(viewer.getScene()))
@@ -315,19 +411,40 @@ document.getElementById('toggleHotspots').addEventListener('click', (e) => {
     if(hotspotsVisible) {
         removeHotspots(viewer);
         viewer.off('load');
-        document.getElementById('toggleHotspots').children[0].classList.remove("fa-eye-slash");
-        document.getElementById('toggleHotspots').children[0].classList.add("fa-eye");
+        document.getElementById('toggleHotspots').children[0].classList.remove("fa-circle-xmark");
+        document.getElementById('toggleHotspots').children[0].classList.add("fa-circle");
         hotspotsVisible = false;
     } else {
         updateHotspots(viewer);
         viewer.on('load', () => {
             updateHotspots(viewer);
         });
-        document.getElementById('toggleHotspots').children[0].classList.remove("fa-eye");
-        document.getElementById('toggleHotspots').children[0].classList.add("fa-eye-slash");
+        document.getElementById('toggleHotspots').children[0].classList.remove("fa-circle");
+        document.getElementById('toggleHotspots').children[0].classList.add("fa-circle-xmark");
         hotspotsVisible = true;
     }
 });
+
+{% if detections %}
+let detectionsVisible = false;
+document.getElementById('toggleDetections').addEventListener('click', (e) => {
+    if(detectionsVisible) {
+        removeDetections(viewer);
+        viewer.off('load');
+        document.getElementById('toggleDetections').children[0].classList.remove("fa-eye-slash");
+        document.getElementById('toggleDetections').children[0].classList.add("fa-eye");
+        detectionsVisible = false;
+    } else {
+        generateDetectionsForCurrentScene(detections);
+        viewer.on('load', () => {
+            generateDetectionsForCurrentScene(detections);
+        });
+        document.getElementById('toggleDetections').children[0].classList.remove("fa-eye");
+        document.getElementById('toggleDetections').children[0].classList.add("fa-eye-slash");
+        detectionsVisible = true;
+    }
+});
+{% endif %}
 
 function removeHotspots(viewer) {
     for (let id of hotspotsInScene) {
@@ -336,8 +453,15 @@ function removeHotspots(viewer) {
     hotspotsInScene = [];
 }
 
+function removeDetections(viewer) {
+    for (let id of detectionsInScene) {
+        viewer.removeHotSpot(id);
+    }
+    detectionsInScene = [];
+}
+
 function show_keyframe(scene_number) {
-    if(parseInt(viewer.getScene()) != scene_number) {
+    if(parseInt(viewer.getScene()) !== scene_number) {
         viewer.loadScene(""+scene_number);
     }
 

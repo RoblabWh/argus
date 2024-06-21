@@ -52,15 +52,7 @@
     </div>
     </div>
     <script>
-
-        var keyframe_images = {{ keyframe_images | tojson }};
-        var keyframe_folder = {{ keyframe_folder | tojson }};
-        var keyframes_sort;
-        keyframes_sort = keyframe_images.sort((a,b) => {
-            let int_a = a.replace(/\D/g,'');
-            let int_b = b.replace(/\D/g,'');
-            return parseInt(int_a) - parseInt(int_b);
-        });
+        //using keyframes_sort from panoViewerSlam.html
         let keyframe_gallery = document.getElementsByClassName('keyframe_gallery')[0];
         for (let keyframe of keyframes_sort) {
             div = document.createElement('div');

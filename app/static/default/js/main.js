@@ -42,7 +42,7 @@ let wheelHandler;
 let viewControls;
 
 
-function init(keyframes, landmarks) {
+function init() {
 
     // create a camera
     camera = new THREE.PerspectiveCamera(45, document.getElementsByClassName('vslam_model')[0].offsetWidth / document.getElementsByClassName('vslam_model')[0].offsetHeight, 0.01, 1000);
@@ -83,30 +83,11 @@ function init(keyframes, landmarks) {
     // create a view controller that
     viewControls = new ViewControls(camera);
 
-    // create a mouse action listener
-    let mouseListener = function (btn, act, pos, vel) {
-        if (btn == 0 && act != 0) {
-            viewControls.addRot(vel[0], vel[1]);
-        }
-        else if (btn == 2 && act != 0) {
-            viewControls.addMove(vel[0], vel[1])
-        }
-    };
-    // create a mouse wheel action listener
-    let wheelListener = function (rot) {
-        viewControls.addZoom(rot);
-    };
-    mouseHandler = new MouseHandler(renderer.domElement, mouseListener);
-    wheelHandler = new WheelHandler(renderer.domElement, wheelListener);
     setCameraMode(property.CameraMode);
     viewControls.update(100);
 
-    loadKeyframes(keyframes);
-    loadLandmarks(landmarks);
-
     // animation render function
     render();
-
 }
 
 function loadKeyframes(keyframes) {
@@ -129,6 +110,27 @@ function loadKeyframes(keyframes) {
             cameraFrames.updateKeyframe(id, keyfrm["camera_pose"]);
         }
     }
+}
+
+let controlsInitiated = false;
+
+function initiateControls() {
+    // create a mouse action listener
+    let mouseListener = function (btn, act, pos, vel) {
+        if (btn == 0 && act != 0) {
+            viewControls.addRot(vel[0], vel[1]);
+        }
+        else if (btn == 2 && act != 0) {
+            viewControls.addMove(vel[0], vel[1])
+        }
+    };
+    // create a mouse wheel action listener
+    let wheelListener = function (rot) {
+        viewControls.addZoom(rot);
+    };
+    mouseHandler = new MouseHandler(renderer.domElement, mouseListener);
+    wheelHandler = new WheelHandler(renderer.domElement, wheelListener);
+    controlsInitiated = true;
 }
 
 function loadLandmarks(landmarks) {

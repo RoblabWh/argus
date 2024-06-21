@@ -110,7 +110,6 @@
             position: relative;
         }
 
-
         .big_button:hover {
           color: var(--font-color-a);
           font-weight: bold;
@@ -217,6 +216,23 @@
           border-radius: 6px;
         }
 
+        .small_img {
+            position: absolute;
+            top: 0px;
+            left: 0px;
+            width: 300px;
+            height: 300px;
+            margin: 10px;
+            overflow: hidden;
+        }
+
+        .top {
+            position:absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+
         .spinner-small-export {
           width: 1.25rem;
           --b: 6px; /* the border thickness */
@@ -241,6 +257,7 @@
         }
 
         .vslam_results {
+            position: relative;
             min-height: 500px;
             overflow: hidden;
             display: inherit;
@@ -259,6 +276,10 @@
             position: relative;
             height: 420px;
             max-height: 85vh;
+        }
+
+        #mapping_output{
+            position: relative;
         }
 
         #WebGL-output {
@@ -316,29 +337,30 @@
             </div>
         </div>
 
-       <!-- <div id="reprocess" style="padding: 1rem 0;">
-            <button style="" class="big_button" onClick="location.href = '/{{id}}/edit'"> Change settings and reprocess</button>
-        </div> -->
-
-        <!--<div style="padding: 1rem 0;">
-            <button style="" class="big_button" onClick="location.href = '/{{id}}/edit'"> Change settings and reprocess</button>
-        </div>-->
+    {% if processing %}
+    <div class="progress-bar-container">
+        <div id="progress-bar"></div>
+        <a id="progress-bar-text"> MAPPING... </a>
+    </div>
+    {% endif %}
     <br>
     <div class = "vslam_results">
         <hr class="separator">
-    <div class="vslam_stats">
-        <h3>VSLAM Results</h3>
+            <div class="vslam_stats">
+                <h3>VSLAM Results</h3>
+            </div>
+            <div class="vslam_model">
+                <div id="Stats-output">
+                </div>
+                <div id="WebGL-output">
+                </div>
+                <div id="global-scale-slider">
+                </div>
+            </div>
     </div>
-    <div class="vslam_model">
-        <div id="Stats-output">
+        <div>
+            {% include 'aiDetectorSlam.html' %}
         </div>
-        <div id="WebGL-output">
-        </div>
-        <div id="global-scale-slider">
-
-        </div>
-        </div>
-    </div>
         <div>
             {% include 'keyframe_overview.html' %}
         </div>
@@ -375,8 +397,16 @@
         var keyframes = {{ keyfrms | tojson }};
         var landmarks = {{ landmarks | tojson }};
         var slam_output = {{ slam_output | tojson }};
+        var processing = {{ processing | tojson }};
+        var slam_mapping_output = {{ slam_mapping_output | tojson }}
 
-        window.onload = init(keyframes, landmarks);
+        window.onload = (event) => {
+            init();
+            initiateControls();
+            loadKeyframes(keyframes);
+            loadLandmarks(landmarks);
+            loadSlamMappingOutput(slam_mapping_output);
+        }
 
         window.addEventListener('resize', onResize, false);
 
@@ -417,6 +447,67 @@
 
         landmarkDiv.appendChild(landmarkText);
         vslam_stats[0].appendChild(landmarkDiv);
+
+        function check_slam_map_progress(report_id) {
+            $.get('/{{ id }}/slam_map_process_status', (result) => {
+                var progress = result.progress;
+                var mapping_result = result.mapping_result;
+                var trajectory = result.trajectory;
+
+                var bar_mapping = document.getElementById("progress-bar");
+                bar_mapping.style.width = (progress * 100) + '%';
+
+                console.log(progress);
+
+                if(progress === 1) {
+                    console.log('done');
+                    document.getElementById("progress-bar-text").innerHTML = "DONE";
+                    window.clearInterval(intervalID);
+                    $.get('/stop_mapping_thread/{{ id }}');
+                    results = [mapping_result, trajectory];
+                    loadSlamMappingOutput(results);
+                }
+            })
+        }
+
+        function loadSlamMappingOutput(slam_mapping_output) {
+            console.log(slam_mapping_output);
+            if(slam_mapping_output !== null && slam_mapping_output.length > 0) {
+                let div = document.createElement('div');
+                div.id = "mapping_output";
+                let vslam_stats = document.getElementsByClassName("vslam_stats")[0];
+                if (slam_mapping_output.length > 1) {
+                    //map + trajectory
+                    const img = document.createElement('img');
+                    img.src = slam_mapping_output[0];
+                    img.classList.add("small_img");
+                    const trajectory = document.createElement('img');
+                    trajectory.src = slam_mapping_output[1];
+                    trajectory.classList.add("small_img");
+                    trajectory.classList.add("top");
+                    div.appendChild(img);
+                    div.appendChild(trajectory);
+                    vslam_stats.appendChild(div);
+                } else {
+                    //map
+                    const img = document.createElement('img');
+                    img.src = slam_mapping_output[0];
+                    img.classList.add("small_img");
+                    div.appendChild(img);
+                    vslam_stats.appendChild(div);
+                }
+            } else {
+                console.log("no slam mapping outputs found");
+            }
+        }
+
+        {% if processing %}
+        console.log("next checking progess");
+        //check_progress({{ id }}, 'progress_bar');
+        var intervalID = window.setInterval(check_slam_map_progress, 1000);
+        check_slam_map_progress({{ id }});
+
+        {% endif %}
     </script>
     {% include 'footer.html' %}
 </body>

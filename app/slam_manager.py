@@ -9,12 +9,18 @@ class SlamManager:
         self.url = 'http://' + self.address + ':' + str(self.port)
         print(self.url, flush=True)
 
-    def start_slam(self, report_id, video, config, orb_vocab, slam_options, keyfrm_path, landmark_path, keyfrm_folder_path, slam_output_path):
+    def start_slam(self, report_id, video, config, mask, orb_vocab, slam_options, other_options,keyfrm_path, landmark_path, keyfrm_folder_path, slam_output_path):
+        try:
+            mask_file = mask[0]
+        except:
+            mask_file = None
         data = {'report_id': report_id,
                 'video': video[0],
                 'orb_vocab': orb_vocab[0],
                 'config': config[0],
+                'mask': mask_file,
                 'slam_options': slam_options,
+                'other_options': other_options,
                 'keyfrm_path': keyfrm_path,
                 'landmark_path': landmark_path,
                 'keyfrm_folder_path': keyfrm_folder_path,
@@ -31,9 +37,12 @@ class SlamManager:
                 if process['done']:
                     response = requests.get(self.url + '/remove_thread/' + str(report_id))
                     print("delete thread:", response, flush=True)
-                    return "finished"
+                    return ("finished", "progress", process['progress'])
                 else:
-                    return "running"
+                    if process['update']:
+                        return ("update","progress", process['progress'])
+                    else:
+                        return ("running","progress", process['progress'])
         return "running"
 
     def get_slam_map(self, report_id):

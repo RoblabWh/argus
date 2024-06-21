@@ -20,7 +20,7 @@ class ProjectManager:
         self.projects_path = projects_path
         self.CURRENT_PROJECT_FILE_VERSION = 1.1
         self.projects_dirs = ["rgb", "ir", "panos", "rgb/thumbnails" , "ir/thumbnails", "panos/thumbnails"]
-        self.slam_projects_dirs = ["keyframes"] #maybe one to output keyframes
+        self.slam_projects_dirs = ["keyframes","mapping_output"] #maybe one to output keyframes
         #self.image_mapper = {}
 
     def create_project(self, name, description):
@@ -266,7 +266,7 @@ class ProjectManager:
         return data
 
     def generate_empty_slam_data_dict(self):
-        data = {"video" : [], "width" : [], "height" : [],"orb_vocab": [], "config": [], "mask": [], "keyframes": [], "map_db": [], "point_cloud": [], "slam_settings": []}
+        data = {"video" : [], "width" : [], "height" : [],"orb_vocab": [], "config": [], "mask": [], "keyframes": [], "map_db": [], "point_cloud": [], "slam_settings": [], "mapping_settings": [],"mapping_output": []}
         return data
 
     def update_file_names(self, id, file_names):
@@ -358,6 +358,20 @@ class ProjectManager:
 
         return data['config']
 
+    def set_mask_file(self, id, file_name):
+        project = self.get_project(id)
+        print(project, flush=True)
+        data = project['data']
+        mask = []
+        mask.append(file_name[0])
+
+        data['mask'] = mask
+        print("setting video to project with id: " + str(id))
+        with open(self.projects_path + str(id) + "/project.json", "w") as json_file:
+            json.dump(project, json_file)
+
+        return data['mask']
+
     def set_slam_settings(self, report_id, slam_settings):
         project = self.get_project(report_id)
         data = project['data']
@@ -368,6 +382,20 @@ class ProjectManager:
 
         return data['slam_settings']
 
+    def set_mapping_settings(self, report_id, mapping_setting):
+        project = self.get_project(report_id)
+        data = project['data']
+        data['mapping_settings'] = mapping_setting
+
+        with open(self.projects_path + str(report_id) + "/project.json", "w") as json_file:
+            json.dump(project, json_file)
+
+        return data['mapping_settings']
+
+    def get_mapping_settings(self, report_id):
+        project = self.get_project(report_id)
+        data = project['data']
+        return data['mapping_settings']
 
     def overwrite_file_names_sorted(self, id, file_names_rgb=None, file_names_ir=None):
         project = self.get_project(id)
@@ -455,12 +483,6 @@ class ProjectManager:
         for file in files:
             if file.lower().endswith(('.png', '.jpg', '.jpeg')):
                 keyframes.append(file)
-        #keyframes_sort = [None]*biggest_id
-        #for file in files:
-        #    if file.lower().endswith(('.png', '.jpg', '.jpeg')):
-        #        id = new_id = file.replace('image','').replace('.png','')
-        #        keyframes_sort[int(id)] = file
-        #print(keyframes_sort, flush=True)
         self.update_data_by_keyword(report_id, 'keyframes', keyframes)
 
     def get_file_names(self, id):
@@ -607,6 +629,9 @@ class ProjectManager:
         self.update_data_by_keyword(report_id, 'slam_output_file_path', path)
         return path
 
+    def update_mapping_result(self, report_id, mapping_output, trajectory):
+        return self.update_data_by_keyword(report_id, 'mapping_output', (mapping_output, trajectory))
+
 
     def get_project_path(self, report_id):
         project = self.get_project(report_id)
@@ -615,6 +640,10 @@ class ProjectManager:
 
     def get_keyframe_folder(self, report_id):
         path = self.get_project_path(report_id) + "/keyframes/"
+        return path
+
+    def get_mapping_output_folder(self, report_id):
+        path = self.get_project_path(report_id) + "/mapping_output/"
         return path
 
     def update_slide_file_paths(self, report_id, slide_file_paths):
@@ -711,6 +740,18 @@ class ProjectManager:
         except:
             config = []
         config.remove(file_path)
+        print(project, flush=True)
+        with open(os.path.join(self.projects_path, str(report_id), "project.json"), "w") as json_file:
+            json.dump(project, json_file)
+
+    def remove_from_file_name_mask(self, report_id, file_path):
+        project = self.get_project(report_id)
+        data = project['data']
+        try:
+            mask = data['mask']
+        except:
+            mask = []
+        mask.remove(file_path)
         print(project, flush=True)
         with open(os.path.join(self.projects_path, str(report_id), "project.json"), "w") as json_file:
             json.dump(project, json_file)

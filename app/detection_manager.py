@@ -19,6 +19,17 @@ class DetectionManager:
         requests.post(self.url+'/process', json=data)
         return True
 
+    def detect_objects_slam(self, options, report_id, image_folder, ann_path):
+        data = {'report_id': report_id,
+                'models': options["numbr_of_models"],
+                'max_splits': options["max_splits"],
+                'image_folder': image_folder,
+                'ann_path': ann_path
+                }
+        #send data to detection server
+        requests.post(self.url+'/process', json=data)
+        return True
+
     def get_detection_status(self, report_id):
         response = requests.get(self.url + '/get_processes', headers={'Accept': 'application/json'})
         all_processes = response.json()
