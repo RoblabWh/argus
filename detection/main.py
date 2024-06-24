@@ -6,7 +6,7 @@ def main():
     if os.getenv("ARGUS_GPU_NVIDIA", "false") == "true":
         device = "cuda:0"
 
-    server = DetectionServer("0.0.0.0", 6000, device)
+    server = DetectionServer("0.0.0.0", 5001, device)
     server.run()
 
 

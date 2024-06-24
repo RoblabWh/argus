@@ -15,7 +15,7 @@ def main():
     token = webodm_manager.authenticate()
     if token is not None:
         webodm_manager.configure_node(token, nodeodm_manager.address, nodeodm_manager.port)
-    detection_manager = DetectionManager('argus_detection', 6000)
+    detection_manager = DetectionManager('argus_detection', 5001)
 
     server = ArgusServer("0.0.0.0", 5000, project_manager, nodeodm_manager, webodm_manager, detection_manager)
     server.run()

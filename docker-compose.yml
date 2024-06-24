@@ -22,8 +22,8 @@ services:
     image: argus_mmdetection
     build: ./detection
     container_name: argus_detection
-    expose:
-      - ${ARGUS_DETECTION_PORT}:6000
+    ports:
+      - ${ARGUS_DETECTION_PORT}:5001
     volumes:
       - ${ARGUS_PROJECTS}:/detection/static/projects:rw
     environment:
