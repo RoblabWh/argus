@@ -9,7 +9,7 @@ __email__ = "arturleinweber@live.de"
 __status__ = "Production"
 
 from abc import ABC, abstractmethod
-from sorter import Sorter
+from .sorter import Sorter
 from re import search
 
 

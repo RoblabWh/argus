@@ -1,0 +1,116 @@
+{
+  "default": {
+    "creation_time": "EXIF:CreateDate",
+    "image_size": "Composite:ImageSize",
+    "projection_type": "XMP:ProjectionType",
+    "gps": {
+      "longitude": "Composite:GPSLongitude",
+      "latitude": "Composite:GPSLatitude",
+      "relative_altitude": "XMP:RelativeAltitude"
+    },
+    "ir": {
+      "ir": "XMP:ImageSource",
+      "ir_value": "InfraredCamera",
+      "ir_image_size": "",
+      "filename_suffix": "_T"
+    },
+    "camera_properties": {
+      "focal_length": "EXIF:FocalLength",
+      "fov": "Composite:FOV"
+    },
+    "orientation": {
+      "gimbal_roll": "XMP:GimbalRollDegree",
+      "gimbal_yaw": "XMP:GimbalYawDegree",
+      "gimbal_pitch": "XMP:GimbalPitchDegree",
+      "flight_roll": "XMP:FlightRollDegree",
+      "flight_yaw": "XMP:FlightYawDegree",
+      "flight_pitch": "XMP:FlightPitchDegree"
+    }
+  },
+
+  "M30T": {
+    "creation_time": "EXIF:CreateDate",
+    "image_size": "Composite:ImageSize",
+    "projection_type": "XMP:ProjectionType",
+    "gps":{
+      "longitude": "EXIF:GPSLongitude",
+      "latitude": "EXIF:GPSLatitude",
+      "relative_altitude": "XMP:RelativeAltitude"
+    },
+    "ir": {
+        "ir": "XMP:ImageSource",
+        "ir_value": "InfraredCamera",
+        "ir_image_size": {"x":1280,"y":1024},
+        "filename_suffix": "_T"
+    },
+    "camera_properties": {
+      "focal_length": "EXIF:FocalLength",
+      "fov": "Composite:FOV"
+    },
+    "orientation": {
+      "gimbal_roll": "XMP:GimbalRollDegree",
+      "gimbal_yaw": "XMP:GimbalYawDegree",
+      "gimbal_pitch": "XMP:GimbalPitchDegree",
+      "flight_roll": "XMP:FlightRollDegree",
+      "flight_yaw": "XMP:FlightYawDegree",
+      "flight_pitch": "XMP:FlightPitchDegree"
+    }
+  },
+  "FC2403": {
+    "creation_time": "EXIF:CreateDate",
+    "image_size": "Composite:ImageSize",
+    "projection_type": "XMP:ProjectionType",
+    "gps":{
+      "longitude": "EXIF:GPSLongitude",
+      "latitude": "EXIF:GPSLatitude",
+      "relative_altitude": "XMP:RelativeAltitude"
+    },
+    "ir": {
+        "ir": "",
+        "ir_value": "",
+        "ir_image_size": {"x":640,"y":480},
+        "filename_suffix": ""
+    },
+    "camera_properties": {
+      "focal_length": "EXIF:FocalLength",
+      "fov": "Composite:FOV"
+    },
+    "orientation": {
+      "gimbal_roll": "XMP:GimbalRollDegree",
+      "gimbal_yaw": "XMP:GimbalYawDegree",
+      "gimbal_pitch": "XMP:GimbalPitchDegree",
+      "flight_roll": "XMP:FlightRollDegree",
+      "flight_yaw": "XMP:FlightYawDegree",
+      "flight_pitch": "XMP:FlightPitchDegree"
+    }
+  },
+  "ANAFI Ai": {
+    "creation_time": "EXIF:CreateDate",
+    "image_size": "Composite:ImageSize",
+    "projection_type": "XMP:ProjectionType",
+    "gps": {
+      "longitude": "Composite:GPSLongitude",
+      "latitude": "Composite:GPSLatitude",
+      "relative_altitude": "XMP:AboveGroundAltitude"
+    },
+    "ir": {
+      "ir": "",
+      "ir_value": "",
+      "ir_image_size": "",
+      "filename_suffix": ""
+    },
+    "camera_properties": {
+      "focal_length": "EXIF:FocalLength",
+      "fov": "Composite:FOV"
+    },
+    "orientation": {
+      "gimbal_roll": "XMP:CameraRollDegree",
+      "gimbal_yaw": "XMP:CameraYawDegree",
+      "gimbal_pitch": "XMP:CameraPitchDegree",
+      "flight_roll": "XMP:Roll",
+      "flight_yaw": "XMP:Yaw",
+      "flight_pitch": "XMP:Pitch"
+    }
+  }
+
+}

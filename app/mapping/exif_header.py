@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-
 import json
 import re
 import os
@@ -8,9 +7,9 @@ import datetime as dt
 
 import pyexifinfo as p
 
-from gps import GPS
-from xmp import XMP
-from camera_properties import CameraProperties
+from .gps import GPS
+from .xmp import XMP
+from .camera_properties import CameraProperties
 
 
 class ExifHeader:
@@ -26,6 +25,8 @@ class ExifHeader:
         ## save the python dict as json file for debugging as debugmetadta.json
         # with open('debugmetadata.json', 'w') as outfile:
         #     json.dump(self.python_dict, outfile, indent=4, separators=(',', ': '))
+
+        #print(self.python_dict, flush=True)
 
 
         self.gps_coordinate = None
@@ -61,18 +62,17 @@ class ExifHeader:
     def read_creation_time(self):
         try:
             self.creation_time_str = (str(self._get_if_exist(self.python_dict, 'EXIF:CreateDate')))
-            creation_time = self.creation_time_str.replace(':', '')
-            creation_time = creation_time.replace(' ', '')
-            self.creation_time = int(creation_time) % 1000000
+            print("creation_time_str: '" + self.creation_time_str + "' (from EXIF:CreateDate)")
+            # use dt to convert to timestamp
+            self.creation_time = dt.datetime.strptime(self.creation_time_str, '%Y:%m:%d %H:%M:%S').timestamp()
+            #creation_time = self.creation_time_str.replace(':', '')
+            #creation_time = creation_time.replace(' ', '')
+            #self.creation_time = int(creation_time) % 1000000
             # print("creation_time_str: '" + self.creation_time_str + "' (from EXIF:CreateDate)" + " creation_time: " + str(self.creation_time) + "time wo modulo" + str(int(creation_time)))
         except:
-            self.creation_time_str = str(dt.datetime.fromtimestamp(os.path.getmtime(__file__)))
-            # print("creation_time_str: '" + self.creation_time_str + "' (from file creation time)")
-            creation_time = self.creation_time_str.replace(':', '')
-            creation_time = creation_time.replace('-', '')
-            creation_time = creation_time.replace(' ', '')
-            self.creation_time = int(creation_time.split(".")[0]) % 1000000
-            # print("creation_time_str: '" + creation_time + "' (from file creation time)" + " creation_time: " + str(self.creation_time))
+            #trying to read the creation time from the file itself
+            self.creation_time = os.path.getmtime(self.image_path)
+            self.creation_time_str = dt.datetime.fromtimestamp(self.creation_time).strftime('%Y:%m:%d %H:%M:%S')
 
 
 
@@ -147,9 +147,9 @@ class ExifHeader:
 
         try:
             imageSource = self._get_if_exist(self.python_dict, 'XMP:ImageSource')
-            if "infrared" in imageSource or "ir" in imageSource or "Infrared" in imageSource or "IR" in imageSource or "InfraRed"  or "InfraredCamera" in imageSource:
-                print("IR image detected by XMP:ImageSource", flush=True)
-                return
+            if "infrared" in imageSource or "Infrared" in imageSource or "InfraRed" in imageSource or "InfraredCamera" in imageSource:
+                print("IR image detected by XMP:ImageSource" + imageSource, flush=True)
+                return True
         except:
             return False
 
@@ -160,7 +160,7 @@ class ExifHeader:
         """
         camera_model_name = self.camera_properties.get_model()
         #print("trying to check the image size of camera_model_name: " + str(camera_model_name) + " to check for ir", flush=True)
-        with open('ir_camera_resolutions.json') as f:
+        with open('./mapping/ir_camera_resolutions.json') as f:
             data = json.load(f)
             if camera_model_name in data:
                 size = data[camera_model_name]
@@ -268,7 +268,7 @@ class ExifHeader:
         self.camera_properties.fov = fov
 
     def get_data_from_camera_specs(self,camera_model_name, key):
-        with open('camera_specs.json') as f:
+        with open('./mapping/camera_specs.json') as f:
                 data = json.load(f)
                 if camera_model_name in data:
                     val = float(data[camera_model_name][key])

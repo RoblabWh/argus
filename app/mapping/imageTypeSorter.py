@@ -1,4 +1,4 @@
-from sorter import Sorter
+from .sorter import Sorter
 
 class ImageTypeSorter(Sorter):
 

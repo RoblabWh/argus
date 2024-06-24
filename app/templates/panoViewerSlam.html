@@ -331,12 +331,12 @@ function generateDetectionsForCurrentScene(data) {
         if(object.score < minDetectionScore) {
             continue;
         }
-        let category = detections.categories[object.category_id].name;
+        let category = detections.categories[object.category_id-1].name;
         let normXMid = (object.bbox[0] + (object.bbox[2]/2)) - (cImage.width/2);
         let normYMid = -(object.bbox[1] + (object.bbox[3]/2) - (cImage.height/2));
         let yaw = normXMid/(cImage.width/2)*180;
         let pitch = normYMid/(cImage.height/2)*90;
-        let cssName = createObjectCss(object.bbox[2], object.bbox[3], detections.categories[object.category_id].colorHSL, object.id, category);
+        let cssName = createObjectCss(object.bbox[2], object.bbox[3], detections.categories[object.category_id-1].colorHSL, object.id, category);
         viewer.addHotSpot({
             "pitch": pitch,
             "yaw": yaw,

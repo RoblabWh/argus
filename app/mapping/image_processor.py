@@ -3,9 +3,10 @@ import os
 import shutil
 import sys
 
-from image import Image
-from infrared_rgb_sorter import InfraredRGBSorter
-from weather import Weather
+from .image import Image
+from .infrared_rgb_sorter import InfraredRGBSorter
+from .weather import Weather
+import datetime as dt
 
 #TODO
 # als erstes die Kamera feststellen
@@ -133,13 +134,26 @@ class ImageProcessor:
         #date is in format yyyy:mm:dd hh:mm:ss but should be changed to dd.mm.yyyy hh:mm
         date = date[8:10] + '.' + date[5:7] + '.' + date[0:4] + ' ' + date[11:16]
 
-        flight_duration = str(lastImage.get_exif_header().get_creation_time() - firstImage.get_exif_header().get_creation_time())
-        #flight_duration is seconds but should be changed to hh:mm:ss
-        flight_duration_minutes = int(flight_duration) // 60
-        flight_duration_seconds = int(flight_duration) % 60
-        flight_duration_hours = flight_duration_minutes // 60
-        flight_duration_minutes = flight_duration_minutes % 60
-        flight_duration = "{:02d}".format(flight_duration_hours) + ':' + "{:02d}".format(flight_duration_minutes) + ':' + "{:02d}".format(flight_duration_seconds)
+        #flight_duration = str(lastImage.get_exif_header().get_creation_time() - firstImage.get_exif_header().get_creation_time())
+
+        time_difference_seconds = abs(lastImage.get_exif_header().get_creation_time() - firstImage.get_exif_header().get_creation_time())
+
+        # Convert the difference to a timedelta object
+        time_difference = dt.timedelta(seconds=time_difference_seconds)
+
+        # Extract hours, minutes, and seconds from the timedelta object
+        hours, remainder = divmod(time_difference.seconds, 3600)
+        minutes, seconds = divmod(remainder, 60)
+
+        # Format the difference as hh:mm:ss
+        flight_duration = f'{hours:02}:{minutes:02}:{seconds:02}'
+
+        # #flight_duration is seconds but should be changed to hh:mm:ss
+        # flight_duration_minutes = int(flight_duration) // 60
+        # flight_duration_seconds = int(flight_duration) % 60
+        # flight_duration_hours = flight_duration_minutes // 60
+        # flight_duration_minutes = flight_duration_minutes % 60
+        # flight_duration = "{:02d}".format(flight_duration_hours) + ':' + "{:02d}".format(flight_duration_minutes) + ':' + "{:02d}".format(flight_duration_seconds)
 
         try:
             location = str(imageWithGPSData.get_exif_header().get_gps().get_address())

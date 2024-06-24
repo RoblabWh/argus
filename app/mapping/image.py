@@ -15,7 +15,8 @@ import cv2
 import imutils
 import numpy as np
 
-from exif_header import ExifHeader
+from .exif_header import ExifHeader
+from .metadata import Metadata
 from thermal.thermal_analyser import ThermalAnalyser
 
 class Image:
@@ -25,7 +26,7 @@ class Image:
         :param image_path: image path
         """
         self.image_path = image_path
-        self.exif_header = ExifHeader(image_path)
+        self.exif_header = Metadata(image_path)
         if self.exif_header.ir:
             self.move_to_super_folder('ir')
         elif self.exif_header.pano:
@@ -52,7 +53,8 @@ class Image:
         return self.rgb_counterpart_path
 
     def set_to_ir(self):
-        self.exif_header.enable_ir()
+        print("!!!!!!!!!!!!!!! SET TO IR IS STILL CALLED SOMEWHERE!!!!!!!!!!!!!!!!")
+        #self.exif_header.enable_ir()
 
     def get_image_path(self):
         """

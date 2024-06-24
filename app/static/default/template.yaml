@@ -1,0 +1,59 @@
+# Equirectangular model for RICOH THETA S
+
+#==============#
+# Camera Model #
+#==============#
+
+Camera:
+  name: "RICOH THETA S 960"
+  setup: "monocular"
+  model: "equirectangular"
+
+  fps: $fps
+  cols: $width
+  rows: $height
+
+  color_order: "RGB"
+
+#================#
+# ORB Parameters #
+#================#
+
+Feature:
+  max_num_keypoints: 3000
+  scale_factor: 1.2
+  num_levels: 8
+  ini_fast_threshold: 20
+  min_fast_threshold: 7
+  mask_rectangles:
+    - [0.0, 1.0, 0.0, 0.1]
+    - [0.0, 1.0, 0.84, 1.0]
+    - [0.0, 0.2, 0.7, 1.0]
+    - [0.8, 1.0, 0.7, 1.0]
+
+#====================#
+# Mapping Parameters #
+#====================#
+
+Mapping:
+  baseline_dist_thr_ratio: 0.02
+  
+#=========================#
+# PatchMatch Parameters #
+#=========================#
+
+PatchMatch:
+  enabled: $patch_match
+  cols: 640
+  rows: 320
+  min_patch_std_dev: 0
+  patch_size: 7
+  patchmatch_iterations: 4
+  min_score: 0.1
+  min_consistent_views: 3
+  depthmap_queue_size: 5
+  depthmap_same_depth_threshold: 0.08
+  min_views: 1
+  pointcloud_queue_size: 4
+  pointcloud_same_depth_threshold: 0.08
+  min_stereo_score: 0

@@ -8,8 +8,8 @@ __maintainer__ = "Artur Leinweber"
 __email__ = "arturleinweber@live.de"
 __status__ = "Production"
 
-from image import Image
-from rectangle import RotatedRect
+from .image import Image
+from .rectangle import RotatedRect
 
 class MapElement:
     def __init__(self, image, rotated_rectangle, length_w_in_meters=0, length_h_in_meters=0):

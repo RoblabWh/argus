@@ -29,7 +29,7 @@ Without Nvidia Docker, the object detection pipeline will use the CPU to run our
 1. Run `argus up`
 
 ## Running without Installation
-1. Clone the repository.
+1. Clone the repository. Make sure to use `--recursive` or `--recurse-submodules` to also get the detection submodule.
 2. Navigate to the `argus` directory.
 3. Run `./argus.sh up --build`
 

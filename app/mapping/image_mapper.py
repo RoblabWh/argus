@@ -4,10 +4,10 @@ import os.path as path
 import cv2
 import time
 
-from map import Map
-from gps import GPS
-from gimbal_pitch_filter import GimbalPitchFilter
-from map_scaler import MapScaler
+from .map import Map
+from .gps import GPS
+from .gimbal_pitch_filter import GimbalPitchFilter
+from .map_scaler import MapScaler
 
 
 class ImageMapper:
@@ -61,11 +61,15 @@ class ImageMapper:
     def generate_map_elements_and_scaler(self, images):
         #print(images, flush=True)
         filtered_images = [image for image in images if image.get_exif_header().usable]
+        filtered_images = self.filter_unplausible_images_by_time(filtered_images)
         filtered_images = GimbalPitchFilter(89 - self.max_gimbal_pitch_deviation).filter(filtered_images)
+
+
         if len(filtered_images) < self.minimum_number_of_images:
             return None, []
         map_scaler = MapScaler(filtered_images, self.map_width_px, self.map_height_px)
         map_elements = map_scaler.get_map_elements()
+        print("map_scaler:", map_scaler, flush=True)
         return map_scaler, map_elements
 
     def generate_placeholder_maps(self):
@@ -135,6 +139,7 @@ class ImageMapper:
         return map_dict
 
     def calculate_map_IR(self, report_id):
+        print("map scaler rgb & ir",self.map_scaler_IR, self.map_elements_IR, flush=True)
         (min_x, max_x, min_y, max_y), self.map_elements_IR = self.__calculate_map(self.map_scaler_IR,
                                                                                   self.map_elements_IR, True)
         map_dict = self.process_map(self.map_scaler_IR, self.map_elements_IR, min_x, max_x, min_y, max_y, True)
@@ -284,10 +289,11 @@ class ImageMapper:
             print("Error: ODM is not enabled for this dataset!")
             return
 
-        token=self.webodm_manager.authenticate()
+        token = self.webodm_manager.authenticate()
         if token is None:
             print("Error: ODM is not enabled for this dataset!")
-            return
+            map = self.generate_map_dict_from_odm_fail(ir)
+            return map
         wo_project_id = self.webodm_manager.get_project_id(token, self.project_manager.get_project_name(self.report_id),
                                                            self.project_manager.get_project_description(self.report_id))
         if wo_project_id is None:
@@ -507,7 +513,7 @@ class ImageMapper:
         map_dict = {
             "center": [latc, longc],
             "zoom": 18,
-            "file": "default/MappingFailed.png",
+            "file": "./static/default/MappingFailed.png",
             "bounds": bounds,
             "size": [1080, 1080],
             "image_coordinates": None,
@@ -554,3 +560,40 @@ class ImageMapper:
         except:
             print("Error: Fallback GPS failed!")
             return False
+
+    def filter_unplausible_images_by_time(self, filtered_images):
+        if len(filtered_images) < 3:
+            return []
+        time_list = [image.get_exif_header().get_creation_time() for image in filtered_images]
+
+        time_diff = [time_list[i+1] - time_list[i] for i in range(len(time_list)-1)]
+        median_time = time_diff[len(time_diff)//2]
+
+        list_of_connected_flights = []
+        plausible_flight = []
+
+        for i in range(len(filtered_images)-1):
+
+            plausible_flight.append(filtered_images[i])
+            compare_time = 4*median_time if 4*median_time > 45.0 else 45.0
+            print("Time diff: ", time_diff[i], " Median time: ", median_time, " Compare time: ", compare_time, flush=True)
+            if time_diff[i] > compare_time:
+                print("~p not plausible flight! with time diff: ", time_diff[i], " and median time: ", median_time, flush=True)
+                list_of_connected_flights.append(plausible_flight.copy())
+                plausible_flight = []
+
+        plausible_flight.append(filtered_images[-1])
+
+        list_of_connected_flights.append(plausible_flight)
+
+        print("Connected flights: ", list_of_connected_flights, flush=True)
+
+        return max(list_of_connected_flights, key=len)
+
+
+
+
+
+
+
+

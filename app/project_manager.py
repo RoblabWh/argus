@@ -7,6 +7,8 @@ import uuid
 import zipfile
 import ffmpeg
 from datetime import datetime
+import cv2
+from string import Template
 
 
 class ProjectManager:
@@ -174,6 +176,8 @@ class ProjectManager:
             print("loading project from directory: " + project_id)
             with open(os.path.join(self.projects_path, project_id, "project.json"), "r") as json_file:
                 project = json.load(json_file)
+                self._check_for_annotations(project)
+
 
         # check if there is a project['version'] and if not, add it with self.CURRENT_PROJECT_FILE_VERSION
         try:
@@ -182,6 +186,38 @@ class ProjectManager:
             project['version'] = self.CURRENT_PROJECT_FILE_VERSION
 
         return project
+
+    def _check_for_annotations(self, project):
+        if not project:
+            return
+        if not 'data' in project:
+            return
+
+        if not 'annotation_file_path' in project['data']:
+            return
+
+        annotation_file_path = project['data']['annotation_file_path']
+        #load annotations
+        if not os.path.isfile(annotation_file_path):
+            return
+        with open(annotation_file_path, 'r') as json_file:
+            annotations = json.load(json_file)
+            if not 'version' in annotations:
+                annotations = self._update_annotations_to_v1(annotations)
+                annotations['version'] = 1.0
+                with open(annotation_file_path, 'w') as json_file:
+                    json.dump(annotations, json_file)
+
+
+    def _update_annotations_to_v1(self, annotations):
+        # if no version Tag is available it is assumed, that the file is originally from the old mm_detection pipeline
+        # therfore the "category_id" in the detections list needs to be corrected by adding 1
+        for detection in annotations['annotations']:
+            detection['category_id'] += 1
+
+        return annotations
+
+
 
     def initiate_project_list(self):
         # check for every directory in static/uploads/ if there is project.json
@@ -239,6 +275,15 @@ class ProjectManager:
         hash = int(hashlib.sha256(system_name.encode('utf-8')).hexdigest(), 16) % 10**4
         print("hash: " + str(hash))
 
+        while True:
+            if len(str(hash)) == 4:
+                break
+            else:
+                if len(str(hash)) < 4:
+                    hash = hash * 10
+                else:
+                    hash = int(str(hash)[:-1])
+
         #cast to string and concatenate
         project_id = int(timestamp + str(hash))
         #cast to int
@@ -266,7 +311,7 @@ class ProjectManager:
         return data
 
     def generate_empty_slam_data_dict(self):
-        data = {"video" : [], "width" : [], "height" : [],"orb_vocab": [], "config": [], "mask": [], "keyframes": [], "map_db": [], "point_cloud": [], "slam_settings": [], "mapping_settings": [],"mapping_output": []}
+        data = {"video" : [], "video_metadata": {}, "orb_vocab": [], "config": [], "mask": [], "keyframes": [], "map_db": [], "point_cloud": [], "slam_settings": [], "mapping_settings": [],"mapping_output": []}
         return data
 
     def update_file_names(self, id, file_names):
@@ -318,18 +363,46 @@ class ProjectManager:
         project = self.get_project(id)
         data = project['data']
         video = []
-        video.append(file_name[0])
-
-        video_width = ffmpeg.probe(video[0])['streams'][0]['width']
-        video_height = ffmpeg.probe(video[0])['streams'][0]['height']
+        video.append(file_name[0])#we need for yaml file creation: fps
+        cap = cv2.VideoCapture(file_name[0])
+        fps = round(cap.get(cv2.CAP_PROP_FPS))
+        video_width = cap.get(cv2.CAP_PROP_FRAME_WIDTH)
+        video_height = cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
         data['video'] = video
-        data['width'].append(video_width)
-        data['height'].append(video_height)
+        data['video_metadata']['fps'] = fps
+        data['video_metadata']['width'] = int(video_width)
+        data['video_metadata']['height'] = int(video_height)
         print("setting video to project with id: " + str(id))
         with open(self.projects_path + str(id) + "/project.json", "w") as json_file:
             json.dump(project, json_file)
-
         return data['video']
+
+    def get_config_file(self, id):
+        project = self.get_project(id)
+        path = project['data']['config']
+        #path = self.generate_config_file(id)
+
+    def generate_config_file(self, id):
+        project = self.get_project(id)
+        data = project['data']
+        video = data['video']
+        if not video:
+            return
+        template_data = {
+            'fps': data['video_metadata']['fps'],
+            'width': data['video_metadata']['width'],
+            'height': data['video_metadata']['height'],
+            'patch_match': False
+        }
+        with open('./static/default/template.yaml', 'r') as template:
+            src = Template(template.read())
+            result = src.substitute(template_data)
+            save_path = os.path.join(self.projects_path, str(id), "config.yaml")
+            with open(save_path, "x") as config:
+                config.write(result)
+            #set config in project file
+            self.set_config_file(id, [save_path])
+
 
     def set_orb_vocab_file(self, id, file_name):
         project = self.get_project(id)
@@ -350,7 +423,6 @@ class ProjectManager:
         data = project['data']
         config = []
         config.append(file_name[0])
-
         data['config'] = config
         print("setting video to project with id: " + str(id))
         with open(self.projects_path + str(id) + "/project.json", "w") as json_file:
@@ -666,6 +738,97 @@ class ProjectManager:
         with open(path, "w") as json_file:
             json.dump(detections, json_file)
 
+    def delete_annotation(self, report_id, annotation_id):
+        project = self.get_project(report_id)
+        annotation_id = int(annotation_id)
+        path = project['data']['annotation_file_path']
+
+        with open(path, "r") as json_file:
+            print("loading detections", flush=True)
+            detections = json.load(json_file)
+            annotations = detections['annotations']
+
+            print(len(annotations), flush=True)
+
+            for i in range(len(annotations)):
+                if(annotations[i]['id'] == annotation_id):
+                    print("deleting annotation with id: " + str(annotation_id) + " from list with length " + str(len(annotations)), flush=True)
+                    annotations.pop(i)
+                    print("new length: " + str(len(annotations)), flush=True)
+                    break
+
+            detections['annotations'] = annotations
+
+        with open(path, "w") as json_file:
+            json.dump(detections, json_file)
+
+    def edit_annotation(self, report_id, annotation_id, new_category_id, new_bbox):
+        project = self.get_project(report_id)
+        annotation_id = int(annotation_id)
+        new_category_id = int(new_category_id)
+        path = project['data']['annotation_file_path']
+
+        with open(path, "r") as json_file:
+            detections = json.load(json_file)
+            annotations = detections['annotations']
+
+            for i in range(len(annotations)):
+                if(annotations[i]['id'] == annotation_id):
+                    annotations[i]['category_id'] = new_category_id
+                    annotations[i]['bbox'] = new_bbox
+                    break
+
+            detections['annotations'] = annotations
+
+        with open(path, "w") as json_file:
+            json.dump(detections, json_file)
+
+    def edit_annotation_category(self, report_id, annotation_id, new_category_id):
+        project = self.get_project(report_id)
+        annotation_id = int(annotation_id)
+        new_category_id = int(new_category_id)
+        path = project['data']['annotation_file_path']
+
+        with open(path, "r") as json_file:
+            detections = json.load(json_file)
+            annotations = detections['annotations']
+
+            for i in range(len(annotations)):
+                if(annotations[i]['id'] == annotation_id):
+                    annotations[i]['category_id'] = new_category_id
+                    annotations[i]['manual'] = True
+                    break
+
+            detections['annotations'] = annotations
+
+        with open(path, "w") as json_file:
+            json.dump(detections, json_file)
+
+    def add_annotation(self, report_id, category_id, bbox, image_id):
+        project = self.get_project(report_id)
+        path = project['data']['annotation_file_path']
+        new_id = 0
+
+        with open(path, "r") as json_file:
+            detections = json.load(json_file)
+            annotations = detections['annotations']
+
+
+            for annotation in annotations:
+                if annotation['id'] > new_id:
+                    new_id = annotation['id']
+            new_id += 1
+
+            new_annotation = {"id": new_id, "image_id": image_id,  "bbox": bbox, "score": 1.0, "category_id": category_id, "segmentation": [], "manual": True}
+            annotations.append(new_annotation)
+
+            detections['annotations'] = annotations
+
+        with open(path, "w") as json_file:
+            json.dump(detections, json_file)
+
+        return new_id
+
     def set_unprocessed_changes(self, report_id, unprocessed_changes):
         self.update_data_by_keyword(report_id, 'unprocessed_changes', unprocessed_changes)
 
@@ -714,8 +877,7 @@ class ProjectManager:
         except:
             video = []
         video.remove(file_path)
-        data["width"] = []
-        data["height"] = []
+        data["video_metadata"] = {}
         print(project, flush=True)
         with open(os.path.join(self.projects_path, str(report_id), "project.json"), "w") as json_file:
             json.dump(project, json_file)

@@ -1,19 +1,17 @@
 import json
 import datetime
 
-from mapper_thread import MapperThread
-from image_mapper_process import ImageMapperProcess
+from mapping.mapper_thread import MapperThread
+from mapping.image_mapper_process import ImageMapperProcess
 from thermal.thermal_analyser import ThermalAnalyser
-from filter_thread import FilterThread
+from mapping.filter_thread import FilterThread
+from data_share_manager import DataShareManager
 
 # from gunicorn.app.base import BaseApplication
 from flask import Flask, flash, request, redirect, url_for, render_template, jsonify, send_file
 import os
 import signal
-import requests
 from werkzeug.utils import secure_filename
-
-import urllib.request
 
 
 # class FlaskApp(BaseApplication):
@@ -59,6 +57,7 @@ class ArgusServer:
         self.detection_manager = detection_manager
         self.slam_manager = slam_manager
         self.thermal_analyser = ThermalAnalyser(project_manager)
+        self.data_share_manager = DataShareManager("localhost", "admin", "admin")
 
         self.setup_routes()
 
@@ -145,8 +144,16 @@ class ArgusServer:
                               view_func=self.load_landmarks)
         self.app.add_url_rule('/detection_status/<int:report_id>', methods=['GET', 'POST'],
                               view_func=self.check_detection_status)
+        self.app.add_url_rule('/delete_annotation/<int:report_id>', methods=['POST'],
+                                view_func=self.delete_annotation)
+        self.app.add_url_rule('/edit_annotation/<int:report_id>', methods=['POST'],
+                                view_func=self.edit_annotation)
+        self.app.add_url_rule('/edit_annotation_type/<int:report_id>', methods=['POST'],
+                                view_func=self.edit_annotation_type)
+        self.app.add_url_rule('/add_annotation/<int:report_id>', methods=['POST'],
+                                view_func=self.add_annotation)
         self.app.add_url_rule('/process_in_webodm/<int:report_id>', methods=['GET', 'POST'],
-                              view_func=self.process_in_webodm)
+                                view_func=self.process_in_webodm)
         self.app.add_url_rule('/get_webodm_port', methods=['GET', 'POST'],
                               view_func=self.get_webodm_port)
         self.app.add_url_rule('/webodm_project_exists/<int:report_id>', methods=['GET', 'POST'],
@@ -165,6 +172,17 @@ class ArgusServer:
                               view_func=self.get_ir_temp_data_of_image)
         self.app.add_url_rule("/get_slam_map/<int:report_id>", methods=['GET', 'POST'],
                               view_func=self.get_slam_map)
+        self.app.add_url_rule('/poi_test',
+                              view_func=self.render_poi_test)
+        self.app.add_url_rule('/set_IAIS_settings', methods=['POST'],
+                                view_func=self.set_IAIS_settings)
+        self.app.add_url_rule('/test_POI', methods=['POST'],
+                                view_func=self.test_POI)
+        self.app.add_url_rule('/get_poi_list', methods=['GET'],
+                                view_func=self.get_POI_list)
+        self.app.add_url_rule('/delete_poi', methods=['POST'],
+                                view_func=self.delete_POI)
+
         # self.app.add_url_rule('/<int:report_id>/upload', methods=['POST'],
         #                       view_func=self.upload_image)
         # self.app.add_url_rule('/<int:report_id>/process', methods=['GET', 'POST'],
@@ -293,6 +311,7 @@ class ArgusServer:
             return json.dumps({'success': False}), 415, {'ContentType': 'application/json'}
 
         self.project_manager.set_video_file(report_id, file_name)  # maybe create a thread to read video file metadata
+        self.project_manager.generate_config_file(report_id)
 
         return json.dumps({'success': True, 'path': save_path}), 200, {'ContentType': 'application/json'}
 
@@ -508,15 +527,13 @@ class ArgusServer:
         video = []
         orb_vocab = []
         config_file = []
-        video_width = []
-        video_height = []
         mask = []
+        video_metadata = {}
         project = self.project_manager.get_project(report_id)
         data = project["data"]
         if data["video"]:
             video = data["video"]
-            video_width = data["width"]
-            video_height = data["height"]
+            video_metadata = data["video_metadata"]
         if data["orb_vocab"]:
             orb_vocab = data["orb_vocab"]
         if data["config"]:
@@ -821,6 +838,42 @@ class ArgusServer:
     def get_slam_map(self, report_id):
         print('asking for slam map of report ' + str(report_id))
         return self.slam_manager.get_slam_map(report_id)
+    def delete_annotation(self, report_id):
+        annotation_id = request.form.get('annotation_id')
+        print("delete_annotation for id" + str(report_id) + " with: " + str(annotation_id), flush=True)
+        self.project_manager.delete_annotation(report_id, annotation_id)
+        return "success"
+
+    def edit_annotation(self, report_id):
+        print("complete request form: " + str(request.form), flush=True)
+        annotation_id = request.form.get('annotation_id')
+        category_id = request.form.get('category_id')
+        annotation_bbox = request.form.get('annotation_bbox')
+        annotation_bbox = json.loads(annotation_bbox)
+        print("edit_annotation for id" + str(report_id) + " with: " + str(annotation_id) + " and " + str(category_id) + " and " + str(annotation_bbox), flush=True)
+        self.project_manager.edit_annotation(report_id, annotation_id, category_id, annotation_bbox)
+        return "success"
+
+    def edit_annotation_type(self, report_id):
+        annotation_id = request.form.get('annotation_id')
+        category_id = request.form.get('category_id')
+        print("edit_annotation_type for id" + str(report_id) + " with: " + str(annotation_id) + " and " + str(category_id), flush=True)
+        self.project_manager.edit_annotation_category(report_id, annotation_id, category_id)
+        return "success"
+
+    def add_annotation(self, report_id):
+        annotation_class = int(request.form.get('annotation_class'))
+        annotation_bbox = request.form.get('annotation_bbox')
+        #convert string to list
+        annotation_bbox = json.loads(annotation_bbox)
+        annotation_imageid = int(request.form.get('annotation_imageid'))
+        #parse string to int
+        annotation_imageid = int(annotation_imageid)
+        print("add_annotation for id" + str(report_id) + " with: " + str(annotation_class), flush=True)
+        ann_id = self.project_manager.add_annotation(report_id, annotation_class, annotation_bbox, annotation_imageid)
+        #return the id of the new annotation and success
+        return jsonify({"success": True, "annotation_id": ann_id})
+        #return "success"
 
     def load_detection_results(self, report_id):
         #get path of projects annotation file
@@ -1337,3 +1390,27 @@ class ArgusServer:
 
     def allowed_file_project(self, filename):
         return '.' in filename and filename.rsplit('.', 1)[1].lower() in self.ALLOWED_EXTENSIONS_PROJECT
+
+    def set_IAIS_settings(self):
+        data = request.get_json()
+        print("set_IAIS_settings with: ", data, flush=True)
+        self.data_share_manager.update_iais_connection(data["url"], data["username"], data["password"])
+        return data
+
+    def test_POI(self):
+        data = request.get_json()
+        print("test_POI with", data, flush=True)
+        response = self.data_share_manager.send_poi_to_iais(data)
+        return response
+
+    def render_poi_test(self):
+        return render_template('poi_test.html')
+
+    def get_POI_list(self):
+        return self.data_share_manager.get_all_pois_from_iais()
+
+    def delete_POI(self):
+        data = request.get_json()
+        print("delete_POI with", data, flush=True)
+        response = self.data_share_manager.remove_poi_from_iais(data['poi_id'])
+        return response

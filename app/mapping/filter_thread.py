@@ -3,7 +3,7 @@ import os
 import sys
 import shutil
 
-from image import Image
+from .image import Image
 
 class FilterThread(threading.Thread):
 

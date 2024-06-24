@@ -2,16 +2,16 @@ import json
 import time
 import cv2
 import numpy as np
-from thermal.thermal import Thermal
+from .thermal import Thermal
 import multiprocessing
 
 
 
 class ThermalAnalyser:
     def __init__(self, project_manager,
-                 dirp_filename='thermal/plugins/dji_thermal_sdk_v1.4_20220929/tsdk-core/lib/linux/release_x64/libdirp.so',
-                 dirp_sub_filename='thermal/plugins/dji_thermal_sdk_v1.4_20220929/tsdk-core/lib/linux/release_x64/libv_dirp.so',
-                 iirp_filename='thermal/plugins/dji_thermal_sdk_v1.4_20220929/tsdk-core/lib/linux/release_x64/libv_iirp.so',
+                 dirp_filename='./thermal/plugins/dji_thermal_sdk_v1.4_20220929/tsdk-core/lib/linux/release_x64/libdirp.so',
+                 dirp_sub_filename='./thermal/plugins/dji_thermal_sdk_v1.4_20220929/tsdk-core/lib/linux/release_x64/libv_dirp.so',
+                 iirp_filename='./thermal/plugins/dji_thermal_sdk_v1.4_20220929/tsdk-core/lib/linux/release_x64/libv_iirp.so',
                  exif_filename=None, dtype=np.float32):
         self.project_manager = project_manager
         self.thermal = Thermal(

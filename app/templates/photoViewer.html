@@ -59,19 +59,15 @@
       /*Set the size of the magnifier glass:*/
       width: 250px;
       height: 250px;
-      opacity:0;
-      pointer-events:none;
+      opacity:1;
+      pointer-events:initial;
     }
 
     .img-magnifier-hide {
       display: none
     }
 
-    a:hover .img-magnifier-glass {
-      opacity:1;
-      pointer-events:initial;
 
-    }
 
 
     .ir-overlay{
@@ -613,7 +609,6 @@
 
 </style>
 
-
 <script>
 
 
@@ -649,22 +644,44 @@
 
     function showSlideByFilename(filename){
         console.log("showSlideByFilename: " + filename);
+        
+        //check if filename is full path or only filename
+        if (!filename.includes("./static/")){
+            showSlideByShortFilename(filename);
+            return;
+        }
+
         var slideIndex = getSlideIndexByFilename(filename, 0);
+        if (slideIndex == -1){
+            slideIndex = getSlideIndexByFilename(filename, 1);
+        }
+        if (slideIndex == -1){
+            slideIndex = getSlideIndexByFilename(filename, 2);
+        }
         if(slideIndex != -1){
             showSlide(slideIndex);
-        } else {
-            slideIndex = getSlideIndexByFilename(filename, 1);
-            if(slideIndex != -1){
-                showSlideIR(slideIndex);
-            }
-            else{
-                slideIndex = getSlideIndexByFilename(filename, 2);
-                if(slideIndex != -1){
-                    showSlide(slideIndex);
-                }
-            }
+        } else{
+            console.log("No slide found for filename: " + filename);   
         }
     }
+
+    function showSlideByShortFilename(filename){
+        console.log("showSlideByShortFilename: " + filename);
+
+        var slideIndex = getSlideIndexByFilenameShort(filename, 0);
+        if (slideIndex == -1){
+            slideIndex = getSlideIndexByFilenameShort(filename, 1);
+        }
+        if (slideIndex == -1){
+            slideIndex = getSlideIndexByFilenameShort(filename, 2);
+        }
+        if(slideIndex != -1){
+            showSlide(slideIndex);
+        } else{
+            console.log("No slide found for filename: " + filename);   
+        }
+    }
+
 
     function showSlideByFilenameIR(filename){
         console.log("showSlideByFilenameIR: " + filename);
@@ -780,8 +797,11 @@
                 imageRGB.onload = () => {
                     //width of div of class container
                     var body_width = document.getElementsByClassName("container")[0].offsetWidth;
-                    dynamicCanvas.width = body_width;
-                    dynamicCanvas.height = imageRGB.height * ( body_width/ imageRGB.width);
+                    //dynamicCanvas.width = body_width;
+                    //dynamicCanvas.height = imageRGB.height * ( body_width/ imageRGB.width);
+                    dynamicAnnotationsCanvas.setWidth(body_width);
+                    dynamicAnnotationsCanvas.setHeight(imageRGB.height * ( body_width/ imageRGB.width));
+                    dynamicAnnotationsCanvas.renderAll()
 
                     if(displayingAI){
                         toggleLayerSettings(false);
@@ -950,14 +970,16 @@
         demagnify();
 
         img = document.getElementById("dynamic-slide").getElementsByTagName('img')[0];
+        dynamicImageRGB = document.getElementById("dynamic-image-RGB");
         annotationCanvas = document.getElementById("dynamic-slide").getElementsByTagName('canvas')[0];
+        allParent = dynamicImageRGB.parentNode.parentNode;
 
         /*create magnifier glass:*/
         glass = document.createElement("DIV");
         glass.setAttribute("class", "img-magnifier-glass");
         glass.setAttribute("id", "magnifying-glass-id-for-deleting");
         /*insert magnifier glass:*/
-        annotationCanvas.parentElement.insertBefore(glass, annotationCanvas);
+        dynamicImageRGB.parentNode.appendChild(glass);
         /*set background properties for the magnifier glass:*/
         glass.style.backgroundImage = "url('" + img.src + "')";
         glass.style.backgroundRepeat = "no-repeat";
@@ -969,59 +991,114 @@
 
         /*execute a function when someone moves the magnifier glass over the image:*/
         glass.addEventListener("mousemove", moveMagnifier);
-        annotationCanvas.addEventListener("mousemove", moveMagnifier);
-        img.addEventListener("mousemove", moveMagnifier);
+        allParent.addEventListener("mousemove", moveMagnifier);
+        allParent.addEventListener("mouseleave", hideMagnifier);
+        //img.addEventListener("mousemove", moveMagnifier);
 
         /*and also for touch screens:*/
         glass.addEventListener("touchmove", moveMagnifier);
-        annotationCanvas.addEventListener("touchmove", moveMagnifier);
-        img.addEventListener("touchmove", moveMagnifier);
-        function moveMagnifier(e) {
-            var pos, x, y;
-            /*prevent any other actions that may occur when moving over the image*/
-            e.preventDefault();
-            /*get the cursor's x and y positions:*/
-            pos = getCursorPos(e);
-            x = pos.x;
-            y = pos.y;
-            /*prevent the magnifier glass from being positioned outside the image:*/
-            if (x > img.width - (w / zoom) || x < (w / zoom) || y > img.height - (h / zoom) || y < (h / zoom)) {
-                glass.setAttribute("class", "img-magnifier-hide");
-            } else {
-                glass.setAttribute("class", "img-magnifier-glass");
-            }
+        allParent.addEventListener("touchmove", moveMagnifier);
+        allParent.addEventListener("touchend", hideMagnifier);
+        //img.addEventListener("touchmove", moveMagnifier);
+        
+        glass.setAttribute("class", "img-magnifier-hide");
+    }
 
-            /*set the position of the magnifier glass:*/
+    function hideMagnifier(){
+        glass = document.getElementById("magnifying-glass-id-for-deleting");
+        glass.setAttribute("class", "img-magnifier-hide");
+    }
+
+    function moveMagnifier(e) {
+        var pos, x, y, w, h;
+        let glass = document.getElementById("magnifying-glass-id-for-deleting");
+        /*prevent any other actions that may occur when moving over the image*/
+        e.preventDefault();
+        /*get the cursor's x and y positions:*/
+        pos = getCursorPos(e);
+        x = pos.x;
+        y = pos.y;
+        w = glass.offsetWidth/2;
+        h = glass.offsetHeight/2;
+        bw = 3;
+        zoom = document.getElementById("zoomRange").value/10;
+        topOffset =  document.getElementById("dynamic-image-RGB").parentNode.getBoundingClientRect().top - document.getElementById("dynamic-slide").getBoundingClientRect().top;
+
+
+        
+        // check if Cursor is in the image
+        if (x > img.width || x < 0 || y - topOffset > img.height || y < 0) {
+            glass.setAttribute("class", "img-magnifier-hide");
+            return
+        } else {
+            glass.setAttribute("class", "img-magnifier-glass");
+        }
+        
+
+        // if the coursor is closer to the edge of the image than the glass is wide, the glass will not be moved in that direkction
+        if (x < w) {
+            glass.style.left = 0 + "px";
+        } else if (x > img.width - w) {
+            glass.style.left = img.width - w*2 + "px";
+        } else {
             glass.style.left = (x - w) + "px";
-            glass.style.top = (y - h) + "px";
+        }
 
-            /*display what the magnifier glass "sees":*/
-            glass.style.backgroundPosition = "-" + ((x * zoom) - w + bw) + "px -" + ((y * zoom) - h + bw) + "px";
+        //distance between 'my-dynamic-slide' and 'dynamic-image-RGB'
+
+        if (y - topOffset < h) {
+            glass.style.top = 0 + topOffset+ "px";
+        } else if (y - topOffset > img.height - h) {
+            glass.style.top = img.height + topOffset - h*2 + "px";
+        } else {
+            glass.style.top = (y - h) + "px";
         }
-        function getCursorPos(e) {
-            var a, x = 0, y = 0;
-            e = e || window.event;
-            /*get the x and y positions of the image:*/
-            a = img.getBoundingClientRect();
-            /*calculate the cursor's x and y coordinates, relative to the image:*/
-            x = e.pageX - a.left;
-            y = e.pageY - a.top;
-            /*consider any page scrolling:*/
-            x = x - window.pageXOffset;
-            y = y - window.pageYOffset;
-            return {x : x, y : y};
+
+        //set the background position of the magnifier glass
+        bgX = (x * zoom) - 2*w + bw;
+        bgY = (y * zoom) - 2*h + bw;
+        if(bgX < 0){
+            bgX = 0;
         }
+        if(bgY < 0){
+            bgY = 0;
+        }
+        glass.style.backgroundPosition = "-" + bgX + "px -" + bgY + "px";
+
+        //console.log("event at x: " + x + " y: " + y + "  / glass at x:" + glass.style.left + " y: " + glass.style.top);
+    }
+    
+    function getCursorPos(e) {
+        var a, x = 0, y = 0;
+        e = e || window.event;
+        /*get the x and y positions of the image:*/
+        a = img.getBoundingClientRect();
+        /*calculate the cursor's x and y coordinates, relative to the image:*/
+        x = e.pageX - a.left;
+        y = e.pageY - a.top;
+        /*consider any page scrolling:*/
+        x = x - window.pageXOffset;
+        y = y - window.pageYOffset;
+        return {x : x, y : y};
     }
 
     function demagnify() {
         glass = document.getElementById("magnifying-glass-id-for-deleting");
+        img = document.getElementById("dynamic-slide").getElementsByTagName('img')[0];
+        dynamicImageRGB = document.getElementById("dynamic-image-RGB");
+        annotationCanvas = document.getElementById("dynamic-slide").getElementsByTagName('canvas')[0];
+        allParent = dynamicImageRGB.parentNode.parentNode;
         if(glass){
             glass.parentNode.removeChild(glass);
+            allParent.removeEventListener("mousemove", moveMagnifier);
+            allParent.removeEventListener("touchmove", moveMagnifier);
+            allParent.removeEventListener("mouseleave", hideMagnifier);
+            allParent.removeEventListener("touchend", hideMagnifier);
         }
     }
 
     function remagnify() {
-        if(!displayingIR){
+        if(magnifiying){
             zoomValue = document.getElementById("zoomRange").value/10;
             magnify(slideIndex, zoomValue);
         }
@@ -1051,6 +1128,17 @@
         var index = -1;
         for(var i = 0; i < slideshowCouples.length; i++){
             if(slideshowCouples[i][imagetype] == filename){
+                index = i;
+                break;
+            }
+        }
+        return index;
+    }
+
+    function getSlideIndexByFilenameShort(filename, imagetype){
+        var index = -1;
+        for(var i = 0; i < slideshowCouples.length; i++){
+            if(slideshowCouples[i][imagetype].includes(filename)){
                 index = i;
                 break;
             }
@@ -1210,6 +1298,7 @@
     function activateIR() {
         openSettingsEvent('slideshow-settings-ir-tablink','slideshow-settings-IR')
         displayingIR = true;
+        document.getElementById("dynamic-image-IR").style.zIndex = 0;
 
         if (magnifiying) {
             deactivateMagnifier();
@@ -1223,7 +1312,8 @@
 
     function deactivateIR() {
         displayingIR = false;
-
+        //set zIndex of ir-overlay to -1 
+        document.getElementById("dynamic-image-IR").style.zIndex = -1;
         showCurrentSlide(slideIndex);
 
     }
@@ -1231,6 +1321,7 @@
     function activateMagnifier() {
         openSettingsEvent('slideshow-settings-magnifier-tablink', 'slideshow-settings-RGB')
         magnifiying = true;
+        document.getElementById("dynamic-image-RGB").style.zIndex = 9;
         
         if (displayingIR){
             deactivateIR() 
@@ -1239,16 +1330,18 @@
             deactivateAiOverlays();
         }
 
-        demagnify();
+        //demagnify();
         magnify(slideIndex, document.getElementById("zoomRange").value/10);
     }
 
     function deactivateMagnifier() {
         magnifiying = false;
+        document.getElementById("dynamic-image-RGB").style.zIndex = 0;
         demagnify();
     }
 
     function activateAiOverlays(){
+        console.log("---activateAiOverlays---");
         openSettingsEvent('slideshow-settings-annotaions-tablink','slideshow-settings-Annotations')
         displayingAI = true;
 
@@ -1314,6 +1407,12 @@
         return ((r << 16) | (g << 8) | b).toString(16);
     }
 
+    function rgbaToHex(r, g, b, a) {
+        if (r > 255 || g > 255 || b > 255 || a > 255)
+            throw "Invalid color component";
+        return ((r << 24) | (g << 16) | (b << 8) | a).toString(24);
+    }
+
 
         function resizeCanvas(){
         //get all objects with class "annotaionsCanvas"
@@ -1325,6 +1424,10 @@
             var canvas = canvases[i];
             canvas.width = img.width;
             canvas.height = img.height;
+
+            let body_width = document.getElementsByClassName("container")[0].offsetWidth;
+            dynamicAnnotationsCanvas.setWidth(body_width);
+            dynamicAnnotationsCanvas.setHeight(imgA.height * ( body_width/ imgA.width));
         }
 
         if (displayingAI){
@@ -1455,10 +1558,14 @@
             </div>
             <div id="slideshow-settings-Annotations" class="tabcontent-vertical">
                 <div class="slideshow-settings-item-unstructured">
-                    <div>
+                    <div style="display: flex; align-items: baseline;">
                         Annotations line width:
                         <input type="number" id="annotationsLineWidth" name="lineWidth" min="1" max="100" value="2"
-                               style="width: 60px; margin-bottom: 10px; border: 0px; border-radius: 4px;">
+                               style="width: 60px; margin: 0 6px; border: 0px; border-radius: 4px; padding: 4px">
+                        <div style="width: 2px; margin: auto"></div>
+                        <select id="addAnnotationDropdown" style="width: min(80px, 15%); margin: 0 8px; padding: 2px; border-radius: 4px;">
+                            <option>placeholder</select>
+                        <input class="big_button" style="float: right;height: auto;margin: 0 0 10px;" type="button" value="Add Detection" onclick="addDetection()">
                     </div>
                     <div id="layer-table-container">
                         <table>
@@ -1583,6 +1690,8 @@
     </div>
 
 </div>
+{%include 'detectionPopup.html'%}
+{%include 'popupEditDetectionType.html'%}
 
 
 <script>
@@ -1597,11 +1706,36 @@
     var displayingIR = false;
     var displayingAI = false;
     var magnifiying = true;
+    remagnify();
     var lastSlide = 0;
     var allImages = [];
     var allTemperaturesIR = [];
     var slideIndex = 0;
     var infraredDataMatrix = null;
+    const dynamicAnnotationsCanvas = new fabric.Canvas('dynamic-canvas', {
+        selection: false,
+        backgroundColor: 'rgba(0,0,0,0)',
+        interactive: true
+    });
+    dynamicAnnotationsCanvas.hoverCursor = 'pointer';
+    fabric.Object.prototype.cornerStyle = 'circle';//default rect
+    fabric.Object.prototype.setControlsVisibility({
+        mt: true,
+        mb: true,
+        ml: true,
+        mr: true,
+        bl: true,
+        br: true,
+        tl: true,
+        tr: true,
+        mtr: false,
+    });
+
+    dynamicAnnotationsCanvas.on('mouse:down', function(options) {
+        if (! options.target) {
+            unselectAnnotations();    
+        }
+    });
 
     for (var i = 0; i < slideshowCouples.length; i++) {
         if (slideshowCouples[i][0] != "" ) {
@@ -1913,14 +2047,17 @@
     {% if slide_file_paths[0][0] != "" %}
 
     var dynamicCanvas = document.getElementById('dynamic-canvas');
+
     context = dynamicCanvas.getContext('2d');
     var imgA = new Image();
     imgA.src = "{{ global_for(slide_file_paths[0][0]) }}";
     imgA.onload = () => {
         //width of div of class container
         var body_width = document.getElementsByClassName("container")[0].offsetWidth;
-        dynamicCanvas.width = body_width;
-        dynamicCanvas.height = imgA.height * ( body_width/ imgA.width);
+        //dynamicCanvas.width = body_width;
+        //dynamicCanvas.height = imgA.height * ( body_width/ imgA.width);
+        dynamicAnnotationsCanvas.setWidth(body_width);
+        dynamicAnnotationsCanvas.setHeight(imgA.height * ( body_width/ imgA.width));
     };
 
     {% endif %}
