@@ -228,69 +228,6 @@
       //color: #333;
     }
 
-    .uploaded-orb-vocabs {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      margin-top: 20px;
-    }
-
-    .uploaded-orb-vocab {
-      position: relative;
-      width: 136px;
-      height: 136px;
-      margin: 10px;
-      background-color: var(--bg-color-a);
-      color: var(--font-color-a);
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      overflow: hidden;
-    }
-
-    .uploaded-orb-vocab:hover {
-      border: 1px solid var(--accent-color-interaction);
-    }
-
-    .uploaded-orb-vocab img {
-      width: 100%;
-      height: 80%;
-      object-fit: cover;
-    }
-
-    .uploaded-orb-vocab .loading-indicator {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background-color: rgba(255, 255, 255, 0.8);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .uploaded-orb-vocab .delete-button {
-      position: absolute;
-      top: 5px;
-      right: 5px;
-      width: 25px;
-      height: 25px;
-      background-color: var(--accent-color-red);
-      border: 1px solid #ccc;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      z-index: 50;
-    }
-
-    .uploaded-orb-vocab .delete-button:hover {
-      background-color: rgb(255, 0, 0);
-      ;
-    }
-
     .uploaded-masks {
       display: flex;
       flex-wrap: wrap;
@@ -354,47 +291,6 @@
       ;
     }
 
-    .uploaded-configs {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      margin-top: 20px;
-    }
-
-    .uploaded-config {
-      position: relative;
-      width: 136px;
-      height: 136px;
-      margin: 10px;
-      background-color: var(--bg-color-a);
-      color: var(--font-color-a);
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      overflow: hidden;
-    }
-
-    .uploaded-config:hover {
-      border: 1px solid var(--accent-color-interaction);
-    }
-
-    .uploaded-config img {
-      width: 100%;
-      height: 80%;
-      object-fit: cover;
-    }
-
-    .uploaded-config .loading-indicator {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background-color: rgba(255, 255, 255, 0.8);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
     /* chrome and other browsers */
     input::-webkit-outer-spin-button,
     input::-webkit-inner-spin-button {
@@ -408,27 +304,6 @@
         width: 20px;
     }
 
-    .uploaded-config .delete-button {
-      position: absolute;
-      top: 5px;
-      right: 5px;
-      width: 25px;
-      height: 25px;
-      background-color: var(--accent-color-red);
-      border: 1px solid #ccc;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      z-index: 50;
-    }
-
-    .uploaded-config .delete-button:hover {
-      background-color: rgb(255, 0, 0);
-      ;
-    }
 
     .filename-text {
       font-size: 14px;
@@ -796,6 +671,10 @@
           <input type="number" id="frame_skip" name="frame_skip" min="1" max="99" value="1">
           <label for="frame_skip">Frame skip</label>
         </div>
+        <!--<div class="option">
+          <input type="checkbox" id="patchmatch" name="patchmatch" value="patchmatch">
+          <label for="patchmatch">run with Patchmatch</label>
+        </div>-->
           <br>
           <div class="option">
               <input type="checkbox" id="generate_overview_map" name="generate_overview_map" value="generate_overview_map" checked>
@@ -821,32 +700,10 @@
             <h2>Video File Upload</h2>
             <div id="dropzone-text" class="dz-message" data-dz-message><span>Drag and drop the video here or click in the area to open the file explorer.</span></div>
         </div>
-      <div class="small-upload-area" id="orb-vocab-upload-area">
-        <div class="upload-area__label" id="orb-vocab-upload-label">Orb Vocab Upload</div>
-        <br>
-        <a> Drag and drop the vocab here or use the file browser to select the vocab.</a>
-        <br>
-        <br>
-        <br>
-        <label for="orb-vocab-file-input" class="custom-file-upload" id="orb-vocab-file-upload-label" >Select vocab</label>
-        <input type="file" id="orb-vocab-file-input">
-        <div class="uploaded-orb-vocabs" id="uploaded-orb-vocabs"></div>
-      </div>
-      <div class="small-upload-area" id="config-upload-area">
-        <div class="upload-area__label" id="config-upload-label">Config file Upload</div>
-        <br>
-        <a> Drag and drop the Config here or use the file browser to select the Config.</a>
-        <br>
-        <br>
-        <br>
-        <label for="config-file-input" class="custom-file-upload" id="config-file-upload-label">Select config</label>
-        <input type="file" id="config-file-input">
-        <div class="uploaded-configs" id="uploaded-configs"></div>
-      </div>
       <div class="small-upload-area" id="mask-upload-area">
         <div class="upload-area__label" id="mask-upload-label">Mask file Upload</div>
         <br>
-        <a> Drag and drop the Config here or use the file browser to select the mask file.</a>
+        <a> Drag and drop the Mask here or use the file browser to select the mask file.</a>
         <br>
         <br>
         <br>
@@ -870,6 +727,8 @@
   </div>
 
   <script>
+
+    //check gpu or cuda requirements for patchmatch; probably ask the server.py about the cuda/gpu state
 
     //video file upload gets handled by dropzone
 
@@ -960,288 +819,8 @@
     }
 
     function isFilenameAlreadyUploaded(filename) {
-      //check orb vocab files and config files; might be removed in the future
-      let uploadedOrbVocabs = document.getElementsByClassName('uploaded-orb-vocab');
-      if(uploadedOrbVocabs.length > 0) {
-        let uploadedFileName = uploadedOrbVocabs[0].querySelector('.filename-text').innerHTML;
-        if(uploadedFileName === filename) {
-          console.log("found duplicate with name " + filename + " and existing orb vocab " + uploadedFilename);
-          return true;
-        }
-      }
-      let uploadedConfigs = document.getElementsByClassName('uploaded-config');
-      if (uploadedConfigs.length > 0) {
-         let uploadedFileName = uploadedConfigs[0].querySelector('.filename-text').innerHTML;
-         if(uploadedFileName === filename) {
-           console.log("found duplicate with name " + filename + " and existing orb vocab " + uploadedFileName);
-           return true;
-         }
-      }
+      //check if mask file is already uploaded; mask file upload needs to be fixed anyways
       return false;
-    }
-
-    // fbow file
-    var orbVocabUploading = false;
-    var orbVocabUploadedSuccessfully = false;
-    var orbVocabFileName = "";
-
-    // Get the necessary DOM elements
-    const orbVocabUploadArea = document.getElementById('orb-vocab-upload-area');
-    const orbVocabUploadLabel = document.getElementById('orb-vocab-upload-label')
-    const orbVocabFileInput = document.getElementById('orb-vocab-file-input');
-    const uploadedOrbVocabs = document.getElementById('uploaded-orb-vocabs');
-
-    // Event listeners for file selection
-    orbVocabFileInput.addEventListener('change', handleFbowFileSelect); //rename
-    orbVocabUploadArea.addEventListener('drop', handleFbowFileSelect); //rename
-
-    // Prevent default behavior on dragover event to enable drop
-    orbVocabUploadArea.addEventListener('dragover', (event) => {
-      event.preventDefault();
-    });
-
-    // Event listener for click on upload area
-    //uploadArea.addEventListener('click', function() {
-    //  fileInput.click();
-    //});
-
-
-    function uploadFbow(file, uploadedOrbVocab) { //rename
-      const formData = new FormData();
-      formData.append('orbvocab', file);
-      console.log(file);
-
-      const xhr = new XMLHttpRequest();
-      xhr.open('POST', '/{{ id }}/uploadOrbVocabFile', true);
-
-      xhr.onreadystatechange = function () {
-        if (xhr.readyState === XMLHttpRequest.DONE) {
-          // Handle response from the server if needed
-          if (xhr.status === 200) {
-            uploadedOrbVocab.querySelector('.loading-indicator').style.display = 'none';
-            orbVocabUploadedSuccessfully = true;
-            updateUploadProgress();
-            //enableProcessButton();
-
-            //on click on uploaded video open the image in a new tab
-            response = JSON.parse(xhr.responseText);
-            console.log(response.path);
-
-          } else {
-            console.error('orb vocab upload failed:', xhr.status);
-          }
-        }
-      };
-
-      xhr.send(formData);
-    }
-
-    // Function to handle file selection
-    function handleFbowFileSelect(event) { //rename
-      event.preventDefault();
-
-      //showProgressBar();
-
-      const files = event.target.files || event.dataTransfer.files;
-      orbVocabUploading = true;
-      orbVocabFileName = "";
-
-      // Process each selected file
-      const file = files[0];
-      const orbVocabExtension = "fbow";
-      const fileExtension = file.name.split('.').pop();
-
-      // Check if the file is an image
-      if (fileExtension.toLowerCase() !== orbVocabExtension) {
-        console.error('File', file.name, 'is not an orb vocab.');
-      } else {
-
-        const reader = new FileReader();
-
-        // Function to handle video loading
-        reader.onload = ((orbVocabFile) => {
-          return function (e) {
-            // Check if the filename is already uploaded
-            if (isFilenameAlreadyUploaded(orbVocabFile.name)) {
-              updateUploadProgress();
-            } else {
-              // Create the video element
-              const img = document.createElement('img');
-              img.onload = function () {
-                uploadFbow(orbVocabFile, uploadedOrbVocab);
-              };
-              img.src = "{{ url_for('static', filename='default/orb_vocab.png') }}";
-              // Create the uploaded image container
-              const uploadedOrbVocab = document.createElement('div');
-              uploadedOrbVocab.className = 'uploaded-orb-vocab';
-
-              // Create the filename text element
-              const filenameText = document.createElement('div');
-              filenameText.className = 'filename-text';
-              filenameText.textContent = getFilenameFromPath(file.name);
-
-              // Create the loading indicator
-              const loadingIndicator = document.createElement('div');
-              loadingIndicator.className = 'loading-indicator';
-              loadingIndicator.textContent = 'Uploading...';
-
-              // Create the delete button
-              const deleteButton = document.createElement('div');
-              deleteButton.className = 'delete-button';
-              deleteButton.innerHTML = '<a style="font-size: 17px; margin-top: auto; color: var(--font-color-b);">✖</a>';
-
-              //make deletebutton appear inactive
-              deleteButton.style.backgroundColor = 'var(--bg-color-b)';
-              deleteButton.style.cursor = 'not-allowed';
-
-              // Append elements to the uploaded image container
-              uploadedOrbVocab.appendChild(img);
-              uploadedOrbVocab.appendChild(loadingIndicator);
-              uploadedOrbVocab.appendChild(deleteButton);
-              uploadedOrbVocab.appendChild(filenameText);
-
-              // Append the uploaded image container to the uploaded images container
-              uploadedOrbVocabs.appendChild(uploadedOrbVocab);
-            }
-          };
-        })(file);
-
-        // Read the image file
-        reader.readAsDataURL(file);
-      }
-    }
-
-    // congif file
-    var configUploading = false;
-    var configUploadedSuccessfully = false;
-    var configFileName = "";
-
-    // Get the necessary DOM elements
-    const configUploadArea = document.getElementById('config-upload-area');
-    const configUploadLabel = document.getElementById('config-upload-label')
-    const configFileInput = document.getElementById('config-file-input');
-    const uploadedConfigs = document.getElementById('uploaded-configs');
-
-    // Event listeners for file selection
-    configFileInput.addEventListener('change', handleConfigFileSelect); //rename
-    configUploadArea.addEventListener('drop', handleConfigFileSelect); //rename
-
-    // Prevent default behavior on dragover event to enable drop
-    configUploadArea.addEventListener('dragover', (event) => {
-      event.preventDefault();
-    });
-
-    // Event listener for click on upload area
-    //uploadArea.addEventListener('click', function() {
-    //  fileInput.click();
-    //});
-
-
-    function uploadConfig(file, uploadedConfig) { //rename
-      const formData = new FormData();
-      formData.append('config', file);
-      console.log(file);
-
-      const xhr = new XMLHttpRequest();
-      xhr.open('POST', '/{{ id }}/uploadConfigFile', true);
-
-      xhr.onreadystatechange = function () {
-        if (xhr.readyState === XMLHttpRequest.DONE) {
-          // Handle response from the server if needed
-          if (xhr.status === 200) {
-            uploadedConfig.querySelector('.loading-indicator').style.display = 'none';
-            configUploadedSuccessfully = true;
-            updateUploadProgress();
-            //enableProcessButton();
-
-            //on click on uploaded video open the image in a new tab
-            response = JSON.parse(xhr.responseText);
-            console.log(response.path);
-
-          } else {
-            console.error('orb vocab upload failed:', xhr.status);
-          }
-        }
-      };
-
-      xhr.send(formData);
-    }
-
-    // Function to handle file selection
-    function handleConfigFileSelect(event) { //rename
-      event.preventDefault();
-
-      //showProgressBar();
-
-      const files = event.target.files || event.dataTransfer.files;
-      configUploading = true;
-      configFileName = "";
-
-      // Process each selected file
-      const file = files[0];
-      const configExtension = "yaml";
-      const fileExtension = file.name.split('.').pop();
-
-      // Check if the file is an image
-      if (fileExtension.toLowerCase() !== configExtension) {
-        console.error('File', file.name, 'is not a config file.');
-      } else {
-
-        const reader = new FileReader();
-
-        // Function to handle video loading
-        reader.onload = ((configFile) => {
-          return function (e) {
-            // Check if the filename is already uploaded
-            if (isFilenameAlreadyUploaded(configFile.name)) {
-              //orbVocabFileName = orbVocabFile.name; should save it in a var for double files
-              numberOfFilesUploading--;
-              updateUploadProgress();
-            } else {
-              // Create the video element
-              const img = document.createElement('img');
-              img.onload = function () {
-                uploadConfig(configFile, uploadedConfig);
-              };
-              img.src = "{{ url_for('static', filename='default/config_file.png') }}";
-              // Create the uploaded image container
-              const uploadedConfig = document.createElement('div');
-              uploadedConfig.className = 'uploaded-config';
-
-              // Create the filename text element
-              const filenameText = document.createElement('div');
-              filenameText.className = 'filename-text';
-              filenameText.textContent = getFilenameFromPath(file.name);
-
-              // Create the loading indicator
-              const loadingIndicator = document.createElement('div');
-              loadingIndicator.className = 'loading-indicator';
-              loadingIndicator.textContent = 'Uploading...';
-
-              // Create the delete button
-              const deleteButton = document.createElement('div');
-              deleteButton.className = 'delete-button';
-              deleteButton.innerHTML = '<a style="font-size: 17px; margin-top: auto; color: var(--font-color-b);">✖</a>';
-
-              //make deletebutton appear inactive
-              deleteButton.style.backgroundColor = 'var(--bg-color-b)';
-              deleteButton.style.cursor = 'not-allowed';
-
-              // Append elements to the uploaded image container
-              uploadedConfig.appendChild(img);
-              uploadedConfig.appendChild(loadingIndicator);
-              uploadedConfig.appendChild(deleteButton);
-              uploadedConfig.appendChild(filenameText);
-
-              // Append the uploaded image container to the uploaded images container
-              uploadedConfigs.appendChild(uploadedConfig);
-            }
-          };
-        })(file);
-
-        // Read the image file
-        reader.readAsDataURL(file);
-      }
     }
 
     // mask file
@@ -1384,22 +963,10 @@
                 activateDeleteButton(uploadedVideo[0], response.video);
             }
           }
-          if (response.orb_vocab != null) {
-              const uploadedOrbVocab = document.getElementsByClassName('uploaded-orb-vocab');
-              if(uploadedOrbVocab.length > 0) {
-                activateDeleteButton(uploadedOrbVocab[0], response.orb_vocab);
-              }
-          }
-          if (response.config != null) {
-            const uploadedConfig = document.getElementsByClassName('uploaded-config');
-            if(uploadedConfig.length > 0) {
-              activateDeleteButton(uploadedConfig[0], response.config);
-            }
-          }
           if (response.mask != null) {
             const uploadedMask = document.getElementsByClassName('uploaded-mask');
             if(uploadedMask.length > 0) {
-              activateDeleteButton(uploadedMask[0], response.config);
+              activateDeleteButton(uploadedMask[0], response.mask);
             }
           }
         }, "json");
@@ -1414,15 +981,6 @@
         case "uploaded-video":
           xhr.open('POST', '/{{ id }}/deleteVideoFile', true);
           fileTypeDeleted = "video";
-          break;
-        case "uploaded-orb-vocab":
-          xhr.open('POST', '/{{ id }}/deleteOrbVocabFile', true);
-          fileTypeDeleted = "orb_vocab";
-          console.log('deleting orb vocab');
-          break;
-        case "uploaded-config":
-          xhr.open('POST', '/{{ id }}/deleteConfigFile', true);
-          fileTypeDeleted = "config";
           break;
         case "uploaded-mask":
           xhr.open('POST', '/{{ id }}/deleteMaskFile', true);
@@ -1441,14 +999,6 @@
                 switch(fileTypeDeleted) {
                     case "video" :
                         videoUploading = false;
-                        break;
-                    case "orb_vocab" :
-                        orbVocabUploading = false;
-                        orbVocabUploadedSuccessfully = false;
-                        break;
-                    case "config" :
-                        configUploading = false;
-                        configUploadedSuccessfully = false;
                         break;
                     case "mask":
                         maskUploading = false;
@@ -1501,7 +1051,7 @@
     }
 
     function updateProcessButtonEnabling() {
-      if (videoUploadedSuccessfully && orbVocabUploadedSuccessfully && configUploadedSuccessfully) {
+      if (videoUploadedSuccessfully) {
         enableProcessButton();
         return;
       }
@@ -1528,8 +1078,6 @@
     ////////////////////////////////////////////
 
     const video_file_path = {{ video| tojson }};
-    const orb_vocab_file_path = {{ orb_vocab| tojson }};
-    const config_file_path = {{ config| tojson }};
     const mask_file_path = {{ mask| tojson }};
     const video_file_size = {{ video_file_size| tojson }};
     // Process each selected file and create an uploadImage
@@ -1575,86 +1123,6 @@
         videoFileDropzone.disable();
         document.getElementById('video-file-upload-dropzone').style.cursor = 'default';
         videoUploadedSuccessfully = true;
-    }
-    if (orb_vocab_file_path.length > 0) {
-      const img = document.createElement('img');
-      img.onload = function () {
-        const loadingIndicator = uploadedOrbVocab.querySelector('.loading-indicator');
-        loadingIndicator.style.display = 'none';
-      };
-      img.src = "{{ url_for('static', filename='default/orb_vocab.png') }}";
-      // Create the uploaded image container
-      const uploadedOrbVocab = document.createElement('div');
-      uploadedOrbVocab.className = 'uploaded-orb-vocab';
-
-      // Create the filename text element
-      const filenameText = document.createElement('div');
-      filenameText.className = 'filename-text';
-      filenameText.textContent = getFilenameFromPath(orb_vocab_file_path[0]);
-
-      // Create the loading indicator
-      const loadingIndicator = document.createElement('div');
-      loadingIndicator.className = 'loading-indicator';
-      loadingIndicator.textContent = 'Uploading...';
-
-      // Create the delete button
-      const deleteButton = document.createElement('div');
-      deleteButton.className = 'delete-button';
-      deleteButton.innerHTML = '<a style="font-size: 17px; margin-top: auto; color: var(--font-color-b);">✖</a>';
-
-      //make deletebutton appear inactive
-      deleteButton.style.backgroundColor = 'var(--bg-color-b)';
-      deleteButton.style.cursor = 'not-allowed';
-
-      // Append elements to the uploaded image container
-      uploadedOrbVocab.appendChild(img);
-      uploadedOrbVocab.appendChild(loadingIndicator);
-      uploadedOrbVocab.appendChild(deleteButton);
-      uploadedOrbVocab.appendChild(filenameText);
-
-      // Append the uploaded image container to the uploaded images container
-      uploadedOrbVocabs.appendChild(uploadedOrbVocab);
-      orbVocabUploadedSuccessfully = true;
-    }
-    if (config_file_path.length > 0) {
-      const img = document.createElement('img');
-      img.onload = function () {
-        const loadingIndicator = uploadedConfig.querySelector('.loading-indicator');
-        loadingIndicator.style.display = 'none';
-      };
-      img.src = "{{ url_for('static', filename='default/config_file.png') }}";
-      // Create the uploaded image container
-      const uploadedConfig = document.createElement('div');
-      uploadedConfig.className = 'uploaded-config';
-
-      // Create the filename text element
-      const filenameText = document.createElement('div');
-      filenameText.className = 'filename-text';
-      filenameText.textContent = getFilenameFromPath(config_file_path[0]);
-
-      // Create the loading indicator
-      const loadingIndicator = document.createElement('div');
-      loadingIndicator.className = 'loading-indicator';
-      loadingIndicator.textContent = 'Uploading...';
-
-      // Create the delete button
-      const deleteButton = document.createElement('div');
-      deleteButton.className = 'delete-button';
-      deleteButton.innerHTML = '<a style="font-size: 17px; margin-top: auto; color: var(--font-color-b);">✖</a>';
-
-      //make deletebutton appear inactive
-      deleteButton.style.backgroundColor = 'var(--bg-color-b)';
-      deleteButton.style.cursor = 'not-allowed';
-
-      // Append elements to the uploaded image container
-      uploadedConfig.appendChild(img);
-      uploadedConfig.appendChild(loadingIndicator);
-      uploadedConfig.appendChild(deleteButton);
-      uploadedConfig.appendChild(filenameText);
-
-      // Append the uploaded image container to the uploaded images container
-      uploadedConfigs.appendChild(uploadedConfig);
-      configUploadedSuccessfully = true;
     }
     if (mask_file_path.length > 0) {
       const img = document.createElement('img');

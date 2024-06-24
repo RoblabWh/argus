@@ -40,8 +40,6 @@ class ArgusServer:
         self.app.config['TEMPLATES_AUTO_RELOAD'] = True
         self.ALLOWED_EXTENSIONS = set(['png', 'jpg', 'jpeg', 'PNG', 'JPG', 'JPEG'])
         self.ALLOWED_VIDEO_EXTENSIONS = set(['mp4', 'MP4'])
-        self.ALLOWED_ORB_VOCAB_EXTENSIONS = set(['fbow', 'FBOW'])
-        self.ALLOWED_CONFIG_EXTENSIONS = set(['yaml', 'YAML'])
         self.ALLOWED_EXTENSIONS_PROJECT = set(['zip'])
 
         self.threads = []
@@ -78,20 +76,12 @@ class ArgusServer:
                               view_func=self.upload_video_file)
         self.app.add_url_rule('/<int:report_id>/uploadVideoFileDropzone', methods=['POST'],
                               view_func=self.upload_video_file_dropzone)
-        self.app.add_url_rule('/<int:report_id>/uploadOrbVocabFile', methods=['POST'],
-                              view_func=self.upload_orb_vocab_file)
-        self.app.add_url_rule('/<int:report_id>/uploadConfigFile', methods=['POST'],
-                              view_func=self.upload_config_file)
         self.app.add_url_rule('/<int:report_id>/uploadMaskFile', methods=['POST'],
                               view_func=self.upload_mask_file)
         self.app.add_url_rule('/<int:report_id>/deleteFile', methods=['POST'],
                               view_func=self.delete_file)
         self.app.add_url_rule('/<int:report_id>/deleteVideoFile', methods=['POST'],
                               view_func=self.delete_video_file)
-        self.app.add_url_rule('/<int:report_id>/deleteOrbVocabFile', methods=['POST'],
-                              view_func=self.delete_orb_vocab_file)
-        self.app.add_url_rule('/<int:report_id>/deleteConfigFile', methods=['POST'],
-                              view_func=self.delete_config_file)
         self.app.add_url_rule('/<int:report_id>/deleteMaskFile', methods=['POST'],
                               view_func=self.delete_mask_file)
         self.app.add_url_rule('/<int:report_id>/checkUploadedImages', methods=['GET', 'POST'],
@@ -310,55 +300,14 @@ class ArgusServer:
             flash('Allowed video types are -> mp4')
             return json.dumps({'success': False}), 415, {'ContentType': 'application/json'}
 
-        self.project_manager.set_video_file(report_id, file_name)  # maybe create a thread to read video file metadata
-        self.project_manager.generate_config_file(report_id)
-
-        return json.dumps({'success': True, 'path': save_path}), 200, {'ContentType': 'application/json'}
-
-    def upload_orb_vocab_file(self, report_id):
-        print("upload_fbow_file " + str(report_id))
-        if 'orbvocab' not in request.files:
-            print('no "orbvocab" found in request.files:', request.files)
-            return json.dumps({'success': False}), 418, {'ContentType': 'application/json'}
-        file = request.files['orbvocab']
-        file_name = []
-        if file and self.allowed_orb_vocab_file(file.filename):
-            filename = secure_filename(file.filename)
-            save_path = os.path.join(self.project_manager.projects_path, str(report_id), filename)
-            file_name.append(save_path)
-            file.save(save_path)
-        else:
-            flash('Allowed orb vocab types are -> fbow')
-            return json.dumps({'success': False}), 415, {'ContentType': 'application/json'}
-
-        self.project_manager.set_orb_vocab_file(report_id, file_name)
-
-        return json.dumps({'success': True, 'path': save_path}), 200, {'ContentType': 'application/json'}
-
-    def upload_config_file(self, report_id):
-        print("upload_config_file " + str(report_id))
-        if 'config' not in request.files:
-            print('no "config" found in request.files:', request.files)
-            return json.dumps({'success': False}), 418, {'ContentType': 'application/json'}
-        file = request.files['config']
-        file_name = []
-        if file and self.allowed_config_file(file.filename):
-            filename = secure_filename(file.filename)
-            save_path = os.path.join(self.project_manager.projects_path, str(report_id), filename)
-            file_name.append(save_path)
-            file.save(save_path)
-        else:
-            flash('Allowed config types are -> yaml')
-            return json.dumps({'success': False}), 415, {'ContentType': 'application/json'}
-
-        self.project_manager.set_config_file(report_id, file_name)  # maybe create a thread to read video file metadata
+        self.project_manager.set_video_file(report_id, file_name)
 
         return json.dumps({'success': True, 'path': save_path}), 200, {'ContentType': 'application/json'}
 
     def upload_mask_file(self, report_id):
         print("upload_mask_file " + str(report_id))
         if 'maskfile' not in request.files:
-            print('no "config" found in request.files:', request.files)
+            print('no "mask" found in request.files:', request.files)
             return json.dumps({'success': False}), 418, {'ContentType': 'application/json'}
         file = request.files['maskfile']
         file_name = []
@@ -368,7 +317,7 @@ class ArgusServer:
             file_name.append(save_path)
             file.save(save_path)
         else:
-            flash('Allowed config types are -> yaml')
+            flash('Allowed mask types are -> png')
             return json.dumps({'success': False}), 415, {'ContentType': 'application/json'}
 
         self.project_manager.set_mask_file(report_id, file_name)  # maybe create a thread to read video file metadata
@@ -413,38 +362,6 @@ class ArgusServer:
         if video_file:
 
             if self.delete_video_file_in_folder(report_id, video_file[0]):
-                return 'File deleted successfully.'
-
-            return 'File not found.'
-
-        else:
-            return 'Invalid request.'
-
-    def delete_orb_vocab_file(self, report_id):
-        data = request.get_json()
-        project = self.project_manager.get_project(report_id)
-        orb_vocab_file = project['data']['orb_vocab']
-        self.project_manager.set_unprocessed_changes(report_id, True)
-        print("len of file_names: ", len(orb_vocab_file))
-        if orb_vocab_file:
-
-            if self.delete_orb_vocab_file_in_folder(report_id, orb_vocab_file[0]):
-                return 'File deleted successfully.'
-
-            return 'File not found.'
-
-        else:
-            return 'Invalid request.'
-
-    def delete_config_file(self, report_id): #fix the delete methods on the server py and project manager
-        data = request.get_json()
-        project = self.project_manager.get_project(report_id)
-        config_file = project['data']['config']
-        self.project_manager.set_unprocessed_changes(report_id, True)
-        print("len of file_names: ", len(config_file))
-        if config_file:
-
-            if self.delete_config_file_in_folder(report_id, config_file[0]):
                 return 'File deleted successfully.'
 
             return 'File not found.'
@@ -525,8 +442,6 @@ class ArgusServer:
         done = True
         done_threads = []
         video = []
-        orb_vocab = []
-        config_file = []
         mask = []
         video_metadata = {}
         project = self.project_manager.get_project(report_id)
@@ -534,13 +449,9 @@ class ArgusServer:
         if data["video"]:
             video = data["video"]
             video_metadata = data["video_metadata"]
-        if data["orb_vocab"]:
-            orb_vocab = data["orb_vocab"]
-        if data["config"]:
-            config_file = data["config"]
         if data['mask']:
             mask = data["mask"]
-        return jsonify({'done': done, "dataSummary": {}, "video": video, "orb_vocab": orb_vocab, "config": config_file, "mask": mask})
+        return jsonify({'done': done, "dataSummary": {}, "video": video, "mask": mask})
 
     def initial_process(self, report_id):
         if request.method == 'POST':
@@ -587,6 +498,15 @@ class ArgusServer:
             self.project_manager.set_slam_settings(report_id, slam_settings)
             self.project_manager.set_mapping_settings(report_id, generate_overview_map)
             #set generate map settings with project manager
+
+            #load default file from static and add it to project folder
+            self.project_manager.add_default_orb_vocab(report_id)
+
+            #generates config file from video metadata (and settings later)
+            if not self.project_manager.generate_config_file(report_id):
+                return jsonify("something went wrong")
+
+            #set or link orb vocab file from static
 
             project = self.project_manager.get_project(report_id)
             data = project['data']
@@ -1123,8 +1043,6 @@ class ArgusServer:
             video_file_size = os.path.getsize(video[0])
         except:
             video_file_size = None
-        orb_vocab = data["orb_vocab"]
-        config = data["config"]
         mask = data["mask"]
         slam_settings = data["slam_settings"]
         keyframe_images = data["keyframes"]
@@ -1183,7 +1101,7 @@ class ArgusServer:
         project = {"id": report_id, "name": self.project_manager.get_project_name(report_id),
                    "description": self.project_manager.get_project_description(report_id),
                    'creation_time': self.project_manager.get_project_creation_time(report_id)}
-        return render_template(template, id=report_id, video=video, video_file_size=video_file_size, orb_vocab=orb_vocab, config=config, mask=mask,
+        return render_template(template, id=report_id, video=video, video_file_size=video_file_size, mask=mask,
                                slam_settings=slam_settings, keyframe_images=keyframe_images, map_db=map_db,
                                has_keyframe_images = has_keyframe_images,
                                keyfrms = keyfrms, landmarks=landmarks, slam_output = slam_output,
@@ -1339,24 +1257,6 @@ class ArgusServer:
             return True
         return False
 
-    def delete_orb_vocab_file_in_folder(self, report_id, filename):
-        file_path = filename
-        if os.path.exists(file_path):
-            os.remove(file_path)
-            print("file deleted @" + file_path)
-            self.project_manager.remove_from_file_name_orb_vocab(report_id, file_path)
-            return True
-        return False
-
-    def delete_config_file_in_folder(self, report_id, filename):
-        file_path = filename
-        if os.path.exists(file_path):
-            os.remove(file_path)
-            print("file deleted @" + file_path)
-            self.project_manager.remove_from_file_name_config(report_id, file_path)
-            return True
-        return False
-
     def delete_mask_file_in_folder(self, report_id, filename):
         file_path = filename
         if os.path.exists(file_path):
@@ -1381,12 +1281,6 @@ class ArgusServer:
 
     def allowed_video_file(self, filename):
         return '.' in filename and filename.rsplit('.', 1)[1].lower() in self.ALLOWED_VIDEO_EXTENSIONS
-
-    def allowed_orb_vocab_file(self, filename):
-        return '.' in filename and filename.rsplit('.', 1)[1].lower() in self.ALLOWED_ORB_VOCAB_EXTENSIONS
-
-    def allowed_config_file(self, filename):
-        return '.' in filename and filename.rsplit('.', 1)[1].lower() in self.ALLOWED_CONFIG_EXTENSIONS
 
     def allowed_file_project(self, filename):
         return '.' in filename and filename.rsplit('.', 1)[1].lower() in self.ALLOWED_EXTENSIONS_PROJECT

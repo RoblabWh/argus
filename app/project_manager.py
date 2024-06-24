@@ -23,6 +23,7 @@ class ProjectManager:
         self.CURRENT_PROJECT_FILE_VERSION = 1.1
         self.projects_dirs = ["rgb", "ir", "panos", "rgb/thumbnails" , "ir/thumbnails", "panos/thumbnails"]
         self.slam_projects_dirs = ["keyframes","mapping_output"] #maybe one to output keyframes
+        self.default_vocab_path = "./static/default/orb_vocab.fbow"
         #self.image_mapper = {}
 
     def create_project(self, name, description):
@@ -377,17 +378,21 @@ class ProjectManager:
             json.dump(project, json_file)
         return data['video']
 
-    def get_config_file(self, id):
+    def add_default_orb_vocab(self, id):
         project = self.get_project(id)
-        path = project['data']['config']
-        #path = self.generate_config_file(id)
+        data = project['data']
+        #target self.default_vocab_path
+        dst = os.path.join(self.projects_path, str(id), "orb_vocab.fbow")
+        shutil.copyfile(self.default_vocab_path, dst)
+        data["orb_vocab"] = [dst]
+        return data["orb_vocab"]
 
     def generate_config_file(self, id):
         project = self.get_project(id)
         data = project['data']
         video = data['video']
         if not video:
-            return
+            return False
         template_data = {
             'fps': data['video_metadata']['fps'],
             'width': data['video_metadata']['width'],
@@ -402,20 +407,7 @@ class ProjectManager:
                 config.write(result)
             #set config in project file
             self.set_config_file(id, [save_path])
-
-
-    def set_orb_vocab_file(self, id, file_name):
-        project = self.get_project(id)
-        data = project['data']
-        orb_vocab = []
-        orb_vocab.append(file_name[0])
-
-        data['orb_vocab'] = orb_vocab
-        print("setting video to project with id: " + str(id))
-        with open(self.projects_path + str(id) + "/project.json", "w") as json_file:
-            json.dump(project, json_file)
-
-        return data['orb_vocab']
+        return True
 
     def set_config_file(self, id, file_name):
         project = self.get_project(id)
@@ -878,30 +870,6 @@ class ProjectManager:
             video = []
         video.remove(file_path)
         data["video_metadata"] = {}
-        print(project, flush=True)
-        with open(os.path.join(self.projects_path, str(report_id), "project.json"), "w") as json_file:
-            json.dump(project, json_file)
-
-    def remove_from_file_name_orb_vocab(self, report_id, file_path):
-        project = self.get_project(report_id)
-        data = project['data']
-        try:
-            orb_vocab = data['orb_vocab']
-        except:
-            orb_vocab = []
-        orb_vocab.remove(file_path)
-        print(project, flush=True)
-        with open(os.path.join(self.projects_path, str(report_id), "project.json"), "w") as json_file:
-            json.dump(project, json_file)
-
-    def remove_from_file_name_config(self, report_id, file_path):
-        project = self.get_project(report_id)
-        data = project['data']
-        try:
-            config = data['config']
-        except:
-            config = []
-        config.remove(file_path)
         print(project, flush=True)
         with open(os.path.join(self.projects_path, str(report_id), "project.json"), "w") as json_file:
             json.dump(project, json_file)
