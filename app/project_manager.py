@@ -384,8 +384,21 @@ class ProjectManager:
         #target self.default_vocab_path
         dst = os.path.join(self.projects_path, str(id), "orb_vocab.fbow")
         shutil.copyfile(self.default_vocab_path, dst)
-        data["orb_vocab"] = [dst]
+        self.set_orb_vocab(id, [dst])
         return data["orb_vocab"]
+
+    def set_orb_vocab(self, id, file_name):
+        project = self.get_project(id)
+        print(project, flush=True)
+        data = project['data']
+        orb_vocab = []
+        orb_vocab.append(file_name[0])
+        data['orb_vocab'] = orb_vocab
+        print("setting video to project with id: " + str(id))
+        with open(self.projects_path + str(id) + "/project.json", "w") as json_file:
+            json.dump(project, json_file)
+
+        return data['orb_vocab']
 
     def generate_config_file(self, id):
         project = self.get_project(id)
@@ -654,7 +667,7 @@ class ProjectManager:
 
     def generate_new_keyframe_file_path(self, report_id):
         project = self.get_project(report_id)
-        path = self.projects_path + str(report_id) + "/keyframes.json"
+        path = os.path.join(self.projects_path, str(report_id), "keyframes.json")
         project['data']['keyframe_file_path'] = path
         self.update_data_by_keyword(report_id, 'keyframe_file_path', path)
         return path
@@ -671,7 +684,7 @@ class ProjectManager:
 
     def generate_new_landmark_file_path(self, report_id):
         project = self.get_project(report_id)
-        path = self.get_project_path(report_id) + "/landmarks.json"
+        path = os.path.join(self.projects_path, str(report_id), "landmarks.json")
         project['data']['landmark_file_path'] = path
         self.update_data_by_keyword(report_id, 'landmark_file_path', path)
         return path

@@ -44,8 +44,8 @@ Mapping:
 
 PatchMatch:
   enabled: $patch_match
-  cols: 640
-  rows: 320
+  cols: 640 #patchmatch resolution, add like 2 models: 1hd: cols 640, rows 320, patchmatch_iterations 4
+  rows: 320 #2dense: cols 1440, rows 720, patchmatch_iterations 6
   min_patch_std_dev: 0
   patch_size: 7
   patchmatch_iterations: 4
