@@ -1,3 +1,7 @@
 [submodule "detection/transformer_pipeline"]
 	path = detection/transformer_pipeline
 	url = https://github.com/RoblabWh/transformer_pipeline.git
+[submodule "stella_vslam_dense_argus"]
+	path = stella_vslam_dense_argus
+	url = https://github.com/RoblabWh/stella_vslam_dense
+	branch = argus
