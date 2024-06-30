@@ -22,16 +22,22 @@ To run the server, the following is needed:
 Without Nvidia Docker, the object detection pipeline will use the CPU to run our neural networks, and WebODM will also run without the GPU.
 
 ## Installing
-1. Clone the repository.
-2. Run `./install.sh` from the repository directory. # take a coffee, building all images need up to 20 minutes
+1. Clone the repository: `git clone -b 360video --recursive https://github.com/RoblabWh/argus.git`
+2. Run `./install.sh` from the repository directory. # take a coffee, building all images need up to 20 minutes 
+3. Run `./argus.sh build` to reduce running time. (requires one completion of `./install.sh`)
+4. In case something goes wrong, try `git submodule update --init --recursive`
 
 ## Running with Installation
-1. Run `argus up`
+1. Run `argus up`: this will create and start all the containers
 
 ## Running without Installation
-1. Clone the repository. Make sure to use `--recursive` or `--recurse-submodules` to also get the detection submodule.
+1. Clone the repository. Make sure to use `--recursive` or `--recurse-submodules` to also get the detection and stella vslam dense submodule: `git clone -b 360video --recursive https://github.com/RoblabWh/argus.git`
 2. Navigate to the `argus` directory.
 3. Run `./argus.sh up --build`
+
+## Stopping the Running
+1. Use `Ctrl+C` to gracefully stop argus, another `Ctrl+C` will force the containers to stop.
+2. Use `./argus.sh down` to remove the containers, networkts, volumes and images that got created with `argus up`
 
 ## Utilizing the systemd Service
 1. Install ARGUS.
