@@ -19,6 +19,7 @@ class ImageMapperProcess(threading.Thread):
         self.report_id = report_id
         self.message = "Step 1/2: Preprocessing"
         self.image_paths = self.get_image_paths()
+        self.image_paths_with_distance = None
         self.keyframe_manager = Keyframes()
         self.load_keyframe_data(keyframe_json)
         self.progress_preprocess = 0
@@ -27,7 +28,7 @@ class ImageMapperProcess(threading.Thread):
         self.started = False
         self.map_shape = [4000,4000]
         self.preprocess_img_size = [1000,1000]
-        self.overlap_factor = 0.8
+        self.overlap_factor = 1.8
         self.border = 600
         self.img_prefix = str(self.image_folder.expanduser())
         self.remove_later = None
@@ -145,10 +146,13 @@ class ImageMapperProcess(threading.Thread):
         flight_distance = 0
         latest_center = None
         largest_distance = 0
+        latest_distance = -1
 
         trajectory_output = np.zeros((self.map_shape[0], self.map_shape[1], 3), dtype=np.uint8)
         # calculations for the flight
+        preprocess_images = {}
         for image_path in self.image_paths:
+            preprocess_img = {}
             id = re.findall("\\d+", str(image_path.stem))[0]
             pose = self.keyframe_manager.getKeyframePose(int(id))
             if (pose is None) or (len(pose) != 16):
@@ -156,20 +160,53 @@ class ImageMapperProcess(threading.Thread):
             translation, rotation = self.get_translation_and_rotation_from_pose(pose)
             positionCenterX = int((translation[0] - x_interval[0]) * scaleFactor + self.border)
             positionCenterY = int((-translation[2] + z_interval[1]) * scaleFactor + self.border)
+            preprocess_img['height'] = -translation[1]
+            preprocess_img['path'] = image_path
             if latest_center is None:
                 latest_center = (positionCenterX, positionCenterY)
+                preprocess_img['distance'] = None
             else:
-                # get distance between new center and last center
-                x_delta = positionCenterX - latest_center[0]
-                y_delta = positionCenterY - latest_center[1]
-                distance = math.sqrt(x_delta ** 2 + y_delta ** 2)
-                flight_distance += distance
-                if (distance > largest_distance):
-                    largest_distance = distance
-                cv2.line(trajectory_output, (int(latest_center[0]), int(latest_center[1])),
-                         (int(positionCenterX), int(positionCenterY)), (255, 128, 0), 15)
-                latest_center = (positionCenterX, positionCenterY)
+                if latest_distance < 0:
+                    x_delta = positionCenterX - latest_center[0]
+                    y_delta = positionCenterY - latest_center[1]
+                    distance = math.sqrt(x_delta ** 2 + y_delta ** 2)
+                    latest_distance = distance
+                    preprocess_img['distance'] = distance
+                    flight_distance += distance
+                    if (distance > largest_distance):
+                        largest_distance = distance
+                    cv2.line(trajectory_output, (int(latest_center[0]), int(latest_center[1])),
+                             (int(positionCenterX), int(positionCenterY)), (255, 128, 0), 8)
+                    latest_center = (positionCenterX, positionCenterY)
+                else:
+                    x_delta = positionCenterX - latest_center[0]
+                    y_delta = positionCenterY - latest_center[1]
+                    distance = math.sqrt(x_delta ** 2 + y_delta ** 2)
+                    # we could either get the mid value of them two
+                    mid_value = int((latest_distance + distance) / 2)
+                    # or use whichever value is smaller
+                    small_value = 0
+                    if distance > largest_distance:
+                        small_value = latest_distance
+                    else:
+                        small_value = distance
 
+                    preprocess_img['distance'] = mid_value #small_value has more value range
+                    flight_distance += distance
+                    if (distance > largest_distance):
+                        largest_distance = distance
+                    cv2.line(trajectory_output, (int(latest_center[0]), int(latest_center[1])),
+                             (int(positionCenterX), int(positionCenterY)), (255, 128, 0), 8)
+                    latest_distance = distance
+                    latest_center = (positionCenterX, positionCenterY)
+            preprocess_images[id] = preprocess_img
+        sorted_images = sorted(preprocess_images.items(), key=lambda x: x[1]['height'])
+        new_image_paths = []
+        self.image_paths_with_distance = sorted_images
+        for key in sorted_images:
+            new_image_paths.append(key[1]['path'])
+
+        self.image_paths = new_image_paths
         average_distance = flight_distance / len(
             self.keyframe_manager.getAllKeyframes())  # average distance between two keyframes
         if(save_trajectory):
@@ -224,11 +261,11 @@ class ImageMapperProcess(threading.Thread):
         output_map = np.zeros((self.map_shape[0], (self.map_shape[1]), 3), dtype=np.uint8)
         img = None
         number_of_images_done = 0
-        for image_path in self.image_paths:
-            img = cv2.imread(str(image_path))
-            id = re.findall("\\d+", str(image_path.stem))[0]
+        for img_data in self.image_paths_with_distance:
+            img = cv2.imread(str(img_data[1]['path']))
+            id = img_data[0]
             number_of_images_done += 1
-            self.progress_mapping = (number_of_images_done / len(self.image_paths)) * 0.95
+            self.progress_mapping = (number_of_images_done / len(self.image_paths_with_distance)) * 0.95
 
             #calculate image position and orientation
             pose = self.keyframe_manager.getKeyframePose(int(id))
@@ -238,11 +275,11 @@ class ImageMapperProcess(threading.Thread):
                 self.keyframe_manager.getKeyframePose(int(id)))
             positionCenterX = int((translation[0] - x_interval[0]) * scaleFactor + self.border)
             positionCenterY = int((-translation[2] + z_interval[1]) * scaleFactor + self.border)
-            if (int(large_chunk_size * ((-translation[1] - y_interval[0]) / (y_interval[1] - y_interval[0]))) <= 0):
+            if (img_data[1]['distance'] is None or int((img_data[1]['distance']) * (-translation[1] - y_interval[0]) / (
+                    y_interval[1] - y_interval[0])) <= 0):
                 continue
-            map_size = (int(large_chunk_size * ((-translation[1] - y_interval[0]) / (y_interval[1] - y_interval[0]))),
-                        int(large_chunk_size * ((-translation[1] - y_interval[0]) / (y_interval[1] - y_interval[0]))))
-
+            map_size = (int(img_data[1]['distance'] * (1 + (self.overlap_factor))),
+                        int(img_data[1]['distance'] * (1 + (self.overlap_factor))))
             top = int(positionCenterX - (map_size[0]/2))
             left = int(positionCenterY - (map_size[1]/2))
             test_vector = np.array([0,0,100,1]) #in keyframe coordinate system this should be a vector pointing directly into the field of view
