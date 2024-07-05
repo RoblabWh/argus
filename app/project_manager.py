@@ -11,6 +11,7 @@ from datetime import datetime
 class ProjectManager:
     def __init__(self, projects_path):
         self.projects = []
+        self.project_groups = []
         self.projects_image_objects = {}
         self.highest_id = -1
         self.current_project_id = None
@@ -19,6 +20,8 @@ class ProjectManager:
         self.projects_path = projects_path
         self.CURRENT_PROJECT_FILE_VERSION = 1.1
         self.projects_dirs = ["rgb", "ir", "panos", "rgb/thumbnails" , "ir/thumbnails", "panos/thumbnails"]
+        self.project_group_file = os.path.join(self.projects_path, "project_groups.json")
+        # self.update_project_groups_file()
         #self.image_mapper = {}
 
 
@@ -197,7 +200,7 @@ class ProjectManager:
 
 
     def initiate_project_list(self):
-        # check for every directory in static/uploads/ if there is project.json
+        # check for every directory in static/projects/ if there is project.json
         # if yes, load project and add to project list
         for project_id in os.listdir(self.projects_path):
             try:
@@ -209,6 +212,10 @@ class ProjectManager:
                         #     self.highest_id = project['id']
             except:
                 print("error while loading project with id: " + str(project_id), flush=True)
+
+        if os.path.isfile(self.project_group_file):
+            with open(self.project_group_file, "r") as json_file:
+                self.project_groups = json.load(json_file)
 
         self.projects = sorted(self.projects, key=lambda d: d['id'], reverse=True)
 
@@ -226,6 +233,17 @@ class ProjectManager:
         if self.projects == []:
             self.initiate_project_list()
         return self.projects
+
+    def get_projects_basic_data(self):
+        projects = self.get_projects()
+        basic_data = []
+        for project in projects:
+            basic_data.append({
+                'id': project['id'],
+                'name': project['name'],
+                'description': project['description'],
+                'creation_time': project['creation_time']})
+        return basic_data
 
     def set_current_project(self, id):
         self.current_project_id = id
@@ -401,6 +419,9 @@ class ProjectManager:
 
     def delete_project(self, id):
         project = self.get_project(id)
+        group_id = self.get_project_group_by_project_id(id)
+        if group_id != None:
+            self.remove_project_from_group(group_id, id)
         if project != None:
             print("deleted project with id: " + str(id) + " and path: " + os.path.join(self.projects_path, str(id)), flush=True)
             self.projects.remove(project)
@@ -751,3 +772,61 @@ class ProjectManager:
 
         except Exception as e:
             print("error while deleting image object: " + str(e), flush=True)
+
+    def update_project_groups_file(self):
+        with open(self.project_group_file, "w") as json_file:
+            json.dump(self.project_groups, json_file)
+
+    def get_project_group(self, group_id):
+        for group in self.project_groups:
+            if group['id'] == group_id:
+                return group
+        return None
+
+    def create_project_group(self, name, description):
+        project_group_id = self.generate_project_id()
+        project_group = {'id': project_group_id, 'name': name, 'description': description, 'projects': []}
+        self.project_groups.append(project_group)
+        self.update_project_groups_file()
+        return project_group_id
+
+    def add_existing_project_to_group(self, group_id, project_id):
+        project_group = self.get_project_group(group_id)
+        print("adding project_id: " + str(project_id), flush=True)
+        print(project_group, flush=True)
+        project_group['projects'].append(project_id)
+        self.update_project_groups_file()
+        return project_group
+
+    def remove_project_from_group(self, group_id, project_id):
+        project_group = self.get_project_group(group_id)
+        project_group['projects'].remove(project_id)
+        self.update_project_groups_file()
+        return project_group
+
+    def get_project_group_by_project_id(self, project_id):
+        for group in self.project_groups:
+            for p_id in group['projects']:
+                if project_id == p_id:
+                    return group['id']
+        return None
+
+    def delete_project_group(self, group_id):
+        project_group = self.get_project_group(group_id)
+        self.project_groups.remove(project_group)
+        self.update_project_groups_file()
+
+    def get_project_groups(self):
+        return self.project_groups
+
+    def update_project_group_name(self, group_id, name):
+        project_group = self.get_project_group(group_id)
+        project_group['name'] = name
+        self.update_project_groups_file()
+        return project_group
+
+    def update_project_group_description(self, group_id, description):
+        project_group = self.get_project_group(group_id)
+        project_group['description'] = description
+        self.update_project_groups_file()
+        return project_group

@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Group Report</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='default/variables-light.css') }}" id="currentCss">
+  <!-- adds leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"
+    integrity="sha512-xodZBNTC5n17Xt2atTPuE1HxjVMSvLVW9ocqUKLsCC5CXdbqCmblAshOMAS6/keqq/sMZMZ19scR4PsZChSR7A=="
+    crossorigin="" />
+  <!-- Make sure you put this AFTER Leaflet's CSS -->
+  <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"
+    integrity="sha512-XQoYMqMTK8LvdxXYG3nZ448hOEQiglfqkJs1NOQV44cWnUrBc8PkAOcXy20w0vlaXaVUearIOBhiXZ5V3ynxwA=="
+    crossorigin=""></script>
+  <style>
+    body {
+      margin-left: 0px;
+      margin-right: 0px;
+      margin-bottom: 0px;
+      background-color: var(--bg-color-page);
+      color: var(--font-color-a);
+    }
+
+    .bodyDiv {
+      min-height: 95vh;
+      width: 94%;
+      max-width: 1501px;
+      margin: 0 auto !important;
+      float: none !important;
+      font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    }
+
+
+    .oneLineFromLeft {
+      display: flex;
+      flex-direction: row;
+      justify-content: flex-start;
+    }
+
+    .oneLineLeftRight {
+      display: flex;
+      flex-direction: row;
+      justify-content: space-between;
+    }
+
+    .oneLineLeftRight a,
+    h2 {
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      overflow: hidden;
+    }
+
+    .oneLineLeftRight h2 {
+      padding: 0px;
+    }
+
+    .alertBanner {
+      width: 100%;
+      padding: 10px;
+      background-color: var(--accent-color-red);
+      color: var(--font-color-b);
+
+    }
+
+    .alertBanner p {
+      color: var(--font-color-b);
+      width: 100%;
+      text-align: center;
+      font-weight: bold;
+    }
+
+    .edit-text-button {
+      font-size: 18px;
+      height: fit-content;
+      width: 18px;
+      margin-top: 5px;
+      border-radius: 5px;
+      border-style: solid;
+      border-color: var(--bg-color-b);
+      border-width: 1px;
+      background-color: var(--bg-color-a);
+    }
+
+    .edit-text-button:hover {
+      background-color: var(--accent-color-interaction);
+      color: var(--font-color-b);
+    }
+
+    #descriptionText {
+      margin: 0px;
+      padding: 8px;
+      border-radius: 5px;
+      border-style: solid;
+      border-color: transparent;
+      background-color: transparent;
+    }
+
+    #title-name {
+      margin: 0px;
+      margin-left: -14px;
+      padding: 8px;
+      max-width: 95%;
+      border-radius: 6px;
+      border-style: solid;
+      border-color: transparent;
+    }
+
+    #descriptionText.editable,
+    #title-name.editable {
+      border-radius: 6px;
+      border-style: solid;
+      border-color: var(--accent-color-interaction);
+    }
+
+    .big_upload {
+      float: left;
+      width: 63%;
+      position: relative;
+      padding: 10px 0px 10px 10px;
+      border-radius: 3px;
+      border-color: rgb(204, 204, 204);
+      border-style: solid;
+      border-width: 1px;
+    }
+
+
+    .big_button {
+      float: right;
+      position: relative;
+      padding: 11px 6px;
+      background-color: var(--accent-color-interaction);
+      color: var(--font-color-b);
+      border-radius: 4px;
+      cursor: pointer;
+      border-style: none;
+      text-align: center;
+      margin: auto 0;
+    }
+
+    .big_button:hover {
+      font-weight: bold;
+    }
+
+    .big_button::before {
+      display: block;
+      content: attr(title);
+      font-weight: bold;
+      height: 0;
+      overflow: hidden;
+      visibility: hidden;
+    }
+
+
+    .big_button:hover {
+      color: var(--font-color-a);
+      font-weight: bold;
+    }
+
+    .big_button:disabled {
+      background-color: var(--bg-color-a);
+      color: var(--bg-color-b);
+      cursor: not-allowed;
+    }
+
+    .map_container {
+      padding: 18 px;
+      background-color: var(--bg-color-page);
+      overflow: hidden;
+    }
+
+    p {
+      text-align: justify;
+      font-size: 16px;
+    }
+
+    summary {
+      background-color: var(--accent-color-interaction);
+      color: var(--font-color-b);
+      font-weight: medium;
+      padding: 1rem;
+      margin-bottom: 1rem;
+      outline: none;
+      border-radius: 4px;
+      cursor: pointer;
+      position: relative;
+      transition: 0.3s;
+    }
+
+    details[open]>summary {
+      background-color: var(--bg-color-a);
+      color: var(--font-color-a);
+      border-style: solid;
+      border-radius: 6px;
+      border-width: 3px;
+      border-color: var(--accent-color-interaction);
+    }
+
+    details[open]>summary:hover,
+    summary:hover {
+      color: var(--font-color-a);
+      font-weight: bold;
+    }
+
+    details>summary::after {
+      position: absolute;
+      content: "+";
+      right: 20px;
+    }
+
+    details[open]>summary::after {
+      position: absolute;
+      content: "-";
+      right: 20px;
+    }
+
+    details>summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .tab-content {
+      margin: 20px;
+    }
+
+    .wrapper {
+      display: flex;
+      flex-direction: row;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      padding: 15px;
+    }
+
+    .Progress {
+      width: 100%;
+      background-color: #ddd;
+    }
+
+    .progress-bar-container {
+      position: relative;
+      width: 100%;
+      height: 30px;
+      background-color: var(--bg-color-a);
+      margin-bottom: 10px;
+      border-radius: 6px;
+    }
+
+    .progress-bar-container a {
+      position: absolute;
+      top: 4px;
+      font-size: 22px;
+      width: 100%;
+      text-align: center;
+      color: var(--font-color-b);
+      font-weight: bold;
+    }
+
+    #progress-bar {
+      height: 100%;
+      background-color: var(--accent-color-green);
+      width: 0%;
+      transition: width 0.2s ease-in-out;
+      border-radius: 6px;
+    }
+
+    .spinner-small-export {
+      width: 1.25rem;
+      --b: 6px;
+      /* the border thickness */
+      aspect-ratio: 1;
+      border-radius: 50%;
+      padding: 1px;
+      background: conic-gradient(#0000 10%, var(--accent-color-interaction)) content-box;
+      -webkit-mask:
+        repeating-conic-gradient(#0000 0deg, #000 1deg 20deg, #0000 21deg 36deg),
+        radial-gradient(farthest-side, #0000 calc(100% - var(--b) - 1px), #000 calc(100% - var(--b)));
+      -webkit-mask-composite: destination-in;
+      mask-composite: intersect;
+      animation: s4 1s infinite steps(10);
+    }
+
+    @keyframes s4 {
+      to {
+        transform: rotate(1turn)
+      }
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+    }
+
+    td,
+    th {
+      border: 0px solid var(--bg-color-a);
+      text-align: left;
+      padding: 8px;
+    }
+
+    th {
+      background-color: var(--bg-color-AILayer);
+      border-bottom: 2px solid var(--bg-color-a)
+    }
+
+    tr:nth-child(even) {
+      background-color: var(--bg-color-AILayer);
+    }
+
+    tr:hover {
+      background-color: var(--bg-color-a);
+    }
+
+    .rowTitle {
+      width: 30%;
+    }
+
+    .table-project-id {
+      min-width: 35px;
+      max-width: 4vw;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .table-project-name,
+    .table-project-description {
+      min-width: 10vw;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      line-clamp: 2;
+      -webkit-box-orient: vertical;
+    }
+
+    td[inner-text] {
+      position: relative;
+    }
+
+    /* Tooltip text */
+    td[inner-text]::after {
+      content: attr(inner-text);
+      position: absolute;
+      white-space: pre;
+      background-color: black;
+      color: #fff;
+      padding: 5px;
+      border-radius: 3px;
+      opacity: 0;
+      transition: opacity 0.3s;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    /* Show the tooltip text when hovering */
+    td[inner-text]:hover::after {
+      opacity: 1;
+    }
+
+    .short-table-title {
+      max-width: 1vw;
+      min-width: 50px;
+    }
+
+    #map-container {
+      display: flex;
+      flex-direction: row;
+      position: relative;
+      width: 100%;
+      height: 75vh;
+    }
+
+    #map {
+      height: 75vh;
+      width: 100%;
+    }
+
+    #map-settings {
+      background-color: var(--bg-color-a);
+      min-width: 280px;
+      max-width: 15%;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      margin: 0 0 0 12px;
+      height: max-content;
+      max-height: 100%;
+      border-radius: 8px;
+    }
+
+    #map-settings::-webkit-scrollbar {
+      width: 10px;
+    }
+
+    #map-settings::-webkit-scrollbar-thumb {
+      background-color: var(--accent-color-interaction);
+      border-radius: 10px;
+    }
+
+
+
+    .maps-project-mapscontainer .oneLineLeftRight {
+      padding: 4px;
+    }
+
+    .project-maps {
+      display: flex;
+      flex-direction: column;
+      margin: 12px 0;
+      background-color: var(--bg-color-page);
+      padding: 8px;
+      border-radius: 6px;
+    }
+
+
+    .maps-title-line {
+      padding: 8px;
+      border-top-right-radius: 4px;
+      border-top-left-radius: 4px;
+      margin: 0 0 4px 0;
+    }
+
+    .maps-project-title {
+      margin: 0;
+      font-size: medium;
+    }
+
+    .maps-project-date {
+      white-space: nowrap;
+    }
+
+    .maps-project-mapscontainer {
+      background-color: var(--bg-color-AILayer);
+      padding: 4px;
+      box-shadow: 0px -2px 0px 0 var(--bg-color-b);
+    }
+
+    .maps-project-map {
+      padding: 4px;
+    }
+
+    .oneLineLeftRight p {
+      margin: 0;
+    }
+  </style>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="{{url_for('static', filename='default/jquery-3.6.3.js') }}"></script>
+  <script src="{{url_for('static', filename='default/fabric.min.js') }}"></script>
+
+  <!-- adds leaflet -->
+</head>
+
+<body>
+
+  {% include 'headerGroup.html' %}
+
+  <br>
+  <br>
+  <br>
+
+  <div class="bodyDiv">
+
+    <br>
+    <div style="position: relative;">
+      <h4 style="margin-bottom: 2px;">Project Group (ID:{{ group.id }})</h4>
+    </div>
+
+    <div style="width: 100%; display: flex;">
+      <h1 id="title-name">{{ group.name }}</h1>
+      <div id="edit-title-button" class="edit-text-button" style="margin: 12px; float:left"
+        onclick="toggleTextfieldTitle()">
+        <span
+          style="display: inline-block; transform: rotate(100deg); -ms-transform: rotate(100deg); -moz-transform: rotate(100deg); -webkit-transform: rotate(100deg);">&#x270E;</span>
+        <span style="display: none;">&check;</span>
+      </div>
+    </div>
+
+    <div style="display: inline-flex; width:100% ">
+      <div style="max-width: 97%; margin-right:10px">
+        <p id="descriptionText">
+          {% for line in group.description.splitlines()[:-1] %}
+          {{line}}<br>
+          {% endfor %}
+          {{group.description.splitlines()[-1]}}
+        </p>
+      </div>
+      <div id="edit-description-button" class="edit-text-button" onclick="toggleTextFieldDescription()">
+        <span
+          style="display: inline-block; transform: rotate(100deg); -ms-transform: rotate(100deg); -moz-transform: rotate(100deg); -webkit-transform: rotate(100deg);">&#x270E;</span>
+        <span style="display: none;">&check;</span>
+      </div>
+    </div>
+
+    <br>
+    <br>
+    <br>
+
+    <div id="map-container">
+      <div id="map"></div>
+      <div id="map-settings">
+
+        <h2>Map Overlays</h2>
+
+        <template id="project-maps-template">
+
+          <div class="project-maps">
+            <div class="maps-title-line oneLineLeftRight">
+              <h2 class="maps-project-title">Title</h2>
+              <p class="maps-project-date"> 16.12.2015 10:42</p>
+            </div>
+            <div class="maps-project-mapscontainer">
+            </div>
+          </div>
+
+        </template>
+
+        <template id="maps-single-map-template">
+          <div class="oneLineLeftRight">
+            <input type="checkbox" class="maps-project-checkbox">
+            <p class="maps-project-mapname">Map Name</p>
+            <input type="range" class="maps-project-opacity" min="0" max="100" value="100">
+          </div>
+        </template>
+
+      </div>
+    </div>
+
+    <br>
+    <br>
+    <br>
+
+    <div>
+      <table id="group-content-table">
+        <thead>
+          <tr>
+            <th>Open</th>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Description</th>
+            <th>Flight Date</th>
+            <th>Flight Time</th>
+            <th class="short-table-title">Total Images</th>
+            <th class="short-table-title">Thermal Images</th>
+            <th class="short-table-title">RGB Images</th>
+            <th class="short-table-title">Panos</th>
+          </tr>
+        </thead>
+        <tbody id="group-content-items"> </tbody>
+      </table>
+    </div>
+
+    <template id="project-row-template">
+      <tr>
+        <td><button class="big_button" onclick="openProject(01)">Open</button></td>
+        <td class="table-project-id"></td>
+        <td>
+          <div class="table-project-name"></div>
+        </td>
+        <td>
+          <div class="table-project-description"> </div>
+        </td>
+        <td class="table-project-flight-date"></td>
+        <td class="table-project-flight-time"></td>
+        <td class="table-project-total-images"></td>
+        <td class="table-project-thermal-images"></td>
+        <td class="table-project-rgb-images"></td>
+        <td class="table-project-panoramics"></td>
+      </tr>
+    </template>
+
+
+
+  </div>
+
+
+
+  {% include 'footer.html' %}
+</body>
+<script>
+  var project_ids = {{ group.projects| tojson }};
+  var projects = [];
+  var map = null;
+
+  if (project_ids.length == 0) {
+    //hide map container
+    document.getElementById("map-container").style.display = "none";
+    document.getElementById("group-content-table").innerHTML = "<p>No Projects found</p>";
+  } else {
+    map = L.map('map')
+    fillGroupList();
+    buildMap();
+  }
+
+  function fillGroupList() {
+    var groupContentTable = document.getElementById("group-content-table");
+    var groupContentItems = document.getElementById("group-content-items");
+    var projectRowTemplate = document.getElementById("project-row-template");
+
+    for (let i = 0; i < project_ids.length; i++) {
+      let project_id = parseInt(project_ids[i]);
+      console.log("loading project with id: " + project_id);
+
+      //load project from server from endpoint /report_data/<int:report_id>
+      let project = null;
+      $.ajax({
+        url: "/report_data/" + project_id,
+        type: "GET",
+        async: false,
+        success: function (data) {
+          project = data;
+          console.log(data);
+        },
+        error: function (error) {
+          console.log(error);
+        }
+      });
+
+      projects.push(project);
+
+      if (project == null) {
+        console.log("Project with id " + project_id + " not found");
+        let newRow = projectRowTemplate.content.cloneNode(true);
+        newRow.querySelector(".table-project-id").innerText = project_id;
+        groupContentItems.appendChild(newRow);
+        continue;
+      }
+
+      let description = project.description;
+      let name = project.name;
+      let flight_date = project.data.flight_data[0].value;
+      let flight_time = flight_date.slice(-5);
+      flight_date = flight_date.slice(0, -6);
+      let thermal_images = project.data.file_names_ir.length;
+      let rgb_images = project.data.file_names.length;
+      let panoramics = project.data.panos.length;
+      let total_images = thermal_images + rgb_images + panoramics;
+
+
+      let newRow = projectRowTemplate.content.cloneNode(true);
+      newRow.querySelector(".table-project-id").innerText = project_id;
+      newRow.querySelector(".table-project-name").innerText = name;
+      newRow.querySelector(".table-project-description").innerText = description;
+      newRow.querySelector(".table-project-description").title = description;
+      newRow.querySelector(".table-project-flight-date").innerText = flight_date;
+      newRow.querySelector(".table-project-flight-time").innerText = flight_time;
+      newRow.querySelector(".table-project-total-images").innerText = total_images;
+      newRow.querySelector(".table-project-thermal-images").innerText = thermal_images;
+      newRow.querySelector(".table-project-rgb-images").innerText = rgb_images;
+      newRow.querySelector(".table-project-panoramics").innerText = panoramics;
+
+      newRow.querySelector("button").onclick = function () {
+        openProject(project_id);
+      }
+      newRow.querySelector("button").title = "Open";
+
+      groupContentItems.appendChild(newRow);
+    }
+  }
+
+  function openProject(project_id) {
+    window.location.href = "/" + project_id;
+  }
+
+
+  ////////////////////////////////////////////
+  // Map
+  ////////////////////////////////////////////
+
+
+
+  function buildMap() {
+    const baseLayers = loadMapBaseLayers();
+    const overlays = loadMapOverlays();
+
+    //set layerControls to be open
+    var layerControl = L.control.layers(baseLayers, {}, {
+      collapsed: false
+    }).addTo(map);
+    baseLayers.Satellite.addTo(map);
+    map.fitBounds(overlays[Object.keys(overlays)[0]].getBounds());
+
+    // activate the first .maps-project-checkbox and fire the change event
+    document.querySelector(".maps-project-checkbox").checked = true;
+    document.querySelector(".maps-project-checkbox").onchange();
+
+    //map.setView([51.96, 7.63], 13);
+  }
+
+  function loadMapBaseLayers() {
+    let mbAttr = 'Map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, Imagery © <a href="https://www.mapbox.com/">Mapbox</a>';
+    let mbUrl = 'https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token=pk.eyJ1Ijoicm9ibGFidXNlcndocyIsImEiOiJja3VjaXF3d2MxMTN5Mm9tdmQzaGphdGU3In0.BhKF_054bVOPcviIq2yIKg';
+
+    let streets = L.tileLayer(mbUrl, {
+      maxZoom: 25,
+      id: 'mapbox/streets-v11',
+      tileSize: 512,
+      zoomOffset: -1,
+      attribution: mbAttr
+    });
+
+    let osm = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 25,
+      attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+    });
+
+    const satellite = L.tileLayer(mbUrl, {
+      maxZoom: 25,
+      id: 'mapbox/satellite-v9',
+      tileSize: 512,
+      zoomOffset: -1,
+      attribution: mbAttr
+    });
+
+    let baseLayers = {
+      'OpenStreetMap': osm,
+      'Streets': streets,
+      'Satellite': satellite
+    };
+    return baseLayers;
+
+  }
+
+  function loadMapOverlays() {
+    let overlays = {};
+
+    for (let i = 0; i < projects.length; i++) {
+      let project = projects[i];
+      let project_id = project.id;
+      let project_name = project.name;
+      let project_data = project.data;
+      let flight_date = project_data.flight_data[0].value;
+      let maps = project_data.maps;
+
+      let mapsContainer = addReportToMapsSettings(project_name, flight_date, maps);
+
+      for (let j = 0; j < maps.length; j++) {
+        let map = maps[j];
+        console.log(map);
+        let map_name = map.name;
+        let map_bounds = map.bounds;
+        if (map.file[0] === ".") {
+          map.file = map.file.substring(1);
+        }
+        let map_url = map.file;
+        let map_layer = L.imageOverlay(map_url, map_bounds);
+        overlays[flight_date + " - " + map_name] = map_layer;
+
+        addMapToSettings(map_name, map_layer, mapsContainer);
+      }
+    }
+
+    return overlays;
+  }
+
+  function addMapToSettings(mapName, mapLayer, container) {
+    let mapsTemplate = document.getElementById("maps-single-map-template");
+
+    let newMap = mapsTemplate.content.cloneNode(true);
+    newMap.querySelector(".maps-project-mapname").innerText = mapName;
+
+    //on Checkbox change display or hide map
+    newMap.querySelector(".maps-project-checkbox").onchange = function () {
+      if (this.checked) {
+        mapLayer.addTo(map);
+      } else {
+        mapLayer.remove();
+      }
+    }
+
+    //on opacity change change opacity of map
+    newMap.querySelector(".maps-project-opacity").onchange = function () {
+      mapLayer.setOpacity(this.value / 100);
+    }
+
+    container.appendChild(newMap);
+  }
+
+  function addReportToMapsSettings(projectName, flightDate, maps) {
+    let mapsTemplate = document.getElementById("project-maps-template");
+    let newMaps = mapsTemplate.content.cloneNode(true);
+
+    newMaps.querySelector(".maps-project-title").innerText = projectName;
+    newMaps.querySelector(".maps-project-date").innerText = flightDate;
+
+    let mapsContainer = newMaps.querySelector(".maps-project-mapscontainer");
+    document.getElementById("map-settings").appendChild(newMaps);
+
+    if (maps.length == 0) {
+      let noMaps = document.createElement("p");
+      noMaps.innerText = "No Maps found";
+      mapsContainer.appendChild(noMaps);
+    }
+
+    return mapsContainer;
+  }
+
+
+
+  ////////////////////////////////////////////
+  // Textfield
+  ////////////////////////////////////////////
+  function toggleTextfieldTitle() {
+    fakeButton = document.getElementById("edit-title-button");
+    toggleTextField("title-name", fakeButton, "update_title");
+  }
+
+  function toggleTextFieldDescription() {
+    fakeButton = document.getElementById("edit-description-button");
+    toggleTextField("descriptionText", fakeButton, "update_description");
+  }
+
+  function toggleTextField(textfieldID, button, link) {
+    var textfield = document.getElementById(textfieldID);
+    if (textfield.contentEditable == "true") {
+      textfield.contentEditable = false;
+      button.children[0].style.display = "inline-block";
+      button.children[1].style.display = "none";
+      $('#' + textfieldID).removeClass('editable');
+      $.post("/" + link + "/{{ group.id }}", { content: textfield.innerHTML, isProjectGroup: true});
+    } else {
+      textfield.contentEditable = "true";
+      $('#' + textfieldID).addClass('editable');
+      button.children[0].style.display = "none";
+      button.children[1].style.display = "inline-block";
+    }
+  }
+
+
+
+
+
+
+
+</script>
+
+</html>

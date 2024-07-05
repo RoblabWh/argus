@@ -15,7 +15,7 @@
         .bodyDiv {
             min-height: 95vh;
             width: 94%;
-            max-width: 1401px;
+            max-width: 1501px;
             margin: 0 auto !important;
             float: none !important;
             font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
@@ -318,7 +318,7 @@
                 button.children[0].style.display = "inline-block";
                 button.children[1].style.display = "none";
                 $('#'+textfieldID).removeClass('editable');
-                $.post("/"+link+"/{{ id }}", {content: textfield.innerHTML});
+                $.post("/"+link+"/{{ id }}", {content: textfield.innerHTML, isProjectGroup: false});
             } else {
                 textfield.contentEditable = "true";
                 $('#'+textfieldID).addClass('editable');

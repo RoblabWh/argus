@@ -57,13 +57,21 @@ class ArgusServer:
 
     def setup_routes(self):
         self.app.add_url_rule('/',
+                              view_func=self.projects_overview_b)
+        self.app.add_url_rule('/b',
                               view_func=self.projects_overview)
         self.app.add_url_rule('/create', methods=['POST'],
                               view_func=self.create_report)
+        self.app.add_url_rule('/create_report', methods=['POST'],
+                              view_func=self.create_report_with_project_group)
         self.app.add_url_rule('/delete/<int:report_id>',
                               view_func=self.delete_report)
+        self.app.add_url_rule('/delete_report/<int:report_id>', methods=['DELETE'],
+                              view_func=self.delete_report_from_project_group)
         self.app.add_url_rule('/<int:report_id>',
                               view_func=self.render_report)
+        self.app.add_url_rule('/group/<int:project_group_id>',
+                              view_func=self.render_project_group)
         self.app.add_url_rule('/<int:report_id>/uploadFile', methods=['POST'],
                               view_func=self.upload_image_file)
         self.app.add_url_rule('/<int:report_id>/deleteFile', methods=['POST'],
@@ -140,6 +148,20 @@ class ArgusServer:
                                 view_func=self.get_POI_list)
         self.app.add_url_rule('/delete_poi', methods=['POST'],
                                 view_func=self.delete_POI)
+        self.app.add_url_rule('/create_project_group', methods=['POST'],
+                                view_func=self.create_project_group)
+        self.app.add_url_rule('/delete_project_group/<int:project_group_id>', methods=['DELETE'],
+                                view_func=self.delete_project_group)
+        self.app.add_url_rule('/get_project_group/<int:project_group_id>' , methods=['GET'],
+                                view_func=self.get_project_group)
+        self.app.add_url_rule('/get_project_group_list', methods=['GET'],
+                                view_func=self.get_project_group_list)
+        self.app.add_url_rule('/add_existing_project_to_group', methods=['POST'],
+                                view_func=self.add_existing_project_to_group)
+        self.app.add_url_rule('/remove_project_from_group', methods=['POST'],
+                                view_func=self.remove_project_from_group)
+        self.app.add_url_rule('/report_data/<int:report_id>', methods=['GET'],
+                                view_func=self.send_report)
 
         # self.app.add_url_rule('/<int:report_id>/upload', methods=['POST'],
         #                       view_func=self.upload_image)
@@ -149,7 +171,15 @@ class ArgusServer:
     def projects_overview(self):
         projects_dict_list = self.project_manager.get_projects()
         order_by_flight_date = self.calculate_order_based_on_flight_date(projects_dict_list)
-        return render_template('projectsOverview.html', projects=projects_dict_list, flightOrder=order_by_flight_date)
+        groups = self.project_manager.get_project_groups()
+        return render_template('projectsOverview.html', projects=projects_dict_list, flightOrder=order_by_flight_date, groups=groups)
+
+    def projects_overview_b(self):
+        projects_dict_list = self.project_manager.get_projects_basic_data()
+        order_by_flight_date = self.calculate_order_based_on_flight_date(projects_dict_list)
+        groups = self.project_manager.get_project_groups()
+        return render_template('projectsOverview2.html', reports=projects_dict_list, flightOrder=order_by_flight_date, groups=groups)
+
 
     def create_report(self):
         name = request.form.get("name")
@@ -159,9 +189,30 @@ class ArgusServer:
         order_by_filght_date = self.calculate_order_based_on_flight_date(projects_dict_list)
         return render_template('projectsOverview.html', projects=projects_dict_list, flightOrder=order_by_filght_date)
 
+    def create_report_with_project_group(self):
+        data = request.get_json()
+
+        name = data.get('name')
+        description = data.get('description')
+        project_group_id = data.get('project_group_id')
+
+        project = self.project_manager.create_project(name, description)
+        print(project, flush=True)
+
+        if project_group_id is None or project_group_id == -1:
+            return jsonify(project), 201
+
+        self.project_manager.add_existing_project_to_group(project_group_id, project['id'])
+        return jsonify(project), 201
+
+
     def delete_report(self, report_id):
         self.project_manager.delete_project(report_id)
         return self.projects_overview()
+
+    def delete_report_from_project_group(self, report_id):
+        self.project_manager.delete_project(report_id)
+        return jsonify({"success": True}), 200
 
     def render_report(self, report_id):
         print("upload_form for id: " + str(report_id), flush=True)
@@ -174,8 +225,19 @@ class ArgusServer:
         else:
             projects_dict_list = self.project_manager.get_projects()
             order_by_filght_date = self.calculate_order_based_on_flight_date(projects_dict_list)
-            return render_template('projectsOverview.html', projects=projects_dict_list,
-                                   message="Report does not exist", flightOrder=order_by_filght_date)
+            groups = self.project_manager.get_project_groups()
+
+            return render_template('projectsOverview2.html', projects=projects_dict_list,
+                                   message="Report does not exist", flightOrder=order_by_filght_date, groups=groups)
+
+    def send_report(self, report_id):
+        project = self.project_manager.get_project(report_id)
+        if project:
+            return jsonify(project)
+        else:
+            return jsonify({"error": "Project not found"}), 404
+
+
 
 
     def upload_image_file(self, report_id):
@@ -408,16 +470,24 @@ class ArgusServer:
 
     def update_description(self, report_id):
         description = request.form.get('content')
+        isProjectGroup = request.form.get('isProjectGroup')
         print("update_description for id" + str(report_id) + " with: " + str(description))
         description = self.process_html_strings(description)
-        self.project_manager.update_description(report_id, description)
+        if isProjectGroup == "true":
+            self.project_manager.update_project_group_description(report_id, description)
+        else:
+            self.project_manager.update_description(report_id, description)
         return "success"
 
     def update_title(self, report_id):
         title = request.form.get('content')
+        isProjectGroup = request.form.get('isProjectGroup')
         print("update_title for id" + str(report_id) + " with: " + str(title))
         title = self.process_html_strings(title, no_newline=True)
-        self.project_manager.update_title_name(report_id, title)
+        if isProjectGroup == "true":
+            self.project_manager.update_project_group_name(report_id, title)
+        else:
+            self.project_manager.update_title_name(report_id, title)
         return "success"
 
     def update_ir_settings(self, report_id, settings):
@@ -912,3 +982,50 @@ class ArgusServer:
         print("delete_POI with", data, flush=True)
         response = self.data_share_manager.remove_poi_from_iais(data['poi_id'])
         return response
+
+    def create_project_group(self):
+        name = request.get_json().get('name')
+        description = request.get_json().get('description')
+        print("create_project_group with: ", name, description, flush=True)
+        if not name or name == "":
+            return jsonify({"success": False, "message": "Name is required"})
+        project_group_id = self.project_manager.create_project_group(name, description)
+        project_group = self.project_manager.get_project_group(project_group_id)
+        return jsonify(project_group), 201
+
+    def delete_project_group(self, project_group_id):
+        self.project_manager.delete_project_group(project_group_id)
+        response = jsonify({'message': 'Project group deleted successfully', 'redirect': url_for('projects_overview_b')})
+        response.status_code = 200
+        return response
+
+    def add_existing_project_to_group(self):
+        print("add_existing_project_to_group", flush=True)
+        project_group_id = int(request.json.get('project_group_id'))
+        project_id = int(request.json.get('project_id'))
+
+        current_group_id = self.project_manager.get_project_group_by_project_id(project_id)
+        if current_group_id is not None:
+            self.project_manager.remove_project_from_group(current_group_id, project_id)
+
+        self.project_manager.add_existing_project_to_group(project_group_id, project_id)
+        return jsonify({"success": True})
+
+    def remove_project_from_group(self):
+        project_group_id = int(request.json.get('project_group_id'))
+        project_id = int(request.json.get('project_id'))
+        print("remove_project_from_group with: ", project_group_id, project_id, flush=True)
+        self.project_manager.remove_project_from_group(project_group_id, project_id)
+        return jsonify({"success": True})
+
+    def get_project_group(self, project_group_id):
+        project_group = self.project_manager.get_project_group(project_group_id)
+        return jsonify(project_group)
+
+    def get_project_group_list(self):
+        project_groups = self.project_manager.get_project_groups()
+        return jsonify(project_groups)
+
+    def render_project_group(self, project_group_id):
+        project_group = self.project_manager.get_project_group(project_group_id)
+        return render_template('baseGroupReport.html', group=project_group)
