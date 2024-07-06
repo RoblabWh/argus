@@ -1,0 +1,1382 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Reports Overview</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='default/variables-light.css') }}" id="currentCss">
+    <style>
+        body {
+            margin-left: 0px;
+            margin-right: 0px;
+            margin-bottom: 0px;
+            background-color: var(--bg-color-page);
+            color: var(--font-color-a);
+        }
+
+        .bodyDiv {
+            min-height: 95vh;
+            width: 94%;
+            max-width: 1501px;
+            margin: 0 auto !important;
+            float: none !important;
+            font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+        }
+
+
+        .tab-content {
+            margin: 20px;
+        }
+
+        .big_button {
+            float: right;
+            position: relative;
+            padding: 11px 6px;
+            background-color: var(--accent-color-interaction);
+            color: var(--font-color-b);
+            border-radius: 4px;
+            cursor: pointer;
+            border-style: none;
+            text-align: center;
+            margin: auto 0;
+        }
+
+        .big_button:hover {
+            font-weight: bold;
+        }
+
+        .big_button::before {
+            display: block;
+            content: attr(title);
+            font-weight: bold;
+            height: 0;
+            overflow: hidden;
+            visibility: hidden;
+        }
+
+        .webodm_button {
+            margin: auto 0px;
+            height: 42px;
+        }
+
+        .deleteProjectGroupButton {
+            background-color: var(--accent-color-red);
+        }
+
+        .disabled-button {
+            background-color: var(--bg-color-b);
+            color: var(--font-color-b);
+            cursor: not-allowed;
+        }
+
+        .disabled-button:hover {
+            font-weight: normal;
+        }
+
+        .timestamp {
+            float: right;
+            margin: 8px;
+            width: 20%;
+            text-align: right;
+            line-height: 30px;
+        }
+
+
+        .hidden {
+            display: none;
+        }
+
+
+        .custom-file-upload {
+            border-radius: 4px;
+            display: inline-block;
+            padding: 11px;
+            margin: 8px;
+            cursor: pointer;
+            background-color: var(--accent-color-interaction);
+            color: var(--font-color-b);
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+
+
+        .sort-by {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            font-size: 16px;
+            font-weight: bold;
+            color: #333;
+            cursor: pointer;
+            margin-bottom: 5px;
+            position: relative;
+        }
+
+        .sort-by__label {
+            margin-right: 5px;
+            cursor: default;
+        }
+
+        .sort-by__value {
+            background-color: var(--accent-color-interaction);
+            color: white;
+            padding: 6px;
+            padding-bottom: 3px;
+            border-radius: 4px;
+        }
+
+        .sort-by__dropdown {
+            position: absolute;
+            z-index: 10;
+            display: none;
+            padding: 5px 0;
+            background-color: #fff;
+            border: 1px solid #ccc;
+            border-top: none;
+            margin-top: 87px;
+            border-radius: 4px;
+        }
+
+        .sort-by__option {
+            display: block;
+            width: 100%;
+            padding: 5px 10px;
+            font-size: 14px;
+            color: #333;
+            background-color: transparent;
+            border: none;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .sort-by__option:hover {
+            background-color: var(--accent-color-interaction);
+            color: white
+        }
+
+        .spinner-small-export {
+            width: 1.25rem;
+            --b: 6px;
+            /* the border thickness */
+            aspect-ratio: 1;
+            border-radius: 50%;
+            padding: 1px;
+            background: conic-gradient(#0000 10%, var(--accent-color-interaction)) content-box;
+            -webkit-mask:
+                repeating-conic-gradient(#0000 0deg, #000 1deg 20deg, #0000 21deg 36deg),
+                radial-gradient(farthest-side, #0000 calc(100% - var(--b) - 1px), #000 calc(100% - var(--b)));
+            -webkit-mask-composite: destination-in;
+            mask-composite: intersect;
+            animation: s4 1s infinite steps(10);
+        }
+
+        @keyframes s4 {
+            to {
+                transform: rotate(1turn)
+            }
+        }
+
+
+        summary {
+            background-color: var(--bg-color-b);
+            color: var(--font-color-b);
+            font-weight: bold;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            outline: none;
+            border-radius: 4px;
+            cursor: pointer;
+            position: relative;
+        }
+
+        details[open]>summary {
+            background-color: black;
+            color: var(--font-color-b);
+        }
+
+        details[open]>summary:hover,
+        summary:hover {
+            background-color: var(--accent-color-interaction);
+            color: var(--font-color-a);
+        }
+
+        details>summary::after {
+            position: absolute;
+            content: "+";
+            right: 20px;
+        }
+
+        details[open]>summary::after {
+            position: absolute;
+            content: "-";
+            right: 20px;
+        }
+
+        details>summary::-webkit-details-marker {
+            display: none;
+        }
+
+        #add-new-project-group summary {
+            background-color: var(--accent-color-interaction);
+        }
+
+        #add-new-project-group summary:hover {
+            font-weight: bold;
+        }
+
+
+        .project-group-content {
+            padding: 0 2vw;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .project-group-content .big_button {
+            float: none;
+        }
+
+        .project-group-content p {
+            margin: 0;
+        }
+
+        .addReportForm {
+            background-color: var(--bg-color-a);
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 12px;
+            transition: transform 0.3s;
+        }
+
+        .addReportFormMask {
+            flex-direction: column;
+            overflow: hidden;
+            transition: all 0.3s;
+        }
+
+
+
+
+        .report {
+            width: 100%;
+            color: var(--font-color-a);
+            background-color: var(--bg-color-a);
+            border: 1px solid white;
+            border-radius: 6px;
+            box-sizing: border-box;
+            padding: 12px;
+            margin-bottom: 10px;
+            cursor: pointer;
+        }
+
+        .report:hover {
+            background-color: var(--accent-color-interaction);
+            color: var(--font-color-b);
+            font-weight: bold;
+        }
+
+        .report:hover .meatball-menu span {
+            background-color: var(--font-color-b);
+        }
+
+        .oneLineFromLeft {
+            display: flex;
+            flex-direction: row;
+            justify-content: flex-start;
+        }
+
+        .oneLineLeftRight {
+            display: flex;
+            flex-direction: row;
+            justify-content: space-between;
+        }
+
+        .oneLineLeftRight a,
+        h2 {
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            overflow: hidden;
+        }
+
+        .oneLineLeftRight h2 {
+            margin: 0 0 0.5rem 0;
+            padding: 0px;
+        }
+
+        .dropbtn {
+            width: 42px;
+            color: white;
+            background: none;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .meatball-menu {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .meatball-menu span {
+            display: block;
+            width: 6px;
+            /* Circle width */
+            height: 6px;
+            /* Circle height */
+            background-color: var(--accent-color-interaction);
+            border-radius: 50%;
+            margin: 3px;
+            /* Space between circles */
+        }
+
+        .dropdown {
+            position: relative;
+            display: inline-block;
+        }
+
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            right: 0;
+            background-color: var(--font-color-b);
+            min-width: 100px;
+            box-shadow: 0px 8px 16px 0px rgba(0, 0, 0, 0.2);
+            z-index: 1;
+            border: 3px solid var(--font-color-b);
+            border-radius: 6px;
+        }
+
+        .dropdown-content a {
+            color: black;
+            padding: 12px 16px;
+            text-decoration: none;
+            display: block;
+            border-radius: 4px;
+        }
+
+        .dropdown-content a:hover {
+            background-color: var(--accent-color-interaction);
+            color: var(--font-color-b);
+            font-weight: bold;
+        }
+
+        .dropdown:hover .dropdown-content {
+            display: block;
+        }
+
+        .dropdown:hover .meatball-menu span {
+            background-color: var(--font-color-a);
+
+        }
+
+        #popup-container {
+            display: none;
+            position: fixed;
+            z-index: 100;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.5);
+        }
+
+        #change-project-group-popup {
+            background-color: var(--bg-color-page);
+            margin: auto;
+            padding: 20px;
+            width: 35%;
+            border-radius: 12px;
+        }
+
+        .popup-content {
+            padding: 20px;
+            border-radius: 12px;
+        }
+
+        .close-popup {
+            color: var(--font-color-a);
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+        }
+
+        .close-popup:hover,
+        .close-popup:focus {
+            color: var(--accent-color-interaction);
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        #project-group-select {
+            margin: 1em 0 2em 0;
+            height: 2.5em;
+            border-radius: 4px;
+            border: 1px solid var(--bg-color-b);
+        }
+
+        
+    </style>
+    <script src="{{url_for('static', filename='default/jquery-3.6.3.js') }}"></script>
+</head>
+
+<body>
+    {% include 'headerOverview.html' %}
+    <div class="bodyDiv">
+        <div class="oneLineLeftRight">
+            <h1 onclick="projectShowAll();">Overview</h1>
+            <button class="big_button webodm_button" onclick="redirectWebODM();" title="open WebODM"> open WebODM
+            </button>
+        </div>
+        <!-- button to add a new report with the app.route / create -->
+        <div class="oneLineFromLeft">
+            <h2 style="margin-right: 12px">Project Groups</h2>
+            <button class="big_button" onclick="showAddProjectGroupForm()" title="New Project Group">New Project
+                Group</button>
+        </div>
+
+        <div id="newProjectGroupMask" class="addReportFormMask"
+            style="min-height: 1px; max-height:1px; height: 0%; display: flex; transition: all 0.6s;">
+            <details id="add-new-project-group" style="display: none; transition: transform 0.6s; translateY(-100%)">
+                <summary>new Project Group</summary>
+                <div class="tab-content">
+                    <form style="display: flex; justify-content: space-between;" method="post"
+                        action="/create_project_group">
+                        <label style="line-height: 42px;" for="name">Name:</label>
+                        <input
+                            style="width:30%; border-radius: 4px; border-style: solid; border-color: var(--bg-color-a)"
+                            type="text" id="name" name="name" required>
+                        <label style="line-height: 42px;" for="description">Description:</label>
+                        <textarea
+                            style="width:30%; border-radius: 4px; border-style: solid; border-color: var(--bg-color-a)"
+                            id="description" name="description" required></textarea>
+                        <button class="placeholder big_button" title="Create new Project" onclick="createNewProject()">
+                            Create new Project </button>
+                    </form>
+                </div>
+                <div class="tab-content">
+                    <label style="line-height: 42px;"> Import project: </label>
+                    <!--                <input type="file" id="fileInputProjectZip" style="line-height: 42px;"/>-->
+                    <label for="fileInputProjectZip" class="custom-file-upload">Select project zip file</label>
+                    <input type="file" id="fileInputProjectZip">
+                    <label id="uploadFilename" style="line-height: 42px; padding: 0px 8px; width: 60%;
+                            text-overflow: ellipsis; white-space: nowrap; overflow: hidden; font-style: italic;
+                            color: var(--bg-color-b);">
+                        no file selected
+                    </label>
+                    <button id="uploadProjectButton" class="big_button" onclick="uploadProjectZip()" title="Import">
+                        <div style="margin: auto 0 auto 0; display: flex;">
+                            <p style="display: inline-block; margin: auto;">Import</p>
+                            <div style="dislpay: none; margin: 0;transition: 0.3s">
+                                <div id="download_feedback_spinner" class="spinner-small-export" style="display: none;">
+                                </div>
+                            </div>
+                        </div>
+                    </button>
+                </div>
+            </details>
+        </div>
+
+        <div class="sort-by" style="display: none">
+            <span class="sort-by__label">Sorted by:</span>
+            <span class="sort-by__value" id="sort-by-value">Creation date</span>
+            <div class="sort-by__dropdown" id="sort-by-dropdown">
+                <button class="sort-by__option" data-value="creation-date">Creation date</button>
+                <button class="sort-by__option" data-value="flight-date">Flight date</button>
+            </div>
+        </div>
+
+        <div id="groups-container" style="display: flex; flex-direction: column;">
+        </div>
+
+
+        <br>
+        <br>
+
+
+        <div id="unsorted-reports-container" style="display: flex; flex-direction: column;">
+
+            <div class="oneLineFromLeft">
+                <h2 style="margin-right: 12px">Unsorted reports</h2>
+                <button class="showAddButton big_button" onclick="showAddReportForm(-1)" title="New Report">
+                    New Report
+                </button>
+
+            </div>
+            <p style="margin: 0 0 10px 0">These reports are not assigned to a project group</p>
+
+
+            <div class="addReportFormMask" style="height: 0px; display: flex; transition: all 0.3s;">
+                <div class="addReportForm oneLineLeftRight"
+                    style="display: none; translateY(-100%); transition: transform 0.3s;">
+                    <div class="oneLineLeftRight" style="width: 60%;">
+
+                        <label style="line-height: 42px;" for="name">Name:</label>
+                        <input
+                            style="border-radius: 4px; border-style: solid; border-color: var(--bg-color-b); margin: 4px;"
+                            type="text" class="reportName" name="name" required>
+
+                        <label style="line-height: 42px;" for="description">Description:</label>
+                        <textarea
+                            style="border-radius: 4px; border-style: solid; border-color: var(--bg-color-b); margin: 4px; width: inherit;"
+                            class="reportDescription" name="description" required></textarea>
+
+                    </div>
+                    <button class="newReport big_button" onclick="createNewReportInGroup(-1)" title="Create new report">
+                        Create new report
+                    </button>
+                </div>
+            </div>
+
+            <div class="group-reports-container" style="padding: 0;"></div>
+        </div>
+
+
+
+        <template id="report-template">
+            <div class="report">
+                <div class="oneLineLeftRight">
+                    <h2> Title</h2>
+                    <div class="dropdown" style="float:right;">
+                        <button class="dropbtn">
+                            <div class="meatball-menu">
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                            </div>
+                        </button>
+                        <div class="dropdown-content">
+                            <a class="change-group">Change group</a>
+                            <a class="edit-report">Edit</a>
+                            <a class="delete-report">Delete</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="oneLineLeftRight">
+                    <a class="report-description"> Description </a>
+                    <div>
+                        <a class="datetime">
+                            24.06.2024 14:31
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </template>
+
+        <template id="projects-group-template">
+
+            <details>
+                <summary>
+                    Group name
+                </summary>
+                <div class="project-group-content">
+
+                    <div class="oneLineLeftRight">
+                        <p class="group-description">
+                            Description
+                        </p>
+                        <p class="group-id" style="max-width: 140px">
+                            id
+                        </p>
+                    </div>
+
+                    <div class="oneLineLeftRight" style="margin: 10px 0">
+                        <div>
+                            <button class="showAddButton big_button" onclick="showAddReportForm(01)" title="Add Report">
+                                Add Report
+                            </button>
+                            <button class="openGroupReportButton big_button" onclick="openGroupReport(01)"
+                                title="Show group report">
+                                Show group report
+                            </button>
+                        </div>
+                        <button class="deleteProjectGroupButton big_button" onclick="deleteProjectGroup(01)"
+                            title="Delete Group">
+                            Delete Group
+                        </button>
+                    </div>
+
+                    <div class="addReportFormMask" style="height: 0px; display: flex; transition: all 0.3s;">
+                        <div class="addReportForm oneLineLeftRight"
+                            style="display: none; translateY(-100%); transition: transform 0.3s;">
+                            <div class="oneLineLeftRight" style="width: 60%;">
+
+                                <label style="line-height: 42px;" for="name">Name:</label>
+                                <input
+                                    style="border-radius: 4px; border-style: solid; border-color: var(--bg-color-b); margin: 4px;"
+                                    type="text" class="reportName" name="name" required>
+
+                                <label style="line-height: 42px;" for="description">Description:</label>
+                                <textarea
+                                    style="border-radius: 4px; border-style: solid; border-color: var(--bg-color-b); margin: 4px; width: inherit;"
+                                    class="reportDescription" name="description" required></textarea>
+
+                            </div>
+                            <button class="newReport big_button" onclick="createNewReportInGroup(01)"
+                                title="Create new report">
+                                Create new report
+                            </button>
+                        </div>
+                    </div>
+
+
+
+
+                    <div class="group-reports-container"
+                        style="display: flex; flex-direction: column; margin-bottom: 2.5rem;">
+                    </div>
+                </div>
+            </details>
+
+        </template>
+
+
+
+
+
+        {% if message %}
+        <p>{{ message }}</p>
+        {% endif %}
+    </div>
+    <div></div>
+
+    <div id="popup-container">
+        <div id="change-project-group-popup">
+            <div class="popup-content">
+                <span class="close-popup" onclick="closePopup()">&times;</span>
+                <h2>Change Project Group</h2>
+                <p> Choose a new Project Group or ungroup the project</p>
+                <div class="oneLineLeftRight">
+                    <p>Report Name: <span id="change-group-current-project-name"></span></p>
+                    <p>(ID: <span id="change-group-current-project-id"></span>)</p>
+                </div>
+                <div class="oneLineLeftRight">
+                    <p>Current group: <span id="change-group-current-group-name"></span></p>
+                    <p>(ID: <span id="change-group-current-group-id"></span>)</p>
+                </div>
+                <select id="project-group-select">
+                    <option value="1">placeholder</option>
+                </select>
+                <div class="oneLineLeftRight">
+                    <button class="big_button deleteProjectGroupButton" id="ungroup-from-project-group-button"
+                        title="Ungroup">Ungroup</button>
+
+                    <button class="big_button" id="change-project-group-button" title="Change project group">Change
+                        project group</button>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    {% include 'footer.html' %}
+    <script>
+        const reports = {{ reports| tojson }};
+        const groups = {{ groups| tojson }};
+        const flightDateOrder = {{ flightOrder }};
+        const sortDropdown = document.getElementById('sort-by-dropdown');
+        const sortValue = document.getElementById('sort-by-value');
+        sortDropdown.style.display = 'none';
+        const uploadProjectButton = document.getElementById('uploadProjectButton');
+        uploadProjectButton.disabled = true;
+        uploadProjectButton.style.backgroundColor = "var(--bg-color-b)";
+        uploadProjectButton.style.cursor = "not-allowed";
+
+        var reportsTmpCopy = JSON.parse(JSON.stringify(reports));
+        const groupTemplate = document.getElementById('projects-group-template');
+        const groupContainer = document.getElementById('groups-container');
+
+        let addForms = document.getElementsByClassName('addReportForm');
+        for (let i = 0; i < addForms.length; i++) {
+            addForms[i].style.transform = 'translateY(-100%)';
+        }
+
+
+
+        //do the following, once the page has loaded
+        document.addEventListener('DOMContentLoaded', function () {
+            for (let i = 0; i < groups.length; i++) {
+                createProjectGroup(groups[i].id, groups[i].name, groups[i].description, groups[i].projects);
+            }
+            setupDefaultProjectForUnsortedProjects();
+        });
+
+
+
+
+
+        function setupDefaultProjectForUnsortedProjects() {
+            let unsortedProjects = reportsTmpCopy.filter(report => report.project_group_id == null);
+            let unsortedSection = document.getElementById('unsorted-reports-container');
+            let projectsContainer = unsortedSection.querySelector('.group-reports-container');
+
+            unsortedSection.querySelector('.newReport').setAttribute('onclick', `createNewReportInGroup(-1);`);
+            unsortedSection.querySelector('.showAddButton').setAttribute('onclick', `showAddReportForm(-1);`);
+            unsortedSection.querySelector('.addReportForm').setAttribute('id', `addReportForm-1`);
+            unsortedSection.querySelector('.addReportFormMask').setAttribute('id', `addReportFormMask-1`);
+
+            createProjectsReports(unsortedProjects.map(report => report.id), projectsContainer, -1);
+        }
+
+
+
+        function createProjectGroup(groupID, groupName, groupDescription, groupProjects, insertOnTop = false) {
+            let clone = document.importNode(groupTemplate.content, true);
+            clone.querySelector('details').setAttribute('id', `group${groupID}`);
+            clone.querySelector('summary').textContent = groupName;
+            clone.querySelector('.group-description').textContent = groupDescription;
+            clone.querySelector('.group-id').textContent = groupID;
+
+            clone.querySelector('.newReport').setAttribute('onclick', `createNewReportInGroup(${groupID});`);
+            clone.querySelector('.showAddButton').setAttribute('onclick', `showAddReportForm(${groupID});`);
+            clone.querySelector('.addReportForm').setAttribute('id', `addReportForm${groupID}`);
+            clone.querySelector('.addReportFormMask').setAttribute('id', `addReportFormMask${groupID}`);
+            clone.querySelector('.openGroupReportButton').setAttribute('onclick', `openGroupReport(${groupID});`);
+            clone.querySelector('.deleteProjectGroupButton').setAttribute('onclick', `deleteProjectGroup(${groupID});`);
+
+
+            if (groupProjects) {
+                let projectsContainer = clone.querySelector('.group-reports-container');
+                createProjectsReports(groupProjects, projectsContainer, groupID);
+            }
+
+            if (insertOnTop) {
+                groupContainer.insertBefore(clone, groupContainer.firstChild);
+            } else {
+                groupContainer.appendChild(clone);
+            }
+        }
+
+
+
+        function createProjectsReports(reportIDs, reportsContainer, groupID) {
+            const template = document.getElementById('report-template');
+
+            let currentReports = [];
+
+            for (let i = 0; i < reportIDs.length; i++) {
+                report = reports.find(report => report.id == reportIDs[i]);
+                if (report) {
+                    currentReports.push(report);
+                    reportsTmpCopy = removeGroupFromList(report.id, reportsTmpCopy);
+                }
+            }
+
+            currentReports.forEach(report => {
+                generateReportObjectsFromTemplate(report, reportsContainer, groupID);
+            });
+
+        }
+
+
+        function generateReportObjectsFromTemplate(report, reportsContainer, groupID, insertOnTop = false) {
+            const template = document.getElementById('report-template');
+            const clone = document.importNode(template.content, true);
+
+            clone.querySelector('.report').setAttribute('onclick', `projectShow(${report.id});`);
+            clone.querySelector('.report').setAttribute('id', 'object-report-' + report.id);
+            clone.querySelector('h2').textContent = report.name;
+            clone.querySelector('.report-description').textContent = report.description;
+            clone.querySelector('.datetime').textContent = report.creation_time;
+            clone.querySelector('.change-group').setAttribute('onclick', `event.stopPropagation(); showChangeGroupPopup(${report.id}, "${report.name}", ${groupID});`);
+            clone.querySelector('.edit-report').setAttribute('onclick', `editReport(${report.id});`);
+            clone.querySelector('.delete-report').setAttribute('onclick', `deleteReport(${report.id});`);
+
+            if (insertOnTop) {
+                reportsContainer.insertBefore(clone, reportsContainer.firstChild);
+            } else {
+                reportsContainer.appendChild(clone);
+            }
+        }
+
+
+        function removeGroupFromList(id, list) {
+            for (let i = 0; i < list.length; i++) {
+                if (list[i].id == id) {
+                    list.splice(i, 1);
+                    break;
+                }
+            }
+            return list;
+        }
+
+
+
+
+
+
+
+        ///////////////////////////////////
+        // FUNCTIONS FOR MANAGING PROJECTS
+        ///////////////////////////////////
+
+        function showAddProjectGroupForm() {
+            let mask = document.getElementById('newProjectGroupMask');
+            let form = document.getElementById('add-new-project-group');
+
+            if (mask.style.height === '0%') {
+                mask.style.height = 'fit-content';
+                mask.style.maxHeight = '300px';
+                form.style.display = 'flex';
+                form.style.transform = 'translateY(0)';
+                mask.style.webkitTransitionDelay = '0.1s';
+
+                //after it appeared, open the details
+                document.getElementById('add-new-project-group').setAttribute('open', '');
+            } else {
+                mask.style.height = '0%';
+                mask.style.maxHeight = '0px';
+                form.style.transform = 'translateY(-100%)';
+                mask.style.webkitTransitionDelay = '0s';
+            }
+
+        }
+
+        function createNewProject() {
+            //prevent form from submitting
+            event.preventDefault();
+            console.log('Creating new project');
+
+            let name = document.getElementById('name').value;
+            let description = document.getElementById('description').value;
+
+            //clear the input fields
+            document.getElementById('name').value = '';
+            document.getElementById('description').value = '';
+
+            showAddProjectGroupForm();
+
+            console.log('Name:', name);
+            console.log('Description:', description);
+
+            fetch('/create_project_group', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    'name': name,
+                    'description': description
+                })
+            }).then(response => {
+                if (response.ok) {
+                    //the response should include the new dictionary with the project data which will be added to the list in its own function
+                    response.json().then(data => {
+                        console.log('Success:', data);
+                        createProjectGroup(data.id, data.name, data.description, data.projects, true);
+                        //open the new group
+                        document.getElementById(`group${data.id}`).setAttribute('open', '');
+                    });
+                } else {
+                    // Server encountered an error, show alert
+                    alert('Error creating the project. Please try again.');
+                }
+            }).catch(error => {
+                // Fetch or network error
+                console.error('Error:', error);
+                alert('An unexpected error occurred. Please try again.');
+            });
+        }
+
+        function deleteProjectGroup(id) {
+            if (confirm("Are you sure you want to delete this project group?")) {
+                fetch('/delete_project_group/' + id, {
+                    method: 'DELETE'
+                }).then(response => {
+                    if (response.ok) {
+                        // Check if there is a redirect URL
+                        return response.json().then(data => {
+                            if (data.redirect) {
+                                window.location.href = data.redirect;
+                            } else {
+                                // Reload the page or handle success differently
+                                window.location.reload();
+                            }
+                        });
+                    } else {
+                        // Handle server-side errors
+                        return response.json().then(data => {
+                            alert(data.error || 'Error deleting the project group. Please try again.');
+                        });
+                    }
+                }).catch(error => {
+                    // Handle network errors
+                    console.error('Error:', error);
+                    alert('An unexpected error occurred. Please try again.');
+                });
+            }
+        }
+
+
+
+
+
+
+
+
+
+        ///////////////////////////
+        // FUNCTIONS OF THE GROUPS
+        ///////////////////////////
+
+        function projectGroupShow(id) {
+            console.log("showing" + id);
+            window.location.href = "/group/" + id;
+        }
+
+        function showAddReportForm(groupID) {
+            console.log(`trying to find forms with ids: addReportFormMask${groupID} and addReportForm${groupID}`);
+            let mask = document.getElementById(`addReportFormMask${groupID}`);
+            let form = document.getElementById(`addReportForm${groupID}`);
+
+            if (mask.style.height === '0px') {
+                mask.style.height = '80px';
+                form.style.display = 'flex';
+                form.style.transform = 'translateY(0)';
+                mask.style.webkitTransitionDelay = '0.1s';
+            } else {
+                mask.style.height = '0px';
+                form.style.transform = 'translateY(-100%)';
+                mask.style.webkitTransitionDelay = '0s';
+            }
+
+        }
+
+        function createNewReportInGroup(projectGroupID) {
+            let name = document.querySelector(`.addReportFormMask #addReportForm${projectGroupID} .reportName`).value;
+            let description = document.querySelector(`.addReportFormMask #addReportForm${projectGroupID} .reportDescription`).value;
+            //clear the input fields
+            document.querySelector(`.addReportFormMask #addReportForm${projectGroupID} .reportName`).value = '';
+            document.querySelector(`.addReportFormMask #addReportForm${projectGroupID} .reportDescription`).value = '';
+
+            showAddReportForm(projectGroupID);
+
+
+
+            fetch('/create_report', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    'name': name,
+                    'description': description,
+                    'project_group_id': projectGroupID
+                })
+            }).then(response => {
+                if (response.ok) {
+                    //the response should include the new dictionary with the project data which will be added to the list in its own function
+                    response.json().then(data => {
+                        console.log('Success:', data);
+                        let reportsContainer = document.querySelector(`#group${projectGroupID} .group-reports-container`);
+                        if (projectGroupID == -1) {
+                            reportsContainer = document.getElementById('unsorted-reports-container').querySelector('.group-reports-container');
+                        }
+                        generateReportObjectsFromTemplate(data, reportsContainer, projectGroupID, true);
+                    });
+                } else {
+                    // Server encountered an error, show alert
+                    alert('Error creating the project. Please try again.');
+                }
+            }).catch(error => {
+                // Fetch or network error
+                console.error('Error:', error);
+                alert('An unexpected error occurred. Please try again.');
+            });
+        }
+
+        function openGroupReport(id) {
+            console.log("showing" + id);
+            window.location.href = "/group/" + id;
+        }
+
+
+
+
+
+
+
+
+        ///////////////////////////
+        // FUNCTIONS OF THE REPORTS
+        ///////////////////////////
+
+        function changeGroup(projectID, newGroupID) {
+            event.stopPropagation();
+            //ask for new group id
+            if (newGroupID != null) {
+                //send new group id to server
+                fetch('/add_existing_project_to_group', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        'project_id': projectID,
+                        'project_group_id': newGroupID
+                    })
+                })
+                    .then(response => {
+                        if (response.ok) {
+                            // Successful response, reload page
+                            console.log('Success:', response);
+                            window.location.reload();
+                        } else {
+                            // Server encountered an error, show alert
+                            alert('Error changing the group. Please try again.');
+                        }
+                    })
+                    .catch(error => {
+                        // Fetch or network error
+                        console.error('Error:', error);
+                        alert('An unexpected error occurred. Please try again.');
+                    });
+            }
+        }
+
+        function ungroupReport(groupID, reportID) {
+            event.stopPropagation();
+            console.log('Ungrouping report ' + reportID + ' from group ' + groupID);
+            //send new group id to server
+            fetch('remove_project_from_group', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    'project_group_id': groupID,
+                    'project_id': reportID
+                })
+            })
+                .then(response => {
+                    if (response.ok) {
+                        // Successful response, reload page
+                        console.log('Success:', response);
+                        window.location.reload();
+                    } else {
+                        // Server encountered an error, show alert
+                        alert('Error ungrouping the project. Please try again.');
+                    }
+                })
+                .catch(error => {
+                    // Fetch or network error
+                    console.error('Error:', error);
+                    alert('An unexpected error occurred. Please try again.');
+                });
+        }
+
+
+        function deleteReport(id) {
+            event.stopPropagation();
+            if (confirm("Are you sure you want to delete this report?")) {
+                //send delete request to server
+                fetch('/delete_report/' + id, {
+                    method: 'DELETE'
+                }).then(response => {
+                    if (response.ok) {
+                        //remove Object from list (fade it out first)
+                        let reportDiv = document.getElementById('object-report-' + id);
+                        reportDiv.style.transition = 'opacity 0.25s';
+                        reportDiv.style.opacity = 0;
+                        setTimeout(() => {
+                            reportDiv.remove();
+                        }, 250);
+
+                    } else {
+                        // Handle server-side errors
+                        return response.json().then(data => {
+                            alert(data.error || 'Error deleting the report. Please try again.');
+                        });
+                    }
+                }).catch(error => {
+                    // Handle network errors
+                    console.error('Error:', error);
+                    alert('An unexpected error occurred. Please try again.');
+                });
+            }
+        }
+
+
+        function projectShow(id) {
+            console.log("showing" + id);
+            window.location.href = "/" + id;
+        }
+
+
+
+
+        ///////////////////////////
+        // FUNCTIONS FOR POPUPS
+        ///////////////////////////
+
+        //when the popup background is clicked, close the popup
+        document.getElementById('popup-container').addEventListener('click', function (event) {
+            if (event.target === document.getElementById('popup-container')) {
+                closePopup();
+            }
+        });
+
+        document.getElementsByClassName('close-popup')[0].addEventListener('click', function () {
+            closePopup();
+        });
+
+        document.getElementById('ungroup-from-project-group-button').addEventListener('click', function () {
+            event.stopPropagation();
+            let projectID = document.getElementById('change-group-current-project-id').textContent;
+            let groupID = document.getElementById('change-group-current-group-id').textContent;
+            ungroupReport(groupID, projectID);
+        });
+
+        document.getElementById('change-project-group-button').addEventListener('click', function () {
+            event.stopPropagation();
+            let projectID = document.getElementById('change-group-current-project-id').textContent;
+            let newGroupID = document.getElementById('project-group-select').value;
+            changeGroup(projectID, newGroupID);
+        });
+
+
+
+        function closePopup() {
+            document.getElementById('popup-container').style.display = 'none';
+            //clear the input fields
+            document.getElementById('project-group-select').innerHTML = '';
+        }
+
+        function showChangeGroupPopup(projectID, projectName, groupID) {
+            event.stopPropagation();
+            document.getElementById('popup-container').style.display = 'flex';
+            //Set name of project in popup
+
+            document.getElementById('change-group-current-project-name').textContent = projectName;
+            document.getElementById('change-group-current-group-id').textContent = groupID;
+            document.getElementById('change-group-current-project-id').textContent = projectID;
+
+            if (groupID === -1) {
+                document.getElementById('change-group-current-group-name').textContent = 'ungrouped';
+                //add disabled attribute to the ungroup button
+                document.getElementById('ungroup-from-project-group-button').setAttribute('disabled', '');
+                //add disabled-button css class
+                document.getElementById('ungroup-from-project-group-button').classList.add('disabled-button');
+
+
+            } else {
+                document.getElementById('ungroup-from-project-group-button').removeAttribute('disabled');
+                document.getElementById('ungroup-from-project-group-button').classList.remove('disabled-button');
+            }
+
+            //empty the options
+            document.getElementById('project-group-select').innerHTML = '';
+
+            //fill the select with the project group ids
+            for (let i = 0; i < groups.length; i++) {
+                let option = document.createElement('option');
+                option.value = groups[i].id;
+                option.textContent = groups[i].name;
+                if (groups[i].id == groupID) {
+                    document.getElementById('change-group-current-group-name').textContent = groups[i].name;
+                }
+                document.getElementById('project-group-select').appendChild(option);
+            }
+        }
+
+
+
+
+
+
+        ///////////////////////////
+        // FUNCTIONS FOR SORTING
+        ///////////////////////////
+
+        sortValue.addEventListener('click', function () {
+            sortDropdown.style.display = sortDropdown.style.display == 'none' ? 'block' : 'none';
+            console.log(sortDropdown.style.display);
+        });
+
+        sortDropdown.addEventListener('click', function (e) {
+            if (e.target.dataset.value === 'creation-date') {
+                sortValue.textContent = 'Creation date';
+                sortProjectsByCreationDate();
+            } else if (e.target.dataset.value === 'flight-date') {
+                sortValue.textContent = 'Flight date';
+                sortProjectsByFlightDate();
+            }
+            sortDropdown.style.display = 'none';
+        });
+
+
+        function sortProjectsByFlightDate() {
+            projectDivs = document.getElementsByClassName("oneLineWrapper");
+            switchDates(false);
+            for (let i = 0; i < projectDivs.length; i++) {
+
+                j = 0;
+                while (j < projectDivs.length) {
+                    if (flightDateOrder[j] == i) {
+                        break;
+                    } else {
+                        j++;
+                    }
+                }
+                projectDivs[i].style.order = j
+                //projectDivs[i].getElementsByClassName("description")[0].innerHTML = i+"";
+            }
+        }
+
+        function sortProjectsByCreationDate() {
+            switchDates(true);
+            for (let i = 0; i < projectDivs.length; i++) {
+                projectDivs[i].style.order = i
+            }
+        }
+
+        function switchDates(toCreationTime) {
+            creationTimestamps = document.getElementsByClassName("timestamp creation");
+            flightTimestamps = document.getElementsByClassName("timestamp flight");
+
+            activate = creationTimestamps;
+            deactivate = flightTimestamps;
+            if (!toCreationTime) {
+                activate = flightTimestamps;
+                deactivate = creationTimestamps;
+            }
+
+
+            for (let i = 0; i < flightTimestamps.length; i++) {
+                activate[i].classList.remove("hidden");
+                deactivate[i].classList.add("hidden");
+            }
+        }
+
+
+
+        ///////////////////////////
+        // FUNCTIONS FOR UPLOADING PROJECTS
+        ///////////////////////////
+
+
+        //listener for file upload to activate (or deactivate) uploadProjectButton
+        document.getElementById('fileInputProjectZip').addEventListener('change', function () {
+            const fileInput = document.getElementById('fileInputProjectZip');
+            const file = fileInput.files[0];
+            //const uploadProjectButton = document.getElementById('uploadProjectButton');
+            const uploadFilename = document.getElementById('uploadFilename');
+            if (file) {
+                uploadProjectButton.disabled = false;
+                uploadProjectButton.style.cursor = 'pointer';
+                uploadProjectButton.style.backgroundColor = "var(--accent-color-interaction)";
+                uploadFilename.innerHTML = file.name;
+                console.log("file selected: " + file.name);
+            } else {
+                uploadProjectButton.disabled = true;
+                uploadProjectButton.style.backgroundColor = "var(--bg-color-b)";
+                uploadProjectButton.style.cursor = "not-allowed";
+                uploadFilename.innerHTML = "no file selected";
+                console.log("no file selected");
+            }
+        });
+
+
+
+        function uploadProjectZip() {
+
+            spinner = document.getElementById("download_feedback_spinner");
+            spinnerParent = spinner.parentElement;
+            spinnerParent.style.display = "inline-block";
+            spinnerParent.style.margin = "auto auto auto 0";
+            spinner.style.display = "inline-block";
+
+            //deactivate download button
+            importButton = document.getElementById("uploadProjectButton");
+            importButton.disabled = true;
+            importButton.style.backgroundColor = "var(--bg-color-a)";
+            importButton.style.color = "var(--bg-color-b)";
+            importButton.style.cursor = "default";
+
+
+            const fileInput = document.getElementById('fileInputProjectZip');
+            const file = fileInput.files[0];
+
+            if (file) {
+                const formData = new FormData();
+                formData.append('import-file', file);
+
+                fetch('/import_project', {
+                    method: 'POST',
+                    body: formData
+                })
+                    .then(response => {
+                        if (response.ok) {
+                            // Successful response, redirect to another page
+                            console.log('Success:', response);
+                            if (response.redirected) {
+                                // Redirect the user to the new location
+                                window.location.href = response.url;
+                            }
+                        } else {
+                            // Server encountered an error, show alert
+                            //activate download button
+                            spinner.style.display = "none";
+                            spinnerParent.style.display = "none";
+                            spinnerParent.style.margin = "0";
+
+                            importButton.disabled = false;
+                            importButton.style.backgroundColor = "var(--accent-color-interaction)";
+                            importButton.style.color = "var(--font-color-b)";
+                            importButton.style.cursor = "pointer";
+
+                            alert('Error processing the file. Please try again.');
+
+                        }
+                    })
+                    .catch(error => {
+                        // Fetch or network error
+                        console.error('Error:', error);
+                        alert('An unexpected error occurred. Please try again.');
+                    });
+            } else {
+                alert('Please select a file to upload.');
+            }
+
+
+        }
+
+        ///////////////////////////
+        // Others/ PAGEWISE FUNCTIONS
+        ///////////////////////////
+
+
+
+
+        function projectShowAll() {
+            window.location.href = "/";
+        }
+
+
+        function redirectWebODM() {
+            $.get('/get_webodm_port', function (response) {
+                if (response.port != null) {
+                    url = window.location.protocol + "//" + window.location.hostname + ":" + response.port;
+                    console.log(url);
+                    window.open(url, '_blank').focus();
+                } else {
+                    alert('Error launching WebODM.');
+                }
+            });
+        }
+
+
+
+
+
+
+    </script>
+</body>
+
+</html>
