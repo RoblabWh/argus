@@ -20,6 +20,7 @@ class ImageMapperProcess(threading.Thread):
         self.message = "Step 1/2: Preprocessing"
         self.image_paths = self.get_image_paths()
         self.image_paths_with_distance = None
+        self.vertices_output_json = "vertices.json"
         self.keyframe_manager = Keyframes()
         self.load_keyframe_data(keyframe_json)
         self.progress_preprocess = 0
@@ -34,6 +35,7 @@ class ImageMapperProcess(threading.Thread):
         self.remove_later = None
         self.saved_trajectory = None
         self.saved_mapping_result = None
+        self.saved_vertices = None
         self.fov = fov
         self.preprocessed_img_folder = None
         super().__init__()
@@ -236,6 +238,19 @@ class ImageMapperProcess(threading.Thread):
             image = image[0:image.shape[0] - crop, 0:image.shape[1]]
         return image, top, left
 
+    #should rotate a point by an angle(in rad)
+    def rotate(self, origin, point, angle):
+        """
+        Rotate a point counterclockwise by a given angle around a given origin.
+        The angle should be given in radians.
+        """
+        ox, oy = origin
+        px, py = point
+
+        qx = ox + math.cos(angle) * (px - ox) - math.sin(angle) * (py - oy)
+        qy = oy + math.sin(angle) * (px - ox) + math.cos(angle) * (py - oy)
+        return qx, qy
+
     def run(self):
         self.started = True
         self.preprocess_images()
@@ -261,6 +276,7 @@ class ImageMapperProcess(threading.Thread):
         output_map = np.zeros((self.map_shape[0], (self.map_shape[1]), 3), dtype=np.uint8)
         img = None
         number_of_images_done = 0
+        all_img_vertices = {}
         for img_data in self.image_paths_with_distance:
             img = cv2.imread(str(img_data[1]['path']))
             id = img_data[0]
@@ -289,21 +305,33 @@ class ImageMapperProcess(threading.Thread):
             #get angle between those two vectors
             fv_u = self.unit_vector(flat_vector)
             fv2_u = self.unit_vector(flat_vector2)
-            angle = np.arccos(np.clip(np.dot(fv_u, fv2_u), -1.0, 1.0))
-            if(flat_vector[0] > flat_vector2[0]):
-                #angle is turning counterclockwise aka. mathematically positive
-                angle = angle*180/math.pi
+            angle_rad = np.arccos(np.clip(np.dot(fv_u, fv2_u), -1.0, 1.0))
+            angle_deg = 0
+            if (flat_vector[0] > flat_vector2[0]):
+                # angle is turning counterclockwise aka. mathematically positive, radiant angles being inverted for fun
+                angle_deg = angle_rad * 180 / math.pi
+                angle_rad = -angle_rad
             else:
-                #angle is turning clockwise aka. mathematically negative
-                angle = -(angle*180/math.pi)
+                # angle is turning clockwise aka. mathematically negative
+                angle_deg = -(angle_rad * 180 / math.pi)
             #now we need the angle between new_vector and test_vector
             small_img = cv2.resize(img, map_size)
+            original_shape = small_img.shape
             small_img_pil = Image.fromarray(small_img)
-            rotated_img = small_img_pil.rotate(angle, expand=True) #kinda weird to convert cv2 img to pil and back to have a more comfortable rotate function
+            small_img_vertices = (
+                (top, left),
+                (top + map_size[0], left),
+                (top + map_size[0], left + map_size[1]),
+                (top, left + map_size[1])
+            )
+            rotated_vertices = [self.rotate((positionCenterX, positionCenterY), (x,y), angle_rad) for x,y in small_img_vertices]
+            all_img_vertices[id] = rotated_vertices
+            rotated_img = small_img_pil.rotate(angle_deg, expand=True) #kinda weird to convert cv2 img to pil and back to have a more comfortable rotate function
             rotated_image = np.array(rotated_img)
             rotated_image, top, left = self.cropImage(top, left, rotated_image)
-            #temp_map = np.zeros((self.map_shape[0], (self.map_shape[1]), 3), dtype=np.uint8)
-            #temp_map[left:left + int(rotated_image.shape[0]), top:top + int(rotated_image.shape[1])] = rotated_image #front image
+            new_shape = rotated_image.shape
+            shape_adaption = int((new_shape[0] - original_shape[0]) / 2)
+                                
             #do alpha blending
             alpha = np.sum(rotated_image, axis=-1) > 0
             alpha = np.uint8(alpha*255)
@@ -312,15 +340,17 @@ class ImageMapperProcess(threading.Thread):
             alpha_s = alpha/255.0
             alpha_l = 1.0 - alpha_s
             for c in range(0,3):
-                output_map[left:left+int(rotated_image.shape[0]), top:top+int(rotated_image.shape[1]), c] = (alpha_s * rotated_image[:,:,c] +
-                                                                                                          alpha_l * output_map[left:left+int(rotated_image.shape[0]), top:top+int(rotated_image.shape[1]), c])
-
+                output_map[left-shape_adaption:left+int(rotated_image.shape[0])-shape_adaption, top-shape_adaption:top+int(rotated_image.shape[1])-shape_adaption, c] = (alpha_s * rotated_image[:,:,c] +
+                                                                                                          alpha_l * output_map[left-shape_adaption:left+int(rotated_image.shape[0])-shape_adaption, top-shape_adaption:top+int(rotated_image.shape[1])-shape_adaption, c])
         alpha = np.sum(output_map, axis=-1) > 0
         alpha = np.uint8(alpha*255)
         output_map = cv2.cvtColor(output_map, cv2.COLOR_RGB2RGBA)
         output_map[:,:,3] = alpha
         cv2.imwrite(str(self.output_folder /'output_map.png'), output_map)
         self.saved_mapping_result = str(self.output_folder /'output_map.png')
+        with open(self.output_folder / self.vertices_output_json, 'w') as f:
+            json.dump(all_img_vertices, f, ensure_ascii=False, indent=4)
+        self.saved_vertices = str(self.output_folder / self.vertices_output_json);
         #start attaching images to the map based on keyframe poses
 
         #delete preprocessed images and reset image_paths
@@ -337,6 +367,9 @@ class ImageMapperProcess(threading.Thread):
 
     def get_saved_mapping_result(self):
         return self.saved_mapping_result
+
+    def get_vertices_json(self):
+        return self.saved_vertices
 
     def get_saved_trajectory_result(self):
         if self.saved_trajectory is not None:

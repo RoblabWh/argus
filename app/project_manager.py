@@ -706,8 +706,8 @@ class ProjectManager:
         self.update_data_by_keyword(report_id, 'slam_output_file_path', path)
         return path
 
-    def update_mapping_result(self, report_id, mapping_output, trajectory):
-        return self.update_data_by_keyword(report_id, 'mapping_output', (mapping_output, trajectory))
+    def update_mapping_result(self, report_id, mapping_output, trajectory, vertices):
+        return self.update_data_by_keyword(report_id, 'mapping_output', (mapping_output, trajectory, vertices))
 
 
     def get_project_path(self, report_id):

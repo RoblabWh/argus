@@ -130,6 +130,8 @@ class ArgusServer:
                               view_func=self.load_detection_results)
         self.app.add_url_rule('/load_keyframes/<int:report_id>', methods=['GET', 'POST'],
                               view_func=self.load_keyframes)
+        self.app.add_url_rule('/load_vertices/<int:report_id>', methods=['GET', 'POST'],
+                              view_func=self.load_vertices)
         self.app.add_url_rule('/load_landmarks/<int:report_id>', methods=['GET', 'POST'],
                               view_func=self.load_landmarks)
         self.app.add_url_rule('/detection_status/<int:report_id>', methods=['GET', 'POST'],
@@ -597,15 +599,17 @@ class ArgusServer:
                 overallprogress = (progress_preprocess * 0.8) + (progress_mapping * 0.2) #progress between 0 and 1
                 trajectory = thread.get_saved_trajectory_result()
                 mapping_result = thread.get_saved_mapping_result()
+                vertices = thread.get_vertices_json()
                 if(progress_mapping == 1):
                     #add and load mapping results
                     trajectory = thread.get_saved_trajectory_result()
                     mapping_result = thread.get_saved_mapping_result()
+                    vertices = thread.get_vertices_json()
                     print(mapping_result, flush=True)
-                    self.project_manager.update_mapping_result(report_id, mapping_result, trajectory)
+                    self.project_manager.update_mapping_result(report_id, mapping_result, trajectory, vertices)
                     print('mapping done')
                 break
-        result = {"progress": overallprogress, "mapping_result": mapping_result, "trajectory": trajectory}
+        result = {"progress": overallprogress, "mapping_result": mapping_result, "trajectory": trajectory, "vertices": vertices}
         return jsonify(result)
 
 
@@ -819,6 +823,18 @@ class ArgusServer:
         with open(path) as json_file:
             data = json.load(json_file)
             return jsonify(data)
+
+    def load_vertices(self, report_id):
+        #get path of projects annotation file
+        data = self.project_manager.get_project(report_id)['data']
+        mapping_output = data['mapping_output']
+        try:
+            vertices = mapping_output[2]
+            with open(vertices) as json_file:
+                vertices_data = json.load(json_file)
+                return jsonify(vertices_data)
+        except:
+            return jsonify("error")
 
     def process_in_webodm(self, report_id):
         token = self.webodm_manager.authenticate()
@@ -1080,6 +1096,10 @@ class ArgusServer:
 
         try:
             slam_mapping_output = data['mapping_output'] #mapping output
+            try:
+                vertices = slam_mapping_output[2]
+            except:
+                vertices = None
         except:
             slam_mapping_output = None
 
@@ -1107,7 +1127,7 @@ class ArgusServer:
                                keyfrms = keyfrms, landmarks=landmarks, slam_output = slam_output,
                                keyframe_folder = keyframe_folder, detections= detections, processing = processing,
                                point_cloud=point_cloud, project=project, message=message, slam_mapping_output = slam_mapping_output,
-                               gradient_lut=gradient_lut)  #create a different render template maybe
+                               vertices = vertices, gradient_lut=gradient_lut)  #create a different render template maybe
 
     def render_standard_report(self, report_id, thread=None, template="baseReport.html"):
         data = self.project_manager.get_project(report_id)['data']
