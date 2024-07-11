@@ -756,7 +756,6 @@
                 videoUploading = true;
                 this.emit('thumbnail', file, "{{ url_for('static', filename='default/placeholder_video.png') }}");
             });
-
             this.on('success', (file, response) => {
                 videoUploadedSuccessfully = true;
                 var progressBar = file.previewElement.querySelector(".dz-progress");
@@ -804,9 +803,23 @@
                 this.disable();
             });
 
+            this.on('processing', (file) => {
+                console.log('processing');
+                console.log(file);
+            });
+            this.on('complete', (file) => {
+                console.log('complete');
+                console.log(file);
+            });
+
+            this.on('processing', (file) => {
+                console.log('processing');
+                console.log(file);
+            });
+
             this.on('error', (file, errorMessage) => {
                 console.log(errorMessage);
-            })
+            });
 
             this.on('maxfilesexceeded', (file) => {
                 this.removeFile(file);

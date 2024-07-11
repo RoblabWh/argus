@@ -826,6 +826,7 @@ class ArgusServer:
 
     def load_vertices(self, report_id):
         #get path of projects annotation file
+        print("loading vertices", flush=True)
         data = self.project_manager.get_project(report_id)['data']
         mapping_output = data['mapping_output']
         try:

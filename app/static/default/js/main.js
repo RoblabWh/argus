@@ -7,6 +7,7 @@ let scene, camera, renderer;
 /* Color setting*/
 const CURRENT_FRAME_COLOR = "rgb(0,192,0)";
 const KEYFRAME_COLOR = "rgb(92, 85, 250)";
+const HIGHLIGHT_COLOR = "rgb(0, 255, 255)";
 const EDGE_COLOR = "rgb(192, 223, 255)";
 const BACKGROUND_COLOR = "rgb(255, 255, 255)";
 const REFERENCE_POINT_COLOR = [255, 0, 0];

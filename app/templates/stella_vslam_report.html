@@ -243,6 +243,7 @@
         }
 
         #trajectory {
+            pointer-events: none;
             z-index: 2;
         }
 
@@ -485,9 +486,7 @@
         }
 
         function loadSlamMappingOutput(slam_mapping_output) {
-            console.log(slam_mapping_output);
             if(slam_mapping_output !== null && slam_mapping_output.length > 0) {
-                console.log(slam_mapping_output);
                 let div = document.createElement('div');
                 div.id = "mapping_output";
                 let vslam_stats = document.getElementsByClassName("vslam_stats")[0];
@@ -497,15 +496,19 @@
                     img.src = slam_mapping_output[0];
                     img.classList.add("small_img");
                     img.id = "map";
-                    /*const trajectory = document.createElement('img');
+                    const trajectory = document.createElement('img');
+                    trajectory.id = "trajectory";
                     trajectory.src = slam_mapping_output[1];
                     trajectory.classList.add("small_img");
-                    trajectory.classList.add("top");*/
+                    trajectory.classList.add("top");
                     div.appendChild(img);
-                    //div.appendChild(trajectory);
+                    div.appendChild(trajectory);
                     vslam_stats.appendChild(div);
                     if (slam_mapping_output[2] !== undefined)  {
+                        console.log("loading vertices");
                         $.post("/load_vertices/{{ id }}", function(data) {
+                            console.log(data);
+                            console.log(slam_mapping_output[0]);
                             if (data !== "error") {
                                 setup_vertices_in_map(data, slam_mapping_output[0]);
                             }
@@ -532,62 +535,65 @@
         function setup_vertices_in_map(vertices, map_src) {
             const img = document.createElement('img');
             img.src = map_src;
-            let originalWidth = img.naturalWidth;
-            let originalHeight = img.naturalHeight;
-            map = document.getElementById("map");
-            let widthInDocument = map.width;
-            let heightInDocument = map.height;
-            let conversionFactor = map.width / originalWidth;
-            mapElement = document.createElement("map");
-            mapElement.name = "navigationMap";
-            const canvas = document.createElement("canvas");
-            canvas.id = "canvas";
-            canvas.width = widthInDocument;
-            canvas.height = heightInDocument;
-            const ctx = canvas.getContext('2d');
-            for (const[id, vertice] of Object.entries(vertices)) {
-                polygon = document.createElement('area');
-                polygon.shape = "poly";
-                let coords = "";
-                for (let point of vertice) {
-                    let x = point[0];
-                    let y = point[1];
-                    let scaledX = Math.round(x * conversionFactor);
-                    let scaledY = Math.round(y * conversionFactor);
-                    coords = coords + scaledX + "," + scaledY + ",";
+            img.onload = function() {
+                let originalWidth = img.naturalWidth;
+                let originalHeight = img.naturalHeight;
+                map = document.getElementById("map");
+                let widthInDocument = map.width;
+                let heightInDocument = map.height;
+                let conversionFactor = map.width / originalWidth;
+                mapElement = document.createElement("map");
+                mapElement.name = "navigationMap";
+                const canvas = document.createElement("canvas");
+                canvas.id = "canvas";
+                canvas.width = widthInDocument;
+                canvas.height = heightInDocument;
+                const ctx = canvas.getContext('2d');
+                console.log(originalWidth);
+                console.log(widthInDocument);
+                for (const[id, vertice] of Object.entries(vertices)) {
+                    polygon = document.createElement('area');
+                    polygon.shape = "poly";
+                    let coords = "";
+                    for (let point of vertice) {
+                        let x = point[0];
+                        let y = point[1];
+                        let scaledX = Math.round(x * conversionFactor);
+                        let scaledY = Math.round(y * conversionFactor);
+                        coords = coords + scaledX + "," + scaledY + ",";
+                    }
+                    coords = coords.slice(0, -1);
+                    polygon.coords = coords;
+                    polygon.id = "polygonArea" + id
+                    mapElement.appendChild(polygon);
                 }
-                coords = coords.slice(0, -1);
-                polygon.coords = coords;
-                polygon.id = "polygonArea" + id
-                mapElement.appendChild(polygon);
-            }
-            map.parentElement.appendChild(canvas);
-            map.parentElement.appendChild(mapElement);
-            map.setAttribute("usemap","#navigationMap");
-            const areas = document.querySelectorAll('area');
-            areas.forEach(area => {
-                area.addEventListener('mouseenter', function() {
-                    const coords = this.coords.split(',');
-                    ctx.clearRect(0, 0, canvas.width, canvas.height);
-                    ctx.fillStyle = 'rgba(0,0,255,0.5)';
-                    ctx.beginPath();
-                    ctx.moveTo(coords[0], coords[1]);
-                    ctx.lineTo(coords[2], coords[3]);
-                    ctx.lineTo(coords[4], coords[5]);
-                    ctx.lineTo(coords[6], coords[7]);
-                    ctx.closePath();
-                    ctx.fill();
+                map.parentElement.appendChild(canvas);
+                map.parentElement.appendChild(mapElement);
+                map.setAttribute("usemap","#navigationMap");
+                const areas = document.querySelectorAll('area');
+                areas.forEach(area => {
+                    area.addEventListener('mouseenter', function() {
+                        let coords = this.coords.split(',');
+                        ctx.clearRect(0, 0, canvas.width, canvas.height);
+                        ctx.fillStyle = 'rgba(0,0,255,0.5)';
+                        ctx.beginPath();
+                        ctx.moveTo(coords[0], coords[1]);
+                        ctx.lineTo(coords[2], coords[3]);
+                        ctx.lineTo(coords[4], coords[5]);
+                        ctx.lineTo(coords[6], coords[7]);
+                        ctx.closePath();
+                        ctx.fill();
+                    });
+                    area.addEventListener('click', function() {
+                        //open keyframe in pannellum
+                        show_keyframe(this.id.replace('polygonArea', ''));
+                    })
+                    area.addEventListener('mouseleave', function() {
+                        ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    });
                 });
-                area.addEventListener('click', function() {
-                    //open keyframe in pannellum
-                    show_keyframe(this.id.replace('polygonArea', ''));
-                })
-                area.addEventListener('mouseleave', function() {
-                    ctx.clearRect(0, 0, canvas.width, canvas.height);
-                });
-            });
+            };
         }
-
 
         {% if processing %}
         console.log("next checking progess");

@@ -6,6 +6,7 @@ class CameraFrames {
         this.CURRENT_FRAME_MATERIAL = new THREE.LineBasicMaterial({ color: CURRENT_FRAME_COLOR });
         this.KEYFRAME_MATERIAL = new THREE.LineBasicMaterial({ color: KEYFRAME_COLOR });
         this.EDGE_MATERIAL = new THREE.LineBasicMaterial({ color: EDGE_COLOR });
+        this.HIGHLIGHT_FRAME_MATERIAL = new THREE.LineBasicMaterial({ color: HIGHLIGHT_COLOR});
 
         this.keyframeIndices = [];
         this.keyframeObjects = [];
