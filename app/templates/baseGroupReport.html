@@ -412,10 +412,11 @@
 
 
     .maps-title-line {
-      padding: 8px;
+      padding: 6px;
       border-top-right-radius: 4px;
       border-top-left-radius: 4px;
       margin: 0 0 4px 0;
+      align-items: center;
     }
 
     .maps-project-title {
@@ -439,6 +440,45 @@
 
     .oneLineLeftRight p {
       margin: 0;
+    }
+
+    .arrow-container {
+      width: 20px;
+      height: 25px;
+      margin: auto 4px auto 0;
+      align-content: center;
+    }
+
+    .arrow {
+      margin: auto;
+      width: 6px;
+      height: 6px;
+      border: 1px solid #000;
+      border-width: 0 1px 1px 0;
+      transform: rotate(45deg);
+    }
+
+    .arrow.up {
+      transform: rotate(-135deg);
+      border-width: 0 1px 1px 0;
+    }
+
+    .arrow.down {
+      transform: rotate(-135deg);
+      border-width: 1px 0 0 1px;
+    }
+
+    .arrow:hover {
+      border-color: var(--accent-color-interaction);
+      cursor: pointer;
+    }
+
+    .arrow.down:hover {
+      border-width: 2px 0 0 2px;
+    }
+
+    .arrow.up:hover {
+      border-width: 0 2px 2px 0;
     }
   </style>
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -503,6 +543,10 @@
 
           <div class="project-maps">
             <div class="maps-title-line oneLineLeftRight">
+              <div class="arrow-container">
+                <div class="arrow up" onclick="moveMap(event, -1)"></div>
+                <div class="arrow down" onclick="moveMap(event, 1)"></div>
+              </div>
               <h2 class="maps-project-title">Title</h2>
               <p class="maps-project-date"> 16.12.2015 10:42</p>
             </div>
@@ -578,6 +622,7 @@
   var project_ids = {{ group.projects| tojson }};
   var projects = [];
   var map = null;
+  var overlays = {};
 
   if (project_ids.length == 0) {
     //hide map container
@@ -668,7 +713,7 @@
 
   function buildMap() {
     const baseLayers = loadMapBaseLayers();
-    const overlays = loadMapOverlays();
+    overlays = loadMapOverlays();
 
     //set layerControls to be open
     var layerControl = L.control.layers(baseLayers, {}, {
@@ -729,7 +774,7 @@
       let flight_date = project_data.flight_data[0].value;
       let maps = project_data.maps;
 
-      let mapsContainer = addReportToMapsSettings(project_name, flight_date, maps);
+      let mapsContainer = addReportToMapsSettings(project_name, flight_date, maps, i);
 
       for (let j = 0; j < maps.length; j++) {
         let map = maps[j];
@@ -741,7 +786,7 @@
         }
         let map_url = map.file;
         let map_layer = L.imageOverlay(map_url, map_bounds);
-        overlays[flight_date + " - " + map_name] = map_layer;
+        overlays[project_name + " - " + map_name + " - " + flight_date] = map_layer;
 
         addMapToSettings(map_name, map_layer, mapsContainer);
       }
@@ -758,11 +803,7 @@
 
     //on Checkbox change display or hide map
     newMap.querySelector(".maps-project-checkbox").onchange = function () {
-      if (this.checked) {
-        mapLayer.addTo(map);
-      } else {
-        mapLayer.remove();
-      }
+      updateMapVisibility();
     }
 
     //on opacity change change opacity of map
@@ -773,12 +814,43 @@
     container.appendChild(newMap);
   }
 
-  function addReportToMapsSettings(projectName, flightDate, maps) {
+  function updateMapVisibility() {
+    let projectMaps = document.querySelectorAll(".project-maps");
+    //remove all overlays from map
+
+    map.eachLayer(function (layer) {
+      if (layer instanceof L.ImageOverlay) {
+        map.removeLayer(layer);
+      }
+    });
+
+    //sort list of projects by order tag in css
+    projectMaps = Array.from(projectMaps).sort((a, b) => a.style.order - b.style.order);
+
+    for (let i = 0; i < projectMaps.length; i++) {
+      let name = projectMaps[i].querySelector(".maps-project-title").innerText;
+      let date = projectMaps[i].querySelector(".maps-project-date").innerText;
+      let maps = projectMaps[i].querySelector(".maps-project-mapscontainer").children;
+      for (let j = 0; j < maps.length; j++) {
+        let mapLine = maps[j];
+        let mapName = mapLine.querySelector(".maps-project-mapname").innerText;
+        let mapLayer = overlays[name + " - " + mapName + " - " + date];
+        let checkbox = mapLine.querySelector(".maps-project-checkbox");
+        if (checkbox.checked) {
+          mapLayer.addTo(map);
+        }
+      }
+    }
+  }
+
+  function addReportToMapsSettings(projectName, flightDate, maps, orderIndex) {
     let mapsTemplate = document.getElementById("project-maps-template");
     let newMaps = mapsTemplate.content.cloneNode(true);
 
+    newMaps.querySelector(".project-maps").style.order = orderIndex;
     newMaps.querySelector(".maps-project-title").innerText = projectName;
     newMaps.querySelector(".maps-project-date").innerText = flightDate;
+
 
     let mapsContainer = newMaps.querySelector(".maps-project-mapscontainer");
     document.getElementById("map-settings").appendChild(newMaps);
@@ -790,6 +862,34 @@
     }
 
     return mapsContainer;
+  }
+
+  function moveMap(event, indexChange) {
+    console.log("move map");
+    let source = event.target.parentElement.parentElement.parentElement;
+    letSourceOrder = source.style.order;
+    letSourceOrder = parseInt(letSourceOrder);
+
+    let allMaps = document.querySelectorAll(".project-maps");
+
+    for (let i=0; i<allMaps.length; i++) {
+      let target = allMaps[i];
+      targetOrder = target.style.order;
+      targetOrder = parseInt(targetOrder);
+      if (target.style.order == letSourceOrder + indexChange) {
+        swapMapOrder(source, target);
+        break;
+      }
+    }
+    updateMapVisibility();
+  }
+
+  function swapMapOrder(source, target) {
+    let sourceOrder = source.style.order;
+    let targetOrder = target.style.order;
+
+    source.style.order = targetOrder;
+    target.style.order = sourceOrder;
   }
 
 
@@ -814,7 +914,7 @@
       button.children[0].style.display = "inline-block";
       button.children[1].style.display = "none";
       $('#' + textfieldID).removeClass('editable');
-      $.post("/" + link + "/{{ group.id }}", { content: textfield.innerHTML, isProjectGroup: true});
+      $.post("/" + link + "/{{ group.id }}", { content: textfield.innerHTML, isProjectGroup: true });
     } else {
       textfield.contentEditable = "true";
       $('#' + textfieldID).addClass('editable');
