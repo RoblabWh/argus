@@ -654,17 +654,26 @@
         }
 
         var slideIndex = getSlideIndexByFilename(filename, 0);
-        if (slideIndex == -1){
-            slideIndex = getSlideIndexByFilename(filename, 1);
-        }
+
         if (slideIndex == -1){
             slideIndex = getSlideIndexByFilename(filename, 2);
         }
-        if(slideIndex != -1){
-            showSlide(slideIndex);
+
+        if (slideIndex == -1){
+            slideIndex = getSlideIndexByFilename(filename, 1);
+            if(slideIndex != -1){
+                showSlideIR(slideIndex);
+            }
+            else{
+                console.log("No slide found for filename: " + filename);
+            }
         } else{
-            console.log("No slide found for filename: " + filename);   
+            showSlide(slideIndex);
         }
+
+
+
+
     }
 
     function showSlideByShortFilename(filename){

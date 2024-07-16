@@ -806,8 +806,8 @@
       updateMapVisibility();
     }
 
-    //on opacity change change opacity of map
-    newMap.querySelector(".maps-project-opacity").onchange = function () {
+
+    newMap.querySelector(".maps-project-opacity").oninput = function () {
       mapLayer.setOpacity(this.value / 100);
     }
 

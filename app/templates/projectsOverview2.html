@@ -420,8 +420,6 @@
             border-radius: 4px;
             border: 1px solid var(--bg-color-b);
         }
-
-        
     </style>
     <script src="{{url_for('static', filename='default/jquery-3.6.3.js') }}"></script>
 </head>
@@ -779,7 +777,7 @@
             const template = document.getElementById('report-template');
             const clone = document.importNode(template.content, true);
 
-            clone.querySelector('.report').setAttribute('onclick', `projectShow(${report.id});`);
+            clone.querySelector('.report').setAttribute('onclick', `projectShow(event, ${report.id});`);
             clone.querySelector('.report').setAttribute('id', 'object-report-' + report.id);
             clone.querySelector('h2').textContent = report.name;
             clone.querySelector('.report-description').textContent = report.description;
@@ -1103,9 +1101,12 @@
         }
 
 
-        function projectShow(id) {
-            console.log("showing" + id);
-            window.location.href = "/" + id;
+        function projectShow(event, id) {
+            if (event.ctrlKey || event.shiftKey || event.metaKey || event.button === 1) {
+                window.open("/" + id, '_blank');
+            } else {
+                window.location.href = "/" + id;
+            }
         }
 
 

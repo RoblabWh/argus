@@ -53,6 +53,7 @@ class WebodmManager():
             print('Failed to connect to WebODM Server "{}", timeout exceeded'.format(self.url))
         else:
             print('Failed to connect to WebODM Server "{}", with http status code {}'.format(self.url, response.status_code))
+        return None
 
     def configure_node(self, token, address, port):
         response = requests.get('{}/api/processingnodes/'.format(self.url),
@@ -271,3 +272,14 @@ class WebodmManager():
                 except Exception as e:
                     print('Failed to delete %s. Reason: %s' % (file_path, e))
             os.rmdir(proxy_folder)
+
+    def delete_project(self, token, wo_project_id):
+        if token is None:
+            print('Failed to authenticate')
+            return
+        if not self.project_exists(token, wo_project_id):
+            print('Project does not exist')
+            return
+        response = requests.delete('{}/api/projects/{}/'.format(self.url, wo_project_id),
+                                   headers={'Authorization': 'JWT {}'.format(token)})
+        print(response)

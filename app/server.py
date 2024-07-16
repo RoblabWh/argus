@@ -207,10 +207,25 @@ class ArgusServer:
 
 
     def delete_report(self, report_id):
+        #Check if WebODM project exists and delete it
+        webodm_project_id = self.project_manager.get_webodm_project_id(report_id)
+        print("delete_report for id: " + str(report_id) + " with webodm_project_id: " + str(webodm_project_id))
+        if webodm_project_id is not None:
+            token = self.webodm_manager.authenticate()
+            self.webodm_manager.delete_project(token, webodm_project_id)
+
         self.project_manager.delete_project(report_id)
         return self.projects_overview()
 
     def delete_report_from_project_group(self, report_id):
+        #Check if WebODM project exists and delete it
+        webodm_project_id = self.project_manager.get_webodm_project_id(report_id)
+        print("delete_report for id: " + str(report_id) + " with webodm_project_id: " + str(webodm_project_id))
+        if webodm_project_id is not None:
+            token = self.webodm_manager.authenticate()
+            print("delete project with id: " + str(webodm_project_id) + " and token: " + str(token))
+            self.webodm_manager.delete_project(token, webodm_project_id)
+
         self.project_manager.delete_project(report_id)
         return jsonify({"success": True}), 200
 
