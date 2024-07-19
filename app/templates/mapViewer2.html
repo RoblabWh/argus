@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Map</title>
+    <!-- adds leaflet -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"
+        integrity="sha512-xodZBNTC5n17Xt2atTPuE1HxjVMSvLVW9ocqUKLsCC5CXdbqCmblAshOMAS6/keqq/sMZMZ19scR4PsZChSR7A=="
+        crossorigin="" />
+    <!-- Make sure you put this AFTER Leaflet's CSS -->
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"
+        integrity="sha512-XQoYMqMTK8LvdxXYG3nZ448hOEQiglfqkJs1NOQV44cWnUrBc8PkAOcXy20w0vlaXaVUearIOBhiXZ5V3ynxwA=="
+        crossorigin=""></script>
+    <!-- adds leaflet -->
+    <style>
+        #map-with-overlay-container {
+            width: 100%;
+            position: relative;
+            height: 900px;
+            max-height: 85vh;
+            padding-top: 30px;
+        }
+
+        #map {
+            height: 900px;
+            max-height: 85vh;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            margin: 0 auto;
+
+            position: absolute;
+            top: 0;
+            bottom: 0;
+        }
+
+        #map-overlay-slider {
+            position: absolute;
+            bottom: 40px;
+            left: 25%;
+            width: 50%;
+            padding: 10px;
+            z-index: 1000;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 4px;
+            align-items: center;
+        }
+
+        #map-overlay-detections-filter-collapsed {
+            position: absolute;
+            top: 64px;
+            right: 10px;
+        }
+
+
+
+        .wind-overlay {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            width: 75px;
+            height: 75px;
+            background-image: url('static/default/windRose-grande.png');
+            /* Compass rose background image */
+            background-size: cover;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="map-with-overlay-container">
+        <div id="map"></div>
+        <div id="map-overlay-slider">
+            <a>
+                <label for="mapOverlayOpacityRange" style="margin: 0 0 0 10px; color: var(--font-color-b);">Overlay
+                    Opacity</label>
+                <input type="range" min="0" max="100" value="100" class="slider" id="mapOverlayOpacityRange"
+                    style="margin: 0px 10px; width:35%;">
+                <div style="float: right">
+                    <label style="margin: 0 0 0 10px; color: var(--font-color-b);"> Detections: tactical sign</label>
+                    <label class="switch">
+                        <input type="checkbox" id="mapOverlayStyleCheckbox" checked="checked">
+                        <span class="switch-slider round"></span>
+                    </label>
+                    <label style="margin: 0 0 0 10px; color: var(--font-color-b);">icon</label>
+                </div>
+            </a>
+        </div>
+        <div id="map-overlay-detections-filter">
+            <div id="map-overlay-detections-filter-collapsed"></div>
+            <div id="map-overlay-detections-filter-expanded"></div>
+        </div>
+    </div>
+
+    <script>
+        var mapsData = {{ maps | tojson}};
+        var flightTrajectory = {{ flight_trajectory | tojson}};
+        var panos = {{ panos | tojson}}
+    </script>
+    <script src="{{ url_for('static', filename='js/mapViewer2.js') }}"></script>
+
+</body>

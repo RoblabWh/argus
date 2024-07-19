@@ -231,8 +231,8 @@
 
     </style>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <script src="{{url_for('static', filename='default/jquery-3.6.3.js') }}"></script>
-    <script src="{{url_for('static', filename='default/fabric.min.js') }}"></script>
+    <script src="{{url_for('static', filename='js/jquery-3.6.3.js') }}"></script>
+    <script src="{{url_for('static', filename='js/fabric.min.js') }}"></script>
 </head>
 
 <body onresize="updateSizeDependetEmelents()">
@@ -278,14 +278,15 @@
                          $.get('/get_map/{{ id }}/'+i, function(map) {
                             if(map.file != "empty"){
                                 console.log(map);
-                                console.log(mapIndex);
-                                switch(mapIndex){
-                                {% for map in maps %}
-                                    case {{ loop.index0 }}:
-                                        update{{map.name}}Map(map);
-                                        break;
-                                {% endfor %}
-                                }
+                                //console.log(mapIndex);
+                                //switch(mapIndex){
+                                //{% for map in maps %}
+                                //    case {{ loop.index0 }}:
+                                //        update{{map.name}}Map(map);
+                                //        break;
+                                //{% endfor %}
+                                updateMap(map, true);
+                                
                             }
                          });
                          updateODMTasksTable();
@@ -545,7 +546,7 @@
 
         <div class="map_container">
             <h2> Map </h2>
-            {% include 'mapViewer.html' %}
+            {% include 'mapViewer2.html' %}
         </div>
 
 

@@ -354,7 +354,7 @@
                 tabLink.setAttribute("class", "tablink-vertical");
                 tabLink.innerHTML = "AI-Detections";
                 //call openSettings(event,'slideshow-settings-Annotations')
-                tabLink.onclick = function() {openSettings(event,'slideshow-settings-Annotations')};
+                tabLink.onclick = function() {activateAiOverlays()};
                 tabsDiv.appendChild(tabLink);                
             }
             populateAddAnnotationCategoryDropdown(detectionData);
