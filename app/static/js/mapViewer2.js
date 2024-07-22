@@ -348,7 +348,7 @@ function displayWindDirectionOnMap(angle) {
     if(windDir===-1.0){
         return;
     }
-    windDir = windDir + 180.0;
+    let windDirRotation = windDir + 180.0;
 
     L.LogoControl = L.Control.extend({
         options: {
@@ -364,9 +364,9 @@ function displayWindDirectionOnMap(angle) {
             icon.style.backgroundColor = 'rgba(0,0,0,0)';
             icon.style.width = '100%';
             icon.style.height = '100%';
-            icon.innerHTML = `<img width="100%" class="logo-control-img" src="static/default/arrow-outline.png" style="transform: rotate(${windDir}deg); margin: auto;">`;
+            icon.innerHTML = `<img width="100%" class="logo-control-img" src="static/default/arrow-v2.png" style="transform: rotate(${windDirRotation}deg); margin: auto;">`;
             L.DomEvent.disableClickPropagation(icon);
-            container.title = "Wind Direction";
+            container.title = `Wind Direction ${windDir}°`;
             1
             return container;
         },
