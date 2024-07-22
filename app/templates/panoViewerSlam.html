@@ -149,6 +149,10 @@ for (let i = 0; i < keyframes_sort.length; i++) {
 }
 
 viewer = pannellum.viewer('panorama', pannellum_settings);
+viewer.on('scenechange', () => {
+    console.log(viewer.getScene());
+    highlight_small_area(viewer.getScene());
+});
 
 let hotspotsInScene = [];
 
@@ -165,7 +169,6 @@ function updateHotspots(viewer) {
                                            currentPose.elements[4],currentPose.elements[5],currentPose.elements[6], 0,
                                            currentPose.elements[8],currentPose.elements[9],currentPose.elements[10], 0,
                                                         0,             0,             0, 1);
-            console.log(someMatrix);
             break;
         }
     }

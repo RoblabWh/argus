@@ -331,6 +331,8 @@ class ImageMapperProcess(threading.Thread):
             rotated_image, top, left = self.cropImage(top, left, rotated_image)
             new_shape = rotated_image.shape
             shape_adaption = int((new_shape[0] - original_shape[0]) / 2)
+            left = left - shape_adaption
+            top = top - shape_adaption
                                 
             #do alpha blending
             alpha = np.sum(rotated_image, axis=-1) > 0
@@ -340,8 +342,8 @@ class ImageMapperProcess(threading.Thread):
             alpha_s = alpha/255.0
             alpha_l = 1.0 - alpha_s
             for c in range(0,3):
-                output_map[left-shape_adaption:left+int(rotated_image.shape[0])-shape_adaption, top-shape_adaption:top+int(rotated_image.shape[1])-shape_adaption, c] = (alpha_s * rotated_image[:,:,c] +
-                                                                                                          alpha_l * output_map[left-shape_adaption:left+int(rotated_image.shape[0])-shape_adaption, top-shape_adaption:top+int(rotated_image.shape[1])-shape_adaption, c])
+                output_map[left:left+int(rotated_image.shape[0]), top:top+int(rotated_image.shape[1]), c] = (alpha_s * rotated_image[:,:,c] +
+                                                                                                          alpha_l * output_map[left:left+int(rotated_image.shape[0]), top:top+int(rotated_image.shape[1]), c])
         alpha = np.sum(output_map, axis=-1) > 0
         alpha = np.uint8(alpha*255)
         output_map = cv2.cvtColor(output_map, cv2.COLOR_RGB2RGBA)
