@@ -593,6 +593,12 @@ class ProjectManager:
     def get_maps(self, id):
         return self.get_data_by_keyword(id, 'maps')
 
+    def get_keyframes(self, id):
+        return self.get_data_by_keyword(id, 'keyframes')
+
+    def get_slam_maps(self, id):
+        return self.get_data_by_keyword(id, 'mapping_output')
+
     def get_flight_trajectory(self, id):
         return self.get_data_by_keyword(id, 'flight_trajectory')
 
@@ -913,9 +919,40 @@ class ProjectManager:
         # zip files under project path with name maps.zip
         path = self.projects_path + str(report_id) + "/maps"
 
-        #shutil.make_archive(path, 'zip', *maps_paths)
+        # shutil.make_archive(path, 'zip', *maps_paths)
         self.zip_files(path + ".zip", maps_paths)
         return path + ".zip"
+
+    def generate_keyframes_zip(self, report_id):
+        keyframes = self.get_keyframes(report_id)
+        path = self.get_project_path(report_id) + "/keyframes/"
+        keyframe_paths = []
+        for keyframe in keyframes:
+            keyframe_paths.append(path + keyframe)
+
+        # zip files under project path with name maps.zip
+        path = self.projects_path + str(report_id) + "/keyframes"
+
+        #shutil.make_archive(path, 'zip', *maps_paths)
+        print(keyframe_paths, flush=True)
+        self.zip_files(path + ".zip", keyframe_paths)
+        return path + ".zip"
+
+    def generate_slam_map_zip(self, report_id):
+        try:
+            maps = self.get_slam_maps(report_id)
+        except:
+            maps = None
+        if maps is not None:
+            maps_paths = []
+            for map in maps:
+                maps_paths.append(map)
+
+            path = self.projects_path + str(report_id) + "/maps"
+            self.zip_files(path + ".zip", maps_paths)
+            return path + ".zip"
+        else:
+            return None
 
     def zip_files(self, output_zip, files):
         with zipfile.ZipFile(output_zip, 'w') as zipf:

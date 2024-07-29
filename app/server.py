@@ -156,6 +156,8 @@ class ArgusServer:
                               view_func=self.get_webodm_all_tasks)
         self.app.add_url_rule('/<int:report_id>/prepare_download', methods=['GET', 'POST'],
                               view_func=self.download_prepare_project)
+        self.app.add_url_rule('/<int:report_id>/prepare_download_slam', methods=['GET', 'POST'],
+                              view_func=self.download_prepare_slam_project)
         self.app.add_url_rule('/<int:report_id>/download', methods=['GET', 'POST'],
                               view_func=self.download_project)
         self.app.add_url_rule('/import_project', methods=['GET', 'POST'],
@@ -964,6 +966,32 @@ class ArgusServer:
             return jsonify({"success": True, "zip_name": zip_name, "zip_path": zip_path})
         else:
             return jsonify({"success": False})
+
+    def download_prepare_slam_project(self, report_id):
+        download_package = request.form.get('export-chooser')
+        print("download_package: " + str(download_package), flush=True)
+        print(request.form, flush=True)
+        zip_name = None
+        zip_path = None
+
+        if download_package == 'project_export':
+            #send the whole project folder as a zip file
+            zip_path = self.project_manager.generate_project_zip(report_id)
+            zip_name = os.path.basename(zip_path)
+            print("zip_path: " + str(zip_path), flush=True)
+        elif download_package == 'keyframes':
+            zip_path = self.project_manager.generate_keyframes_zip(report_id)
+            zip_name = os.path.basename(zip_path)
+        elif download_package == 'map':
+            zip_path = self.project_manager.generate_slam_map_zip(report_id)
+            if zip_path is not None:
+                zip_name = os.path.basename(zip_path)
+
+        if zip_path is not None:
+            return jsonify({"success": True, "zip_name": zip_name, "zip_path": zip_path})
+        else:
+            return jsonify({"success": False})
+
 
     def download_project(self, report_id):
         file_name = request.form.get('filename')

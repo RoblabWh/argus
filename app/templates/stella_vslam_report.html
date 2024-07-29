@@ -326,10 +326,14 @@
         <div style="position: relative;">
             <h4 style="margin-bottom: 2px;">Flight Report (ID:{{ id }})</h4>
 <!--            <button style="position: absolute; top: -4px;" class="big_button" onClick="location.href = '/{{id}}/edit'"> Change settings and reprocess</button>-->
-        </div>
-
-        <div style="position: absolute; display:flex; right: 0; top: -0.5rem;">
+            <div style="position: absolute; display:flex; right: 0; top: -0.5rem;">
                 <form id="export-form" action="{{ id }}/download" method="post" style="">
+                    <label>Export:</label>
+                    <select id="export-chooser" name="export-chooser" style="width: auto; margin:5px 0">
+                        <option value="project_export">Project</option>
+                        <option value="keyframes">Keyframes</option>
+                        <option value="map">Map</option>
+                    </select>
                     <button class="big_button" type="submit" id="export-button" style="width: 200px; height: 2rem">
                         <div style="margin: auto 0 auto 0; display: flex;">
                             <p style="display: inline-block; margin: auto;font-size: 14px;">Download Zip</p>
@@ -339,6 +343,7 @@
                         </div>
                     </button>
                 </form>
+        </div>
         </div>
 
         <div style="width: 100%; display: flex;">
@@ -629,6 +634,73 @@
             }*/
         }
 
+        function prepareExport() {
+            spinner = document.getElementById("download_feedback_spinner");
+            spinnerParent = spinner.parentElement;
+
+            spinnerParent.style.display = "inline-block";
+            spinnerParent.style.margin = "auto auto auto 0";
+
+            spinner.style.display = "inline-block";
+
+            //deactivate download button
+            exportButton = document.getElementById("export-button");
+            exportButton.disabled = true;
+            exportButton.style.backgroundColor = "var(--bg-color-a)";
+            exportButton.style.color = "var(--bg-color-b)";
+            exportButton.style.cursor = "default";
+            $.post("/{{ id }}/prepare_download_slam", $("#export-form").serialize(), function(response){
+                console.log(response);
+                if(response.success){
+                    //download the zip file
+                    zip_path = response.zip_path;
+                    zip_name = response.zip_name;
+
+                    //start download of file from "/{{ id }}/download" with the zip_path and zip_name
+                    //$.post("/{{ id }}/download", {path: zip_path, filename: zip_name});
+                    // Create a hidden form
+                    var $form = $('<form>', {
+                        'id': 'download-form',
+                        'action': '/{{ id }}/download',
+                        'method': 'post'
+                    });
+
+                    // Append the necessary input fields for your POST request
+                    $form.append($('<input>', {
+                        'type': 'hidden',
+                        'name': 'path',
+                        'value': zip_path
+                    }));
+
+                    $form.append($('<input>', {
+                        'type': 'hidden',
+                        'name': 'filename',
+                        'value': zip_name
+                    }));
+
+                    // Append the form to the body
+                    $('body').append($form);
+
+                    // Submit the form
+                    $form.submit();
+
+                    // Remove the form from the DOM (optional)
+                    $form.remove();
+
+
+                }else{
+                    alert("Error while downloading project as zip");
+                }
+                spinner.style.display = "none";
+                spinnerParent.style.display = "none";
+                spinnerParent.style.margin = "0";
+                exportButton.disabled = false;
+                exportButton.style.backgroundColor = "var(--accent-color-interaction)";
+                exportButton.style.color = "var(--font-color-b)";
+                exportButton.style.cursor = "pointer";
+            });
+        }
+
         {% if processing %}
         console.log("next checking progess");
         //check_progress({{ id }}, 'progress_bar');
@@ -636,6 +708,10 @@
         check_slam_map_progress({{ id }});
 
         {% endif %}
+
+        document.getElementById('export-button').addEventListener('click', function() {
+            prepareExport();
+        });
     </script>
     {% include 'footer.html' %}
 </body>
