@@ -108,8 +108,8 @@ class MapScalerImproved:
         orientations = {"gimbal": image.get_exif_header().get_xmp().get_gimbal_yaw_degree(),
                         "flight": image.get_exif_header().get_xmp().get_flight_yaw_degree(),
                         "corrected": orientation}
-        print("orientations: ", orientations, flush=True)
-        print("offset: ", rotation_offset, flush=True)
+        # print("orientations: ", orientations, flush=True)
+        # print("offset: ", rotation_offset, flush=True)
 
         sensor_width_mm = math.tan(math.radians(fov_horizontal) / 2) * (2 * focal_length)
         sensor_height_mm = sensor_width_mm / (image_width_px / image_height_px)
@@ -324,15 +324,10 @@ class MapScalerImproved:
             angle = np.arccos(np.dot(v_diff_a, v_diff_b) / (np.linalg.norm(v_diff_a) * np.linalg.norm(v_diff_b)))
             angle = np.degrees(angle)
             if angle < margin_trajectory_degrees:
-                print("using images: ", i, i+1, i+2, flush=True)
-                print("ANGLE", angle)
-                print("based on vectors:  va", v_diff_a, "vb", v_diff_b, flush=True)
+                print("reference yaw is calculated by using images: ", i, i+1, i+2, flush=True)
                 reference_yaw = np.arctan2(v_diff_b[0], v_diff_b[1])
                 reference_yaw = np.degrees(reference_yaw)
-                print("REFERENCE ANGLE", reference_yaw, flush=True)
-                print("based on vectors: ", v_diff_b, flush=True)
                 reference_yaw = reference_yaw - roi[1].get_exif_header().get_xmp().get_gimbal_yaw_degree()
-                print(roi, flush=True)
                 print("REFERENCE YAW", reference_yaw, flush=True)
                 return float(reference_yaw)
         return self.calc_dumb_offset(images[0])

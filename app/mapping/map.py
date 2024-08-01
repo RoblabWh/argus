@@ -16,7 +16,7 @@ class Map:
         self.px_per_m = px_per_m
         self.optimize = optimize
         self.final_map = np.zeros((height,width, 4), np.uint8)
-        self.ir_temp_map = np.zeros((width, height, 2), np.float32)
+        self.ir_temp_map = np.zeros((height, width, 2), np.float32)
         self.ir = ir
         #self.final_map = 34 * np.ones((width, height, 4), np.uint8)
         #self.final_map [:, :, 3] = 255
@@ -92,7 +92,7 @@ class Map:
 
         #generate an matrix in the shape of the image and fill it with the color value of the LUT, by using the map_scaled dor the index
         map_scaled = np.array(lut)[map_scaled]
-        print("shape: ", map_scaled.shape, flush=True)
+        # print("shape: ", map_scaled.shape, flush=True)
         map_scaled[:, :, 3] = (self.ir_temp_map[:, :, 1] * 255).astype(np.uint8)
 
         #swap color channels
@@ -111,29 +111,7 @@ class Map:
         pool.join()
         return map_elements
 
-    @staticmethod
-    def load_image_a(map_element):
-        image = map_element.get_image().get_matrix()
-        ir = map_element.get_image().exif_header.ir
-        rotated_image_bounds = map_element.get_image_bounds_px()
-        # (w, h) = rotated_image_bounds['width'], rotated_image_bounds['height']
-        # # print (rotated_rectangle.get_angle(), w, h, w1, h1, c)
-        # if ir:
-        #     resized_image = cv2.resize(image, (w, h), cv2.INTER_LINEAR)
-        # else:
-        #     resized_image = cv2.resize(image, (w, h), cv2.INTER_NEAREST)
 
-        rotated_image = imutils.rotate_bound(image, -map_element.get_projected_image_dims_px()['rotation'])
-        (h, w) = rotated_image_bounds['height'], rotated_image_bounds['width']
-        rotated_image = cv2.resize(rotated_image, (int(w), int(h)), interpolation=cv2.INTER_AREA)
-
-        #crop image from all sides equally to fit rotated_image_bounds
-        # x1, y1 = int((rotated_image.shape[1] - w) / 2), int((rotated_image.shape[0] - h) / 2)
-        # x2, y2 = x1 + w, y1 + h
-        # rotated_image = rotated_image[y1:y2, x1:x2]
-
-        map_element.get_image().set_matrix(rotated_image)
-        return map_element
 
     @staticmethod
     def load_image(map_element):
@@ -153,27 +131,6 @@ class Map:
         map_element.get_image().set_matrix(rotated_image)
         return map_element
 
-    @staticmethod
-    def load_image_c(map_element):
-        image = map_element.get_image().get_matrix()
-        ir = map_element.get_image().exif_header.ir
-        rotated_image_projection = map_element.get_projected_image_dims_px()
-        rotated_image_bounds = map_element.get_image_bounds_px()
-
-        (w, h) = rotated_image_projection['width'], rotated_image_projection['height']
-        (image_w, image_h) = image.shape[1], image.shape[0]
-        (delta_w, delta_h) = (w - image_w, h - image_h)
-
-        if ir:
-             resized_image = cv2.resize(image, (int(image_w-0.5*delta_w), int(image_h-0.5*delta_h)), cv2.INTER_LINEAR)
-        else:
-             resized_image = cv2.resize(image, (int(image_w-0.5*delta_w), int(image_h-0.5*delta_h)), cv2.INTER_NEAREST)
-
-        (final_w, final_h) = rotated_image_bounds['width'], rotated_image_bounds['height']
-        rotated_image = imutils.rotate_bound(resized_image, -rotated_image_projection['rotation'])
-        rotated_image = cv2.resize(rotated_image, (int(final_w), int(final_h)), cv2.INTER_LINEAR)
-        map_element.get_image().set_matrix(rotated_image)
-        return map_element
 
     def add_images_to_map(self, map_elements_chunks):
         if self.optimize: #voronoi aenderung

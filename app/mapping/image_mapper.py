@@ -71,7 +71,7 @@ class ImageMapper:
         #map_scaler = MapScaler(filtered_images, self.map_width_px, self.map_height_px)
         map_scaler = MapScalerImproved(filtered_images, self.map_width_px, self.map_height_px)
         map_elements = map_scaler.get_map_elements()
-        print("map_scaler:", map_scaler, flush=True)
+        # print("map_scaler:", map_scaler, flush=True)
         return map_scaler, map_elements
 
 
@@ -141,7 +141,7 @@ class ImageMapper:
         return map_dict
 
     def calculate_map_IR(self, report_id):
-        print("map scaler rgb & ir",self.map_scaler_IR, self.map_elements_IR, flush=True)
+        # print("map scaler rgb & ir",self.map_scaler_IR, self.map_elements_IR, flush=True)
         self.map_elements_IR = self.__calculate_map(self.map_scaler_IR, self.map_elements_IR, True)
         map_dict = self.process_map(self.map_scaler_IR, self.map_elements_IR, True)
         return map_dict
@@ -487,7 +487,7 @@ class ImageMapper:
 
             plausible_flight.append(filtered_images[i])
             compare_time = 4*median_time if 4*median_time > 45.0 else 45.0
-            print("Time diff: ", time_diff[i], " Median time: ", median_time, " Compare time: ", compare_time, flush=True)
+            #print("Time diff: ", time_diff[i], " Median time: ", median_time, " Compare time: ", compare_time, flush=True)
             if time_diff[i] > compare_time:
                 print("~p not plausible flight! with time diff: ", time_diff[i], " and median time: ", median_time, flush=True)
                 list_of_connected_flights.append(plausible_flight.copy())
@@ -496,8 +496,8 @@ class ImageMapper:
         plausible_flight.append(filtered_images[-1])
 
         list_of_connected_flights.append(plausible_flight)
-
-        print("Connected flights: ", list_of_connected_flights, flush=True)
+        lengths = [len(flight) for flight in list_of_connected_flights]
+        print("Connected flights with n images: ", lengths, flush=True)
 
         return max(list_of_connected_flights, key=len)
 

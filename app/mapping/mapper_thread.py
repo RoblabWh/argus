@@ -125,7 +125,7 @@ class MapperThread(threading.Thread):
         self.rgb_images = processor.all_rgb_images
         self.ir_images = processor.all_ir_images
         self.flight_trajectory = processor.flight_trajectory
-        print("flight trajectory: " + str(self.flight_trajectory))
+        #print("flight trajectory: " + str(self.flight_trajectory))
         self.progress_preprocess = 75
 
 
