@@ -154,7 +154,7 @@ class Map:
 
 
                 for i, map_element in enumerate(elements):
-
+                    print("image \"", map_element.image.image_path, "\" loaded with size:", image.shape, flush=True)
                     image = map_element.get_image().get_matrix()
 
                     coordinate = map_element.get_image_bounds_px()['center']
