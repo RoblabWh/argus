@@ -683,13 +683,26 @@
 
       let description = project.description;
       let name = project.name;
-      let flight_date = project.data.flight_data[0].value;
-      let flight_time = flight_date.slice(-5);
-      flight_date = flight_date.slice(0, -6);
-      let thermal_images = project.data.file_names_ir.length;
-      let rgb_images = project.data.file_names.length;
-      let panoramics = project.data.panos.length;
-      let total_images = thermal_images + rgb_images + panoramics;
+
+      let flight_date = "unknown";
+      let flight_time = "unknown";
+      let thermal_images = "?";
+      let rgb_images = "?";
+      let panoramics = "?";
+      let total_images = "?";
+
+
+      if (project.data.flight_data == undefined || project.data.flight_data.length == 0) {
+        console.log("No flight data found for project " + project_id);
+      } else {
+        flight_date = project.data.flight_data[0].value;
+        flight_time = flight_date.slice(-5);
+        flight_date = flight_date.slice(0, -6);
+        thermal_images = project.data.file_names_ir.length;
+        rgb_images = project.data.file_names.length;
+        panoramics = project.data.panos.length;
+        total_images = thermal_images + rgb_images + panoramics;
+      }
 
 
       let newRow = projectRowTemplate.content.cloneNode(true);
@@ -784,7 +797,15 @@
       let project = projects[i];
       let projectId = project.id;
       let projectName = project.name;
+      if (project.data === undefined || project.data === null) {
+        console.log("No data found for project " + projectId);
+        continue;
+      }
       let projectData = project.data;
+      if (projectData.flight_data === undefined || projectData.flight_data === null || projectData.flight_data.length == 0) {
+        console.log("No flight data found for project " + projectId);
+        continue;
+      }
       let flightDate = projectData.flight_data[0].value;
       let maps = projectData.maps;
 
