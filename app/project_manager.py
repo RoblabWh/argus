@@ -321,6 +321,7 @@ class ProjectManager:
         file_names = data['file_names']
         try:
             file_names[file_names.index(old_path)] = new_path
+            print("replaced path: " + old_path + " with new path: " + new_path, flush=True)
         except:
             print("file " + old_path + " not found in file_names list", flush=True)
 
@@ -489,9 +490,11 @@ class ProjectManager:
         return project['data']['ir_settings']
 
     def get_webodm_project_id(self, report_id):
-        project = self.get_project(report_id)
-        # print("project: " + str(project), flush=True)
-        return project['data']['webodm_project_id']
+        try:
+            project = self.get_project(report_id)
+            return project['data']['webodm_project_id']
+        except:
+            return None
 
     def set_webodm_project_id(self, report_id, webodm_project_id):
         self.update_data_by_keyword(report_id, 'webodm_project_id', webodm_project_id)

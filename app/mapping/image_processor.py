@@ -53,11 +53,11 @@ class ImageProcessor:
             path = image.get_image_path()
             self.all_image_paths.remove(path)
 
-        #print('all image paths: ', self.all_image_paths, flush=True)
+        print('all image paths: ', self.all_image_paths, flush=True)
         print('pano length: ', len(self.all_pano_images), flush=True)
         for image in self.all_pano_images:
             path = image.get_image_path()
-            #print('pano path: ', path, flush=True)
+            print('pano path: ', path, flush=True)
             self.all_image_paths.remove(path)
 
 

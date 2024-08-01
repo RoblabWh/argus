@@ -785,12 +785,14 @@
       var progress = Math.round((numberOfImagesUploadedSuccessfully / numberOfImagesUploading) * 100);
 
       progressBarLabel.innerHTML = 'UPLOADING...';
+      console.log(progress);
       updateProgressBar(progress);
       if (progress > 99.9) {
         if (doubleNames.length > 0) {
           alert('The following images were not uploaded because they already exist: ' + doubleNames.join(', '));
           doubleNames = [];
         }
+        console.log('All images uploaded successfully.');
 
         $.post("/{{ id }}/checkUploadedImages", function (response) {
         // go through every changed path in response.pathChanges an update the according a href of the image with the old path as href

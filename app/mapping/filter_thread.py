@@ -13,6 +13,7 @@ class FilterThread(threading.Thread):
         self.ir = False
         self.pano = False
         self.done = False
+        self.results_already_sent = False
         self.image = None
         super().__init__()
 

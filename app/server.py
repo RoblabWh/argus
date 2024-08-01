@@ -331,6 +331,9 @@ class ArgusServer:
                 continue
 
             if thread.done:
+                if thread.results_already_sent:
+                    continue
+                thread.results_already_sent = True
                 old_path, new_path = thread.get_old_and_new_path()
                 self.project_manager.update_single_file_path(report_id, old_path, new_path)
                 path_changes[old_path] = new_path
