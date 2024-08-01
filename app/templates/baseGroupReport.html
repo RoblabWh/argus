@@ -5,13 +5,13 @@
   <title>Group Report</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='default/variables-light.css') }}" id="currentCss">
   <!-- adds leaflet -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"
-    integrity="sha512-xodZBNTC5n17Xt2atTPuE1HxjVMSvLVW9ocqUKLsCC5CXdbqCmblAshOMAS6/keqq/sMZMZ19scR4PsZChSR7A=="
-    crossorigin="" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='js/leaflet/leaflet.css') }}"/>
+    <link rel="stylesheet" href="{{ url_for('static', filename='js/leaflet/plugins/fullscreen/Control.FullScreen.css') }}"/>
+
   <!-- Make sure you put this AFTER Leaflet's CSS -->
-  <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"
-    integrity="sha512-XQoYMqMTK8LvdxXYG3nZ448hOEQiglfqkJs1NOQV44cWnUrBc8PkAOcXy20w0vlaXaVUearIOBhiXZ5V3ynxwA=="
-    crossorigin=""></script>
+    <script src="{{ url_for('static', filename='js/leaflet/leaflet.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/leaflet/plugins/Leaflet.ImageOverlay.Rotated.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/leaflet/plugins/fullscreen/Control.FullScreen.js') }}"></script>
   <style>
     body {
       margin-left: 0px;
@@ -330,12 +330,12 @@
       -webkit-box-orient: vertical;
     }
 
-    td[inner-text] {
+    td[inner-text], h2[inner-text] {
       position: relative;
     }
 
     /* Tooltip text */
-    td[inner-text]::after {
+    td[inner-text]::after, h2[inner-text]::after {
       content: attr(inner-text);
       position: absolute;
       white-space: pre;
@@ -350,7 +350,7 @@
     }
 
     /* Show the tooltip text when hovering */
-    td[inner-text]:hover::after {
+    td[inner-text]:hover::after, h2[inner-text]:hover::after {
       opacity: 1;
     }
 
@@ -374,16 +374,17 @@
 
     #map-settings {
       background-color: var(--bg-color-a);
-      min-width: 280px;
+      min-width: 300px;
       max-width: 15%;
       padding: 10px;
-      display: flex;
+      display: block;
       flex-direction: column;
       overflow-y: auto;
       margin: 0 0 0 12px;
-      height: max-content;
+      height: fit-content;
       max-height: 100%;
       border-radius: 8px;
+      box-sizing: border-box;
     }
 
     #map-settings::-webkit-scrollbar {
@@ -393,6 +394,12 @@
     #map-settings::-webkit-scrollbar-thumb {
       background-color: var(--accent-color-interaction);
       border-radius: 10px;
+    }
+
+    #map-settings-overlay-list {
+      display: flex;
+      flex-direction: column;
+      padding: 0px;
     }
 
 
@@ -538,6 +545,7 @@
       <div id="map-settings">
 
         <h2>Map Overlays</h2>
+        <div id="map-settings-overlay-list"></div>
 
         <template id="project-maps-template">
 
@@ -629,7 +637,12 @@
     document.getElementById("map-container").style.display = "none";
     document.getElementById("group-content-table").innerHTML = "<p>No Projects found</p>";
   } else {
-    map = L.map('map')
+    map = L.map('map', {
+      fullscreenControl: true,
+      fullscreenControlOptions: {
+        position: 'topleft'
+      }
+    })
     fillGroupList();
     buildMap();
   }
@@ -682,6 +695,7 @@
       let newRow = projectRowTemplate.content.cloneNode(true);
       newRow.querySelector(".table-project-id").innerText = project_id;
       newRow.querySelector(".table-project-name").innerText = name;
+      newRow.querySelector(".table-project-name").title = name;
       newRow.querySelector(".table-project-description").innerText = description;
       newRow.querySelector(".table-project-description").title = description;
       newRow.querySelector(".table-project-flight-date").innerText = flight_date;
@@ -768,27 +782,39 @@
 
     for (let i = 0; i < projects.length; i++) {
       let project = projects[i];
-      let project_id = project.id;
-      let project_name = project.name;
-      let project_data = project.data;
-      let flight_date = project_data.flight_data[0].value;
-      let maps = project_data.maps;
+      let projectId = project.id;
+      let projectName = project.name;
+      let projectData = project.data;
+      let flightDate = projectData.flight_data[0].value;
+      let maps = projectData.maps;
 
-      let mapsContainer = addReportToMapsSettings(project_name, flight_date, maps, i);
+      let mapsContainer = addReportToMapsSettings(projectName, flightDate, maps, i);
 
       for (let j = 0; j < maps.length; j++) {
         let map = maps[j];
-        console.log(map);
-        let map_name = map.name;
-        let map_bounds = map.bounds;
+        let mapName = map.name;
+        let mapBounds = map.bounds;
+        let mapCorners = map.corners;
         if (map.file[0] === ".") {
           map.file = map.file.substring(1);
         }
-        let map_url = map.file;
-        let map_layer = L.imageOverlay(map_url, map_bounds);
-        overlays[project_name + " - " + map_name + " - " + flight_date] = map_layer;
+        let mapLayer = null;
+        if (mapCorners === null || mapCorners === undefined) {
+          mapLayer = L.imageOverlay(map.file, mapBounds);
+        } else{
+          let topleft = mapCorners[3];
+          let topright = mapCorners[2];
+          let bottomleft = mapCorners[0];
+          let bottomright = mapCorners[1];
 
-        addMapToSettings(map_name, map_layer, mapsContainer);
+          mapLayer = L.imageOverlay.rotated(map.file, topleft, topright, bottomleft);
+        }
+
+        let mapUrl = map.file;
+         
+        overlays[projectName + " - " + mapName + " - " + flightDate] = mapLayer;
+
+        addMapToSettings(mapName, mapLayer, mapsContainer);
       }
     }
 
@@ -849,11 +875,12 @@
 
     newMaps.querySelector(".project-maps").style.order = orderIndex;
     newMaps.querySelector(".maps-project-title").innerText = projectName;
+    newMaps.querySelector(".maps-project-title").title = projectName;
     newMaps.querySelector(".maps-project-date").innerText = flightDate;
 
 
     let mapsContainer = newMaps.querySelector(".maps-project-mapscontainer");
-    document.getElementById("map-settings").appendChild(newMaps);
+    document.getElementById("map-settings-overlay-list").appendChild(newMaps);
 
     if (maps.length == 0) {
       let noMaps = document.createElement("p");

@@ -378,10 +378,10 @@ class ArgusServer:
 
             map_resolution = request.form.get('map resolution')
             resolutions = {
-                'low': (1024, 1024),
-                'medium': (2048, 2048),
-                'high': (4096, 4096),
-                'ultra': (6144, 6144)
+                'low': (1536, 1536),
+                'medium': (2560, 2560),
+                'high': (5120, 5120),
+                'ultra': (7680, 7680)
             }
             max_width, max_height = resolutions.get(map_resolution, (2048, 2048))
 

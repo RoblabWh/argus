@@ -126,6 +126,20 @@
             });
         }
 
+        function isDetectionAlreadyRunning(){
+            $.post("/detection_status/{{ id }}", function(detection_status){
+                console.log("Progress: " + detection_status );
+                if(detection_status == "running"){
+                    var button = document.getElementById("runDetectionButton");
+                    button.disabled = true;
+                    button.innerHTML = 'Detection is running...';
+                    spinner = document.getElementById("detectionsRunningCircle");
+                    spinner.style.display = "inline-block";
+                    intervalIDDetection = window.setInterval(check_status_detection, 1500);
+                }
+            });
+        }
+
         function check_status_detection(){
             $.post("/detection_status/{{ id }}", function(detection_status){
                 console.log("Progress: " + detection_status );
@@ -1441,7 +1455,7 @@
     </div>
     {% endif %}
     <script>
-
+    isDetectionAlreadyRunning();
     </script>
 
 </body>

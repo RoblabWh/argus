@@ -15,7 +15,7 @@ class Map:
         self.blending = blending
         self.px_per_m = px_per_m
         self.optimize = optimize
-        self.final_map = np.zeros((width, height, 4), np.uint8)
+        self.final_map = np.zeros((height,width, 4), np.uint8)
         self.ir_temp_map = np.zeros((width, height, 2), np.float32)
         self.ir = ir
         #self.final_map = 34 * np.ones((width, height, 4), np.uint8)
@@ -27,16 +27,11 @@ class Map:
 
     def create_map(self):
         map_creation_time_start = time.time()
-        # self.load_images()
+
         self.chunk_size = 32
         print('mapping: creating chunks of size: ', self.chunk_size)
         map_elements_chunks = [self.map_elements[i:i + self.chunk_size] for i in range(0, len(self.map_elements), self.chunk_size)]
 
-        #self.load_images_parallel()
-        # pool = multiprocessing.Pool(6)
-        # self.map_elements = pool.map(Map.load_image, self.map_elements.copy())
-        # pool.close()
-        # pool.join()
         map_creation_time_loading = time.time()
         self.add_images_to_map(map_elements_chunks)
         if self.ir:
@@ -117,20 +112,66 @@ class Map:
         return map_elements
 
     @staticmethod
-    def load_image(map_element):
+    def load_image_a(map_element):
         image = map_element.get_image().get_matrix()
         ir = map_element.get_image().exif_header.ir
-        rotated_rectangle = map_element.get_rotated_rectangle()
-        (w, h) = rotated_rectangle.get_size()
-        # print (rotated_rectangle.get_angle(), w, h, w1, h1, c)
-        if ir:
-            resized_image = cv2.resize(image, (w, h), cv2.INTER_LINEAR)
-        else:
-            resized_image = cv2.resize(image, (w, h), cv2.INTER_NEAREST)
+        rotated_image_bounds = map_element.get_image_bounds_px()
+        # (w, h) = rotated_image_bounds['width'], rotated_image_bounds['height']
+        # # print (rotated_rectangle.get_angle(), w, h, w1, h1, c)
+        # if ir:
+        #     resized_image = cv2.resize(image, (w, h), cv2.INTER_LINEAR)
+        # else:
+        #     resized_image = cv2.resize(image, (w, h), cv2.INTER_NEAREST)
 
-        rotated_image = imutils.rotate_bound(resized_image, -rotated_rectangle.get_angle())
-        (h, w) = rotated_rectangle.get_shape()
-        rotated_image = cv2.resize(rotated_image, (int(w), int(h)), cv2.INTER_NEAREST)
+        rotated_image = imutils.rotate_bound(image, -map_element.get_projected_image_dims_px()['rotation'])
+        (h, w) = rotated_image_bounds['height'], rotated_image_bounds['width']
+        rotated_image = cv2.resize(rotated_image, (int(w), int(h)), interpolation=cv2.INTER_AREA)
+
+        #crop image from all sides equally to fit rotated_image_bounds
+        # x1, y1 = int((rotated_image.shape[1] - w) / 2), int((rotated_image.shape[0] - h) / 2)
+        # x2, y2 = x1 + w, y1 + h
+        # rotated_image = rotated_image[y1:y2, x1:x2]
+
+        map_element.get_image().set_matrix(rotated_image)
+        return map_element
+
+    @staticmethod
+    def load_image(map_element):
+        #faster but looses more quality due to scaling before rotation
+        image = map_element.get_image().get_matrix()
+        ir = map_element.get_image().exif_header.ir
+        rotated_image_projection = map_element.get_projected_image_dims_px()
+        #rotated_image_bounds = map_element.get_image_bounds_px()
+        (w, h) = rotated_image_projection['width'], rotated_image_projection['height']
+         # print (rotated_rectangle.get_angle(), w, h, w1, h1, c)
+        if ir:
+             resized_image = cv2.resize(image, (w, h), interpolation=cv2.INTER_LINEAR)
+        else:
+             resized_image = cv2.resize(image, (w, h), interpolation=cv2.INTER_AREA)
+
+        rotated_image = imutils.rotate_bound(resized_image, map_element.get_projected_image_dims_px()['rotation'])
+        map_element.get_image().set_matrix(rotated_image)
+        return map_element
+
+    @staticmethod
+    def load_image_c(map_element):
+        image = map_element.get_image().get_matrix()
+        ir = map_element.get_image().exif_header.ir
+        rotated_image_projection = map_element.get_projected_image_dims_px()
+        rotated_image_bounds = map_element.get_image_bounds_px()
+
+        (w, h) = rotated_image_projection['width'], rotated_image_projection['height']
+        (image_w, image_h) = image.shape[1], image.shape[0]
+        (delta_w, delta_h) = (w - image_w, h - image_h)
+
+        if ir:
+             resized_image = cv2.resize(image, (int(image_w-0.5*delta_w), int(image_h-0.5*delta_h)), cv2.INTER_LINEAR)
+        else:
+             resized_image = cv2.resize(image, (int(image_w-0.5*delta_w), int(image_h-0.5*delta_h)), cv2.INTER_NEAREST)
+
+        (final_w, final_h) = rotated_image_bounds['width'], rotated_image_bounds['height']
+        rotated_image = imutils.rotate_bound(resized_image, -rotated_image_projection['rotation'])
+        rotated_image = cv2.resize(rotated_image, (int(final_w), int(final_h)), cv2.INTER_LINEAR)
         map_element.get_image().set_matrix(rotated_image)
         return map_element
 
@@ -158,8 +199,8 @@ class Map:
                 for i, map_element in enumerate(elements):
 
                     image = map_element.get_image().get_matrix()
-                    coordinate = map_element.get_rotated_rectangle().get_center()
 
+                    coordinate = map_element.get_image_bounds_px()['center']
                     coordinate = (coordinate[0], self.height - coordinate[1])
 
                     y_offset = int(coordinate[1] - image.shape[0]/2)
@@ -212,7 +253,7 @@ class Map:
         centers_y = list()
         factor = 1/n_times_smaller
         for i, map_element in enumerate(self.map_elements):
-            coordinate = map_element.get_rotated_rectangle().get_center()
+            coordinate = map_element.get_projected_image_dims_px()['center']
             centers_x.insert(i, factor*coordinate[0])
             centers_y.insert(i, factor*(self.height - coordinate[1]))
         self.centers_x = np.asarray(centers_x)
@@ -247,54 +288,26 @@ class Map:
 
 
     def draw_flight_trajectorie(self):
-
-        #for i in range(len(self.map_elements)-1):
-        #    coordinate_image_1 = self.map_elements[i].get_rotated_rectangle().get_center()
-        #    coordinate_image_2 = self.map_elements[i+1].get_rotated_rectangle().get_center()
-            
-        #    coordinate_image_1 = (coordinate_image_1[0], self.height - coordinate_image_1[1]) 
-        #    coordinate_image_2 = (coordinate_image_2[0], self.height - coordinate_image_2[1]) 
-
-        #    cv2.arrowedLine(self.final_map, coordinate_image_1, coordinate_image_2, (255,0,0,128), int(self.width/1000), 8,0,0.1) 
-            #cv2.circle(self.final_map, coordinate_image_1, self.spreading_range, (0,0,255,128), thickness=1, lineType=8, shift=0)
-            #cv2.circle(self.final_map, coordinate_image_1,int(self.width/1000),(0,0,255,128),cv2.FILLED) 
-        #last_coordinate = self.map_elements[-1].get_rotated_rectangle().get_center()
-        #last_coordinate = (last_coordinate[0], self.height - last_coordinate[1])
-        
-        #first_coordinate = self.map_elements[0].get_rotated_rectangle().get_center()
-        #first_coordinate = (first_coordinate[0], self.height - first_coordinate[1])
-
-        #cv2.circle(self.final_map, first_coordinate, int(self.width/1000), (0,255,0,128), cv2.FILLED)
-        #cv2.circle(self.final_map, last_coordinate, int(self.width/1000), (0,255,0,128), cv2.FILLED)
-                
-
         self.crop_map()
 
-        #cv2.line(self.final_map,(int(self.width*0.025),int(self.height-self.height * 0.015)),(int(self.width*0.15),int(self.height-self.height * 0.015)),(0,0,0),int(self.width/1000))
-        #cv2.line(self.final_map,(int(self.width*0.025),int(self.height-self.height * 0.010)),(int(self.width*0.025),int(self.height-self.height * 0.020)),(0,0,0),int(self.width/1000))
-
-        #cv2.line(self.final_map,(int(self.width*0.15),int(self.height-self.height * 0.010)),(int(self.width*0.15),int(self.height-self.height * 0.020)),(0,0,0),int(self.width/1000))
-        #meter = (self.width * 0.15 - self.width * 0.025)*(1/self.px_per_m)
-        #cv2.putText(self.final_map, str(int(meter))+'m',(int(self.width*0.05),int(self.height-self.height * 0.025)), cv2.FONT_HERSHEY_SIMPLEX, int(self.width/1000),(0,0,0),int(self.width/1000),cv2.LINE_AA)
-
-
     def crop_map(self):
-        min_x, max_x, min_y, max_y = self.get_min_and_max_coords()
-        self.bounds = min_x, max_x, min_y, max_y
+        #min_x, max_x, min_y, max_y = self.get_min_and_max_coords()
+        #self.bounds = min_x, max_x, min_y, max_y
         final_map_copy = self.final_map.copy()
         #final_map_copy = self.final_map
-        self.cropped_map = final_map_copy[int(final_map_copy.shape[0]-max_y):int(final_map_copy.shape[0]-min_y), int(min_x):int(max_x)]
+        self.cropped_map = final_map_copy #[int(final_map_copy.shape[0]-max_y):int(final_map_copy.shape[0]-min_y), int(min_x):int(max_x)]
         self.adjust_map_elments()
 
     def adjust_map_elments(self):
-        min_x, max_x, min_y, max_y = self.bounds
-        for map_element in self.map_elements:
-            rect = map_element.get_rotated_rectangle()
-            x, y = rect.get_center()
-            new_x = int(x - min_x)
-            new_y = int(y - min_y)
-            rect.set_center((new_x, new_y))
-        x,y = self.map_elements[0].get_rotated_rectangle().get_center()
+        pass
+        # min_x, max_x, min_y, max_y = self.bounds
+        # for map_element in self.map_elements:
+        #     rect = map_element.get_rotated_rectangle()
+        #     x, y = rect.get_center()
+        #     new_x = int(x - min_x)
+        #     new_y = int(y - min_y)
+        #     rect.set_center((new_x, new_y))
+        # x,y = self.map_elements[0].get_projected_image_dims_px()['center']
         #print("x, y:",x,y)
     
     def get_cropped_map(self):

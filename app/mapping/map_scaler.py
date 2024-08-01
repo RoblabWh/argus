@@ -31,84 +31,16 @@ class MapScaler:
         self.distances_m = list()
         self.distances_px = list()
 
-        self.map_width = map_width_px
-        self.map_height = map_height_px
+        self.map_width_px = map_width_px
+        self.map_height_px = map_height_px
         self.map_offset = 0
 
         self.length_w_in_m, self.length_h_in_m = MapScaler.calc_length_via_fov(images)
 
         self.calc_scale_px_per_m(*(self.get_min_and_max_scales()))
         self.create_map_elements()
-        #self.plot_trajectory()
 
-    def plot_polygons(self):
-        self.plot_polygons()
 
-    def calib(self):
-        gps0 = self.images[0].get_exif_header().get_gps()
-        gps1 = self.images[1].get_exif_header().get_gps()
-        lat0, lon0, alt0 = (gps0.get_latitude(), gps0.get_longitude(), gps0.get_altitude())
-        lat1, lon1, alt1 = (gps1.get_latitude(), gps1.get_longitude(), gps1.get_altitude())         
-        x0, y0 = gps0.get_cartesian()
-        #print(lat0)
-        #print(lon0)
-        gps_lat = GPS(lat0 + (lat0-lat1), lon0, alt0)
-        gps_lon = GPS(lat0, lon0 + (lon0-lon1), alt0)
-        gps_lat_lon = GPS(lat0 + (lat0-lat1), lon0 + (lon0-lon1), alt0)
-        x_lat, y_lat = gps_lat.get_cartesian()
-        x_lon, y_lon = gps_lon.get_cartesian()
-        x_lat_lon, y_lat_lon = gps_lat_lon.get_cartesian() 
-
-        min_x = min(x0, x_lat, x_lon, x_lat_lon)
-        max_x = max(x0, x_lat, x_lon, x_lat_lon)
-        min_y = min(y0, y_lat, y_lon, y_lat_lon)
-        max_y = max(y0, y_lat, y_lon, y_lat_lon)
-
-        x0 = ((x0 - min_x) / (max(max_x-min_x, max_y-min_y))) * self.map_width
-        y0 = ((y0 - min_y) / (max(max_x-min_x, max_y-min_y))) * self.map_width
-        x_lat = ((x_lat - min_x) / (max(max_x-min_x, max_y-min_y))) * self.map_width
-        y_lat = ((y_lat - min_y) / (max(max_x-min_x, max_y-min_y))) * self.map_width
-        x_lon = ((x_lon - min_x) / (max(max_x-min_x, max_y-min_y))) * self.map_width
-        y_lon = ((y_lon - min_y) / (max(max_x-min_x, max_y-min_y))) * self.map_width
-        x_lat_lon = ((x_lat_lon - min_x) / (max(max_x-min_x, max_y-min_y))) * self.map_width
-        y_lat_lon = ((y_lat_lon - min_y) / (max(max_x-min_x, max_y-min_y))) * self.map_width
-
-        #horizontal - x
-        d_m_x = GPS.calc_distance_between(gps0, gps_lat)
-
-        #vertical- y
-        d_m_y = GPS.calc_distance_between(gps0, gps_lon)
-
-        #diagonal - x - y
-        d_m_x_y = GPS.calc_distance_between(gps0, gps_lat_lon)
-
-        #horizontal - x
-        d_px_x = math.sqrt(((x0-x_lat)*(x0-x_lat))+((y0-y_lat)*(y0-y_lat)))
-
-        #vertical - y
-        d_px_y = math.sqrt(((x0-x_lon)*(x0-x_lon))+((y0-y_lon)*(y0-y_lon)))
-
-        #diagonal - x - y 
-        d_px_x_y = math.sqrt(((x0-x_lat_lon)*(x0-x_lat_lon))+((y0-y_lat_lon)*(y0-y_lat_lon)))
-
-        #print("d_px_x, d_px_y",d_px_x, d_px_y)
-        #print(d_px_x/ d_px_y)
-
-        #d_px_x_y = math.sqrt(((x_lon-x_lat)*(x_lon-x_lat))+((y_lon-y_lat)*(y_lon-y_lat)))
-        #print("d_px_x, d_px_y, d_px_x_y",d_px_x, d_px_y, d_px_x_y)
-        px_per_m_in_x = d_px_x / d_m_x
-        px_per_m_in_y = d_px_y / d_m_y
-        px_per_m_in_x_y = d_px_x_y / d_m_x_y
-        #print("px_per_m_in_x:", px_per_m_in_x)
-        #print("px_per_m_in_y:", px_per_m_in_y)
-        #print("px_per_m_in_x_y:", px_per_m_in_x_y)
-
-        #y_scale = px_per_m_in_x / px_per_m_in_y
-        #x_scale = px_per_m_in_y / px_per_m_in_x
-        
-        #print("y_scale: ", y_scale)
-        #print("x_scale: ",x_scale)
-        #return x_scale, y_scale
 
     def get_min_and_max_scales(self):
         #Searching for Min and Max of X and Y for creating our Map
@@ -130,39 +62,25 @@ class MapScaler:
 
             if (max_y < y):
                 max_y = y
-        #print(min_x, max_x, min_y, max_y)
         return min_x, max_x, min_y, max_y
 
     def calc_scale_px_per_m(self, min_x, max_x, min_y, max_y):
         distances_m = list()
         distances_px = list()
 
-        #self.calib()
         x_coord = list()
         y_coord = list()
 
+        longest_side = float(max(max_x-min_x, max_y-min_y))
+
         for image in self.images:
             x, y = image.get_exif_header().get_gps().get_cartesian()
-            #x = int(((float(x-min_x) / float(max_x - min_x)) * self.map_width))
-            #y = int(((float(y-min_y) / float(max_y - min_y)) * self.map_height))
-            x = (float(x - min_x)  / float(max(max_x-min_x, max_y-min_y))) * self.map_width
-            y = (float(y - min_y)  / float(max(max_x-min_x, max_y-min_y))) * (self.map_width)
+            x = (float(x - min_x) / longest_side) * self.map_width_px
+            y = (float(y - min_y) / longest_side) * self.map_width_px
             
-            #print("(x,y): ",x,",",y)
             x_coord.append(x)
             y_coord.append(y)
             self.scaled_points.append((x, y))
-        
-        #fig = plt.figure("Projection", figsize=(10, 10))
-        #ax = fig.add_subplot(121)
-        #ax = plt.gca()
-        #ax.axis('equal')
-        #ax.set_xlim(min(x_coord)-100, max(x_coord)+100)
-        #ax.set_ylim(min(y_coord)-100, max(y_coord)+100)
-        #print("scaled_points:", self.scaled_points)
-        #plt.plot(x_coord, y_coord)
-        #plt.plot(x_coord, y_coord,'o')  
-        #plt.show()
 
         for i in range(len(self.scaled_points)-1):
             x1,y1 = self.scaled_points[i]
@@ -173,27 +91,13 @@ class MapScaler:
             gps1 = self.images[i].get_exif_header().get_gps()
             gps2 = self.images[i+1].get_exif_header().get_gps()
             distances_m.append(GPS.calc_distance_between(gps1, gps2))
- 
-        #print("distances_px:", distances_px)
-        #print("\n")
-        #print("distances_m:", distances_m)
         
         scale_px_per_m_lst = list()
         for i in range(len(self.images)-1):
-            #self.scale_px_per_m_lst[i] = (distances_px[i] / distances_m[i])
-            #self.scale_px_per_m = self.scale_px_per_m + (distances_m[i] / distances_px[i])
-            #print(i+1,":",distances_px[i] / distances_m[i])
             if distances_m[i] > 0:
                 scale_px_per_m_lst.append(distances_px[i] / distances_m[i])
             
         self.scale_px_per_m = np.mean(np.asarray(scale_px_per_m_lst))
-        #min(scale_px_per_m_lst) / max(scale_px_per_m_lst)
-        #print ("self.scale_px_per_m:", self.scale_px_per_m)
-
-
-        #self.scale_x = minimum/maximum
-        #print(self.scale_x, self.scale_y)
-        #print("\n")
 
     def create_map_elements(self):
         image_width_px = list()
@@ -210,50 +114,8 @@ class MapScaler:
             gimbal_yaw_degree = -(image.get_exif_header().get_xmp().get_gimbal_yaw_degree() + ref)
             rect = RotatedRect(int(self.map_offset/2) + cx, int(self.map_offset/2) + cy , image_width_px[i], image_height_px[i], gimbal_yaw_degree)
             self.map_elements.append(MapElement(image, rect))
-    
-    def plot_polygons(self):
-        fig = plt.figure("Projection", figsize=(10, 10))
-        #ax = fig.add_subplot(121)
-        ax = plt.gca()
-        ax.axis('equal')
-        ax.set_xlim(0, self.map_offset + self.map_width)
-        ax.set_ylim(0, self.map_height + self.map_offset)
-        
-        for i in range(len(self.map_elements)-1):
-            r1 = self.map_elements[i].get_rotated_rectangle()
-            r2 = self.map_elements[i + 1].get_rotated_rectangle()
-            x1, y1 = r1.get_center()
-            x2, y2 = r2.get_center()
-            ax.add_patch(PolygonPatch(r1.get_contour(), fc='#'+ str(100000+i), alpha=0.7))
-            ax.add_patch(PolygonPatch(r2.get_contour(), fc='#'+ str(100000+i+1), alpha=0.7))
-            #plt.plot(x1, y1)
-            #plt.plot(x2, y2)
-            #plt.plot(x1, y1,'o')
-            #plt.plot(x2, y2,'o')
-            #intersection_polygon = r2.intersection(r1)
-            #ax.add_patch(PolygonPatch(intersection_polygon, fc='#'+str(100000 + (2 * i + 1)), alpha=1))
 
-        
-        x_coord = [((x_tuple.get_rotated_rectangle().get_center())[0]) for x_tuple in self.map_elements]
-        y_coord = [((y_tuple.get_rotated_rectangle().get_center())[1]) for y_tuple in self.map_elements]
 
-        #x_coord = [(x_tuple[0]+self.map_offset/2) for x_tuple in self.scaled_points]
-        #y_coord = [(y_tuple[1]+self.map_offset/2) for y_tuple in self.scaled_points]
-        #print(x_coord)
-        #print(y_coord)
-        plt.plot(x_coord, y_coord)
-        plt.plot(x_coord, y_coord,'o')  
-        plt.show()
-
-    def plot_trajectory(self):
-        ax = plt.gca()
-        ax.axis('equal')
-        x_coord = [x_tuple[0] for x_tuple in self.scaled_points]
-        y_coord = [y_tuple[1] for y_tuple in self.scaled_points]
-        #print(x_coord)
-        #print(y_coord)
-        plt.plot(x_coord, y_coord)
-        plt.show()
 
     def get_map_offset(self):
         return self.map_offset
@@ -297,7 +159,7 @@ class MapScaler:
             horizontal_fov = camera_properties.get_fov()
             image_width = image.get_width()
             image_height = image.get_height()
-            # print("focal length: " + str(focal_length), "horizontal fov: " + str(horizontal_fov))
+            print("focal length: " + str(focal_length), "horizontal fov: " + str(horizontal_fov))
 
             sensor_width_mm = math.tan(math.radians(horizontal_fov)/2) * (2*focal_length)
             #print(sensor_width_mm) 

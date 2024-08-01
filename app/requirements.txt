@@ -22,3 +22,4 @@ pyocclient
 psutil
 pyyaml
 werkzeug == 2.2.2
+pyproj

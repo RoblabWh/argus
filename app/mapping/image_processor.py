@@ -95,9 +95,6 @@ class ImageProcessor:
 
     def filter_panos(self):
         self.all_panos = []
-        #print(self.all_images)
-
-        #print('all images before pano Filtering: ', len(self.all_images))
 
         self.all_panos = [image for image in self.all_images if image.get_exif_header().pano]
         for pano in self.all_panos:
@@ -105,9 +102,6 @@ class ImageProcessor:
             self.move_image_to_subfolder(pano, 'panos')
             #pano.generate_thumbnail()
 
-        # print('all panos: ', self.all_panos)
-        # print('all images after pano Filtering: ', len(self.all_images))
-        # print('all images after pano Filtering: ', self.all_images)
 
 
     def get_panos(self):
@@ -119,7 +113,6 @@ class ImageProcessor:
 
     def extract_flight_data(self, flight_data=[]):
         #extract date, flight duration, location, number of total images, number of panos, average flight height, covered area
-
         firstImage = self.all_images[0]
         lastImage = self.all_images[-1]
 
@@ -133,9 +126,6 @@ class ImageProcessor:
         date = str(firstImage.get_exif_header().get_creation_time_str())
         #date is in format yyyy:mm:dd hh:mm:ss but should be changed to dd.mm.yyyy hh:mm
         date = date[8:10] + '.' + date[5:7] + '.' + date[0:4] + ' ' + date[11:16]
-
-        #flight_duration = str(lastImage.get_exif_header().get_creation_time() - firstImage.get_exif_header().get_creation_time())
-
         time_difference_seconds = abs(lastImage.get_exif_header().get_creation_time() - firstImage.get_exif_header().get_creation_time())
 
         # Convert the difference to a timedelta object
@@ -147,13 +137,6 @@ class ImageProcessor:
 
         # Format the difference as hh:mm:ss
         flight_duration = f'{hours:02}:{minutes:02}:{seconds:02}'
-
-        # #flight_duration is seconds but should be changed to hh:mm:ss
-        # flight_duration_minutes = int(flight_duration) // 60
-        # flight_duration_seconds = int(flight_duration) % 60
-        # flight_duration_hours = flight_duration_minutes // 60
-        # flight_duration_minutes = flight_duration_minutes % 60
-        # flight_duration = "{:02d}".format(flight_duration_hours) + ':' + "{:02d}".format(flight_duration_minutes) + ':' + "{:02d}".format(flight_duration_seconds)
 
         try:
             location = str(imageWithGPSData.get_exif_header().get_gps().get_address())
@@ -316,7 +299,11 @@ class ImageProcessor:
             image.generate_thumbnail()
 
     def find_couples(self):
-        # go throuhg all_rgb_images and all_ir_images and find the image taken within the same second, if no image is found, the image is added with an empty counterpart string
+        """
+        This function finds the corresponding infrared and rgb images taken within the same second
+         if no image is found, the image is added with an empty counterpart string (placeholder image)
+        :return:
+        """
 
         couples = []
         j = 0

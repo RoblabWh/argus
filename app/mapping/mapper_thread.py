@@ -120,12 +120,6 @@ class MapperThread(threading.Thread):
         processor.find_couples()
         self.progress_preprocess = 70
 
-        # processor.filter_panos()
-        # processor.filter_unusable_images()
-        # processor.separate_ir_rgb()
-        # self.progress_preprocess = 50
-        # processor.generate_thumbnais()
-
         self.panos = processor.get_panos()
         self.couples_path_list = processor.couples_path_list
         self.rgb_images = processor.all_rgb_images

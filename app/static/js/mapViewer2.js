@@ -4,10 +4,16 @@ var trajectory = null;
 var layerControl = null;
 var objectDetectionLayer = null;
 var objectDetectionLayer_detail = null;
+var highlightOpacity = 0.6;
 
 var mapOverlayOpacity = 1.0;
 
-const map = L.map('map');
+const map = L.map('map',{
+	fullscreenControl: true,
+	fullscreenControlOptions: {
+		position: 'topleft'
+	}
+});
 
 buildMap();
 
@@ -111,14 +117,34 @@ function setupMapOverlays() {
 
 function setupSingleMap(mapOverlay) {
     let bounds = mapOverlay.bounds;
+    let corners = mapOverlay.bounds_corners;
     let filename = mapOverlay.file;
     let imageCoords = mapOverlay.image_coordinates;
 
     if (filename[0] === ".") {
         filename = filename.substring(1);
     }
+    
+    console.log("corners: " + corners);
+    let layer = null;
+    if (corners === null || corners === undefined) {
+         layer = L.imageOverlay(filename, bounds);
+    } else {
+        let topleft = corners[3];
+        let topright = corners[2];
+        let bottomleft = corners[0];
+        let bottomright = corners[1];
 
-    let layer = L.imageOverlay(filename, bounds);
+
+        layer = L.imageOverlay.rotated(filename, topleft, topright, bottomleft);
+
+        //make a circle for each corner in red, green, blue, yellow
+        // let marker1 = L.circle(topleft, { color: 'red', fillColor: 'red', fillOpacity: 1, radius: 4 }).addTo(map);
+        // let marker2 = L.circle(topright, { color: 'green', fillColor: 'green', fillOpacity: 1, radius: 4 }).addTo(map);
+        // let marker3 = L.circle(bottomleft, { color: 'blue', fillColor: 'blue', fillOpacity: 1, radius: 4 }).addTo(map);
+        // let marker4 = L.circle(bottomright, { color: 'yellow', fillColor: 'yellow', fillOpacity: 1, radius: 4 }).addTo(map);
+    }
+
     let layerGroup = L.layerGroup([layer]);
 
     if (imageCoords != null) {
@@ -139,61 +165,136 @@ function loadOutline(mapOverlay, layerGroup) {
     let lat2 = bounds[1][0];
     let long2 = bounds[1][1];
 
+    let debug_map= false;
+
+
+    let debugCoordsGrid = mapOverlay.debug_coords_grid;
+    if (debugCoordsGrid != null && debug_map) {
+        let grid = L.polygon(debugCoordsGrid, { color: 'black', weight: 1, fillOpacity: 0, opacity: 1 }).addTo(layerGroup);
+    }
 
     for (let i = 0; i < coordinates.length; i++) {
-        var polygonString = coordinates[i].coordinates_string;
-        if (polygonString == "") {
-            continue;
+        let coordinates_gps = coordinates[i].coordinates_gps;
+        let latlngs = [];
+        if (coordinates_gps != null && coordinates_gps != "") {
+            latlngs = coordinates_gps;
+            //console.log("GPS coordinates found for image " + coordinates[i].file_name);
+            //console.log(latlngs);
+        } else{
+            console.log("No GPS coordinates found for image " + coordinates[i].file_name + "using pixel coodrinated encoded in string");
+
+            var polygonString = coordinates[i].coordinates_string;
+            if (polygonString == "") {
+                continue;
+            }
+            var points_strings = polygonString.split(',');
+            var points = new Array();
+
+            for (var j = 0; j < points_strings.length; j++) {
+                var point = points_strings[j].split(' ');
+                points.push([parseInt(point[0]), parseInt(point[1])]);
+            }
+
+            if (typeof (mapSize[0]) == 'string') {
+                var arr = new Array();
+                arr.push(parseInt(mapSize[0]));
+                arr.push(parseInt(mapSize[1]));
+                mapSize = arr;
+            }
+
+            var p1 = [points[0][0] / mapSize[0], points[0][1] / mapSize[1]];
+            var p2 = [points[1][0] / mapSize[0], points[1][1] / mapSize[1]];
+            var p3 = [points[2][0] / mapSize[0], points[2][1] / mapSize[1]];
+            var p4 = [points[3][0] / mapSize[0], points[3][1] / mapSize[1]];
+            var pL1 = [p1[1] * lat1 + ((1 - p1[1]) * lat2), p1[0] * long2 + ((1 - p1[0]) * long1)];
+            var pL2 = [p2[1] * lat1 + ((1 - p2[1]) * lat2), p2[0] * long2 + ((1 - p2[0]) * long1)];
+            var pL3 = [p3[1] * lat1 + ((1 - p3[1]) * lat2), p3[0] * long2 + ((1 - p3[0]) * long1)];
+            var pL4 = [p4[1] * lat1 + ((1 - p4[1]) * lat2), p4[0] * long2 + ((1 - p4[0]) * long1)];
+            latlngs = [pL1, pL2, pL3, pL4];
         }
-        var points_strings = polygonString.split(',');
-        var points = new Array();
+        let r = 255-parseInt((i/coordinates.length)*255);
+        let g = parseInt((i/coordinates.length)*255);
+        let b = Math.max(parseInt((i*2/coordinates.length)*255),  255-parseInt((i*2/coordinates.length)*255));
+        let color = 'rgb('+r+','+g+','+b+')';
 
-        for (var j = 0; j < points_strings.length; j++) {
-            var point = points_strings[j].split(' ');
-            points.push([parseInt(point[0]), parseInt(point[1])]);
-        }
-
-        if (typeof (mapSize[0]) == 'string') {
-            var arr = new Array();
-            arr.push(parseInt(mapSize[0]));
-            arr.push(parseInt(mapSize[1]));
-            mapSize = arr;
-        }
-
-        var p1 = [points[0][0] / mapSize[0], points[0][1] / mapSize[1]];
-        var p2 = [points[1][0] / mapSize[0], points[1][1] / mapSize[1]];
-        var p3 = [points[2][0] / mapSize[0], points[2][1] / mapSize[1]];
-        var p4 = [points[3][0] / mapSize[0], points[3][1] / mapSize[1]];
-        var pL1 = [p1[1] * lat1 + ((1 - p1[1]) * lat2), p1[0] * long2 + ((1 - p1[0]) * long1)];
-        var pL2 = [p2[1] * lat1 + ((1 - p2[1]) * lat2), p2[0] * long2 + ((1 - p2[0]) * long1)];
-        var pL3 = [p3[1] * lat1 + ((1 - p3[1]) * lat2), p3[0] * long2 + ((1 - p3[0]) * long1)];
-        var pL4 = [p4[1] * lat1 + ((1 - p4[1]) * lat2), p4[0] * long2 + ((1 - p4[0]) * long1)];
-        var latlngs = [pL1, pL2, pL3, pL4];
-
-        var polygon = L.polygon(latlngs, { opacity: 0, fillOpacity: 0.0, fillColor: '#0000FF' });
+        var polygon = L.polygon(latlngs, { opacity: 0, fillOpacity: 0.0, fillColor: color });
         polygon.filename = coordinates[i].file_name;
-        polygon.on('mouseover', highlightFeature);
-        polygon.on('mouseout', resetHighlight);
+        polygon.on('mouseover', highlightFeatureByEvent);
+        polygon.on('mouseout', resetHighlightByEvent);
         polygon.on('click', showImageFromMap);
         layerGroup.addLayer(polygon);
 
         polygons.push(polygon);
+
+        //debug visualization:
+        let orientations = coordinates[i].orientations;
+        if (orientations != null && orientations != "" && debug_map) {
+            let orientation_gimbal = orientations.gimbal;
+            let orientation_flight = orientations.flight;
+            let orientation_corrected = orientations.corrected;
+
+            //draw small circle at center
+            let center = [(latlngs[0][0] + latlngs[2][0]) / 2, (latlngs[0][1] + latlngs[2][1]) / 2];
+            let circle = L.circle(center, { color: 'black', fillColor: 'black', fillOpacity: 1, radius: 2 });
+            layerGroup.addLayer(circle);          
+
+
+            //draw arrow from center in direction of gimbal
+            let angle = parseFloat(orientation_gimbal);
+            console.log("angle: " + angle);
+            let length = 0.000069;
+            let dx = length * Math.cos(angle * Math.PI / 180);
+            let dy = length * Math.sin(angle * Math.PI / 180);
+            console.log("dx: " + dx + " dy: " + dy);
+            let x = center[0] + dx;
+            let y = center[1] + dy;
+            console.log("x: " + x + " y: " + y);
+            let arrow = L.polyline([center, [x,y]], { color: 'green' });
+
+            //draw arrow from center in direction of camera
+            angle = parseFloat(orientation_flight);
+            length = length*1.4;
+            dx = length * Math.cos(angle * Math.PI / 180);
+            dy = length * Math.sin(angle * Math.PI / 180);
+            arrow2 = L.polyline([center, [center[0] + dx, center[1] + dy]], { color: 'red' });
+            
+            angle = parseFloat(orientation_corrected);
+            length = length*1.35;
+            dx = length * Math.cos(angle * Math.PI / 180);
+            dy = length * Math.sin(angle * Math.PI / 180);
+            arrow3 = L.polyline([center, [center[0] + dx, center[1] + dy]], { color: 'blue' });
+            
+            
+            layerGroup.addLayer(arrow);
+            layerGroup.addLayer(arrow2);
+            layerGroup.addLayer(arrow3);
+
+            
+        }
+
+
     }
 
     return polygons;
 }
 
-
-function highlightFeature(e) {
+function highlightFeatureByEvent(e) {
     var layer = e.target;
+    highlightFeature(layer);
+}
+
+function highlightFeature(layer) {
     layer.setStyle({
-        fillOpacity: 0.6
+        fillOpacity: highlightOpacity
     });
 }
 
-function resetHighlight(e) {
+function resetHighlightByEvent(e) {
     var layer = e.target;
+    resetHighlight(layer);
+}
 
+function resetHighlight(layer) {
     layer.setStyle({
         fillOpacity: 0.0
     });
@@ -212,11 +313,15 @@ function updateMap(singleMapData, addIfNotFound) {
     for (let i = 0; i < mapsData.length; i++) {
         if (mapsData[i].name === mapName) {
             mapsData[i] = singleMapData;
-            //get overlay and then use setUrl(path);
-            //then overlay.setbounds
-            overlays[mapName].getLayers()[0].setUrl(singleMapData.file);
-            overlays[mapName].getLayers()[0].setBounds(singleMapData.bounds);
-
+            
+            map.removeLayer(overlays[mapName]);
+            overlays[mapName].clearLayers();
+            uodatedLayers = setupSingleMap(singleMapData).getLayers();
+            for (let j = 0; j < uodatedLayers.length; j++) {
+                overlays[mapName].addLayer(uodatedLayers[j]);
+            }
+            map.addLayer(overlays[mapName]);
+            
             return;
         }
     }
@@ -296,6 +401,19 @@ function changeAlpha(value) {
     }
 }
 
+
+$('#mapOverlayStyleCheckbox').change(function () {
+    // if (detections != null) {
+    //     if (objectDetectionLayer != null) {
+    //         generateObjectDetectionLayer(detections);
+    //     }
+    // }
+    if(highlightOpacity === 0.0) {
+        highlightOpacity = 0.6;
+    } else {
+        highlightOpacity = 0.0;
+    }
+});
 
 
 
@@ -383,13 +501,6 @@ function displayWindDirectionOnMap(angle) {
 //////////////////////////////////////
 
 
-$('#mapOverlayStyleCheckbox').change(function () {
-    if (detections != null) {
-        if (objectDetectionLayer != null) {
-            generateObjectDetectionLayer(detections);
-        }
-    }
-});
 
 function getSelectedCategories(objectDetectionData) {
     let categoryVisibilities = {};
@@ -452,8 +563,9 @@ function generateObjectDetectionLayer(objectDetectionData) {
     }
 
 
-    let layer_visibility = map.hasLayer(objectDetectionLayer);
+    let layer_visibility = false;
     if (objectDetectionLayer != null) {
+        layer_visibility = map.hasLayer(objectDetectionLayer);
         map.removeLayer(objectDetectionLayer);
         layerControl.removeLayer(objectDetectionLayer);
     }
@@ -548,15 +660,18 @@ function generateObjectDetectionLayer(objectDetectionData) {
             continue;
         }
 
-        checkbox = document.getElementById("mapOverlayStyleCheckbox");
-        if (checkbox.checked) {
-            detectionIconStyleSetting = 'icon'; //'taktischeZeichen' or 'icon'
-            detectionIconSize = 50;
-        }
-        else {
-            detectionIconStyleSetting = 'taktischeZeichen'; //'taktischeZeichen' or 'icon'
-            detectionIconSize = 40;
-        }
+        // checkbox = document.getElementById("mapOverlayStyleCheckbox");
+        // if (checkbox.checked) {
+        //     detectionIconStyleSetting = 'icon'; //'taktischeZeichen' or 'icon'
+        //     detectionIconSize = 50;
+        // }
+        // else {
+        //     detectionIconStyleSetting = 'taktischeZeichen'; //'taktischeZeichen' or 'icon'
+        //     detectionIconSize = 40;
+        // }
+        let detectionIconStyleSetting = 'icon'; //'taktischeZeichen' or 'icon'
+        let detectionIconSize = 50;
+        
 
         marker = L.marker(center, {
             icon: L.icon({
@@ -782,36 +897,66 @@ function get_object_detection_coordinate(filename, object_bounds, image_size, im
     }
 
     let coordinates_string = mapImagesCoordinates[image_index].coordinates_string;
+    let coordinates_corners = mapImagesCoordinates[image_index].coordinates_gps;
 
-    let points_strings = coordinates_string.split(',');
-    let image_bounds_gps = new Array();
+    if (coordinates_corners === null || coordinates_corners === undefined) {
+            
 
-    for (var j = 0; j < points_strings.length; j++) {
-        let point = points_strings[j].split(' ');
-        image_bounds_gps.push([parseInt(point[0]), parseInt(point[1])]);
-        image_bounds_gps[j][0] = (image_bounds_gps[j][0] / mapSizeRGB[0] * long2RGB) + ((1 - image_bounds_gps[j][0] / mapSizeRGB[0]) * long1RGB);
-        image_bounds_gps[j][1] = (image_bounds_gps[j][1] / mapSizeRGB[1] * lat1RGB) + ((1 - image_bounds_gps[j][1] / mapSizeRGB[1]) * lat2RGB);
-        //Swap lat and long
-        let temp = image_bounds_gps[j][0];
-        image_bounds_gps[j][0] = image_bounds_gps[j][1];
-        image_bounds_gps[j][1] = temp;
+        let points_strings = coordinates_string.split(',');
+        let image_bounds_gps = new Array();
+
+        for (var j = 0; j < points_strings.length; j++) {
+            let point = points_strings[j].split(' ');
+            image_bounds_gps.push([parseInt(point[0]), parseInt(point[1])]);
+            image_bounds_gps[j][0] = (image_bounds_gps[j][0] / mapSizeRGB[0] * long2RGB) + ((1 - image_bounds_gps[j][0] / mapSizeRGB[0]) * long1RGB);
+            image_bounds_gps[j][1] = (image_bounds_gps[j][1] / mapSizeRGB[1] * lat1RGB) + ((1 - image_bounds_gps[j][1] / mapSizeRGB[1]) * lat2RGB);
+            //Swap lat and long
+            let temp = image_bounds_gps[j][0];
+            image_bounds_gps[j][0] = image_bounds_gps[j][1];
+            image_bounds_gps[j][1] = temp;
+        }
+
+        let object_center_gps = new Array();
+
+        let object_center_px = [object_bounds[0], object_bounds[1]];
+        let factor_w = 1 - (object_center_px[0] / image_size[0]);
+        let factor_h = 1 - (object_center_px[1] / image_size[1]);
+
+
+        let u = [image_bounds_gps[3][0] - image_bounds_gps[0][0], image_bounds_gps[3][1] - image_bounds_gps[0][1]];
+        let v = [image_bounds_gps[1][0] - image_bounds_gps[0][0], image_bounds_gps[1][1] - image_bounds_gps[0][1]];
+
+        object_center_gps.push(image_bounds_gps[0][0] + (u[0] * factor_w) + (v[0] * factor_h));
+        object_center_gps.push(image_bounds_gps[0][1] + (u[1] * factor_w) + (v[1] * factor_h));
+
+
+        return object_center_gps;
+    } else {
+        let topleft = coordinates_corners[0];
+        let topright = coordinates_corners[1];
+        let bottomright = coordinates_corners[2];
+        let bottomleft = coordinates_corners[3];
+
+        let object_center_px = [object_bounds[0], object_bounds[1]];
+        let factor_w = object_center_px[0] / image_size[0];
+        let factor_h = object_center_px[1] / image_size[1];
+
+        let u1 = [topright[0] - topleft[0], topright[1] - topleft[1]];
+        let u2 = [bottomright[0] - bottomleft[0], bottomright[1] - bottomleft[1]];
+
+        u1 = [topleft[0]    + u1[0] * factor_w, topleft[1]    + u1[1] * factor_w];
+        u2 = [bottomleft[0] + u2[0] * factor_w, bottomleft[1] + u2[1] * factor_w];
+
+        let v = [u2[0] -  u1[0], u2[1] - u1[1]];
+
+
+        let object_center_gps = new Array();
+        object_center_gps.push((v[0] * factor_h) + (u1[0]));
+        object_center_gps.push((v[1] * factor_h) + (u1[1]));
+
+        return object_center_gps;
     }
 
-    let object_center_gps = new Array();
-
-    let object_center_px = [object_bounds[0], object_bounds[1]];
-    let factor_w = 1 - (object_center_px[0] / image_size[0]);
-    let factor_h = 1 - (object_center_px[1] / image_size[1]);
-
-
-    let u = [image_bounds_gps[3][0] - image_bounds_gps[0][0], image_bounds_gps[3][1] - image_bounds_gps[0][1]];
-    let v = [image_bounds_gps[1][0] - image_bounds_gps[0][0], image_bounds_gps[1][1] - image_bounds_gps[0][1]];
-
-    object_center_gps.push(image_bounds_gps[0][0] + (u[0] * factor_w) + (v[0] * factor_h));
-    object_center_gps.push(image_bounds_gps[0][1] + (u[1] * factor_w) + (v[1] * factor_h));
-
-
-    return object_center_gps;
 }
 
 

@@ -50,8 +50,8 @@ class Metadata:
         if not metadata_tags_dict:
             metadata_tags_dict = metadata_tags['default']
 
-        print("Camera model: " + self.camera_model, flush=True)
-        print("Metadata tags: " + str(metadata_tags_dict), flush=True)
+        # print("Camera model: " + self.camera_model, flush=True)
+        # print("Metadata tags: " + str(metadata_tags_dict), flush=True)
 
         self.load_metadata(metadata_tags_dict)
 
@@ -137,7 +137,7 @@ class Metadata:
             if projection_type == "pano":
                 projection_type = "equirectangular"
 
-            print("Projection type: " + projection_type, flush=True)
+            # print("Projection type: " + projection_type, flush=True)
 
             if projection_type != "equirectangular":
                 return False
@@ -200,7 +200,7 @@ class Metadata:
             if keys['ir'] != "":
                 ir_indicator = self._get_if_exist(self.data_dict, keys['ir'])
                 if ir_indicator == keys['ir_value']:
-                    print("file: " + self.image_path + " is an IR image")
+                    # print("file: " + self.image_path + " is an IR image")
                     return True
                 else:
                     return False
@@ -295,12 +295,12 @@ class Metadata:
     def get_data_from_camera_specs(self,camera_model_name, key):
         with open('./mapping/camera_specs.json') as f:
                 data = json.load(f)
-                print("Camera model name: " + camera_model_name, flush=True)
-                print("Key: " + key, flush=True)
-                print("Data: " + str(data), flush=True)
+                # print("Camera model name: " + camera_model_name, flush=True)
+                # print("Key: " + key, flush=True)
+                # print("Data: " + str(data), flush=True)
                 if camera_model_name in data:
                     val = float(data[camera_model_name][key])
-                    print("Value: " + str(val) + " for key: " + key + " with model: " + camera_model_name, flush=True)
+                    # print("Value: " + str(val) + " for key: " + key + " with model: " + camera_model_name, flush=True)
                     msg = "Using camera_specs.json..."
                     f.close()
                 else:

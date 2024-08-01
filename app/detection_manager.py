@@ -28,6 +28,6 @@ class DetectionManager:
                     return "finished"
                 else:
                     return "running"
-        return "running"
+        return "not found"
 
 
