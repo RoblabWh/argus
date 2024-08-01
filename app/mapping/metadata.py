@@ -143,7 +143,7 @@ class Metadata:
                 return False
 
 
-            short_path = self.image_path[self.image_path.find("projects"):]
+            short_path = "./static/" + self.image_path[self.image_path.find("projects"):]
             author = "ARGUS"
             title = "Pano taken at" + str(self.creation_time)
 

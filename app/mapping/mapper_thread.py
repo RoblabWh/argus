@@ -54,6 +54,7 @@ class MapperThread(threading.Thread):
                 self.message = "Step 2/2: Mapping"
                 if self.mappable:
                     self.map_rgb = self.image_mapper.calculate_map_RGB(self.report_id)
+                    print("rgb map calculated", flush=True)
                 else:
                     print("not mappable, creating Error Map!")
                     self.map_rgb = self.image_mapper.generate_error_map(self.rgb_images)

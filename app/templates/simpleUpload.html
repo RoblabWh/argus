@@ -845,8 +845,8 @@
             }
             updateProcessButtonEnabling();
           } else {
-
-            setTimeout(checkUploadResuls(), 750);
+            window.setTimeout( function() { checkUploadResuls(); }, 750);
+            //setTimeout(checkUploadResuls(), 750);
           }
         }, "json");
     }
