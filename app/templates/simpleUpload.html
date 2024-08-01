@@ -565,6 +565,7 @@
     var numberOfImagesUploading = 0;
     var numberOfImagesUploadedSuccessfully = 0;
     var doubleNames = [];
+    var intervalStarted = false;
     {% if processing %};
     var processing = true;
     {% else %}
@@ -793,8 +794,19 @@
           doubleNames = [];
         }
         console.log('All images uploaded successfully.');
+        // once 99.9 % is reached the function checkUploadResults is called in an interval, but this interval should only be started once
+        if(intervalStarted == false){
+          intervalStarted = true;
+          checkUploadResuls();
+        }
+      }
 
-        $.post("/{{ id }}/checkUploadedImages", function (response) {
+
+      //showProgressBar();
+    }
+
+    function checkUploadResuls(){
+      $.post("/{{ id }}/checkUploadedImages", function (response) {
         // go through every changed path in response.pathChanges an update the according a href of the image with the old path as href
           console.log(response);
           if(response.pathChanges != null) {
@@ -823,6 +835,7 @@
 
 
           if (response.done) {
+            intervalStarted = false;
             drawSummary(response.dataSummary);
             if (!response.dataSummary.ir_readable && !irSettingsShown) {
               openPopup();
@@ -836,10 +849,6 @@
             setTimeout(updateUploadProgress, 750);
           }
         }, "json");
-      }
-
-
-      //showProgressBar();
     }
 
     function drawSummary(summaryData){

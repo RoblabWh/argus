@@ -321,7 +321,6 @@ class ProjectManager:
         file_names = data['file_names']
         try:
             file_names[file_names.index(old_path)] = new_path
-            print("replaced path: " + old_path + " with new path: " + new_path, flush=True)
             with open(self.projects_path + str(id) + "/project.json", "w") as json_file:
                 json.dump(project, json_file)
         except:
