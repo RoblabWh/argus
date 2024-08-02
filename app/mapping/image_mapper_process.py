@@ -328,11 +328,11 @@ class ImageMapperProcess(threading.Thread):
             all_img_vertices[id] = rotated_vertices
             rotated_img = small_img_pil.rotate(angle_deg, expand=True) #kinda weird to convert cv2 img to pil and back to have a more comfortable rotate function
             rotated_image = np.array(rotated_img)
-            rotated_image, top, left = self.cropImage(top, left, rotated_image)
             new_shape = rotated_image.shape
             shape_adaption = int((new_shape[0] - original_shape[0]) / 2)
             left = left - shape_adaption
             top = top - shape_adaption
+            rotated_image, top, left = self.cropImage(top, left, rotated_image)
                                 
             #do alpha blending
             alpha = np.sum(rotated_image, axis=-1) > 0
