@@ -416,7 +416,7 @@ class ProjectManager:
             src = Template(template.read())
             result = src.substitute(template_data)
             save_path = os.path.join(self.projects_path, str(id), "config.yaml")
-            with open(save_path, "x") as config:
+            with open(save_path, "w") as config:
                 config.write(result)
             #set config in project file
             self.set_config_file(id, [save_path])
