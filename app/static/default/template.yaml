@@ -50,10 +50,10 @@ Mapping:
 #====================#
 # Keyframe  Inserter #
 #====================#
-KeyframeInserter:
-  max_interval: 0.33
-  min_interval: 0.1
-  max_distance: 1.0
+#KeyframeInserter:
+#  max_interval: 0.33
+#  min_interval: 0.1
+#  max_distance: 1.0
   
 SocketPublisher:
   publish_points: false
