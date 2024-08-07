@@ -490,11 +490,8 @@ class ProjectManager:
         return project['data']['ir_settings']
 
     def get_webodm_project_id(self, report_id):
-        try:
-            project = self.get_project(report_id)
-            return project['data']['webodm_project_id']
-        except:
-            return None
+        project = self.get_project(report_id)
+        return project['data']['webodm_project_id']
 
     def set_webodm_project_id(self, report_id, webodm_project_id):
         self.update_data_by_keyword(report_id, 'webodm_project_id', webodm_project_id)

@@ -4,6 +4,7 @@ import datetime
 from mapping.mapper_thread import MapperThread
 from thermal.thermal_analyser import ThermalAnalyser
 from mapping.filter_thread import FilterThread
+from mapping.weather import Weather
 from data_share_manager import DataShareManager
 
 # from gunicorn.app.base import BaseApplication
@@ -162,6 +163,8 @@ class ArgusServer:
                                 view_func=self.remove_project_from_group)
         self.app.add_url_rule('/report_data/<int:report_id>', methods=['GET'],
                                 view_func=self.send_report)
+        self.app.add_url_rule('/update_weather/<int:report_id>', methods=['POST'],
+                                view_func=self.update_weather)
 
         # self.app.add_url_rule('/<int:report_id>/upload', methods=['POST'],
         #                       view_func=self.upload_image)
@@ -208,23 +211,28 @@ class ArgusServer:
 
     def delete_report(self, report_id):
         #Check if WebODM project exists and delete it
-        webodm_project_id = self.project_manager.get_webodm_project_id(report_id)
-        print("delete_report for id: " + str(report_id) + " with webodm_project_id: " + str(webodm_project_id))
-        if webodm_project_id is not None:
-            token = self.webodm_manager.authenticate()
-            self.webodm_manager.delete_project(token, webodm_project_id)
+        try:
+            webodm_project_id = self.project_manager.get_webodm_project_id(report_id)
+            print("delete_report for id: " + str(report_id) + " with webodm_project_id: " + str(webodm_project_id))
+            if webodm_project_id is not None:
+                token = self.webodm_manager.authenticate()
+                self.webodm_manager.delete_project(token, webodm_project_id)
+        except Exception as e:
+            print(e, flush=True)
 
         self.project_manager.delete_project(report_id)
         return self.projects_overview()
 
     def delete_report_from_project_group(self, report_id):
         #Check if WebODM project exists and delete it
-        webodm_project_id = self.project_manager.get_webodm_project_id(report_id)
-        print("delete_report for id: " + str(report_id) + " with webodm_project_id: " + str(webodm_project_id))
-        if webodm_project_id is not None:
-            token = self.webodm_manager.authenticate()
-            print("delete project with id: " + str(webodm_project_id) + " and token: " + str(token))
-            self.webodm_manager.delete_project(token, webodm_project_id)
+        try:
+            webodm_project_id = self.project_manager.get_webodm_project_id(report_id)
+            print("delete_report for id: " + str(report_id) + " with webodm_project_id: " + str(webodm_project_id))
+            if webodm_project_id is not None:
+                token = self.webodm_manager.authenticate()
+                self.webodm_manager.delete_project(token, webodm_project_id)
+        except Exception as e:
+            print(e, flush=True)
 
         self.project_manager.delete_project(report_id)
         return jsonify({"success": True}), 200
@@ -251,6 +259,7 @@ class ArgusServer:
             return jsonify(project)
         else:
             return jsonify({"error": "Project not found"}), 404
+
 
 
 
@@ -413,7 +422,11 @@ class ArgusServer:
                     self.project_manager.update_camera_specs(report_id, camera_specs)
                     self.project_manager.update_weather(report_id, weather)
                     self.project_manager.update_maps(report_id, maps)
-                    self.project_manager.update_ir_settings(report_id, ir_settings)
+                    if self.project_manager.get_ir_settings(report_id) is None:
+                        self.project_manager.update_ir_settings(report_id, ir_settings)
+                    elif len(self.project_manager.get_ir_settings(report_id).keys()) == 0:
+                        self.project_manager.update_ir_settings(report_id, ir_settings)
+                    # self.project_manager.update_ir_settings(report_id, ir_settings)
                     self.project_manager.update_panos(report_id, panos)
                     self.project_manager.update_slide_file_paths(report_id, couples_path_list)
                     self.project_manager.update_flight_trajectory(report_id, flight_trajectory)
@@ -704,6 +717,17 @@ class ArgusServer:
 
         tasks = self.webodm_manager.get_all_tasks(token, wo_project_id)
         return jsonify({"success": True,"tasks": tasks})
+
+    def update_weather(self, report_id):
+        print("update_weather for id" + str(report_id) + " with: " + str(request), flush=True)
+        print(request.form, flush=True)
+        lat, lon = float(request.form.get('lat')), float(request.form.get('lon'))
+        try:
+            weather = Weather(lat, lon, "e9d56399575efd5b03354fa77ef54abb").generate_weather_dict()
+            self.project_manager.update_weather(report_id, weather)
+        except:
+            return jsonify({"success": False, "message": "Failed to update weather data."})
+        return jsonify({"success": True, "weather": weather})
 
 
     def download_prepare_project(self, report_id):

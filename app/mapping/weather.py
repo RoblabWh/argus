@@ -24,11 +24,7 @@ class Weather:
         url = "https://api.openweathermap.org/data/2.5/onecall?lat=%s&lon=%s&appid=%s&units=metric" % (lat, lon, api_key)
         response = requests.get(url)
         self.data = json.loads(response.text)
-        # print("Weather data for request")
-        # print(url)
-        # print(":")
-        # print(self.data)
-        # print("weather data loaded")
+
 
     def get_temperature(self):
         return self.data["current"]["temp"]
@@ -64,3 +60,30 @@ class Weather:
         directions = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
         index = int((wind_dir_degrees / 45) + 0.5)
         return directions[index % 8]
+
+    def generate_weather_dict(self):
+
+
+        temperature = self.get_temperature()
+        humidity = self.get_humidity()
+        altimeter = self.get_altimeter()
+        wind_speed_ms = self.get_wind_speed()
+        wind_speed_kmh = self.get_wind_speed_kmh()
+        wind_speed_knots = self.get_wind_speed_knots()
+        visibility = self.get_visibility()
+        wind_dir_degrees = self.get_wind_dir_degrees()
+        wind_dir_cardinal = self.get_wind_dir_cardinal()
+
+
+        weather_data = []
+        weather_data.append({"description": 'Temperature', "value": str(temperature) + "°C"})
+        weather_data.append({"description": 'Humidity', "value": str(humidity) + "%"})
+        weather_data.append({"description": 'Air Preasure', "value": str(altimeter) + "hPa"})
+        weather_data.append({"description": 'Wind Speed',
+                             "value": str(wind_speed_ms) + "m/s" + " (" + str(wind_speed_kmh) + "km/h, " + str(
+                                 wind_speed_knots) + "knots)"})
+        weather_data.append(
+            {"description": 'Wind Direction', "value": str(wind_dir_degrees) + "°  (" + str(wind_dir_cardinal) + ")"})
+        weather_data.append({"description": 'Visibility', "value": str(visibility) + "m"})
+
+        return weather_data

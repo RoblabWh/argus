@@ -747,7 +747,22 @@
       collapsed: false
     }).addTo(map);
     baseLayers.Satellite.addTo(map);
-    map.fitBounds(overlays[Object.keys(overlays)[0]].getBounds());
+    let bounds = null;
+    let foundBounds = false;
+    try {
+      bounds = overlays[Object.keys(overlays)[0]].getBounds();
+      foundBounds = true;
+    } catch (error) {
+      foundBounds = false;
+    }
+    if (bounds == null || bounds == undefined || !foundBounds) {
+      rotated_overlay_0 = overlays[Object.keys(overlays)[0]];
+      topright = rotated_overlay_0._topRight;
+      bottomleft = rotated_overlay_0._bottomLeft;
+      bounds = L.latLngBounds(topright, bottomleft);
+    }
+    console.log(bounds);
+    map.fitBounds(bounds);
 
     // activate the first .maps-project-checkbox and fire the change event
     document.querySelector(".maps-project-checkbox").checked = true;
@@ -815,7 +830,7 @@
         let map = maps[j];
         let mapName = map.name;
         let mapBounds = map.bounds;
-        let mapCorners = map.corners;
+        let mapCorners = map.bounds_corners;
         if (map.file[0] === ".") {
           map.file = map.file.substring(1);
         }
@@ -823,6 +838,7 @@
         if (mapCorners === null || mapCorners === undefined) {
           mapLayer = L.imageOverlay(map.file, mapBounds);
         } else{
+          console.log("rotated map found in project " + projectId + " with map " + mapName);
           let topleft = mapCorners[3];
           let topright = mapCorners[2];
           let bottomleft = mapCorners[0];

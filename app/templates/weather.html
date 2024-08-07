@@ -8,6 +8,11 @@
 </head>
 <body>
 <table id="weatherDataTable">
+    <div style="width: 100%; display: flex; justify-content: space-between">
+        <div></div>
+        <button class="big_button" onclick="updateWeather()">Update Weather</button>
+    </div>
+    <br>
     {% for item in weather %}
     <tr>
         <td class="rowTitle">{{ item.description }}</td>
@@ -16,5 +21,51 @@
     {% endfor %}
 
 </table>
+
+<script>
+function updateWeather(){
+    let coords = null;
+    if (mapsData.length > 0){
+        coords = mapsData[0].center
+    } else if (flightTrajectory.length > 0){
+        coords = flightTrajectory[0]
+    } else {
+        alert("No data available to update weather.")
+        return
+    }
+
+    let proceed = confirm("Are you sure you want to update the weather? The current data gets overwirtten.");
+    if (!proceed){
+        return
+    }
+    
+    $.ajax({
+        url: "/update_weather/{{id}}",
+        type: "POST",
+        data: {
+            "lat": coords[0],
+            "lon": coords[1]
+        },
+        success: function(response){
+            console.log(response);
+            weather = response.weather;
+            // update the table
+            let table = document.getElementById("weatherDataTable");
+            for (let i = 0; i < weather.length; i++){
+                let description = weather[i].description;
+                let value = weather[i].value;
+
+                for (let j = 0; j < table.rows.length; j++){
+                    let row = table.rows[j];
+                    if (row.cells[0].innerHTML === description){
+                        row.cells[1].innerHTML = value;
+                    }
+                }
+
+            }
+        }
+    });
+}
+</script>
 </body>
 </html>

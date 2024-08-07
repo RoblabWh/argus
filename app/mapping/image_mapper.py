@@ -313,6 +313,11 @@ class ImageMapper:
                 failed = True
                 break
 
+            if status == 50:
+                print("Error: ODM task canceled!", self.webodm_manager.get_task_data_by_key(token, wo_project_id, task_id, 'last_error'))
+                failed = True
+                break
+
             progress = self.webodm_manager.get_task_data_by_key(token, wo_project_id, task_id, 'running_progress')
             if progress >= 1.0:
                 break
@@ -348,6 +353,12 @@ class ImageMapper:
                           (corner_gps_left_bottom[0] + corner_gps_right_top[0]) / 2]
             bounds = [[corner_gps_left_bottom[1], corner_gps_left_bottom[0]],
                       [corner_gps_right_top[1], corner_gps_right_top[0]]]
+
+            bounds_corners_odm = contents['stats']['bbox']['EPSG:4326']['boundary']['coordinates'][0]
+            bounds_corners = [[coord[1], coord[0]] for coord in bounds_corners_odm]
+            #swap index 1 and 3
+            bounds_corners[1], bounds_corners[3] = bounds_corners[3], bounds_corners[1]
+
             # print(corner_gps_left_bottom, corner_gps_right_top)
 
 
@@ -364,6 +375,7 @@ class ImageMapper:
             "zoom": 18,
             "file": save_path,
             "bounds": bounds,
+            "bounds_corners": bounds_corners,
             "size": map_size,
             "image_coordinates": None,
             "ir": ir,
