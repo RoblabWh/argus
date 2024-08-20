@@ -4,7 +4,7 @@
   --accent-color-red: rgb(var(--accent-color-red-values));
   --accent-color-green-values: 4, 170, 109;
   --accent-color-green: rgb(var(--accent-color-green-values));
-  --bg-color-a: lightgrey;
+  --bg-color-a: #dadada;
   --bg-color-b: grey;
   --bg-color-c: black;
   --bg-color-AILayer: rgb(230,230,230);

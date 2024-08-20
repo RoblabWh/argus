@@ -445,6 +445,44 @@
       padding: 4px;
     }
 
+    .maps-project-opacity {
+      -webkit-appearance: none;
+      appearance: none;
+      height: 8px;
+      background: var(--bg-color-page);
+      outline: none;
+      opacity: 0.8;
+      -webkit-transition: .2s;
+      transition: opacity .2s;
+    }
+
+    .maps-project-opacity:hover {
+      opacity: 1;
+    }
+
+    .maps-project-opacity::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 10px;
+      height: 10px;
+      background: var(--accent-color-interaction);
+      cursor: pointer;
+    }
+
+    .maps-project-opacity::-moz-range-thumb {
+      width: 10px;
+      height: 10px;
+      background: var(--accent-color-interaction);
+      cursor: pointer;
+    }
+
+    .maps-project-checkbox {
+      accent-color: var(--accent-color-interaction);
+    }
+
+
+
+
     .oneLineLeftRight p {
       margin: 0;
     }
@@ -460,7 +498,7 @@
       margin: auto;
       width: 6px;
       height: 6px;
-      border: 1px solid #000;
+      border: 1px solid var(--font-color-a);;
       border-width: 0 1px 1px 0;
       transform: rotate(45deg);
     }

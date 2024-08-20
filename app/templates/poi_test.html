@@ -1,8 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-    <meta charset="UTF-8">
-    <title>POI Settings and Sending Test</title>
+  <meta charset="UTF-8">
+  <title>POI Settings and Sending Test</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='default/variables-light.css') }}" id="currentCss">
   <style>
     body {
@@ -21,10 +22,11 @@
       float: none !important;
       font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
     }
-    </style>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <script src="{{url_for('static', filename='js/jquery-3.6.3.js') }}"></script>
+  </style>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="{{url_for('static', filename='js/jquery-3.6.3.js') }}"></script>
 </head>
+
 <body>
   {% include 'headerOverview.html' %}
 
@@ -67,12 +69,12 @@
     <br>
     <button onclick="getPOIs()">get all POIs</button>
     <br>
-    <div id="response"></div>
+    <div id="response" style="white-space: pre;"></div>
   </div>
-{% include 'footer.html' %}
+  {% include 'footer.html' %}
 
   <script>
-    document.getElementById("form1").addEventListener("submit", function(event) {
+    document.getElementById("form1").addEventListener("submit", function (event) {
       event.preventDefault();
       sendJsonData("/set_IAIS_settings", {
         "url": this["url"].value,
@@ -81,7 +83,7 @@
       });
     });
 
-    document.getElementById("form2").addEventListener("submit", function(event) {
+    document.getElementById("form2").addEventListener("submit", function (event) {
       event.preventDefault();
       //sendData("/test_POI", this);
       sendJsonData("/test_POI", {
@@ -93,7 +95,7 @@
       });
     });
 
-    document.getElementById("form3").addEventListener("submit", function(event) {
+    document.getElementById("form3").addEventListener("submit", function (event) {
       event.preventDefault();
       sendJsonData("/delete_poi", {
         "poi_id": this["poi_id"].value
@@ -108,23 +110,29 @@
         },
         body: JSON.stringify(data)
       })
-      .then(response => response.text())
-      .then(data => {
-        document.getElementById("response").innerText = data;
-      })
-      .catch(error => {
-        console.error("Error:", error);
-      });
+        .then(response => response.text())
+        .then(data => {
+          document.getElementById("response").innerText = data;
+        })
+        .catch(error => {
+          console.error("Error:", error);
+        });
     }
 
     //print all POIs in the response div
     function getPOIs() {
       fetch("/get_poi_list")
-      .then(response => response.text())
+        .then(response => response.json()) // Parse the response as JSON
         .then(data => {
-            document.getElementById("response").innerText = data;
+          // Convert JSON object to a formatted string with 2 spaces for indentation
+          const formattedData = JSON.stringify(data, null, 2);
+          document.getElementById("response").innerText = formattedData;
         })
+        .catch(error => {
+          console.error('Error fetching POI list:', error);
+        });
     }
   </script>
 </body>
+
 </html>

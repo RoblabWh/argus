@@ -181,8 +181,8 @@
 
 
         summary {
-            background-color: var(--bg-color-b);
-            color: var(--font-color-b);
+            background-color: var(--bg-color-a);
+            color: var(--accent-color-interaction);
             font-weight: bold;
             padding: 1rem;
             margin-bottom: 1rem;
@@ -193,7 +193,7 @@
         }
 
         details[open]>summary {
-            background-color: black;
+          background-color: var(--font-color-a);
             color: var(--font-color-b);
         }
 
@@ -263,7 +263,7 @@
             width: 100%;
             color: var(--font-color-a);
             background-color: var(--bg-color-a);
-            border: 1px solid white;
+            border: 1px solid var(--bg-color-page);
             border-radius: 6px;
             box-sizing: border-box;
             padding: 12px;
@@ -307,7 +307,6 @@
 
         .dropbtn {
             width: 42px;
-            color: white;
             background: none;
             border: none;
             cursor: pointer;
@@ -344,16 +343,16 @@
             display: none;
             position: absolute;
             right: 0;
-            background-color: var(--font-color-b);
+            background-color: var(--bg-color-page);
             min-width: 100px;
             box-shadow: 0px 8px 16px 0px rgba(0, 0, 0, 0.2);
             z-index: 1;
-            border: 3px solid var(--font-color-b);
+            border: 3px solid var(--bg-color-page);
             border-radius: 6px;
         }
 
         .dropdown-content a {
-            color: black;
+            color: var(--accent-color-interaction);
             padding: 12px 16px;
             text-decoration: none;
             display: block;

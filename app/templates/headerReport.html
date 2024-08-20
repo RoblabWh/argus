@@ -95,35 +95,7 @@
         }
     </style>
 
-    <script>
-        function shutdownServer(){
-            console.log("shutdown");
-            $.get("/shutdown");
-        };
-
-        function changeColorMode(){
-            var x = document.getElementById("colorModeButton");
-            var oldLink = document.getElementById("currentCss");
-
-            var newlink = document.createElement("link");
-            newlink.setAttribute("rel", "stylesheet");
-            newlink.setAttribute("type", "text/css");
-            newlink.setAttribute("id", "currentCss");
-
-            if (x.innerHTML == "Dark Mode") {
-                x.innerHTML = "Light Mode";
-                newlink.setAttribute("href", "{{ url_for('static', filename='default/variables-dark.css') }}" );
-                img = document.getElementById("header-icon");
-                img.src = "{{ url_for('static', filename='default/Argus_icon_Dark_crop.png') }}";
-            } else {
-                x.innerHTML = "Dark Mode";
-                newlink.setAttribute("href", "{{ url_for('static', filename='default/variables-light.css') }}" );
-                img = document.getElementById("header-icon");
-                img.src = "{{ url_for('static', filename='default/Argus_icon_Light_crop.png') }}";
-            }
-            document.getElementsByTagName("head").item(0).replaceChild(newlink, oldLink);
-        };
-    </script>
+    
 </head>
 <body>
     <div class="header">
@@ -141,5 +113,49 @@
         <h2 id="header-title" onclick="window.location.href = '/{{id}}'">Flight-Report&nbsp;</h2>
         <h3 id="header-title-name" onclick="window.location.href = '/{{id}}'">{{ project.name }}</h3>
     </div>
+
+    <script>
+        var colorMode = "light"; 
+
+        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            colorMode = "dark";
+            changeColorMode();
+        }
+
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+            colorMode = e.matches ? "dark" : "light";
+            changeColorMode();
+        });
+
+        function shutdownServer(){
+            console.log("shutdown");
+            $.get("/shutdown");
+        };
+
+        function changeColorMode(){
+            var x = document.getElementById("colorModeButton");
+            var oldLink = document.getElementById("currentCss");
+
+            var newlink = document.createElement("link");
+            newlink.setAttribute("rel", "stylesheet");
+            newlink.setAttribute("type", "text/css");
+            newlink.setAttribute("id", "currentCss");
+
+            if (colorMode == "dark") {
+                colorMode = "light";
+                x.innerHTML = "Light Mode";
+                newlink.setAttribute("href", "{{ url_for('static', filename='default/variables-dark.css') }}" );
+                img = document.getElementById("header-icon");
+                img.src = "{{ url_for('static', filename='default/Argus_icon_Dark_crop.png') }}";
+            } else {
+                colorMode = "dark";
+                x.innerHTML = "Dark Mode";
+                newlink.setAttribute("href", "{{ url_for('static', filename='default/variables-light.css') }}" );
+                img = document.getElementById("header-icon");
+                img.src = "{{ url_for('static', filename='default/Argus_icon_Light_crop.png') }}";
+            }
+            document.getElementsByTagName("head").item(0).replaceChild(newlink, oldLink);
+        };
+    </script>
 </body>
 </html>
