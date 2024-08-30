@@ -200,4 +200,14 @@ class CameraFrames {
         this.edges.visible = visible;
     }
 
+    getKeyframeOrigin(id) {
+        let index = this.keyframeIndices[id];
+        let pose_ = this.keyframePoses[index];
+
+        let pose = inv(pose_);
+        let Ox = pose[0][3] * GLOBAL_SCALE; let Oy = pose[1][3] * GLOBAL_SCALE; let Oz = pose[2][3] * GLOBAL_SCALE;
+        return [Ox, Oy, Oz];
+
+    }
+
 }

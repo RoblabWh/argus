@@ -11,6 +11,7 @@ const HIGHLIGHT_COLOR = "rgb(0, 255, 255)";
 const EDGE_COLOR = "rgb(192, 223, 255)";
 const BACKGROUND_COLOR = "rgb(255, 255, 255)";
 const REFERENCE_POINT_COLOR = [255, 0, 0];
+const MAPPING_INITIAL_SIZE = 300;
 
 // timestamp on received for measuring fps;
 let receiveTimestamp = 0;
@@ -46,7 +47,7 @@ let viewControls;
 function init() {
 
     // create a camera
-    camera = new THREE.PerspectiveCamera(45, document.getElementsByClassName('vslam_model')[0].offsetWidth / document.getElementsByClassName('vslam_model')[0].offsetHeight, 0.01, 1000);
+    camera = new THREE.PerspectiveCamera(45, document.getElementsByClassName('vslam_model')[0].offsetWidth / document.getElementsByClassName('vslam_model')[0].offsetHeight, 0.01, 5000);
 
     //initGui();
     initProtobuf();
@@ -61,8 +62,8 @@ function init() {
     console.log(document.getElementsByClassName('vslam_model')[0].offsetWidth, document.getElementsByClassName('vslam_model')[0].offsetHeight);
 
     // create grid plane
-    grid = new THREE.GridHelper(500, 50);
-    scene.add(grid);
+    //grid = new THREE.GridHelper(500, 50);
+    //scene.add(grid);
 
     // position and point the camera to the center of the scene
     camera.position.x = -100;
@@ -111,6 +112,67 @@ function loadKeyframes(keyframes) {
             cameraFrames.updateKeyframe(id, keyfrm["camera_pose"]);
         }
     }
+}
+
+function loadMappingResultSocketViewer(imgUrl, imgHeight, imgWidth, imgVertices) {
+    setCameraMode('Bird');
+    //get first and last entry of mapped img vertices
+    let firstEntry, furthestEntry, distance;
+    distance = 0;
+    for (const[id, vertice] of Object.entries(imgVertices)) {
+        if (typeof firstEntry == 'undefined') {
+            firstEntry = {id, vertice};
+        }
+        let pose = cameraFrames.getKeyframeOrigin(id);
+        let poseVector = new THREE.Vector3(pose[0], pose[1], pose[2]);
+        if (poseVector.length() > distance) {
+            furthestEntry = {id, vertice};
+            distance = poseVector.length();
+        }
+    }
+    //get the center of the first and last vertices in image coordinate system
+    let firstEntryInImage = Array(2);
+    firstEntryInImage[0] = (firstEntry.vertice[0][0] + firstEntry.vertice[1][0] + firstEntry.vertice[2][0] + firstEntry.vertice[3][0]) / 4;
+    firstEntryInImage[1] = (firstEntry.vertice[0][1] + firstEntry.vertice[1][1] + firstEntry.vertice[2][1] + firstEntry.vertice[3][1]) / 4;
+    let furthestEntryInImage = Array(2);
+    furthestEntryInImage[0] = (furthestEntry.vertice[0][0] + furthestEntry.vertice[1][0] + furthestEntry.vertice[2][0] + furthestEntry.vertice[3][0]) / 4;
+    furthestEntryInImage[1] = (furthestEntry.vertice[0][1] + furthestEntry.vertice[1][1] + furthestEntry.vertice[2][1] + furthestEntry.vertice[3][1]) / 4;
+
+    //get the center of the corresponding geometries in the model; in scene coordinate system
+    let firstEntryInModel = cameraFrames.getKeyframeOrigin(firstEntry.id);
+    let furthestEntryInModel = cameraFrames.getKeyframeOrigin(furthestEntry.id);
+
+    //create new PlaneGeometry using the mapping result as the texture
+    var texture = new THREE.TextureLoader().load(imgUrl);
+    var geometry = new THREE.PlaneGeometry(MAPPING_INITIAL_SIZE, MAPPING_INITIAL_SIZE); //some initial size
+    var material = new THREE.MeshBasicMaterial({map : texture, transparent: true});
+    var mesh = new THREE.Mesh(geometry, material);
+    //positioned in the center and rotated so that the front of the polygon shows up/ -y axis
+    mesh.position.set(0,0,0);
+    mesh.rotation.set(Math.PI / 2, 0, 0);
+
+    //create vectors to the entries, in scene coordinate system
+    let vectorFirstEntryInImage = new THREE.Vector3( (firstEntryInImage[0]/imgWidth * geometry.parameters.width) - (geometry.parameters.width/2),
+        -1,
+        -firstEntryInImage[1]/imgHeight * geometry.parameters.height + geometry.parameters.height - (geometry.parameters.height/2));
+    let vectorFirstEntryInModel = new THREE.Vector3( firstEntryInModel[0],
+        -1,
+        firstEntryInModel[2]);
+
+    let vectorFurthestEntryInImage = new THREE.Vector3( (furthestEntryInImage[0]/imgWidth * geometry.parameters.width) - (geometry.parameters.width/2),
+        -1,
+        -furthestEntryInImage[1]/imgHeight * geometry.parameters.height + geometry.parameters.height - (geometry.parameters.height/2));
+    let vectorFurthestEntryInModel = new THREE.Vector3( furthestEntryInModel[0],
+        -1,
+        furthestEntryInModel[2]);
+    let scalingFactor = new THREE.Vector3().copy(vectorFurthestEntryInModel).add(vectorFirstEntryInModel.negate()).length()/new THREE.Vector3().copy(vectorFurthestEntryInImage).add(vectorFirstEntryInImage.negate()).length();
+    let translationVector = new THREE.Vector3().copy(vectorFurthestEntryInModel).add(vectorFurthestEntryInImage.multiplyScalar(scalingFactor).negate());
+
+    mesh.scale.set(scalingFactor,scalingFactor,scalingFactor);
+    mesh.position.x += translationVector.x;
+    mesh.position.z += translationVector.z;
+
+    scene.add(mesh);
 }
 
 let controlsInitiated = false;

@@ -5,6 +5,7 @@ from mapping.mapper_thread import MapperThread
 from mapping.image_mapper_process import ImageMapperProcess
 from thermal.thermal_analyser import ThermalAnalyser
 from mapping.filter_thread import FilterThread
+#from mapping.video_stitcher import VideoStitcher
 from data_share_manager import DataShareManager
 
 # from gunicorn.app.base import BaseApplication
@@ -12,7 +13,6 @@ from flask import Flask, flash, request, redirect, url_for, render_template, jso
 import os
 import signal
 from werkzeug.utils import secure_filename
-
 
 # class FlaskApp(BaseApplication):
 #     def __init__(self, app, options=None):
@@ -176,11 +176,6 @@ class ArgusServer:
                                 view_func=self.get_POI_list)
         self.app.add_url_rule('/delete_poi', methods=['POST'],
                                 view_func=self.delete_POI)
-
-        # self.app.add_url_rule('/<int:report_id>/upload', methods=['POST'],
-        #                       view_func=self.upload_image)
-        # self.app.add_url_rule('/<int:report_id>/process', methods=['GET', 'POST'],
-        #                       view_func=self.process)
 
     def projects_overview(self):
         projects_dict_list = self.project_manager.get_projects()

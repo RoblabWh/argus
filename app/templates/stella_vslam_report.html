@@ -220,8 +220,8 @@
             position: absolute;
             top: 0px;
             left: 0px;
-            width: 360px;
-            height: 360px;
+            width: 300px;
+            height: 300px;
             margin: 10px;
             overflow: hidden;
         }
@@ -230,8 +230,8 @@
             position: absolute;
             top: 0px;
             left: 0px;
-            width: 360px;
-            height: 360px;
+            width: 300px;
+            height: 300px;
             margin: 10px;
             overflow: hidden;
             z-index: 3;
@@ -527,6 +527,7 @@
                         console.log("loading vertices");
                         $.post("/load_vertices/{{ id }}", function(data) {
                             if (data !== "error") {
+                                loadMappingResultSocketViewer(slam_mapping_output[0], originalWidth, originalHeight, data);
                                 setup_vertices_in_map(data, originalWidth, originalHeight, widthInDocument, heightInDocument);
                             }
                         });
@@ -612,7 +613,6 @@
                         ctx.clearRect(0, 0, canvas.width, canvas.height);
                     });
                 });
-                console.log(small_map_areas);
         }
 
         function highlight_small_area(id) {

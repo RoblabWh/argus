@@ -45,4 +45,4 @@ COPY . /detection
 
 
 ENTRYPOINT python3 main.py
-EXPOSE 6000
+EXPOSE 6666

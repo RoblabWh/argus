@@ -25,7 +25,7 @@ services:
     build: ./detection
     container_name: argus_detection
     expose:
-      - ${ARGUS_DETECTION_PORT}:6000
+      - ${ARGUS_DETECTION_PORT}:6666
     volumes:
       - ${ARGUS_PROJECTS}:/detection/static/projects:rw
     environment:

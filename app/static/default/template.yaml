@@ -57,6 +57,8 @@ Mapping:
   
 SocketPublisher:
   publish_points: false
+  publish_frames: false
+  image_quality: 0
 
 #=========================#
 # PatchMatch Parameters #
