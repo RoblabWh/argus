@@ -9,7 +9,7 @@ class SlamManager:
         self.url = 'http://' + self.address + ':' + str(self.port)
         print(self.url, flush=True)
 
-    def start_slam(self, report_id, video, config, mask, orb_vocab, slam_options, other_options,keyfrm_path, landmark_path, keyfrm_folder_path, slam_output_path):
+    def start_slam(self, report_id, video, config, mask, orb_vocab, slam_options, other_options,keyfrm_path, landmark_path, keyfrm_folder_path, map_db_output, slam_output_path):
         try:
             mask_file = mask[0]
         except:
@@ -24,8 +24,8 @@ class SlamManager:
                 'keyfrm_path': keyfrm_path,
                 'landmark_path': landmark_path,
                 'keyfrm_folder_path': keyfrm_folder_path,
+                'map_db_output': map_db_output,
                 'slam_output_path': slam_output_path} #maybe add an output thing for keyframes
-
         requests.post(self.url+'/slam', json=data)
         return True
 

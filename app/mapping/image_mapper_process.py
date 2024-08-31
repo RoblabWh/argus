@@ -97,7 +97,6 @@ class ImageMapperProcess(threading.Thread):
         number_of_images_done = 0
         for image_path in self.image_paths:
             img = np.array(Image.open(image_path))
-            print(img.shape, flush=True)
             output_array = self.generate_image_from_equirectangular(img)
             new_image_path = self.preprocessed_img_folder / (image_path.stem + image_path.suffix)
             output_image = Image.fromarray(output_array)

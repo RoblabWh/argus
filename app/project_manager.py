@@ -22,7 +22,7 @@ class ProjectManager:
         self.projects_path = projects_path
         self.CURRENT_PROJECT_FILE_VERSION = 1.1
         self.projects_dirs = ["rgb", "ir", "panos", "rgb/thumbnails" , "ir/thumbnails", "panos/thumbnails"]
-        self.slam_projects_dirs = ["keyframes","mapping_output"] #maybe one to output keyframes
+        self.slam_projects_dirs = ["keyframes","mapping_output", "map_db"] #maybe one to output keyframes
         self.default_vocab_path = "./static/default/orb_vocab.fbow"
         #self.image_mapper = {}
 
@@ -312,7 +312,7 @@ class ProjectManager:
         return data
 
     def generate_empty_slam_data_dict(self):
-        data = {"video" : [], "video_metadata": {}, "orb_vocab": [], "config": [], "mask": [], "keyframes": [], "map_db": [], "point_cloud": [], "slam_settings": [], "mapping_settings": [],"mapping_output": []}
+        data = {"video" : [], "video_metadata": {}, "insv1" : [], "insv2" : [], "orb_vocab": [], "config": [], "mask": [], "keyframes": [], "map_db": [], "point_cloud": [], "slam_settings": [], "mapping_settings": [],"mapping_output": []}
         return data
 
     def update_file_names(self, id, file_names):
@@ -378,6 +378,22 @@ class ProjectManager:
             json.dump(project, json_file)
         return data['video']
 
+    def set_insv_files(self, id, file_name):
+        project = self.get_project(id)
+        data = project['data']
+        insv = []
+        insv.append(file_name[0])
+        file_number_added = 0
+        if (len(data['insv1']) < 0):
+            data['insv2'].append(file_name[0])
+            file_number_added = 1
+        else:
+            data['insv1'].append(file_name[0])
+            file_number_added = 2
+        with open(self.projects_path + str(id) + "/project.json", "w") as json_file:
+            json.dump(project, json_file)
+        return data['insv' + str(file_number_added)]
+
     def add_default_orb_vocab(self, id):
         project = self.get_project(id)
         data = project['data']
@@ -404,6 +420,8 @@ class ProjectManager:
         project = self.get_project(id)
         data = project['data']
         video = data['video']
+        slam_settings = data['slam_settings']
+        keyframe_profile = slam_settings['keyframe-profile']
         if not video:
             return False
         template_data = {
@@ -412,6 +430,14 @@ class ProjectManager:
             'height': data['video_metadata']['height'],
             'patch_match': False
         }
+        print(keyframe_profile, flush=True)
+        if keyframe_profile == "normal":
+            template_data['publish_points'] = True
+            template_data['KeyframeInserter'] = ""
+        else:
+            template_data['publish_points'] = False
+            template_data['KeyframeInserter'] = "KeyframeInserter: \n max_interval: 0.333 \n min_interval: 0.1 \n max_distance: 1.0 \n lms_ratio_thr_almost_all_lms_are_tracked: 0.9 \n lms_ratio_thr_view_changed: 0.5 \n enough_lms_thr: 100 \n wait_for_local_bundle_adjustment: false"
+        print(template_data, flush=True)
         with open('./static/default/template.yaml', 'r') as template:
             src = Template(template.read())
             result = src.substitute(template_data)
@@ -458,6 +484,13 @@ class ProjectManager:
             json.dump(project, json_file)
 
         return data['slam_settings']
+
+    def load_map_db_file(self, report_id):
+        project = self.get_project(report_id)
+        data = project['data']
+        map_db = data['map_db']
+        map_db.append(self.get_map_db_folder(report_id) + str(report_id) + '.db')
+        self.update_data_by_keyword(report_id, 'map_db', map_db)
 
     def set_mapping_settings(self, report_id, mapping_setting):
         project = self.get_project(report_id)
@@ -723,6 +756,10 @@ class ProjectManager:
 
     def get_keyframe_folder(self, report_id):
         path = self.get_project_path(report_id) + "/keyframes/"
+        return path
+
+    def get_map_db_folder(self, report_id):
+        path = self.get_project_path(report_id) + "/map_db/"
         return path
 
     def get_mapping_output_folder(self, report_id):

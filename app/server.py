@@ -5,7 +5,6 @@ from mapping.mapper_thread import MapperThread
 from mapping.image_mapper_process import ImageMapperProcess
 from thermal.thermal_analyser import ThermalAnalyser
 from mapping.filter_thread import FilterThread
-#from mapping.video_stitcher import VideoStitcher
 from data_share_manager import DataShareManager
 
 # from gunicorn.app.base import BaseApplication
@@ -40,6 +39,7 @@ class ArgusServer:
         self.app.config['TEMPLATES_AUTO_RELOAD'] = True
         self.ALLOWED_EXTENSIONS = set(['png', 'jpg', 'jpeg', 'PNG', 'JPG', 'JPEG'])
         self.ALLOWED_VIDEO_EXTENSIONS = set(['mp4', 'MP4'])
+        self.ALLOWED_INSV_EXTENSIONS = set(['insv', 'INSV'])
         self.ALLOWED_EXTENSIONS_PROJECT = set(['zip'])
 
         self.threads = []
@@ -72,10 +72,10 @@ class ArgusServer:
                               view_func=self.render_report_update)
         self.app.add_url_rule('/<int:report_id>/uploadFile', methods=['POST'],
                               view_func=self.upload_image_file)
-        self.app.add_url_rule('/<int:report_id>/uploadVideoFile', methods=['POST'],
-                              view_func=self.upload_video_file)
         self.app.add_url_rule('/<int:report_id>/uploadVideoFileDropzone', methods=['POST'],
                               view_func=self.upload_video_file_dropzone)
+        self.app.add_url_rule('/<int:report_id>/uploadInsvFileDropzone', methods=['POST'],
+                              view_func=self.upload_insv_file_dropzone)
         self.app.add_url_rule('/<int:report_id>/uploadMaskFile', methods=['POST'],
                               view_func=self.upload_mask_file)
         self.app.add_url_rule('/<int:report_id>/deleteFile', methods=['POST'],
@@ -262,27 +262,7 @@ class ArgusServer:
 
         return json.dumps({'success': True, 'path': save_path}), 200, {'ContentType': 'application/json'}
 
-    #backend video fileupload function
-    def upload_video_file(self, report_id):
-        print("upload_video_file " + str(report_id))
-        if 'video' not in request.files:
-            print('no "video" found in request.files:', request.files)
-            return json.dumps({'success': False}), 418, {'ContentType': 'application/json'}
-        file = request.files['video']
-        file_name = []
-        if file and self.allowed_video_file(file.filename):
-            filename = secure_filename(file.filename)
-            save_path = os.path.join(self.project_manager.projects_path, str(report_id), filename)
-            file_name.append(save_path)
-            file.save(save_path)
-        else:
-            flash('Allowed video types are -> mp4')
-            return json.dumps({'success': False}), 415, {'ContentType': 'application/json'}
-
-        self.project_manager.set_video_file(report_id, file_name)  #maybe create a thread to read video file metadata
-
-        return json.dumps({'success': True, 'path': save_path}), 200, {'ContentType': 'application/json'}
-
+    #handles the backend video file upload by dropzone, checks if it has the correct type and saves it with the project manager
     def upload_video_file_dropzone(self, report_id):
         print("upload_video_file_dropzone " + str(report_id), flush=True)
         if 'video' not in request.files:
@@ -300,6 +280,26 @@ class ArgusServer:
             return json.dumps({'success': False}), 415, {'ContentType': 'application/json'}
 
         self.project_manager.set_video_file(report_id, file_name)
+
+        return json.dumps({'success': True, 'path': save_path}), 200, {'ContentType': 'application/json'}
+
+    def upload_insv_file_dropzone(self, report_id):
+        print("upload_video_file_dropzone " + str(report_id), flush=True)
+        if 'insv' not in request.files:
+            print('no "insv" found in request.files:', request.files, flush=True)
+            return json.dumps({'success': False}), 418, {'ContentType': 'application/json'}
+        file = request.files['insv']
+        file_name = []
+        if file and self.allowed_insv_file(file.filename):
+            filename = secure_filename(file.filename)
+            save_path = os.path.join(self.project_manager.projects_path, str(report_id), filename)
+            file_name.append(save_path)
+            file.save(save_path)
+        else:
+            flash('Allowed video types are -> insv')
+            return json.dumps({'success': False}), 415, {'ContentType': 'application/json'}
+
+        self.project_manager.set_insv_files(report_id, file_name)
 
         return json.dumps({'success': True, 'path': save_path}), 200, {'ContentType': 'application/json'}
 
@@ -485,14 +485,17 @@ class ArgusServer:
             print("process started")
             return jsonify(thread.get_progress_preprocess())
 
+    #the method to start slam, it will tell the slam_manager to start slam, which will tell the slam container to execute the script with the correct parameters
     def start_slam(self, report_id):
         if request.method == 'POST':
             no_sleep = request.form.get('no_sleep')
             frame_skip = request.form.get('frame_skip')
+            keyframe_chooser = request.form.get('keyframe-chooser')
+            print(keyframe_chooser, flush=True)
             generate_overview_map = request.form.get('generate_overview_map')
             update_frequency = int(request.form.get('update_frequency'))
             no_sleep = True if no_sleep is not None else False
-            slam_settings = {"no_sleep": no_sleep, "frame_skip": frame_skip}
+            slam_settings = {"no_sleep": no_sleep, "frame_skip": frame_skip, "keyframe-profile": keyframe_chooser}
             generate_map = True if generate_overview_map is not None else False
             self.project_manager.set_slam_settings(report_id, slam_settings)
             self.project_manager.set_mapping_settings(report_id, generate_overview_map)
@@ -516,6 +519,7 @@ class ArgusServer:
             print(self.project_manager.get_keyframe_file_path(report_id), flush=True)
             print(self.project_manager.get_landmark_file_path(report_id), flush=True)
             print(self.project_manager.get_slam_output_file_path(report_id), flush=True)
+            print(self.project_manager.get_map_db_folder(report_id) + str(report_id) + ".db", flush=True)
 
             #slam thread or smth
             self.slam_manager.start_slam(report_id=report_id,
@@ -528,6 +532,7 @@ class ArgusServer:
                 keyfrm_path=self.project_manager.get_keyframe_file_path(report_id),
                 landmark_path=self.project_manager.get_landmark_file_path(report_id),
                 keyfrm_folder_path = self.project_manager.get_keyframe_folder(report_id),
+                map_db_output = self.project_manager.get_map_db_folder(report_id) + str(report_id) + ".db",
                 slam_output_path = self.project_manager.get_slam_output_file_path(report_id))
         return jsonify("null") #self.render_slam_report(report_id, start_slam=True, template='stella_vslam_upload.html');
 
@@ -737,10 +742,13 @@ class ArgusServer:
                 output = self.project_manager.get_mapping_output_folder(report_id)
                 self.project_manager.load_keyframe_images(report_id)
                 mapping_settings = self.project_manager.get_mapping_settings(report_id)
+                print((mapping_settings is not None), flush=True)
+                self.project_manager.load_map_db_file(report_id)
                 #start image mapper thread stuff
-                if mapping_settings:
+                if mapping_settings is not None:
                     extensions = ['.jpg', '.png']
                     fov = [80,80]
+                    print("starting mapping process", flush=True)
                     thread = ImageMapperProcess(keyfrm_folder, output, extensions, fov, keyfrms, report_id)
                     self.threads.append(thread)
                     thread.start()
@@ -1324,6 +1332,9 @@ class ArgusServer:
 
     def allowed_video_file(self, filename):
         return '.' in filename and filename.rsplit('.', 1)[1].lower() in self.ALLOWED_VIDEO_EXTENSIONS
+
+    def allowed_insv_file(self, filename):
+        return '.' in filename and filename.rsplit('.', 1)[1].lower() in self.ALLOWED_INSV_EXTENSIONS
 
     def allowed_file_project(self, filename):
         return '.' in filename and filename.rsplit('.', 1)[1].lower() in self.ALLOWED_EXTENSIONS_PROJECT

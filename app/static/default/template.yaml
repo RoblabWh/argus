@@ -47,16 +47,26 @@ Mapping:
   redundant_obs_ratio_thr: 0.95
   
   
+#=========================#
+# LoopDetector Parameters #
+#=========================#
+
+LoopDetector:
+  enabled: true
+  reject_by_graph_distance: true
+  min_distance_on_graph: 50
+
+  
 #====================#
 # Keyframe  Inserter #
 #====================#
-#KeyframeInserter:
-#  max_interval: 0.33
-#  min_interval: 0.1
-#  max_distance: 1.0
+$KeyframeInserter
   
+#=============================#
+# SocketPublisher Parameters #
+#=============================#
 SocketPublisher:
-  publish_points: false
+  publish_points: $publish_points
   publish_frames: false
   image_quality: 0
 
