@@ -60,6 +60,24 @@
             color: var(--font-color-b);
         }
 
+        .tooltip .tooltiptext {
+            visibility: hidden;
+            width: 120px;
+            background-color: black;
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 5px 0;
+
+            /* Position the tooltip */
+            position: absolute;
+            z-index: 1;
+        }
+
+        .tooltip:hover .tooltiptext {
+            visibility: visible;
+        }
+
         #descriptionText{
             margin: 0px;
             padding: 8px;
@@ -393,15 +411,31 @@
         <div>
             {% include 'aiDetectorSlam.html' %}
         </div>
-        <div>
+            <div class="bodyDiv">
+                {% if has_keyframe_images %}
+                    <div id = "keyframe_viewer">
+                    {% include 'panoViewerSlam.html' %}
+                    </div>
+                {% endif %}
             {% include 'keyframe_overview.html' %}
-        </div>
-    </div>
+            <div style="display: flex; margin: 5px 0 15px 0">
+            <form id="export-nerf-form" action="{{ id }}/export_nerf" method="post" style="">
+                <button class="big_button" type="submit" id="export-nerf-button" style="width: 200px; height: 2rem">
+                    <div style="margin: auto 0 auto 0; display: flex;">
+                        <p style="display: inline-block; margin: auto;font-size: 14px;">Export to Nerf</p>
+                        <div style="dislpay: none; margin: 0;transition: 0.3s">
+                            <div id="nerf_export_feedback_spinner" class="spinner-small-export" style="display: none;"></div>
+                        </div>
+                    </div>
+                </button>
+            </form>
+            </div>
     <script type="text/javascript" src="{{url_for('static', filename='default/js/main.js') }}"></script>
     <script>
 
-        var highlight_area_color = 'rgba(0,0,255,0.5)'
-        var current_area_color = 'rgba(120,215,255,0.5)'
+        var highlight_area_color = 'rgba(0,0,255,0.5)';
+        var current_area_color = 'rgba(120,215,255,0.5)';
+        var intervalIDExport = null;
 
         function toggleTextfieldTitle(){
             fakeButton = document.getElementById("edit-title-button");
@@ -434,6 +468,7 @@
         var slam_output = {{ slam_output | tojson }};
         var processing = {{ processing | tojson }};
         var slam_mapping_output = {{ slam_mapping_output | tojson }};
+        var nerf_export = {{ nerf_export | tojson }};
         var small_map_areas = null;
 
         window.onload = (event) => {
@@ -497,6 +532,7 @@
                 console.log(progress);
 
                 if(progress === 1) {
+                    enable_export_button()
                     console.log('done');
                     document.getElementById("progress-bar-text").innerHTML = "DONE";
                     window.clearInterval(intervalID);
@@ -701,16 +737,113 @@
             });
         }
 
+        function prepareNerfExport() {
+            disable_ai_detection_button();
+            let spinner = document.getElementById("nerf_export_feedback_spinner");
+            spinnerParent = spinner.parentElement;
+
+            spinnerParent.style.display = "inline-block";
+            spinnerParent.style.margin = "auto auto auto 0";
+
+            spinner.style.display = "inline-block";
+
+            //deactivate download button
+            //also do this while the mapping is running
+            let exportButton = document.getElementById("export-nerf-button");
+            exportButton.disabled = true;
+            exportButton.style.backgroundColor = "var(--bg-color-a)";
+            exportButton.style.color = "var(--bg-color-b)";
+            exportButton.style.cursor = "default";
+            $.post("/{{ id }}/export_nerf", $("#export-nerf-form").serialize(), function(response){
+                if (response.success) {
+                    //set interval to check if export to nerf is done
+                    intervalIDExport = window.setInterval(check_if_export_finished, 1000);
+                    check_if_export_finished({{ id }});
+                } else {
+                    let spinner = document.getElementById("nerf_export_feedback_spinner");
+                    spinner.style.display = "none";
+                    spinnerParent.style.display = "none";
+                    spinnerParent.style.margin = "0";
+                    exportButton.disabled = false;
+                    exportButton.style.backgroundColor = "var(--accent-color-interaction)";
+                    exportButton.style.color = "var(--font-color-b)";
+                    exportButton.style.cursor = "pointer";
+                }
+            });
+        }
+
+        function check_if_export_finished(report_id) {
+            $.get('/{{ id }}/is_export_finished', (result) => {
+                console.log(result);
+                if(result.finished) {
+                    window.clearInterval(intervalIDExport);
+                    let exportButton = document.getElementById("export-nerf-button");
+                    let spinner = document.getElementById("nerf_export_feedback_spinner");
+                    spinner.style.display = "none";
+                    spinnerParent.style.display = "none";
+                    spinnerParent.style.margin = "0";
+                    exportButton.disabled = false;
+                    exportButton.style.backgroundColor = "var(--accent-color-interaction)";
+                    exportButton.style.color = "var(--font-color-b)";
+                    exportButton.style.cursor = "pointer";
+                    add_nerf_download();
+                    enable_ai_detection_button();
+                    alert("Nerf Export Finished; it can be downloaded with the download button top left.")
+                }
+            })
+        }
+
+        function disable_export_button() {
+            let exportButton = document.getElementById("export-nerf-button");
+            exportButton.classList.add('tooltip');
+            exportButton.disabled = true;
+            exportButton.style.backgroundColor = "var(--bg-color-a)";
+            exportButton.style.color = "var(--bg-color-b)";
+            exportButton.style.cursor = "default";
+            exportButtonTooltip = document.createElement('span');
+            exportButtonTooltip.setAttribute('class', 'tooltiptext');
+            exportButtonTooltip.innerHTML = "cannot export to nerf, while other processes are running";
+            exportButton.appendChild(exportButtonTooltip)
+        }
+
+        function enable_export_button() {
+            let exportButton = document.getElementById("export-nerf-button");
+            exportButton.classList.remove('tooltip');
+            tooltip = exportButton.querySelector('.tooltiptext');
+            exportButton.removeChild(tooltip);
+            exportButton.disabled = false;
+            exportButton.style.backgroundColor = "var(--accent-color-interaction)";
+            exportButton.style.color = "var(--font-color-b)";
+            exportButton.style.cursor = "pointer";
+        }
+
+        function add_nerf_download() {
+            download_export_chooser = document.getElementById('export-chooser');
+            nerf_download_option = document.createElement('option');
+            nerf_download_option.setAttribute("value", "nerf");
+            nerf_download_option.innerHTML = "Nerf Export";
+            download_export_chooser.appendChild(nerf_download_option);
+        }
+
         {% if processing %}
         console.log("next checking progess");
+        disable_export_button()
         //check_progress({{ id }}, 'progress_bar');
         var intervalID = window.setInterval(check_slam_map_progress, 1000);
         check_slam_map_progress({{ id }});
+        {% endif %}
 
+        {% if nerf_export %}
+            add_nerf_download();
+            console.log("has nerf export files");
         {% endif %}
 
         document.getElementById('export-button').addEventListener('click', function() {
             prepareExport();
+        });
+
+        document.getElementById('export-nerf-button').addEventListener('click', function() {
+            prepareNerfExport();
         });
     </script>
     {% include 'footer.html' %}

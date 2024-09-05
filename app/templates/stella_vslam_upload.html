@@ -709,8 +709,8 @@
         </div>
         <h1>or</h1>-->
         <div class="dropzone" id="video-file-upload-dropzone">
-            <h2>Video File Upload</h2>
-            <div id="dropzone-text" class="dz-message" data-dz-message><span>Drag and drop the video here or click in the area to open the file explorer.</span></div>
+            <h2>Video/ INSV File Upload</h2>
+            <div id="dropzone-text" class="dz-message" data-dz-message><span>Drag and drop the video/insv file here or click in the area to open the file explorer.</span></div>
         </div>
       <div class="small-upload-area" id="mask-upload-area">
         <div class="upload-area__label" id="mask-upload-label">Mask file Upload</div>
@@ -758,7 +758,7 @@
     let videoFileDropzone = new Dropzone("#video-file-upload-dropzone",{
         paramName: "video",
         maxFilesize: 5000, //MB
-        acceptedFiles: ".mp4",
+        acceptedFiles: ".mp4,.insv,.avi",
         maxFiles: 1,
         accept: function(file,done) {
             done();
@@ -772,50 +772,56 @@
                 this.emit('thumbnail', file, "{{ url_for('static', filename='default/placeholder_video.png') }}");
             });
             this.on('success', (file, response) => {
-                videoUploadedSuccessfully = true;
-                var progressBar = file.previewElement.querySelector(".dz-progress");
-                progressBar.classList.add("hidden");
-                var thumbnail = file.previewElement.querySelector(".dz-image");
-                thumbnail.removeChild(thumbnail.firstChild);
+                if(file.name.includes('.insv')) {
+                    console.log("reloading page")
+                    window.location.href = '/{{ id }}';
+                }
+                else {
+                    videoUploadedSuccessfully = true;
+                    var progressBar = file.previewElement.querySelector(".dz-progress");
+                    progressBar.classList.add("hidden");
+                    var thumbnail = file.previewElement.querySelector(".dz-image");
+                    thumbnail.removeChild(thumbnail.firstChild);
 
-                const vid = document.createElement('video');
-                vid.style = "outline:none; width:100%;height:100%;";
-                vid.setAttribute("controls","controls");
-                vid.setAttribute("muted","muted");
-                const source = document.createElement('source')
-                source.id = "videoSource";
-                source.src = JSON.parse(response).path;
-                vid.appendChild(source);
-                
-                // Create the uploaded image container
-                const uploadedVideo = document.createElement('div');
-                uploadedVideo.className = 'uploaded-video';
+                    const vid = document.createElement('video');
+                    vid.style = "outline:none; width:100%;height:100%;";
+                    vid.setAttribute("controls", "controls");
+                    vid.setAttribute("muted", "muted");
+                    const source = document.createElement('source')
+                    source.id = "videoSource";
+                    source.src = JSON.parse(response).path;
+                    vid.appendChild(source);
 
-                const fallbackImg = document.createElement('img');
-                fallbackImg.src = "{{ url_for('static', filename='default/placeholder_video.png') }}";
+                    // Create the uploaded image container
+                    const uploadedVideo = document.createElement('div');
+                    uploadedVideo.className = 'uploaded-video';
 
-                // Create the delete button
-                const deleteButton = document.createElement('div');
-                deleteButton.className = 'delete-button';
-                deleteButton.innerHTML = '<a style="font-size: 17px; margin-top: auto; color: var(--font-color-b);">✖</a>';
+                    const fallbackImg = document.createElement('img');
+                    fallbackImg.src = "{{ url_for('static', filename='default/placeholder_video.png') }}";
 
-                const filenameText = document.createElement('div');
-                filenameText.className = 'filename-text';
-                filenameText.textContent = getFilenameFromPath(file.name);
+                    // Create the delete button
+                    const deleteButton = document.createElement('div');
+                    deleteButton.className = 'delete-button';
+                    deleteButton.innerHTML = '<a style="font-size: 17px; margin-top: auto; color: var(--font-color-b);">✖</a>';
 
-                //make deletebutton appear inactive
-                deleteButton.style.backgroundColor = 'var(--bg-color-b)';
-                deleteButton.style.cursor = 'not-allowed';
+                    const filenameText = document.createElement('div');
+                    filenameText.className = 'filename-text';
+                    filenameText.textContent = getFilenameFromPath(file.name);
 
-                uploadedVideo.appendChild(vid);
-                uploadedVideo.appendChild(deleteButton);
-                uploadedVideo.appendChild(filenameText);
+                    //make deletebutton appear inactive
+                    deleteButton.style.backgroundColor = 'var(--bg-color-b)';
+                    deleteButton.style.cursor = 'not-allowed';
 
-                // Append the uploaded image container to the uploaded images container
-                thumbnail.appendChild(uploadedVideo);
-                updateUploadProgress();
-                document.getElementById('video-file-upload-dropzone').style.cursor = 'default';
-                this.disable();
+                    uploadedVideo.appendChild(vid);
+                    uploadedVideo.appendChild(deleteButton);
+                    uploadedVideo.appendChild(filenameText);
+
+                    // Append the uploaded image container to the uploaded images container
+                    thumbnail.appendChild(uploadedVideo);
+                    updateUploadProgress();
+                    document.getElementById('video-file-upload-dropzone').style.cursor = 'default';
+                    this.disable();
+                }
             });
 
             this.on('processing', (file) => {
@@ -845,93 +851,6 @@
     var insvUploading = false;
     var insvUploadedSuccessfully = false;
     var insvFileNames = "";
-
-    /*let insvFileDropzone = new Dropzone("#insv-file-upload-dropzone",{
-        paramName: "insv",
-        maxFilesize: 5000, //MB
-        acceptedFiles: ".insv",
-        maxFiles: 2,
-        accept: function(file,done) {
-            done();
-        },
-        url: "/{{ id }}/uploadInsvFileDropzone",
-        method: "post",
-        forceChunking: true,
-        init: function() {
-            this.on('addedfile', (file) => {
-                insvUploading = true;
-                this.emit('thumbnail', file, "{{ url_for('static', filename='default/placeholder_video.png') }}");
-            });
-            this.on('success', (file, response) => {
-                videoUploadedSuccessfully = true;
-                var progressBar = file.previewElement.querySelector(".dz-progress");
-                progressBar.classList.add("hidden");
-                var thumbnail = file.previewElement.querySelector(".dz-image");
-                thumbnail.removeChild(thumbnail.firstChild);
-
-                const vid = document.createElement('video');
-                vid.style = "outline:none; width:100%;height:100%;";
-                vid.setAttribute("controls","controls");
-                vid.setAttribute("muted","muted");
-                const source = document.createElement('source')
-                source.id = "videoSource";
-                source.src = JSON.parse(response).path;
-                vid.appendChild(source);
-
-                // Create the uploaded image container
-                const uploadedVideo = document.createElement('div');
-                uploadedVideo.className = 'uploaded-video';
-
-                const fallbackImg = document.createElement('img');
-                fallbackImg.src = "{{ url_for('static', filename='default/placeholder_video.png') }}";
-
-                // Create the delete button
-                const deleteButton = document.createElement('div');
-                deleteButton.className = 'delete-button';
-                deleteButton.innerHTML = '<a style="font-size: 17px; margin-top: auto; color: var(--font-color-b);">✖</a>';
-
-                const filenameText = document.createElement('div');
-                filenameText.className = 'filename-text';
-                filenameText.textContent = getFilenameFromPath(file.name);
-
-                //make deletebutton appear inactive
-                deleteButton.style.backgroundColor = 'var(--bg-color-b)';
-                deleteButton.style.cursor = 'not-allowed';
-
-                uploadedVideo.appendChild(vid);
-                uploadedVideo.appendChild(deleteButton);
-                uploadedVideo.appendChild(filenameText);
-
-                // Append the uploaded image container to the uploaded images container
-                thumbnail.appendChild(uploadedVideo);
-                updateUploadProgress();
-                document.getElementById('insv-file-upload-dropzone').style.cursor = 'default';
-                this.disable();
-            });
-
-            this.on('processing', (file) => {
-                console.log('processing');
-                console.log(file);
-            });
-            this.on('complete', (file) => {
-                console.log('complete');
-                console.log(file);
-            });
-
-            this.on('processing', (file) => {
-                console.log('processing');
-                console.log(file);
-            });
-
-            this.on('error', (file, errorMessage) => {
-                console.log(errorMessage);
-            });
-
-            this.on('maxfilesexceeded', (file) => {
-                this.removeFile(file);
-            });
-        }
-    });*/
 
     function getFilenameFromPath(path) {
       return path.split('\\').pop().split('/').pop();

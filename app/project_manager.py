@@ -22,8 +22,12 @@ class ProjectManager:
         self.projects_path = projects_path
         self.CURRENT_PROJECT_FILE_VERSION = 1.1
         self.projects_dirs = ["rgb", "ir", "panos", "rgb/thumbnails" , "ir/thumbnails", "panos/thumbnails"]
-        self.slam_projects_dirs = ["keyframes","mapping_output", "map_db"] #maybe one to output keyframes
+        self.slam_projects_dirs = ["keyframes","mapping_output", "map_db", "nerf_export"] #maybe one to output keyframes
         self.default_vocab_path = "./static/default/orb_vocab.fbow"
+        self.default_stitcher_path = "./static/default/stitcher_calibration.json"
+        self.default_vingette_0_path = "./static/default/vingette_0.png"
+        self.default_vingette_1_path = "./static/default/vingette_1.png"
+        self.default_stitcher_video_file_ext = ".avi"
         #self.image_mapper = {}
 
     def create_project(self, name, description):
@@ -312,7 +316,7 @@ class ProjectManager:
         return data
 
     def generate_empty_slam_data_dict(self):
-        data = {"video" : [], "video_metadata": {}, "insv1" : [], "insv2" : [], "orb_vocab": [], "config": [], "mask": [], "keyframes": [], "map_db": [], "point_cloud": [], "slam_settings": [], "mapping_settings": [],"mapping_output": []}
+        data = {"video" : [], "video_metadata": {}, "insv1" : [], "insv2" : [], "orb_vocab": [], "stitcher_config": [], "config": [], "mask": [], "keyframes": [], "map_db": [], "point_cloud": [], "slam_settings": [], "mapping_settings": [],"mapping_output": []}
         return data
 
     def update_file_names(self, id, file_names):
@@ -373,35 +377,84 @@ class ProjectManager:
         data['video_metadata']['fps'] = fps
         data['video_metadata']['width'] = int(video_width)
         data['video_metadata']['height'] = int(video_height)
+        print(data, flush=True)
         print("setting video to project with id: " + str(id))
         with open(self.projects_path + str(id) + "/project.json", "w") as json_file:
             json.dump(project, json_file)
         return data['video']
 
-    def set_insv_files(self, id, file_name):
+    def set_insv_file(self, id, file_name):
+        return self.set_insv1_file(id, file_name)
+
+    def set_insv1_file(self, id, file_name):
         project = self.get_project(id)
         data = project['data']
         insv = []
         insv.append(file_name[0])
-        file_number_added = 0
-        if (len(data['insv1']) < 0):
-            data['insv2'].append(file_name[0])
-            file_number_added = 1
-        else:
-            data['insv1'].append(file_name[0])
-            file_number_added = 2
+        data['insv1'] = insv
         with open(self.projects_path + str(id) + "/project.json", "w") as json_file:
             json.dump(project, json_file)
-        return data['insv' + str(file_number_added)]
+        return data['insv1']
+
+    def set_insv2_file(self, id, file_name):
+        project = self.get_project(id)
+        data = project['data']
+        insv = []
+        insv.append(file_name[0])
+        data['insv2'] = insv
+        with open(self.projects_path + str(id) + "/project.json", "w") as json_file:
+            json.dump(project, json_file)
+        return data['insv2']
+
+    def already_has_insv_file(self, report_id, file_name):
+        project = self.get_project(report_id)
+        data = project['data']
+        insv1 = data['insv1']
+        insv2 = data['insv2']
+        if len(insv1) + len(insv2) == 0:
+            return False
+        if len(insv1) > 0:
+            insv_file = insv1[0]
+        if len(insv2) > 0:
+            insv_file = insv2[0]
+        if (os.path.basename(insv_file) ==file_name):
+            return True
+        else:
+            return False
+
+    def load_video_from_stitcher(self, report_id):
+        project = self.get_project(report_id)
+        data = project['data']
+        video = self.get_default_stitcher_video_name(report_id)
+        if (os.path.isfile(video)) :
+            self.set_video_file(report_id, [video])
+            return True
+        return False
+
+    def get_default_stitcher_video_name(self, report_id):
+        return self.get_project_path(report_id) + "/" + str(report_id) + self.default_stitcher_video_file_ext
 
     def add_default_orb_vocab(self, id):
         project = self.get_project(id)
         data = project['data']
-        #target self.default_vocab_path
+        # target self.default_vocab_path
         dst = os.path.join(self.projects_path, str(id), "orb_vocab.fbow")
         shutil.copyfile(self.default_vocab_path, dst)
         self.set_orb_vocab(id, [dst])
         return data["orb_vocab"]
+
+    def add_default_stitcher_config(self, id):
+        project = self.get_project(id)
+        data = project['data']
+        #target self.default_vocab_path
+        dst = os.path.join(self.projects_path, str(id), "stitcher_calibration.json")
+        shutil.copyfile(self.default_stitcher_path, dst)
+        self.set_stitcher_config(id, [dst])
+        dst2 = os.path.join(self.projects_path, str(id), "vingette_0.png")
+        shutil.copyfile(self.default_vingette_0_path, dst2)
+        dst3 = os.path.join(self.projects_path, str(id), "vingette_1.png")
+        shutil.copyfile(self.default_vingette_1_path, dst3)
+        return data["stitcher_config"]
 
     def set_orb_vocab(self, id, file_name):
         project = self.get_project(id)
@@ -415,6 +468,18 @@ class ProjectManager:
             json.dump(project, json_file)
 
         return data['orb_vocab']
+
+    def set_stitcher_config(self, id, file_name):
+        project = self.get_project(id)
+        data = project['data']
+        stitcher_config = []
+        stitcher_config.append(file_name[0])
+        data['stitcher_config'] = stitcher_config
+        print("setting video to project with id: " + str(id))
+        with open(self.projects_path + str(id) + "/project.json", "w") as json_file:
+            json.dump(project, json_file)
+
+        return data['stitcher_config']
 
     def generate_config_file(self, id):
         project = self.get_project(id)
@@ -437,6 +502,9 @@ class ProjectManager:
         else:
             template_data['publish_points'] = False
             template_data['KeyframeInserter'] = "KeyframeInserter: \n max_interval: 0.333 \n min_interval: 0.1 \n max_distance: 1.0 \n lms_ratio_thr_almost_all_lms_are_tracked: 0.9 \n lms_ratio_thr_view_changed: 0.5 \n enough_lms_thr: 100 \n wait_for_local_bundle_adjustment: false"
+        #disable landmark output for large videos
+        if data['video_metadata']['width'] > 5000:
+            template_data['publish_points'] = False
         print(template_data, flush=True)
         with open('./static/default/template.yaml', 'r') as template:
             src = Template(template.read())
@@ -486,11 +554,37 @@ class ProjectManager:
         return data['slam_settings']
 
     def load_map_db_file(self, report_id):
+        path = self.get_map_db_folder(report_id) + str(report_id) + '.db'
+        if os.path.isfile(path):
+            project = self.get_project(report_id)
+            data = project['data']
+            map = []
+            map.append(self.get_map_db_folder(report_id) + str(report_id) + '.db')
+            data['map_db'] = map
+            with open(self.projects_path + str(report_id) + "/project.json", "w") as json_file:
+                json.dump(project, json_file)
+            return True
+        else:
+            return False
+
+    def get_map_db(self, report_id):
         project = self.get_project(report_id)
         data = project['data']
-        map_db = data['map_db']
-        map_db.append(self.get_map_db_folder(report_id) + str(report_id) + '.db')
-        self.update_data_by_keyword(report_id, 'map_db', map_db)
+        return data['map_db']
+
+    def get_nerf_export_folder(self, report_id):
+        path = self.get_project_path(report_id) + "/nerf_export/"
+        return path
+
+    def has_nerf_export(self, report_id):
+        path = self.get_nerf_export_folder(report_id)
+        if (os.path.exists(path)):
+            if len(os.listdir(path)) == 0:
+                return False
+            else:
+                return True
+        else:
+            return False
 
     def set_mapping_settings(self, report_id, mapping_setting):
         project = self.get_project(report_id)
@@ -942,6 +1036,30 @@ class ProjectManager:
         with open(os.path.join(self.projects_path, str(report_id), "project.json"), "w") as json_file:
             json.dump(project, json_file)
 
+    def remove_from_file_name_insv1(self, report_id, file_path):
+        project = self.get_project(report_id)
+        data = project['data']
+        try:
+            insv1 = data['insv1']
+        except:
+            insv1 = []
+        insv1.remove(file_path)
+        print(project, flush=True)
+        with open(os.path.join(self.projects_path, str(report_id), "project.json"), "w") as json_file:
+            json.dump(project, json_file)
+
+    def remove_from_file_name_insv2(self, report_id, file_path):
+        project = self.get_project(report_id)
+        data = project['data']
+        try:
+            insv2 = data['insv2']
+        except:
+            insv2 = []
+        insv2.remove(file_path)
+        print(project, flush=True)
+        with open(os.path.join(self.projects_path, str(report_id), "project.json"), "w") as json_file:
+            json.dump(project, json_file)
+
     def generate_project_zip(self, report_id):
         path = self.projects_path + str(report_id)
         shutil.make_archive(path, 'zip', path)
@@ -959,6 +1077,12 @@ class ProjectManager:
         # shutil.make_archive(path, 'zip', *maps_paths)
         self.zip_files(path + ".zip", maps_paths)
         return path + ".zip"
+
+    def generate_slam_nerf_export_zip(self, report_id):
+        path = self.get_project_path(report_id) + "/nerf_export/"
+        output_path = self.projects_path + str(report_id) + "/nerf_export"
+        shutil.make_archive(output_path, 'zip', path)
+        return output_path + ".zip"
 
     def generate_keyframes_zip(self, report_id):
         keyframes = self.get_keyframes(report_id)

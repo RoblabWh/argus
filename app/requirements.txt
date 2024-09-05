@@ -25,3 +25,4 @@ pyyaml
 werkzeug == 2.2.2
 Cython == 3.0.10
 py360convert
+numba

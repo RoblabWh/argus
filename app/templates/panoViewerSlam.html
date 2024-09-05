@@ -123,10 +123,11 @@ const customSize = 20;
 const minDistCss = 0;
 const maxDistCss = 10;
 const minDetectionScore = 0.8;
+const firstSceneId = "0";
 
 var pannellum_settings = {
     "default": {
-        "firstScene": "0",
+        "firstScene": firstSceneId,
         "author": "Matthew Petroff",
         "sceneFadeDuration": 1000
     },"scenes": {}
@@ -136,16 +137,16 @@ for (let i = 0; i < keyframes_sort.length; i++) {
     keyframe_indices[i] = parseInt(keyframes_sort[i].replace(/\D/g,''));
     let scene = {};
     let id = keyframes_sort[i].replace(/\D/g,'');
-    let scene_settings = {};
-    scene_settings.title = keyframes_sort[i];
-    scene_settings.type = "equirectangular";
-    scene_settings.panorama = keyframe_folder + keyframes_sort[i];
-    scene_settings.preview = keyframe_folder + keyframes_sort[i];
-    scene_settings.autoLoad = true;
-    scene_settings.minHfov = 5;
-    scene_settings.maxHfov = 140;
-    scene_settings.showControls = false;
-    pannellum_settings.scenes[id]= scene_settings;
+        let scene_settings = {};
+        scene_settings.title = keyframes_sort[i];
+        scene_settings.type = "equirectangular";
+        scene_settings.panorama = keyframe_folder + keyframes_sort[i];
+        scene_settings.preview = keyframe_folder + keyframes_sort[i];
+        scene_settings.autoLoad = true;
+        scene_settings.minHfov = 5;
+        scene_settings.maxHfov = 140;
+        scene_settings.showControls = false;
+        pannellum_settings.scenes[id] = scene_settings;
 }
 
 viewer = pannellum.viewer('panorama', pannellum_settings);
@@ -181,7 +182,6 @@ function updateHotspots(viewer) {
             }
             //calculate inverse pose matrix
             let pose = getInverseOfPose(keyframe.pose);
-
             //calculate distance and pitch and yaw based on currentPose and keyframe.pose
             let dx = pose.elements[12] - currentPose.elements[12];
             let dy = pose.elements[13] - currentPose.elements[13];
@@ -194,9 +194,12 @@ function updateHotspots(viewer) {
             let z = camDiff.getComponent(2);
 
             let distance = Math.sqrt((x*x)+(y*y)+(z*z));
+            if(distance === 0){
+                continue;
+            }
+
             let pitch = 90 - Math.acos(-y / distance) * (180 / Math.PI);
             let yaw = Math.atan2(x, z) * (180 / Math.PI);
-
             keyframeStats[keyframe.id] = {
                 "pitch": pitch,
                 "yaw": yaw,

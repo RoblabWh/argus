@@ -1,0 +1,1253 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/html">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Upload</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='default/variables-light.css') }}" id="currentCss">
+    <script type="text/javascript" src="{{url_for('static', filename='default/js/lib/dat.gui.min.js') }}"></script>
+    <script type="text/javascript" src="{{url_for('static', filename='default/js/lib/protobuf.min.js') }}"></script>
+    <script type="text/javascript" src="{{url_for('static', filename='default/js/lib/stats.min.js') }}"></script>
+    <script type="text/javascript" src="{{url_for('static', filename='default/js/lib/three.min.js') }}"></script>
+    <script type="text/javascript" src="{{url_for('static', filename='default/js/ViewControls.js') }}"></script>
+    <script type="text/javascript" src="{{url_for('static', filename='default/js/Mouse.js') }}"></script>
+    <script type="text/javascript" src="{{url_for('static', filename='default/js/PointCloud.js') }}"></script>
+    <script type="text/javascript" src="{{url_for('static', filename='default/js/CameraFrames.js') }}"></script>
+  <style>
+    body {
+      margin-left: 0px;
+      margin-right: 0px;
+      margin-bottom: 0px;
+      background-color: var(--bg-color-page);
+      color: var(--font-color-a);
+    }
+
+    .bodyDiv {
+      min-height: 95vh;
+      width: 94%;
+      max-width: 1400px;
+      margin: 0 auto !important;
+      float: none !important;
+      font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    }
+
+    .dz-upload {
+        display: block;
+        background-color: red;
+        height: 10px;
+        width: 0%;
+    }
+
+    .dz-success-mark {
+        display: none;
+    }
+
+    .dz-error-mark {
+        display: none;
+    }
+
+    .edit-text-button {
+      font-size: 18px;
+      height: fit-content;
+      width: 18px;
+      margin-top: 5px;
+      border-radius: 5px;
+      border-style: solid;
+      border-color: var(--bg-color-b);
+      border-width: 1px;
+      background-color: var(--bg-color-a);
+    }
+
+    .hidden {
+        visibility: hidden;
+        opacity: 0;
+        transition: visibility 0s 1s, opacity 1s linear;
+    }
+
+    .edit-text-button:hover {
+      background-color: var(--accent-color-interaction);
+      color: var(--font-color-b);
+    }
+
+    #descriptionText {
+      margin: 0px;
+      padding: 8px;
+      border-radius: 5px;
+      border-style: solid;
+      border-color: transparent;
+      background-color: transparent;
+    }
+
+    #title-name {
+      margin: 0px;
+      margin-left: -14px;
+      padding: 8px;
+      max-width: 95%;
+      border-radius: 6px;
+      border-style: solid;
+      border-color: transparent;
+    }
+
+    #descriptionText.editable,
+    #title-name.editable {
+      border-radius: 6px;
+      border-style: solid;
+      border-color: var(--accent-color-interaction);
+    }
+
+    .upload_and_model {
+        min-height: 500px;
+        overflow: hidden;
+        display: inherit;
+        padding: 30 px;
+    }
+
+    #WebGL-output {
+       height: 400px;
+       max-height: 50vh;
+       width: 100%;
+       display: flex;
+       justify-content: center;
+       margin: 0 auto;
+
+       position: absolute;
+       top: 20px;
+       bottom: 0;
+       border:1px solid black;
+       visibility: hidden;
+
+    }
+
+    .vslam_model {
+      width: 40%;
+      float: left;
+      position: relative;
+      height: 400px;
+      max-height: 50vh;
+    }
+
+    .upload-area {
+      width: 40%;
+      padding: 20px 5%;
+      overflow: hidden;
+    }
+
+    .small-upload-area {
+      width: 75%;
+      margin: 20px 0;
+      padding: 10px 5%;
+      border: 2px dashed #ccc;
+      border-radius: 10px;
+      text-align: center;
+    }
+
+    .dropzone {
+      width: 75%;
+      min-height: 200px;
+      margin: 20px 0;
+      padding: 10px 5%;
+      border: 2px dashed #ccc;
+      border-radius: 10px;
+      text-align: center;
+      cursor: pointer;
+    }
+
+    .upload-area__label {
+      font-size: 24px;
+      font-weight: bold;
+    }
+
+    .uploaded-videos {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-top: 20px;
+    }
+
+    .uploaded-video {
+      position: relative;
+      width: 136px;
+      height: 136px;
+      margin: 10px;
+      background-color: var(--bg-color-a);
+      color: var(--font-color-a);
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .uploaded-insv1 {
+      position: relative;
+      width: 136px;
+      height: 136px;
+      margin: 10px;
+      background-color: var(--bg-color-a);
+      color: var(--font-color-a);
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .uploaded-insv1:hover {
+      border: 1px solid var(--accent-color-interaction);
+    }
+
+    .uploaded-insv1 img {
+      width: 100%;
+      height: 80%;
+      object-fit: cover;
+    }
+
+    .uploaded-insv1 .loading-indicator {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(255, 255, 255, 0.8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .uploaded-insv1 .delete-button {
+      position: absolute;
+      top: 5px;
+      right: 5px;
+      width: 25px;
+      height: 25px;
+      background-color: var(--accent-color-red);
+      border: 1px solid #ccc;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      z-index: 50;
+    }
+
+    .uploaded-insv1 .delete-button:hover {
+      background-color: rgb(255, 0, 0);
+    }
+
+    .uploaded-insv2 {
+      position: relative;
+      width: 136px;
+      height: 136px;
+      margin: 10px;
+      background-color: var(--bg-color-a);
+      color: var(--font-color-a);
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .uploaded-insv2:hover {
+      border: 1px solid var(--accent-color-interaction);
+    }
+
+    .uploaded-insv2 img {
+      width: 100%;
+      height: 80%;
+      object-fit: cover;
+    }
+
+    .uploaded-insv2 .loading-indicator {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(255, 255, 255, 0.8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .uploaded-insv2 .delete-button {
+      position: absolute;
+      top: 5px;
+      right: 5px;
+      width: 25px;
+      height: 25px;
+      background-color: var(--accent-color-red);
+      border: 1px solid #ccc;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      z-index: 50;
+    }
+
+    .uploaded-insv2 .delete-button:hover {
+      background-color: rgb(255, 0, 0);
+    }
+
+    .filename-text {
+      font-size: 14px;
+      margin-top: 0px;
+      //color: #333;
+    }
+
+    .uploaded-masks {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-top: 20px;
+    }
+
+    .uploaded-mask {
+      position: relative;
+      width: 136px;
+      height: 136px;
+      margin: 10px;
+      background-color: var(--bg-color-a);
+      color: var(--font-color-a);
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .uploaded-mask:hover {
+      border: 1px solid var(--accent-color-interaction);
+    }
+
+    .uploaded-mask img {
+      width: 100%;
+      height: 80%;
+      object-fit: cover;
+    }
+
+    .uploaded-mask .loading-indicator {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(255, 255, 255, 0.8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .uploaded-mask .delete-button {
+      position: absolute;
+      top: 5px;
+      right: 5px;
+      width: 25px;
+      height: 25px;
+      background-color: var(--accent-color-red);
+      border: 1px solid #ccc;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      z-index: 50;
+    }
+
+    .uploaded-mask .delete-button:hover {
+      background-color: rgb(255, 0, 0);
+      ;
+    }
+
+    /* chrome and other browsers */
+    input::-webkit-outer-spin-button,
+    input::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+    }
+
+
+    input[type=number] {
+        -moz-appearance:textfield; /* Firefox */
+        width: 20px;
+    }
+
+
+    .filename-text {
+      font-size: 14px;
+      margin-top: 0px;
+      //color: #333;
+    }
+
+    input[type="file"] {
+      display: none;
+    }
+
+    .custom-file-upload {
+      border-radius: 4px;
+      display: inline-block;
+      padding: 8px 12px;
+      cursor: pointer;
+      background-color: var(--accent-color-interaction);
+      color: var(--font-color-b);
+    }
+
+    #dropzone-text {
+        <!-- css for the text inside the dropzone -->
+    }
+
+    .settings {
+      width: 48%;
+      text-align: left;
+    }
+
+    .separator {
+      border: none;
+      border-top: 1px solid #ccc;
+      margin: 15px 0;
+    }
+
+    .option {
+      //display: flex;
+      //align-items: left;
+      //justify-content: center;
+      margin-bottom: 5px;
+      margin-left: 20px;
+    }
+
+    .option label {
+      margin-left: 5px;
+    }
+
+    .button-container {
+      width: 48%;
+      height: 100%;
+      position: absolute;
+        overflow: hidden;
+      top: 0;
+      left: 52%;
+    }
+
+    button {
+      width: 90%;
+      height: 100%;
+      margin: auto;
+      display: block;
+        float: left;
+      padding: 10px;
+      background-color: var(--accent-color-interaction);
+      color: var(--font-color-b);
+      font-size: 16px;
+      font-weight: bold;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: 0.3s ease;
+    }
+
+    .button_active:hover {
+      color: var(--font-color-a);
+      font-weight: bold;
+      font-size: 20px;
+    }
+
+    .Progress {
+          width: 100%;
+          background-color: #ddd;
+        }
+
+        .progress-bar-container {
+          position: relative;
+          width: 100%;
+          height: 30px;
+          background-color: var(--bg-color-a);
+          margin-bottom: 10px;
+          border-radius: 6px;
+        }
+
+        .progress-bar-container a{
+            position: absolute;
+            top: 4px;
+            font-size: 22px;
+            width: 100%;
+            text-align: center;
+            color: var(--font-color-b);
+            font-weight: bold;
+        }
+
+        #progress-bar {
+          height: 100%;
+          background-color: var(--accent-color-green);
+          width: 0%;
+          transition: width 0.2s ease-in-out;
+          border-radius: 6px;
+        }
+
+    #summaryContent {
+      margin: auto auto auto 0;
+    }
+
+    #settingsPlaceholder {
+      margin: auto;
+    }
+
+    #editBtn {
+      width: 20%;
+      position: relative;
+      margin: 0;
+    }
+
+    .popup-container {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.5);
+      z-index: 999;
+    }
+
+    .popup-content {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background-color: white;
+      padding: 20px;
+      border-radius: 5px;
+    }
+
+    .close-btn {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      cursor: pointer;
+    }
+
+    #grad {
+      height: 100%;
+      background-color: purple;
+      width: 100%;
+    }
+
+    .grad-option1{
+          background-image: linear-gradient(to right, black, white);
+    }
+
+    .grad-option2{
+          background-image: linear-gradient(90deg, rgba(0,0,0,1) 0%, rgba(255,0,0,1) 37.5%, rgba(255,255,0,1) 75%,
+          rgba(255,255,255,1) 100%);
+    }
+
+    .grad-option3{
+          background-image:  linear-gradient(90deg, rgba(0,0,32,1) 0%, rgba(32,0,96,1) 12.5%, rgba(181,0,164,1) 37.5%,
+          rgba(255,64,0,1) 50%, rgba(255,255,0,1) 87.5%, rgba(255,255,200,1) 100%);
+    }
+
+    .grad-option4{
+          background-image:  linear-gradient(90deg, rgba(0,0,0,1) 0%, rgba(30,129,129,1) 35%, rgba(255,255,0,1) 75%,
+          rgba(255,65,0,1) 93.5%, rgba(225,0,0,1) 100%);
+    }
+
+
+    .grad-option5{
+          background-image: linear-gradient(90deg, rgba(0,0,0,1) 0%, rgba(221,60,221,1) 12.5%, rgba(32,32,255,1) 25%,
+           rgba(19,240,240,1) 37.5%, rgba(0,160,0,1) 55%, rgba(224,231,14,1) 70%, rgba(255,255,19,1) 75%,
+           rgba(255,32,32,1) 87.5%, rgba(255,255,255,1) 100%);
+    }
+
+
+    .grad-option6{
+          background-image: linear-gradient(90deg, rgba(0,0,0,1) 0%, rgba(0,64,255,1) 12.5%, rgba(0,160,60,1) 25%,
+          rgba(128,255,0,1) 37.5%, rgba(255,255,0,1) 50%, rgba(255,0,0,1) 75%, rgba(255,0,255,1) 87.5%,
+          rgba(255,255,255,1) 100%);
+    }
+
+
+    .grad-option7{
+          background-image: linear-gradient(90deg, rgba(127,0,0,1) 0%, rgba(255,0,193,1) 12.5%, rgba(207,0,255,1) 16.5%,
+          rgba(0,0,255,1) 33%, rgba(0,255,255,1) 50%, rgba(0,255,0,1) 66%,rgba(255,255,0,1) 82.5%, rgba(255,0,0,1) 100%);
+    }
+
+
+    .grad-option8{
+          background-image: linear-gradient(90deg, rgba(0,0,128,1) 0%, rgba(0,0,255,1) 12.5%, rgba(0,255,255,1) 37.5%,
+          rgba(255,255,0,1) 62.5%, rgba(255,0,0,1) 87.5%, rgba(128,0,0,1) 100%);
+    }
+
+
+    .grad-option9{
+          background-image:  linear-gradient(90deg, rgba(0,0,0,1) 0%, rgba(255,255,255,1) 70%, rgba(255,98,98,1) 87.5%,
+          rgba(222,0,0,1) 100%);
+    }
+
+    .grad-option10{
+        background-image:  linear-gradient(to right, white, black);
+    }
+
+    .spinner {
+          width: 42px;
+          --b: 8px; /* the border thickness */
+          aspect-ratio: 1;
+          border-radius: 50%;
+          padding: 1px;
+          background: conic-gradient(#0000 10%,var(--accent-color-interaction)) content-box;
+          -webkit-mask:
+            repeating-conic-gradient(#0000 0deg,#000 1deg 20deg,#0000 21deg 36deg),
+            radial-gradient(farthest-side,#0000 calc(100% - var(--b) - 1px),#000 calc(100% - var(--b)));
+          -webkit-mask-composite: destination-in;
+          mask-composite: intersect;
+          animation:s4 1s infinite steps(10);
+        }
+        @keyframes s4 {to{transform: rotate(1turn)}}
+
+        .spinner-small {
+          width: 30px;
+          --b: 6px; /* the border thickness */
+          aspect-ratio: 1;
+          border-radius: 50%;
+          padding: 1px;
+          background: conic-gradient(#0000 10%,var(--accent-color-interaction)) content-box;
+          -webkit-mask:
+            repeating-conic-gradient(#0000 0deg,#000 1deg 20deg,#0000 21deg 36deg),
+            radial-gradient(farthest-side,#0000 calc(100% - var(--b) - 1px),#000 calc(100% - var(--b)));
+          -webkit-mask-composite: destination-in;
+          mask-composite: intersect;
+          animation:s4 1s infinite steps(10);
+        }
+        @keyframes s4 {to{transform: rotate(1turn)}}
+
+  </style>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="{{url_for('static', filename='default/jquery-3.6.3.js') }}"></script>
+  <script src="{{url_for('static', filename='default/dropzone.min.js') }}"></script>
+  <script type="text/javascript" src="{{url_for('static', filename='default/js/main.js') }}"></script>
+  <link
+      rel="stylesheet"
+      src="{{url_for('static', filename='default/dropzone.min.css') }}"
+      type="text/css"
+  />
+</head>
+
+<body>
+  <script>
+
+    ////////////////////////////////////////
+    //  Description and Title  editing
+    ////////////////////////////////////////
+
+    function toggleTextfieldTitle() {
+      fakeButton = document.getElementById("edit-title-button");
+      toggleTextField("title-name", fakeButton, "update_title");
+    }
+
+    function toggleTextFieldDescription() {
+      fakeButton = document.getElementById("edit-description-button");
+      toggleTextField("descriptionText", fakeButton, "update_description");
+    }
+
+    function toggleTextField(textfieldID, button, link) {
+      var textfield = document.getElementById(textfieldID);
+      if (textfield.contentEditable == "true") {
+        textfield.contentEditable = false;
+        button.children[0].style.display = "inline-block";
+        button.children[1].style.display = "none";
+        $('#' + textfieldID).removeClass('editable');
+        $.post("/" + link + "/{{ id }}", { content: textfield.innerHTML });
+      } else {
+        textfield.contentEditable = "true";
+        $('#' + textfieldID).addClass('editable');
+        button.children[0].style.display = "none";
+        button.children[1].style.display = "inline-block";
+      }
+    }
+
+
+    ////////////////////////////////////////
+    //  process Button de/activation
+    ////////////////////////////////////////
+
+    function disableProcessButton() {
+      document.getElementById("startStitcherButton").disabled = true;
+      document.getElementById("startStitcherButton").style.backgroundColor = "var(--bg-color-b)";
+      document.getElementById("startStitcherButton").style.cursor = "not-allowed";
+      document.getElementById("startStitcherButton").classList.remove("button_active");
+    }
+
+    function enableProcessButton() {
+      document.getElementById("startStitcherButton").disabled = false;
+      document.getElementById("startStitcherButton").style.backgroundColor = "var(--accent-color-interaction)";
+      document.getElementById("startStitcherButton").style.cursor = "pointer";
+      document.getElementById("startStitcherButton").classList.add("button_active");
+    }
+
+
+  </script>
+  {% include 'headerReport.html' %}
+
+  <div class="bodyDiv">
+    <br>
+    <br>
+    <br>
+
+    <h4 style="margin-bottom: 2px;">Flight Report (ID:{{ id }})</h4>
+
+    <div style="width: 100%; display: flex;">
+      <h1 id="title-name">{{ project.name }}</h1>
+      <div id="edit-title-button" class="edit-text-button" style="margin: 12px; float:left"
+        onclick="toggleTextfieldTitle()">
+        <span
+          style="display: inline-block; transform: rotate(100deg); -ms-transform: rotate(100deg); -moz-transform: rotate(100deg); -webkit-transform: rotate(100deg);">&#x270E;</span>
+        <span style="display: none;">&check;</span>
+      </div>
+    </div>
+
+    <div style="display: inline-flex; width:100% ">
+      <div style="max-width: 97%; margin-right:10px">
+        <p id="descriptionText">
+          {% for line in project.description.splitlines()[:-1] %}
+          {{line}}<br>
+          {% endfor %}
+          {{project.description.splitlines()[-1]}}
+        </p>
+      </div>
+      <div id="edit-description-button" class="edit-text-button" onclick="toggleTextFieldDescription()">
+        <span
+          style="display: inline-block; transform: rotate(100deg); -ms-transform: rotate(100deg); -moz-transform: rotate(100deg); -webkit-transform: rotate(100deg);">&#x270E;</span>
+        <span style="display: none;">&check;</span>
+      </div>
+    </div>
+
+    <div class="progress-bar-container" style="visibility: hidden;">
+        <div id="progress-bar"></div>
+        <a id="progress-bar-text"> Stitching Video... </a>
+    </div>
+
+    <br>
+
+    <form id='processingForm' style="position: relative" method="post" action="/{{ id }}/startStitcherProcess"> <!-- start slam-->
+        <div class="settings">
+        <hr class="separator">
+        <h3 style="min-height: 100px">INSV Stitcher</h3>
+          <!--<div class="option">
+              <input type="checkbox" id="generate_overview_map" name="generate_overview_map" value="generate_overview_map" checked>
+              <label for="generate_overview_map">Start SLAM when stitcher finishes</label>
+          </div>-->
+        <hr class="separator">
+      </div>
+      <div class="button-container">
+        <div style="float: left; margin: auto 8px auto 0;">
+          <div id="stitcherRunningCircle" class="spinner-small" style="display: none;"></div>
+        </div>
+        <button id="startStitcherButton">Start Stitcher</button>
+      </div>
+    </form>
+    <div class="upload_and_model">
+    <div class="upload-area" id="upload-area">
+        <div class="dropzone" id="insv1-file-upload-dropzone">
+            <h2>INSV 1 File Upload</h2>
+            <div id="dropzone-text" class="dz-message" data-dz-message><span>Drag and drop the 1st insv here or click in the area to open the file explorer.</span></div>
+        </div>
+        <div class="dropzone" id="insv2-file-upload-dropzone">
+            <h2>INSV 2 File Upload</h2>
+            <div id="dropzone-text" class="dz-message" data-dz-message><span>Drag and drop the 2nd insv here or click in the area to open the file explorer.</span></div>
+        </div>
+    </div>
+    </div>
+
+
+
+  </div>
+
+  <script>
+
+    //video file upload gets handled by dropzone
+
+    Dropzone.autoDiscover = false;
+
+    const uploadArea = document.getElementById('upload-area');
+
+    var insv1Uploading = false;
+    var insv1UploadedSuccessfully = false;
+    var insv1FileName = "";
+
+    var insv2Uploading = false;
+    var insv2UploadedSuccessfully = false;
+    var insv2FileName = "";
+
+    /*
+    The Dropzone handles the upload of the video file, as a normal fileupload would have trouble with larger video file sizes.
+    For that we only accept one video file of the type mp4, but more types would be possible. After the upload is finished
+    a thumbnail of the video will be added to the file in the dropzone
+     */
+    let insv1FileDropzone = new Dropzone("#insv1-file-upload-dropzone",{
+        paramName: "insv1",
+        maxFilesize: 5000, //MB
+        acceptedFiles: ".insv",
+        maxFiles: 1,
+        accept: function(file,done) {
+            done();
+        },
+        url: "/{{ id }}/uploadInsv1FileDropzone",
+        method: "post",
+        forceChunking: true,
+        init: function() {
+            this.on('addedfile', (file) => {
+                videoUploading = true;
+                this.emit('thumbnail', file, "{{ url_for('static', filename='default/placeholder_video.png') }}");//new thumbnail for insv files
+            });
+            this.on('success', (file, response) => {
+                var progressBar = file.previewElement.querySelector(".dz-progress");
+                progressBar.classList.add("hidden");
+                var thumbnail = file.previewElement.querySelector(".dz-image");
+                thumbnail.removeChild(thumbnail.firstChild);
+
+                const img = document.createElement('img');
+                img.src = "{{ url_for('static', filename='default/placeholder_video.png') }}";
+                // Create the uploaded image container
+                const uploadedInsv1 = document.createElement('div');
+                uploadedInsv1.className = 'uploaded-insv1';
+
+                const filenameText = document.createElement('div');
+                filenameText.className = 'filename-text';
+                filenameText.textContent = getFilenameFromPath(file.name);
+
+                // Create the delete button
+                const deleteButton = document.createElement('div');
+                deleteButton.className = 'delete-button';
+                deleteButton.innerHTML = '<a style="font-size: 17px; margin-top: auto; color: var(--font-color-b);">✖</a>';
+
+                //make deletebutton appear inactive
+                deleteButton.style.backgroundColor = 'var(--bg-color-b)';
+                deleteButton.style.cursor = 'not-allowed';
+
+                // Append elements to the uploaded image container
+                uploadedInsv1.appendChild(img);
+                uploadedInsv1.appendChild(deleteButton);
+                uploadedInsv1.appendChild(filenameText);
+
+                // Append the uploaded image container to the uploaded images container
+                thumbnail.appendChild(uploadedInsv1);
+                insv1FileDropzone.disable();
+                document.getElementById('insv1-file-upload-dropzone').style.cursor = 'default';
+                insv1UploadedSuccessfully = true;
+                updateUploadProgress();
+                this.disable();
+            });
+
+            this.on('processing', (file) => {
+                console.log('processing');
+                console.log(file);
+            });
+            this.on('complete', (file) => {
+                console.log('complete');
+                console.log(file);
+            });
+
+            this.on('error', (file, errorMessage) => {
+                console.log(errorMessage);
+                this.removeFile(file);
+            });
+
+            this.on('maxfilesexceeded', (file) => {
+                this.removeFile(file);
+            });
+        }
+    });
+
+    let insv2FileDropzone = new Dropzone("#insv2-file-upload-dropzone",{
+        paramName: "insv2",
+        maxFilesize: 5000, //MB
+        acceptedFiles: ".insv",
+        maxFiles: 1,
+        accept: function(file,done) {
+            done();
+        },
+        url: "/{{ id }}/uploadInsv2FileDropzone",
+        method: "post",
+        forceChunking: true,
+        init: function() {
+            this.on('addedfile', (file) => {
+                videoUploading = true;
+                this.emit('thumbnail', file, "{{ url_for('static', filename='default/placeholder_video.png') }}");//new thumbnail for insv files
+            });
+            this.on('success', (file, response) => {
+                var progressBar = file.previewElement.querySelector(".dz-progress");
+                progressBar.classList.add("hidden");
+                var thumbnail = file.previewElement.querySelector(".dz-image");
+                thumbnail.removeChild(thumbnail.firstChild);
+
+                const img = document.createElement('img');
+                img.src = "{{ url_for('static', filename='default/placeholder_video.png') }}";
+                // Create the uploaded image container
+                const uploadedInsv2 = document.createElement('div');
+                uploadedInsv2.className = 'uploaded-insv2';
+
+                const filenameText = document.createElement('div');
+                filenameText.className = 'filename-text';
+                filenameText.textContent = getFilenameFromPath(file.name);
+
+                // Create the delete button
+                const deleteButton = document.createElement('div');
+                deleteButton.className = 'delete-button';
+                deleteButton.innerHTML = '<a style="font-size: 17px; margin-top: auto; color: var(--font-color-b);">✖</a>';
+
+                //make deletebutton appear inactive
+                deleteButton.style.backgroundColor = 'var(--bg-color-b)';
+                deleteButton.style.cursor = 'not-allowed';
+
+                // Append elements to the uploaded image container
+                uploadedInsv2.appendChild(img);
+                uploadedInsv2.appendChild(deleteButton);
+                uploadedInsv2.appendChild(filenameText);
+
+                // Append the uploaded image container to the uploaded images container
+                thumbnail.appendChild(uploadedInsv2);
+                insv2FileDropzone.disable();
+                document.getElementById('insv2-file-upload-dropzone').style.cursor = 'default';
+                insv2UploadedSuccessfully = true;
+                updateUploadProgress();
+                this.disable();
+            });
+
+            this.on('processing', (file) => {
+                console.log('processing');
+                console.log(file);
+            });
+            this.on('complete', (file) => {
+                console.log('complete');
+                console.log(file);
+            });
+
+            this.on('processing', (file) => {
+                console.log('processing');
+                console.log(file);
+            });
+
+            this.on('error', (file, errorMessage) => {
+                console.log(errorMessage);
+                this.removeFile(file);
+            });
+
+            this.on('maxfilesexceeded', (file) => {
+                this.removeFile(file);
+            });
+        }
+    });
+
+    function getFilenameFromPath(path) {
+      return path.split('\\').pop().split('/').pop();
+    }
+
+    function isFilenameAlreadyUploaded(filename) {
+      return false;
+    }
+
+    var changedPaths = {};
+
+    function updateUploadProgress() {
+        console.log("updateUploadProgress");
+        $.post("/{{ id }}/checkUploadedInsvFiles", function (response) {
+            console.log(response);
+          if(response.insv1 != null) {
+            const uploadedInsv1 = document.getElementsByClassName('uploaded-insv1'); //fix this code, also in server.py
+            if (uploadedInsv1.length > 0) {
+                activateDeleteButton(uploadedInsv1[0], response.insv1);
+            }
+          }
+          if (response.insv2 != null) {
+            const uploadedInsv2 = document.getElementsByClassName('uploaded-insv2');
+            if(uploadedInsv2.length > 0) {
+              activateDeleteButton(uploadedInsv2[0], response.insv2);
+            }
+          }
+        }, "json");
+
+      updateProcessButtonEnabling();
+    }
+
+    function deleteFile(filename, uploadedFile) {
+      const xhr = new XMLHttpRequest();
+      let fileTypeDeleted = "";
+      console.log(uploadedFile.className);
+      switch (uploadedFile.className) {
+        case "uploaded-insv1":
+          xhr.open('POST', '/{{ id }}/deleteInsv1File', true);
+          fileTypeDeleted = "insv1";
+          break;
+        case "uploaded-insv2":
+          xhr.open('POST', '/{{ id }}/deleteInsv2File', true);
+          fileTypeDeleted = "insv2";
+          break;
+      }
+      xhr.setRequestHeader('Content-Type', 'application/json');
+
+      xhr.onreadystatechange = function () {
+        if (xhr.readyState === XMLHttpRequest.DONE) {
+          if (xhr.status === 200) {
+            console.log(xhr.responseText);
+
+            if (uploadedFile.querySelector('.loading-indicator') === null || uploadedFile.querySelector('.loading-indicator').style.display === 'none') {
+                switch(fileTypeDeleted) {
+                    case "insv1" :
+                        insv1Uploading = false;
+                        break;
+                    case "insv2":
+                        insv2Uploading = false;
+                        break;
+                }
+            }
+
+            if(fileTypeDeleted === "insv1") {
+                if (insv1FileDropzone.files.length === 0 && insv1UploadedSuccessfully) {
+                    let thumbnail = document.getElementById("insv1-file-upload-dropzone").children[2]
+                    thumbnail.remove();
+                } else {
+                    insv1FileDropzone.removeAllFiles(true);
+                }
+                insv1FileDropzone.enable();
+                document.getElementById('insv1-file-upload-dropzone').style.cursor = 'cursor';
+                insv1UploadedSuccessfully = false;
+            } else if(fileTypeDeleted === "insv2") {
+                if (insv2FileDropzone.files.length === 0 && insv2UploadedSuccessfully) {
+                    let thumbnail = document.getElementById("insv2-file-upload-dropzone").children[2]
+                    thumbnail.remove();
+                } else {
+                    insv2FileDropzone.removeAllFiles(true);
+                }
+                insv2FileDropzone.enable();
+                document.getElementById('insv2-file-upload-dropzone').style.cursor = 'cursor';
+                insv2UploadedSuccessfully = false;
+            }
+            if (!insv1UploadedSuccessfully && !insv2UploadedSuccessfully) {
+                window.location.href = '/{{ id }}';
+            }
+            updateUploadProgress();
+          } else {
+            console.error('Failed to delete file:', xhr.status);
+          }
+        }
+      };
+
+      const data = JSON.stringify({ 'filename': filename });
+      xhr.send(data);
+    }
+
+    function activateDeleteButton(uploadedFile, file) {
+      const deleteButton = uploadedFile.querySelector('.delete-button'); //fix
+      deleteButton.addEventListener('click', function (event) {
+        event.stopPropagation();
+        const uploadedFile = this.parentNode;
+        const filename = uploadedFile.querySelector('.filename-text').innerHTML;
+        deleteFile(filename, uploadedFile);
+      });
+      //make deletebutton appear active
+      deleteButton.style.backgroundColor = 'var(--accent-color-red)';
+      deleteButton.style.cursor = 'pointer';
+    }
+
+    function updateProcessButtonEnabling() {
+      if (insv1UploadedSuccessfully && insv2UploadedSuccessfully) {
+        enableProcessButton();
+        return;
+      }
+      disableProcessButton();
+    }
+
+    function disableUpload() {
+      processing = true;
+      //disable upload button and deactivate the drag and drop for the upload area
+      var uploadButton = document.getElementsByClassName('custom-file-upload')[0];
+      uploadButton.style.cursor = 'not-allowed';
+      uploadButton.style.opacity = '0.5';
+
+      var inputFile = document.getElementById('file-input');
+      inputFile.disabled = true;
+
+      var uploadArea = document.getElementById('upload-area');
+      uploadArea.style.cursor = 'not-allowed';
+    }
+
+    ////////////////////////////////////////////
+    // file upload area if already uploaded
+    ////////////////////////////////////////////
+
+    const insv1 = {{ insv1| tojson }};
+    const insv2 = {{ insv2| tojson }};
+    const insv1_file_size = {{ insv1_file_size | tojson }}
+    const insv2_file_size = {{ insv2_file_size | tojson }}
+    // Process each selected file and create an uploadImage
+    if (insv1.length > 0) { //change it do dropzone
+        insv1FileDropzone.emit('addedfile', {name: insv1[0], size: insv1_file_size});//rename
+        //get the thumbnail element
+        let thumbnail = document.getElementById("insv1-file-upload-dropzone").children[2].querySelector(".dz-image"); //as children[0] is the tooltip text of the dropzone div
+        thumbnail.removeChild(thumbnail.firstChild);
+
+        const img = document.createElement('img');
+        img.src = "{{ url_for('static', filename='default/placeholder_video.png') }}";
+        // Create the uploaded image container
+        const uploadedInsv1 = document.createElement('div');
+        uploadedInsv1.className = 'uploaded-insv1';
+
+        const filenameText = document.createElement('div');
+        filenameText.className = 'filename-text';
+        filenameText.textContent = getFilenameFromPath(insv1[0]);
+
+        // Create the delete button
+        const deleteButton = document.createElement('div');
+        deleteButton.className = 'delete-button';
+        deleteButton.innerHTML = '<a style="font-size: 17px; margin-top: auto; color: var(--font-color-b);">✖</a>';
+
+        //make deletebutton appear inactive
+        deleteButton.style.backgroundColor = 'var(--bg-color-b)';
+        deleteButton.style.cursor = 'not-allowed';
+
+        // Append elements to the uploaded image container
+        uploadedInsv1.appendChild(img);
+        uploadedInsv1.appendChild(deleteButton);
+        uploadedInsv1.appendChild(filenameText);
+
+        // Append the uploaded image container to the uploaded images container
+        thumbnail.appendChild(uploadedInsv1);
+        insv1FileDropzone.disable();
+        document.getElementById('insv1-file-upload-dropzone').style.cursor = 'default';
+        insv1UploadedSuccessfully = true;
+    }
+    if (insv2.length > 0) {
+        insv2FileDropzone.emit('addedfile', {name: insv2[0], size: insv2_file_size});//rename
+        //get the thumbnail element
+        let thumbnail = document.getElementById("insv2-file-upload-dropzone").children[2].querySelector(".dz-image"); //as children[0] is the tooltip text of the dropzone div
+        thumbnail.removeChild(thumbnail.firstChild);
+
+        const img = document.createElement('img');
+        img.src = "{{ url_for('static', filename='default/placeholder_video.png') }}";
+        // Create the uploaded image container
+        const uploadedInsv2 = document.createElement('div');
+        uploadedInsv2.className = 'uploaded-insv2';
+
+        const filenameText = document.createElement('div');
+        filenameText.className = 'filename-text';
+        filenameText.textContent = getFilenameFromPath(insv2[0]);
+
+        // Create the delete button
+        const deleteButton = document.createElement('div');
+        deleteButton.className = 'delete-button';
+        deleteButton.innerHTML = '<a style="font-size: 17px; margin-top: auto; color: var(--font-color-b);">✖</a>';
+
+        //make deletebutton appear inactive
+        deleteButton.style.backgroundColor = 'var(--bg-color-b)';
+        deleteButton.style.cursor = 'not-allowed';
+
+        // Append elements to the uploaded image container
+        uploadedInsv2.appendChild(img);
+        uploadedInsv2.appendChild(deleteButton);
+        uploadedInsv2.appendChild(filenameText);
+
+        // Append the uploaded image container to the uploaded images container
+        thumbnail.appendChild(uploadedInsv2);
+        insv2FileDropzone.disable();
+        document.getElementById('insv2-file-upload-dropzone').style.cursor = 'default';
+        insv2UploadedSuccessfully = true;
+    }
+    updateUploadProgress();
+
+    ////////////////////////////////////////////
+    // Start Progress and process bar
+    ////////////////////////////////////////////
+
+    var intervalIDSlam = null;
+    var startTime = null;
+    var estimTime = null;
+
+    /*
+    This will start the slam algorithm, as well as setup an interval that will keep on checking the status of slam
+     */
+    const processingForm = document.getElementById('processingForm');
+    processingForm.addEventListener('submit', (event) => {
+      event.preventDefault(); // Prevent the form from being submitted
+      const formData = $(processingForm).serialize();
+      var button = document.getElementById("startStitcherButton");
+      var spinner = document.getElementById("stitcherRunningCircle");
+      spinner.style.display = "inline-block";
+      button.innerHTML = 'Running Stitcher ...';
+      button.disabled = true;
+      button.style.backgroundColor = "var(--bg-color-b)";
+      button.style.cursor = "wait";
+      button.classList.remove("button_active");
+      var bar_div = document.getElementsByClassName("progress-bar-container")[0];
+      bar_div.style.visibility = "visible";
+      var bar_slam = document.getElementById("progress-bar");
+      bar_slam.style.width = (0) + '%';
+      $.post($(processingForm).attr('action'), formData, (response) => {
+      });
+
+      check_status_stitcher();
+
+      intervalIDSlam = setInterval(check_status_stitcher, 1000);
+    });
+
+    function check_status_stitcher() {
+        if (startTime === null) {
+           startTime = new Date();
+        }
+        const xhr = new XMLHttpRequest();
+        xhr.open('GET', '/stitcher_status/{{ id }}', true);
+        xhr.onreadystatechange = function () {
+            if (xhr.readyState === XMLHttpRequest.DONE) {
+                if (xhr.status === 200) {
+                    const response = JSON.parse(xhr.responseText);
+                    console.log(response)
+                        var bar_text = document.getElementById("progress-bar-text");
+                        var bar_slam = document.getElementById("progress-bar");
+                        if (response.status[0] === "finished") {
+                            clearInterval(intervalIDSlam);
+                            //reload finish, should load slam report with avi video file
+                            const xhr = new XMLHttpRequest();
+                            xhr.open('POSt', '/load_video_from_stitcher/{{ id }}', true);
+                            xhr.onreadystatechange = function() {
+                                if (xhr.readyState === XMLHttpRequest.DONE) {
+                                    if (xhr.status === 200) {
+                                        const response = JSON.parse(xhr.responseText);
+                                        console.log(response);
+                                        if(response.success === true) {
+                                            window.location.href = '/{{ id }}';
+                                        }
+                                    }
+                                }
+                            }
+                            xhr.send();
+                        }
+                        if(response.status[1] === "progress") {
+                            if(response.status[2] > 0.01) {
+                                var currentTime = new Date();
+                                let diff = currentTime.getTime() - startTime.getTime();
+                                estimTime = diff / (response.status[2]/100); //in ms
+                                let time_to_calculate = estimTime - diff;
+                                var estimRunTime = "";
+                                if (parseInt(time_to_calculate / (60000)) < 10) {
+                                        estimRunTime += '0' + parseInt(time_to_calculate / (60000)) + ":";
+                                    } else {
+                                        estimRunTime += parseInt(time_to_calculate / (60000)) + ":";
+                                    }
+                                    if (parseInt((time_to_calculate % (60000)) / 1000) < 10) {
+                                        estimRunTime += '0' + parseInt((time_to_calculate % (60000)) / 1000) + ".";
+                                    } else {
+                                        estimRunTime += parseInt((time_to_calculate % (60000)) / 1000) + ".";
+                                    }
+                                    estimRunTime += parseInt((time_to_calculate % 1000) / 10);
+                                    bar_text.innerHTML = "stitching video: " + estimRunTime;
+                                    bar_slam.style.width = (response.status[2]) + '%';
+                                }
+                            } else {
+                                //bar_text.innerHTML = "1/2 running slam: " + "--:--.--";
+                                bar_slam.style.width = (response.status[2]) + '%';
+                            }
+                }
+            }
+        }
+        xhr.send();
+    }
+
+  </script>
+
+  {% include 'footer.html' %}
+</body>
+
+</html>

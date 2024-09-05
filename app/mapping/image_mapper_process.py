@@ -8,6 +8,7 @@ from PIL import Image
 import numpy as np
 from py360convert import e2p
 from keyframes import Keyframes
+import datetime
 import re
 import cv2
 import math
@@ -37,6 +38,8 @@ class ImageMapperProcess(threading.Thread):
         self.saved_mapping_result = None
         self.saved_vertices = None
         self.fov = fov
+        self.start_timestamp = None
+        self.finish_timestamp = None
         self.preprocessed_img_folder = None
         super().__init__()
 
@@ -252,6 +255,7 @@ class ImageMapperProcess(threading.Thread):
         return qx, qy
 
     def run(self):
+        self.start_timestamp = datetime.datetime.now()
         self.started = True
         self.preprocess_images()
         self.message = "Step 2/2: Mapping"
@@ -360,6 +364,9 @@ class ImageMapperProcess(threading.Thread):
         self.image_paths = []
         if self.progress_mapping >= 0.95:
             self.progress_mapping = 1
+        self.finish_timestamp = datetime.datetime.now()
+        calc_time = self.finish_timestamp - self.start_timestamp
+        print("mapping finished in " + str(calc_time), flush=True)
 
     def get_progress_preprocess(self):
         return self.progress_preprocess

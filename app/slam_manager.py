@@ -29,6 +29,14 @@ class SlamManager:
         requests.post(self.url+'/slam', json=data)
         return True
 
+    def start_stitcher(self, report_id, input_videos, output_video, stitcher_calibration):
+        data = {'report_id': report_id,
+                'input_videos': input_videos,
+                'output_video': output_video,
+                'stitcher_calibration': stitcher_calibration}
+        requests.post(self.url+'/stitcher', json=data)
+        return True
+
     def get_slam_status(self, report_id):
         response = requests.get(self.url+'/get_slam_status', headers={'Accept': 'application/json'})
         all_processes = response.json()
@@ -43,6 +51,22 @@ class SlamManager:
                         return ("update","progress", process['progress'])
                     else:
                         return ("running","progress", process['progress'])
+        return "running"
+
+    def get_stitcher_status(self, report_id):
+        response = requests.get(self.url+'/get_stitcher_status', headers={'Accept': 'application/json'})
+        all_processes = response.json()
+        for process in all_processes:
+            if process['report_id'] == report_id:
+                if process['done']:
+                    response = requests.get(self.url + '/remove_thread/' + str(report_id))
+                    print("delete thread:", response, flush=True)
+                    return ("finished", "progress", process['progress'])
+                else:
+                    if process['update']:
+                        return ("update", "progress", process['progress'])
+                    else:
+                        return ("running", "progress", process['progress'])
         return "running"
 
     def get_slam_map(self, report_id):

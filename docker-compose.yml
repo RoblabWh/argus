@@ -37,6 +37,9 @@ services:
     image: stella_vslam_dense_argus
     build: ./stella_vslam_dense_argus
     container_name: argus_vslam
+    mem_limit: 12g
+    mem_reservation: 4g
+    memswap_limit: 20g
     expose:
       - 7000
     volumes:

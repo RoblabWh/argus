@@ -117,13 +117,17 @@ function loadKeyframes(keyframes) {
 function loadMappingResultSocketViewer(imgUrl, imgHeight, imgWidth, imgVertices) {
     setCameraMode('Bird');
     //get first and last entry of mapped img vertices
-    let firstEntry, furthestEntry, distance;
+    let firstEntry, furthestEntry, distance, lowest_pose;
     distance = 0;
+    lowest_pose = 0;
     for (const[id, vertice] of Object.entries(imgVertices)) {
         if (typeof firstEntry == 'undefined') {
             firstEntry = {id, vertice};
         }
         let pose = cameraFrames.getKeyframeOrigin(id);
+        if (pose[1] > lowest_pose) {
+            lowest_pose = pose[1];
+        }
         let poseVector = new THREE.Vector3(pose[0], pose[1], pose[2]);
         if (poseVector.length() > distance) {
             furthestEntry = {id, vertice};
@@ -171,6 +175,8 @@ function loadMappingResultSocketViewer(imgUrl, imgHeight, imgWidth, imgVertices)
     mesh.scale.set(scalingFactor,scalingFactor,scalingFactor);
     mesh.position.x += translationVector.x;
     mesh.position.z += translationVector.z;
+    mesh.position.y += lowest_pose;
+    console.log(lowest_pose);
 
     scene.add(mesh);
 }

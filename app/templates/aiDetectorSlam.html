@@ -57,6 +57,16 @@
         var filteredSelection = [];
         var intervalIDDetection = null;
 
+        function disable_ai_detection_button() {
+            let button = document.getElementById("runDetectionButton");
+            button.disabled = true;
+        }
+
+        function enable_ai_detection_button() {
+            let button = document.getElementById("runDetectionButton");
+            button.disabled = false;
+        }
+
         function showTableByCategory(category) {
             var x = document.getElementById("table" + category);
             if (x.style.display === "none") {
@@ -83,6 +93,7 @@
         }
 
         function runAIDetection() {
+            disable_export_button()
             var modelOptions = document.getElementById("ai_model_options");
             var selectedModelOption = modelOptions.value;//options[modelOptions.selectedIndex].value;
 
@@ -105,21 +116,6 @@
 
                 intervalIDDetection = window.setInterval(check_status_detection, 1500);
 
-                //console.log("Data: " + data );
-                //detections = data;
-                //generateDetectionTable(data);
-                //generateAnnotationSettings(data);
-                //var currentImageName = document.getElementById("dynamic-slide").getElementsByTagName('a')[0].innerHTML.split(": ")[1];
-                //generateAnnotationsLayerTableForImage(currentImageName);
-                //detections = data;
-
-                //var button = document.getElementById("runDetectionButton");
-                //button.disabled = false;
-                //button.innerHTML = 'Re-Run Detection';
-
-                //spinner = document.getElementById("detectionsRunningCircle");
-                //spinner.style.display = "none";
-
             });
         }
 
@@ -127,6 +123,7 @@
             $.post("/detection_status/{{ id }}", (detection_status) => {
                 console.log("Progress: " + detection_status );
                 if(detection_status === "finished"){
+                    enable_export_button()
                     clearInterval(intervalIDDetection);
 
                     //load data
@@ -195,8 +192,6 @@
             }
 
             console.log(imagesWithDetectionsByCategory);
-
-
 
             //for every "category" in detection data create a row
             var categories = detectionData["categories"];

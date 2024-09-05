@@ -6,6 +6,7 @@ from mapping.image_mapper_process import ImageMapperProcess
 from thermal.thermal_analyser import ThermalAnalyser
 from mapping.filter_thread import FilterThread
 from data_share_manager import DataShareManager
+from export.util import popen_and_call
 
 # from gunicorn.app.base import BaseApplication
 from flask import Flask, flash, request, redirect, url_for, render_template, jsonify, send_file
@@ -38,11 +39,12 @@ class ArgusServer:
         self.app.config['MAX_CONTENT_LENGTH'] = 500 * 10000 * 10000
         self.app.config['TEMPLATES_AUTO_RELOAD'] = True
         self.ALLOWED_EXTENSIONS = set(['png', 'jpg', 'jpeg', 'PNG', 'JPG', 'JPEG'])
-        self.ALLOWED_VIDEO_EXTENSIONS = set(['mp4', 'MP4'])
+        self.ALLOWED_VIDEO_EXTENSIONS = set(['mp4', 'MP4','avi','AVI'])
         self.ALLOWED_INSV_EXTENSIONS = set(['insv', 'INSV'])
         self.ALLOWED_EXTENSIONS_PROJECT = set(['zip'])
 
         self.threads = []
+        self.export_threads = []
         self.detection_threads = []
         self.image_filter_threads = []
         # self.map = {}
@@ -74,8 +76,10 @@ class ArgusServer:
                               view_func=self.upload_image_file)
         self.app.add_url_rule('/<int:report_id>/uploadVideoFileDropzone', methods=['POST'],
                               view_func=self.upload_video_file_dropzone)
-        self.app.add_url_rule('/<int:report_id>/uploadInsvFileDropzone', methods=['POST'],
-                              view_func=self.upload_insv_file_dropzone)
+        self.app.add_url_rule('/<int:report_id>/uploadInsv1FileDropzone', methods=['POST'],
+                              view_func=self.upload_insv1_file_dropzone)
+        self.app.add_url_rule('/<int:report_id>/uploadInsv2FileDropzone', methods=['POST'],
+                              view_func=self.upload_insv2_file_dropzone)
         self.app.add_url_rule('/<int:report_id>/uploadMaskFile', methods=['POST'],
                               view_func=self.upload_mask_file)
         self.app.add_url_rule('/<int:report_id>/deleteFile', methods=['POST'],
@@ -84,14 +88,22 @@ class ArgusServer:
                               view_func=self.delete_video_file)
         self.app.add_url_rule('/<int:report_id>/deleteMaskFile', methods=['POST'],
                               view_func=self.delete_mask_file)
+        self.app.add_url_rule('/<int:report_id>/deleteInsv1File', methods=['POST'],
+                              view_func=self.delete_insv1_file)
+        self.app.add_url_rule('/<int:report_id>/deleteInsv2File', methods=['POST'],
+                              view_func=self.delete_insv2_file)
         self.app.add_url_rule('/<int:report_id>/checkUploadedImages', methods=['GET', 'POST'],
                               view_func=self.check_upload_processing_progress)
         self.app.add_url_rule('/<int:report_id>/checkUploadedFiles', methods=['GET', 'POST'],
                               view_func=self.check_upload_processing_progress_slam)
+        self.app.add_url_rule('/<int:report_id>/checkUploadedInsvFiles', methods = ['GET', 'POST'],
+                              view_func=self.check_upload_processing_progress_insv)
         self.app.add_url_rule('/<int:report_id>/processFromUpload', methods=['POST', 'GET'],
                               view_func=self.initial_process)
         self.app.add_url_rule('/<int:report_id>/startSlamProcess', methods=['POST', 'GET'],
                               view_func=self.start_slam)
+        self.app.add_url_rule('/<int:report_id>/startStitcherProcess', methods=['POST', 'GET'],
+                              view_func=self.start_stitcher)
         self.app.add_url_rule('/slam_map_update', methods=['POST', 'GET'],
                               view_func=self.slam_map_update)
         self.app.add_url_rule('/<int:report_id>/preprocessProgress', methods=['GET', 'POST'],
@@ -102,6 +114,10 @@ class ArgusServer:
                               view_func=self.check_slam_map_process_status)
         self.app.add_url_rule('/slam_status/<int:report_id>', methods=['POST', 'GET'],
                               view_func=self.check_slam_status)
+        self.app.add_url_rule('/stitcher_status/<int:report_id>', methods=['POST', 'GET'],
+                              view_func=self.check_stitcher_status)
+        self.app.add_url_rule('/load_video_from_stitcher/<int:report_id>', methods=['POST'],
+                              view_func=self.load_video_from_stitcher)
         self.app.add_url_rule('/<int:report_id>/edit', methods=['POST', 'GET'],
                               view_func=self.edit_report)
         self.app.add_url_rule('/get_map/<int:report_id>/<int:map_index>', methods=['GET', 'POST'],
@@ -160,6 +176,10 @@ class ArgusServer:
                               view_func=self.download_prepare_slam_project)
         self.app.add_url_rule('/<int:report_id>/download', methods=['GET', 'POST'],
                               view_func=self.download_project)
+        self.app.add_url_rule('/<int:report_id>/export_nerf', methods=['POST', 'GET'],
+                              view_func=self.export_db_to_nerf)
+        self.app.add_url_rule('/<int:report_id>/is_export_finished', methods=['POST', 'GET'],
+                              view_func=self.nerf_export_finished)
         self.app.add_url_rule('/import_project', methods=['GET', 'POST'],
                               view_func=self.import_project)
         self.app.add_url_rule('/ir_temp_data_of_image/<int:report_id>', methods=['GET', 'POST'],
@@ -210,6 +230,10 @@ class ArgusServer:
             elif self.project_manager.get_project(report_id)['type'] == "slam_project":
                 if  len(self.project_manager.get_project(report_id)['data']['keyframes']) > 0:
                     return self.render_slam_report(report_id, template='stella_vslam_report.html')
+                elif len(self.project_manager.get_project(report_id)['data']['video']) > 0:
+                    return self.render_slam_report(report_id, template='stella_vslam_upload.html')
+                elif (len(self.project_manager.get_project(report_id)['data']['insv1']) + len(self.project_manager.get_project(report_id)['data']['insv2']))> 0:
+                    return self.render_slam_insv_upload(report_id, template='stella_vslam_upload_insv.html')
                 else:
                     return self.render_slam_report(report_id, template='stella_vslam_upload.html')
         else:
@@ -276,20 +300,32 @@ class ArgusServer:
             file_name.append(save_path)
             file.save(save_path)
         else:
-            flash('Allowed video types are -> mp4')
-            return json.dumps({'success': False}), 415, {'ContentType': 'application/json'}
+            if file and self.allowed_insv_file(file.filename):
+                # invisi file got uploaded, so we open a new html page for stitching the two videos together owo
+                filename = secure_filename(file.filename)
+                save_path = os.path.join(self.project_manager.projects_path, str(report_id), filename)
+                file_name.append(save_path)
+                file.save(save_path)
+                self.project_manager.set_insv_file(report_id, file_name)
+                return json.dumps({'success': True, 'path': save_path}), 200, {'ContentType': 'application/json'}
+            else:
+                flash('Allowed video types are -> mp4')
+                return json.dumps({'success': False}), 415, {'ContentType': 'application/json'}
 
         self.project_manager.set_video_file(report_id, file_name)
 
         return json.dumps({'success': True, 'path': save_path}), 200, {'ContentType': 'application/json'}
 
-    def upload_insv_file_dropzone(self, report_id):
-        print("upload_video_file_dropzone " + str(report_id), flush=True)
-        if 'insv' not in request.files:
+    def upload_insv1_file_dropzone(self, report_id):
+        print("upload_insv1_file_dropzone " + str(report_id), flush=True)
+        if 'insv1' not in request.files:
             print('no "insv" found in request.files:', request.files, flush=True)
             return json.dumps({'success': False}), 418, {'ContentType': 'application/json'}
-        file = request.files['insv']
+        file = request.files['insv1']
         file_name = []
+        if self.project_manager.already_has_insv_file(report_id, file.filename):
+            print('file already uploaded', request.files, flush=True)
+            return json.dumps({'success': False}), 418, {'ContentType': 'application/json'}
         if file and self.allowed_insv_file(file.filename):
             filename = secure_filename(file.filename)
             save_path = os.path.join(self.project_manager.projects_path, str(report_id), filename)
@@ -299,7 +335,30 @@ class ArgusServer:
             flash('Allowed video types are -> insv')
             return json.dumps({'success': False}), 415, {'ContentType': 'application/json'}
 
-        self.project_manager.set_insv_files(report_id, file_name)
+        self.project_manager.set_insv1_file(report_id, file_name)
+
+        return json.dumps({'success': True, 'path': save_path}), 200, {'ContentType': 'application/json'}
+
+    def upload_insv2_file_dropzone(self, report_id):
+        print("upload_insv2_file_dropzone " + str(report_id), flush=True)
+        if 'insv2' not in request.files:
+            print('no "insv" found in request.files:', request.files, flush=True)
+            return json.dumps({'success': False}), 418, {'ContentType': 'application/json'}
+        file = request.files['insv2']
+        file_name = []
+        if self.project_manager.already_has_insv_file(report_id, file.filename):
+            print('file already uploaded', request.files, flush=True)
+            return json.dumps({'success': False}), 418, {'ContentType': 'application/json'}
+        if file and self.allowed_insv_file(file.filename):
+            filename = secure_filename(file.filename)
+            save_path = os.path.join(self.project_manager.projects_path, str(report_id), filename)
+            file_name.append(save_path)
+            file.save(save_path)
+        else:
+            flash('Allowed video types are -> insv')
+            return json.dumps({'success': False}), 415, {'ContentType': 'application/json'}
+
+        self.project_manager.set_insv2_file(report_id, file_name)
 
         return json.dumps({'success': True, 'path': save_path}), 200, {'ContentType': 'application/json'}
 
@@ -384,6 +443,32 @@ class ArgusServer:
         else:
             return 'Invalid request.'
 
+    def delete_insv1_file(self, report_id):
+        data = request.get_json()
+        project = self.project_manager.get_project(report_id)
+        insv1_file = project['data']['insv1']
+        self.project_manager.set_unprocessed_changes(report_id, True)
+        print("len of file_names: ", len(insv1_file))
+        if insv1_file:
+            if self.delete_insv1_file_in_folder(report_id, insv1_file[0]):
+                return 'File deleted successfully.'
+            return 'File not found.'
+        else:
+            return 'Invalid request.'
+
+    def delete_insv2_file(self, report_id):
+        data = request.get_json()
+        project = self.project_manager.get_project(report_id)
+        insv2_file = project['data']['insv2']
+        self.project_manager.set_unprocessed_changes(report_id, True)
+        print("len of file_names: ", len(insv2_file))
+        if insv2_file:
+            if self.delete_insv2_file_in_folder(report_id, insv2_file[0]):
+                return 'File deleted successfully.'
+            return 'File not found.'
+        else:
+            return 'Invalid request.'
+
     def check_upload_processing_progress(self, report_id):
         print('asking for upload progress of report ' + str(report_id))
         done = True
@@ -452,6 +537,17 @@ class ArgusServer:
             mask = data["mask"]
         return jsonify({'done': done, "dataSummary": {}, "video": video, "mask": mask})
 
+    def check_upload_processing_progress_insv(self, report_id):
+        insv1 = []
+        insv2 = []
+        project = self.project_manager.get_project(report_id)
+        data = project["data"]
+        if data["insv1"]:
+            insv1 = data["insv1"]
+        if data["insv2"]:
+            insv2 = data["insv2"]
+        return jsonify({'insv1': insv1, "insv2": insv2})
+
     def initial_process(self, report_id):
         if request.method == 'POST':
             with_mapping = request.form.get('with_mapping')
@@ -499,16 +595,16 @@ class ArgusServer:
             generate_map = True if generate_overview_map is not None else False
             self.project_manager.set_slam_settings(report_id, slam_settings)
             self.project_manager.set_mapping_settings(report_id, generate_overview_map)
-            #set generate map settings with project manager
+            # set generate map settings with project manager
 
-            #load default file from static and add it to project folder
+            # load default file from static and add it to project folder
             self.project_manager.add_default_orb_vocab(report_id)
 
-            #generates config file from video metadata (and settings later)
+            # generates config file from video metadata (and settings later)
             if not self.project_manager.generate_config_file(report_id):
                 return jsonify("something went wrong")
 
-            #set or link orb vocab file from static
+            # set or link orb vocab file from static
 
             project = self.project_manager.get_project(report_id)
             data = project['data']
@@ -521,19 +617,51 @@ class ArgusServer:
             print(self.project_manager.get_slam_output_file_path(report_id), flush=True)
             print(self.project_manager.get_map_db_folder(report_id) + str(report_id) + ".db", flush=True)
 
-            #slam thread or smth
+            # slam thread or smth
             self.slam_manager.start_slam(report_id=report_id,
-                video=data["video"],
-                orb_vocab=data["orb_vocab"],
-                config=data["config"],
-                mask=data["mask"],
-                slam_options={"no_sleep": no_sleep, "frame_skip": frame_skip},
-                other_options={"generate_overview_map": generate_overview_map, "update_frequency": update_frequency},
-                keyfrm_path=self.project_manager.get_keyframe_file_path(report_id),
-                landmark_path=self.project_manager.get_landmark_file_path(report_id),
-                keyfrm_folder_path = self.project_manager.get_keyframe_folder(report_id),
-                map_db_output = self.project_manager.get_map_db_folder(report_id) + str(report_id) + ".db",
-                slam_output_path = self.project_manager.get_slam_output_file_path(report_id))
+                                         video=data["video"],
+                                         orb_vocab=data["orb_vocab"],
+                                         config=data["config"],
+                                         mask=data["mask"],
+                                         slam_options={"no_sleep": no_sleep, "frame_skip": frame_skip},
+                                         other_options={"generate_overview_map": generate_overview_map,
+                                                        "update_frequency": update_frequency},
+                                         keyfrm_path=self.project_manager.get_keyframe_file_path(report_id),
+                                         landmark_path=self.project_manager.get_landmark_file_path(report_id),
+                                         keyfrm_folder_path=self.project_manager.get_keyframe_folder(report_id),
+                                         map_db_output=self.project_manager.get_map_db_folder(report_id) + str(
+                                             report_id) + ".db",
+                                         slam_output_path=self.project_manager.get_slam_output_file_path(report_id))
+        return jsonify(
+            "null")  # self.render_slam_report(report_id, start_slam=True, template='stella_vslam_upload.html');
+
+    def start_stitcher(self, report_id):
+        if request.method == 'POST':
+            project = self.project_manager.get_project(report_id)
+            data = project['data']
+            insv1 = data["insv1"]
+            insv2 = data["insv2"]
+            if "_00_" in insv1[0]:
+                insvFront = insv1[0]
+                insvBack = insv2[0]
+            else:
+                insvFront = insv2[0]
+                insvBack = insv1[0]
+            input_videos = [insvFront, insvBack]
+
+            output_video = self.project_manager.get_default_stitcher_video_name(report_id)
+
+            self.project_manager.add_default_stitcher_config(report_id)
+
+            print("starting stitcher " + str(report_id), flush=True)
+
+            stitcher_calibration = data['stitcher_config'][0]
+            print(stitcher_calibration)
+
+            #slam thread or smth
+            self.slam_manager.start_stitcher(report_id=report_id,
+                input_videos = input_videos, output_video=output_video,
+                stitcher_calibration=stitcher_calibration)
         return jsonify("null") #self.render_slam_report(report_id, start_slam=True, template='stella_vslam_upload.html');
 
     def slam_map_update(self):
@@ -742,8 +870,6 @@ class ArgusServer:
                 output = self.project_manager.get_mapping_output_folder(report_id)
                 self.project_manager.load_keyframe_images(report_id)
                 mapping_settings = self.project_manager.get_mapping_settings(report_id)
-                print((mapping_settings is not None), flush=True)
-                self.project_manager.load_map_db_file(report_id)
                 #start image mapper thread stuff
                 if mapping_settings is not None:
                     extensions = ['.jpg', '.png']
@@ -764,9 +890,56 @@ class ArgusServer:
                 return jsonify("something went wrong with slam")
         return jsonify(status=status)
 
+    def check_stitcher_status(self, report_id):
+        status = self.slam_manager.get_stitcher_status(report_id)
+        return jsonify(status=status)
+
+    def load_video_from_stitcher(self, report_id):
+        success = self.project_manager.load_video_from_stitcher(report_id)
+        return jsonify(success=success)
+
+    def export_db_to_nerf(self, report_id):
+        if self.project_manager.load_map_db_file(report_id):
+            #create output folder for nerf export
+            map_db = self.project_manager.get_map_db(report_id)
+            output_folder = self.project_manager.get_nerf_export_folder(report_id)
+            args = "./export/export_sqlite3_to_nerf.py " + map_db[0] + " " + output_folder
+            export_thread = {'report_id': report_id, 'done': False}
+            self.export_threads.append(export_thread)
+            popen_and_call(self.on_export_db_to_nerf_finish, report_id, args.split())
+            result = {"success": True}
+            return jsonify(result)
+        else:
+            result = {"success": False}
+            return jsonify(result)
+
+    def on_export_db_to_nerf_finish(self, report_id):
+        for export_thread in self.export_threads:
+            if export_thread['report_id'] == report_id:
+                export_thread['done'] = True
+        print(self.export_threads, flush=True)
+
+    def nerf_export_finished(self, report_id):
+        result = None
+        for i, export_thread in enumerate(self.export_threads):
+            if export_thread['report_id'] == report_id:
+                if export_thread['done']:
+                    result = {"thread_found": True, "finished": True}
+                    break
+                else:
+                    result = {"thread_found": True, "finished": False}
+                    break
+        if result is not None:
+            if result["finished"]:
+                self.export_threads.pop(i)
+            return jsonify(result)
+        result = {"thread_found": False, "finished": False}
+        return jsonify(result)
+
     def get_slam_map(self, report_id):
         print('asking for slam map of report ' + str(report_id))
         return self.slam_manager.get_slam_map(report_id)
+
     def delete_annotation(self, report_id):
         annotation_id = request.form.get('annotation_id')
         print("delete_annotation for id" + str(report_id) + " with: " + str(annotation_id), flush=True)
@@ -989,6 +1162,10 @@ class ArgusServer:
             zip_path = self.project_manager.generate_slam_map_zip(report_id)
             if zip_path is not None:
                 zip_name = os.path.basename(zip_path)
+        elif download_package == 'nerf':
+            zip_path = self.project_manager.generate_slam_nerf_export_zip(report_id)
+            if zip_path is not None:
+                zip_name = os.path.basename(zip_path)
 
         if zip_path is not None:
             return jsonify({"success": True, "zip_name": zip_name, "zip_path": zip_path})
@@ -1083,6 +1260,39 @@ class ArgusServer:
         indices = sorted(range(len(times)), key=lambda i: times[i], reverse=True)
         return indices
 
+    def render_slam_insv_upload(self, report_id, template='stella_vslam_upload_insv.html'):
+        data = self.project_manager.get_project(report_id)['data']
+        insv1 = data['insv1']
+        try:
+            insv1_file_size = os.path.getsize(insv1[0])
+        except:
+            insv1_file_size = 0
+        insv2 = data['insv2']
+        try:
+            insv2_file_size = os.path.getsize(insv2[0])
+        except:
+            insv2_file_size = 0
+        processing = False
+        message = None
+        for thread in self.threads:
+            processing = False
+            if thread.report_id == report_id:
+                processing = True
+                # if(thread.progress_mapping == 100):
+                #     processing = False
+                # else:
+                #     processing = True
+                message = thread.message
+                break
+        gradient_lut = json.load(open("./static/default/gradient_luts/gradient_lut_1.json"))
+
+        project = {"id": report_id, "name": self.project_manager.get_project_name(report_id),
+                   "description": self.project_manager.get_project_description(report_id),
+                   'creation_time': self.project_manager.get_project_creation_time(report_id)}
+        return render_template(template, id=report_id, insv1 = insv1, insv1_file_size = insv1_file_size,
+                               insv2 = insv2, insv2_file_size = insv2_file_size,
+                               project=project, message=message, gradient_lut=gradient_lut)  # create a different ren
+
     def render_slam_report(self, report_id, thread=None, template="stella_vslam_report.html"):  #need new slamReport.html
         data = self.project_manager.get_project(report_id)['data']
         video = data["video"]
@@ -1096,6 +1306,7 @@ class ArgusServer:
         map_db = data["map_db"]
         point_cloud = data["point_cloud"]
         keyframe_folder = self.project_manager.get_keyframe_folder(report_id)
+        nerf_export = self.project_manager.has_nerf_export(report_id)
         if (len(keyframe_images) > 0):
             has_keyframe_images = True
         else:
@@ -1158,6 +1369,7 @@ class ArgusServer:
                                keyfrms = keyfrms, landmarks=landmarks, slam_output = slam_output,
                                keyframe_folder = keyframe_folder, detections= detections, processing = processing,
                                point_cloud=point_cloud, project=project, message=message, slam_mapping_output = slam_mapping_output,
+                               nerf_export=nerf_export,
                                vertices = vertices, gradient_lut=gradient_lut)  #create a different render template maybe
 
     def render_standard_report(self, report_id, thread=None, template="baseReport.html"):
@@ -1314,6 +1526,24 @@ class ArgusServer:
             os.remove(file_path)
             print("file deleted @" + file_path)
             self.project_manager.remove_from_file_name_mask(report_id, file_path)
+            return True
+        return False
+
+    def delete_insv1_file_in_folder(self, report_id, filename):
+        file_path = filename
+        if os.path.exists(file_path):
+            os.remove(file_path)
+            print("file deleted @" + file_path)
+            self.project_manager.remove_from_file_name_insv1(report_id, file_path)
+            return True
+        return False
+
+    def delete_insv2_file_in_folder(self, report_id, filename):
+        file_path = filename
+        if os.path.exists(file_path):
+            os.remove(file_path)
+            print("file deleted @" + file_path)
+            self.project_manager.remove_from_file_name_insv2(report_id, file_path)
             return True
         return False
 
