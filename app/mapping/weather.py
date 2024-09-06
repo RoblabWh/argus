@@ -16,15 +16,41 @@ import numpy as np
 
 
 class Weather:
-    def __init__(self, lat, lon, api_key):
+    def __init__(self, lat, lon, timestamp, api_key=None):
         """
         Constructor
         """
-        self.api_key = api_key
-        url = "https://api.openweathermap.org/data/2.5/onecall?lat=%s&lon=%s&appid=%s&units=metric" % (lat, lon, api_key)
-        response = requests.get(url)
-        self.data = json.loads(response.text)
+        self.default_key = "e9d56399575efd5b03354fa77ef54abb"
+        self.api_key = api_key if api_key is not None else self.default_key
+        self.timestamp = timestamp
+        self.default_url = self.build_url(lat, lon, self.default_key)
+        self.url = self.build_url(lat, lon, self.api_key, timestamp=self.timestamp)
+        print("URL:", self.url, flush=True)
+        print("Default URL:", self.default_url, flush=True)
+        try:
+            if self.api_key is None:
+                raise Exception("No API key provided, falling back to default key")
+            self.data = self.get_data(self.url)
+            print("Data loaded with timestamp:", self.timestamp , self.data, flush=True)
 
+            if self.data["cod"] == 401 or self.data["cod"] == "401":
+                raise Exception("API key invalid, falling back to default key")
+            if self.data["cod"] == 400 or self.data["cod"] == "400":
+                raise Exception("Bad request, falling back to default key (timestamp too old or out of range of key)")
+        except Exception as e:
+            print(e)
+            self.data = self.get_data(self.default_url)
+            print("Data loaded with default key", self.data, flush=True)
+
+
+    def build_url(self, lat, lon, key, timestamp=None):
+        if timestamp is not None:
+            return "https://api.openweathermap.org/data/2.5/onecall/timemachine?lat=%s&lon=%s&dt=%s&appid=%s&units=metric" % (lat, lon, timestamp, key)
+        return     "https://api.openweathermap.org/data/2.5/onecall?lat=%s&lon=%s&appid=%s&units=metric" % (lat, lon, key)
+
+    def get_data(self, url):
+        response = requests.get(url)
+        return json.loads(response.text)
 
     def get_temperature(self):
         return self.data["current"]["temp"]

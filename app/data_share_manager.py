@@ -76,6 +76,60 @@ class DataShareManager:
             print(f"PUT request failed with status code {response.status_code}", flush=True)
             return requests.json()
 
+    def send_geojson_poi_to_iais(self, poi_data):
+
+        geometry = poi_data['geometry']
+
+        type = poi_data['properties']['type']
+        subtype = poi_data['properties']['subtype']
+        danger_level = poi_data['properties']['danger_level']
+        detection = poi_data['properties']['detection']
+        name = poi_data['properties']['name']
+        description = poi_data['properties']['description']
+        datetime = poi_data['properties']['datetime']
+
+        crs = {
+            "properties": {
+                "code": 4326
+            },
+            "type": "EPSG"
+        }
+
+        properties = {
+            "type": type,
+            "subtype": subtype,
+            "danger_level": danger_level,
+            "detection": detection,
+            "name": name,
+            "description": description,
+            "datetime": datetime
+        }
+
+        type = "Feature"
+
+        data = {
+            "crs": crs,
+            "geometry": geometry,
+            "properties": properties,
+            "type": type
+        }
+        print(data, flush=True)
+
+        url = self.iais_url + 'poi/'
+        headers = {
+            "accept": "*/*",
+            "Content-Type": "application/json"
+        }
+        response = requests.put(url, headers=headers, data=json.dumps(data)  )#, auth=(self.iais_username, self.iais_password))
+
+        if response.status_code == 200:
+            return "PUT request successful!"
+        else:
+            print(f"PUT request failed with status code {response.status_code}", flush=True)
+            return requests.json()
+
+
+
     def remove_poi_from_iais(self, poi_id):
         url = self.iais_url + 'poi/'
         params = {

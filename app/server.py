@@ -54,6 +54,10 @@ class ArgusServer:
         self.thermal_analyser = ThermalAnalyser(project_manager)
         self.data_share_manager = DataShareManager("localhost", "admin", "admin")
 
+        self.appearance_settings = {"theme": "system", "color_light": "", "color_dark": ""}
+        self.appearance_settings_default = {"theme": "system", "color_light": "rgb(56, 152, 236)", "color_dark": "rgb(4, 199, 216)"}
+        self.weather_api_key = None
+
         self.setup_routes()
 
     def setup_routes(self):
@@ -144,7 +148,7 @@ class ArgusServer:
         self.app.add_url_rule('/set_IAIS_settings', methods=['POST'],
                                 view_func=self.set_IAIS_settings)
         self.app.add_url_rule('/test_POI', methods=['POST'],
-                                view_func=self.test_POI)
+                                view_func=self.test_geojson_POI)
         self.app.add_url_rule('/get_poi_list', methods=['GET'],
                                 view_func=self.get_POI_list)
         self.app.add_url_rule('/delete_poi', methods=['POST'],
@@ -165,11 +169,20 @@ class ArgusServer:
                                 view_func=self.send_report)
         self.app.add_url_rule('/update_weather/<int:report_id>', methods=['POST'],
                                 view_func=self.update_weather)
-
-        # self.app.add_url_rule('/<int:report_id>/upload', methods=['POST'],
-        #                       view_func=self.upload_image)
-        # self.app.add_url_rule('/<int:report_id>/process', methods=['GET', 'POST'],
-        #                       view_func=self.process)
+        self.app.add_url_rule('/settings', methods=['GET'],
+                                view_func=self.render_settings)
+        self.app.add_url_rule('/settings/appearance', methods=['POST'],
+                                view_func=self.set_appearance_settings)
+        self.app.add_url_rule('/settings/appearance', methods=['GET'],
+                                view_func=self.get_appearance_settings)
+        self.app.add_url_rule('/settings/appearance', methods=['DELETE'],
+                                view_func=self.reset_appearance_settings)
+        self.app.add_url_rule('/settings/weather_api_key', methods=['POST'],
+                                view_func=self.set_weather_api_key)
+        self.app.add_url_rule('/settings/weather_api_key', methods=['GET'],
+                                view_func=self.get_weather_api_key)
+        self.app.add_url_rule('/settings/weather_api_key', methods=['DELETE'],
+                                view_func=self.reset_weather_api_key)
 
     def projects_overview(self):
         projects_dict_list = self.project_manager.get_projects()
@@ -723,7 +736,16 @@ class ArgusServer:
         print(request.form, flush=True)
         lat, lon = float(request.form.get('lat')), float(request.form.get('lon'))
         try:
-            weather = Weather(lat, lon, "e9d56399575efd5b03354fa77ef54abb").generate_weather_dict()
+            #Unix time, UTC time zone
+            time = self.project_manager.get_project(report_id)['data']['flight_data'][0]['value'] # in format 'dd.mm.yyyy hh:mm'
+            #systems time zone
+            current_time_zone = datetime.datetime.now().astimezone().tzinfo
+            #convert from current time zone to UTC
+            dt = datetime.datetime.strptime(time, '%d.%m.%Y %H:%M')
+            #convert to unix time
+            dt = int(dt.replace(tzinfo=current_time_zone).timestamp())
+
+            weather = Weather(lat, lon, timestamp=dt, api_key=self.weather_api_key).generate_weather_dict()
             self.project_manager.update_weather(report_id, weather)
         except:
             return jsonify({"success": False, "message": "Failed to update weather data."})
@@ -962,6 +984,9 @@ class ArgusServer:
             return render_template(template, id=report_id, project=project, file_names=file_names_upload,
                                    processing=processing)
 
+    def render_settings(self):
+        return render_template('settings.html')
+
     def delete_file_in_folder(self, report_id, filename, subfolder, thumbnail=False):
         # project_path = self.project_manager.project_path(report_id)
         # file_path = os.path.join(project_path, subfolder)
@@ -1008,6 +1033,12 @@ class ArgusServer:
         data = request.get_json()
         print("test_POI with", data, flush=True)
         response = self.data_share_manager.send_poi_to_iais(data)
+        return response
+
+    def test_geojson_POI(self):
+        data = request.get_json()
+        print("test_POI with", data, flush=True)
+        response = self.data_share_manager.send_geojson_poi_to_iais(data)
         return response
 
     def render_poi_test(self):
@@ -1068,3 +1099,29 @@ class ArgusServer:
     def render_project_group(self, project_group_id):
         project_group = self.project_manager.get_project_group(project_group_id)
         return render_template('baseGroupReport.html', group=project_group)
+
+    def set_appearance_settings(self):
+        data = request.form
+        print("save_appearance_settings with: ", data, flush=True)
+        self.appearance_settings = data
+        return jsonify({"success": True})
+
+    def get_appearance_settings(self):
+        return jsonify(self.appearance_settings)
+
+    def reset_appearance_settings(self):
+        self.appearance_settings = {"theme": "system", "color-light": "", "color-dark": ""}
+        return jsonify(self.appearance_settings)
+
+    def set_weather_api_key(self):
+        data = request.form
+        print("set_weather_api_key with: ", data, flush=True)
+        self.weather_api_key = data["api_key"]
+        return data
+
+    def get_weather_api_key(self):
+        return jsonify({"api_key": self.weather_api_key})
+
+    def reset_weather_api_key(self):
+        self.weather_api_key = None
+        return jsonify({"api_key": ""})

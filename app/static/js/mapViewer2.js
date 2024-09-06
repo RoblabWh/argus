@@ -378,6 +378,9 @@ function setupZoomHome() {
         },
     });
 
+
+    L.control.scale( {position: 'bottomright'} ).addTo(map);
+
     let zoomHome = new L.Control.zoomHome();
     zoomHome.addTo(map);
 }

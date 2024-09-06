@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Settings</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='default/variables-light.css') }}" id="currentCss">
+    <style>
+        body {
+            margin-left: 0px;
+            margin-right: 0px;
+            margin-bottom: 0px;
+            background-color: var(--bg-color-page);
+            color: var(--font-color-a);
+        }
+
+        .bodyDiv {
+            min-height: 95vh;
+            width: 94%;
+            max-width: 1400px;
+            margin: 0 auto !important;
+            float: none !important;
+            font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+        }
+
+        .settings-section {
+            margin-bottom: 2em;
+        }
+
+        .settings-section h2 {
+            border-bottom: 1px solid var(--font-color-a);
+            padding-bottom: 0.5em;
+        }
+
+        .settings-section label {
+            display: block;
+            margin: 0.5em 0;
+        }
+
+        .settings-section input[type="text"],
+        .settings-section select {
+            width: 50%;
+            min-width: 300px;
+            padding: 0.5em;
+            margin-top: 0.5em;
+        }
+
+        .oneLineSetting {
+            display: flex;
+            justify-content: flex-start;
+            width: 100%;
+        }
+
+        .oneLineSetting label {
+            width: 300px;
+        }
+
+        .oneLineSpacer {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        select {
+            max-width: 100px;
+            margin: 0.5em 0;
+        }
+
+        .setButton {
+            padding: 11px 6px;
+            background-color: var(--accent-color-interaction);
+            color: var(--font-color-b);
+            border-radius: 4px;
+            cursor: pointer;
+            border-style: none;
+            text-align: center;
+            margin: auto 0;
+        }
+
+
+
+        .setButton:hover {
+            color: var(--font-color-a);
+            font-weight: bold;
+        }
+
+        .inactive {
+            background-color: var(--bg-color-a);
+            color: var(--font-color-a);
+            cursor: not-allowed;
+        }
+
+        .dualButtonGroup {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .dualButtonGroup input {
+            margin: 0em 0.2em;
+        }
+    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src="{{url_for('static', filename='js/jquery-3.6.3.js') }}"></script>
+</head>
+
+<body>
+    {% include 'headerOverview.html' %}
+
+    <div class="bodyDiv">
+        <br>
+        <br>
+        <br>
+
+        <!-- Appearance Section -->
+        <div class="settings-section">
+            <h2>Appearance</h2>
+            <div class="oneLineSetting">
+                <label for="theme">Theme:</label>
+                <select id="theme" name="theme">
+                    <option value="system">System</option>
+                    <option value="light">Light</option>
+                    <option value="dark">Dark</option>
+                </select>
+            </div>
+
+            <div class="oneLineSetting">
+                <label for="interaction-color">Primary Color (of active theme):</label>
+                <input type="color" id="interaction-color" name="interaction-color" value="#000000"
+                    onchange="changeInteractionColor(this)" onclick="activateLiveColorPreview(this)">
+            </div>
+            <div class="oneLineSpacer">
+                <div style="width: 100%; text-align: center;">
+                </div>
+                <div class="dualButtonGroup">
+                    <input type="button" id="appearance-reset" class="setButton inactive" value="Default"
+                        onclick="resetAppearance()">
+                    <input type="button" id="appearance-save" class="setButton inactive" value="Save"
+                        onclick="saveAppearanceChanges()">
+                </div>
+            </div>
+        </div>
+
+        <br>
+        <br>
+
+        <!-- API Keys Section -->
+        <div class="settings-section">
+            <h2>API Keys</h2>
+            <div class="oneLineSpacer">
+                <div class="oneLineSetting">
+                    <label for="weather-api-key">Weather API Key:</label>
+                    <input type="text" id="weather-api-key" name="weather-api-key"
+                        placeholder="Enter your Weather API key">
+                </div>
+                <div class="dualButtonGroup">
+                    <input type="button" id="weather-api-key-reset" class="setButton inactive" value="Reset"
+                        onclick="resetWeatherApiKey()">
+                    <input type="button" id="weather-api-key-save" class="setButton inactive" value="Set"
+                        onclick="setWeatherApiKey()">
+                </div>
+            </div>
+        </div>
+
+        <br>
+        <br>
+
+        <!-- IAIS Backend -->
+        <div class="settings-section">
+            <h2>IAIS Backend</h2>
+            <div class="oneLineSpacer">
+
+                <div class="oneLineSetting">
+                    <label for="iais-backend-url">IAIS Backend URL:</label>
+                    <input type="text" id="iais-backend-url" name="iais-backend-url"
+                        placeholder="Enter the URL of the IAIS Backend">
+                </div>
+                <div class="dualButtonGroup">
+                    <input type="button" id="iais-backend-url-reset" class="setButton inactive" value="Reset">
+                    <input type="button" id="iais-backend-url-save" class="setButton inactive" value="Set">
+                </div>
+
+            </div>
+        </div>
+
+    </div>
+    {% include 'footer.html' %}
+
+    <script>
+        var colorInterval;
+
+        //all buttons that already have the class "inactive" are disabled
+        $(".inactive").prop("disabled", true);
+
+        //once an input field is changed, enable the save button (already while typing)
+        $("#weather-api-key").on("input", function () {
+            $("#weather-api-key-save").removeClass("inactive");
+            $("#weather-api-key-save").prop("disabled", false);
+        });
+
+        $("#iais-backend-url").on("input", function () {
+            $("#iais-backend-url-save").removeClass("inactive");
+            $("#iais-backend-url-save").prop("disabled", false);
+        });
+
+        //if any of the three appearance settings is changed, enable the save button
+        $("#theme").on("change", function () {
+            $("#appearance-save").removeClass("inactive");
+            $("#appearance-save").prop("disabled", false);
+
+            let colorMode = $("#theme").val();
+
+            $.ajax({
+                url: "/settings/appearance",
+                type: "GET",
+                async: false,
+                success: function (response) {
+                    console.log(response);
+                    let usedColorTheme = colorMode;
+                    if (usedColorTheme === "system") {
+                        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                            usedColorTheme = "dark";
+                        }
+                        else {
+                            usedColorTheme = "light";
+                        }
+                    }
+
+                    let accentColor = response["color-" + usedColorTheme];
+                    console.log("Color: " + accentColor);
+
+                    changeColorMode(usedColorTheme, accentColor);
+                    setTimeout(() => {
+                        updateAppearanceUIElements(colorMode, accentColor);
+                    }, 300);
+
+                    updateAppearanceUIElements(colorMode, accentColor);
+                }
+            });
+        });
+
+        $("#interaction-color").on("input", function () {
+            $("#appearance-save").removeClass("inactive");
+            $("#appearance-save").prop("disabled", false);
+        });
+
+
+
+
+        function updateAppearanceSettings() {
+            //get the appearance settings
+            $.ajax({
+                url: "/settings/appearance",
+                type: "GET",
+                success: function (response) {
+                    console.log(response);
+                    let theme = response.theme;
+                    let usedColorTheme = theme;
+                    if (theme === "system") {
+                        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                            usedColorTheme = "dark";
+                        } else {
+                            usedColorTheme = "light";
+                        }
+                    }
+
+                    updateAppearanceUIElements(theme, response["color-" + usedColorTheme]);
+
+                }
+            });
+        }
+
+        function updateAppearanceUIElements(theme, accentColor) {
+            let interactionColor = accentColor;
+
+            if (interactionColor !== "" && interactionColor !== undefined) {
+                console.log("Interaction Color: " + interactionColor);
+                document.documentElement.style.setProperty("--accent-color-interaction", interactionColor);
+
+                $("#interaction-color").val(interactionColor);
+                $("#appearance-reset").removeClass("inactive");
+                $("#appearance-reset").prop("disabled", false);
+
+            } else {
+                console.log("Interaction Color not set, has value: " + interactionColor);
+                let colorVal = getComputedStyle(document.body).getPropertyValue('--accent-color-interaction');
+                console.log("Color: " + colorVal);
+
+                if (colorVal.startsWith("rgb")) {
+                    let colorArray = colorVal.split("(")[1].split(",");
+                    let r = parseInt(colorArray[0]);
+                    let g = parseInt(colorArray[1]);
+                    let b = parseInt(colorArray[2].split(")")[0]);
+
+                    colorVal = rgbToHex(r, g, b);
+                }
+                $("#interaction-color").val(colorVal);
+            }
+
+            //set the theme
+            $("#theme").val(theme);
+        }
+
+
+
+        function changeInteractionColor(colorpicker) {
+            //stop the live preview
+            clearInterval(colorInterval);
+
+            let color = colorpicker.value;
+            document.documentElement.style.setProperty("--accent-color-interaction", color);
+        }
+
+        function activateLiveColorPreview(colorpicker) {
+            colorInterval = setInterval(() => {
+                let color = colorpicker.value;
+                document.documentElement.style.setProperty("--accent-color-interaction", color);
+                console.log(color);
+            }, 350);
+        }
+
+        function saveAppearanceChanges() {
+            //save the appearance settings
+            let theme = $("#theme").val();
+            let interactionColor = $("#interaction-color").val();
+
+            let colorLight = "";
+            let colorDark = "";
+
+            if (theme === "system") {
+                if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                    colorDark = interactionColor;
+                }
+            } else if (theme === "light") {
+                colorLight = interactionColor;
+            } else if (theme === "dark") {
+                colorDark = interactionColor;
+            }
+
+            //send the data to the server
+            console.log("Theme: " + theme + " Interaction Color: " + interactionColor);
+            $.ajax({
+                url: "/settings/appearance",
+                type: "POST",
+                data: {
+                    "theme": theme,
+                    "color-light": colorLight,
+                    "color-dark": colorDark
+                },
+                success: function (data) {
+                    console.log(data);
+                    //disable the save button
+                    $("#appearance-save").addClass("inactive");
+                    $("#appearance-save").prop("disabled", true);
+                    //activate the reset button
+                    $("#appearance-reset").removeClass("inactive");
+                    $("#appearance-reset").prop("disabled", false);
+                }
+            });
+        }
+
+        //reset button
+        function resetAppearance() {
+            //reset the appearance settings
+            $.ajax({
+                url: "/settings/appearance",
+                type: "DELETE",
+                success: function (data) {
+                    console.log(data);
+                    //disable the reset button
+                    $("#appearance-reset").addClass("inactive");
+                    $("#appearance-reset").prop("disabled", true);
+                    //disable the save button
+                    $("#appearance-save").addClass("inactive");
+                    $("#appearance-save").prop("disabled", true);
+
+                    //reload the page
+                    window.location.reload();
+
+                }
+            });
+        }
+
+
+        function componentToHex(c) {
+            var hex = c.toString(16);
+            return hex.length == 1 ? "0" + hex : hex;
+        }
+
+        function rgbToHex(r, g, b) {
+            return "#" + componentToHex(r) + componentToHex(g) + componentToHex(b);
+        }
+
+        function setWeatherApiKey() {
+            $.ajax({
+                url: "/settings/weather_api_key",
+                type: "POST",
+                data: {
+                    "api_key": $("#weather-api-key").val()
+                },
+                success: function (data) {
+                    console.log(data);
+                    //disable the save button
+                    $("#weather-api-key-save").addClass("inactive");
+                    $("#weather-api-key-save").prop("disabled", true);
+                }
+            });
+        }
+
+        function fillWeatherApiKey() {
+            $.ajax({
+                url: "/settings/weather_api_key",
+                type: "GET",
+                success: function (data) {
+                    console.log(data);
+                    let key = data.api_key;
+                    console.log("Key: " + key);
+                    if (key !== "" && key !== undefined && key !== null) {
+                        console.log("Setting key");
+                        $("#weather-api-key-save").addClass("inactive");
+                        $("#weather-api-key-save").prop("disabled", true);
+                        $("#weather-api-key-reset").removeClass("inactive");
+                        $("#weather-api-key-reset").prop("disabled", false);
+                        $("#weather-api-key").val(key);
+                    }
+                    else {
+                        $("#weather-api-key").val("");
+                    }
+                }
+            });
+        }
+
+        function resetWeatherApiKey() {
+            $.ajax({
+                url: "/settings/weather_api_key",
+                type: "DELETE",
+                success: function (data) {
+                    console.log(data);
+                    //disable the reset button
+                    $("#weather-api-key-reset").addClass("inactive");
+                    $("#weather-api-key-reset").prop("disabled", true);
+                    //disable the save button
+                    $("#weather-api-key-save").addClass("inactive");
+                    $("#weather-api-key-save").prop("disabled", true);
+
+                    $("#weather-api-key").val("");
+                }
+            });
+        }
+
+        updateAppearanceSettings();
+        fillWeatherApiKey();
+
+
+    </script>
+</body>
+
+</html>

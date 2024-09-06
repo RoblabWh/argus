@@ -36,32 +36,6 @@
             color: var(--font-color-b);
         }
 
-        .dropdown-settings-options {
-            display: none;
-            position: absolute;
-            left:-55px;
-            overflow: auto;
-            border-radius: 4px;
-        }
-
-        .dropdown-settings:hover .dropdown-settings-options {
-            display: block;
-        }
-
-        .dropdown-settings-options a {
-            display: block;
-            color: var(--font-color-a)
-            padding: 5px;
-            text-decoration: none;
-            padding:5px 10px;
-            background-color: var(--bg-color-a);
-        }
-
-        .dropdown-settings-options a:hover {
-            color: var(--font-color-b);
-            background-color: var(--bg-color-b);
-
-        }
 
         #header-title-name{
             position: relative;
@@ -103,59 +77,18 @@
             <img id="header-icon" src="{{ url_for('static', filename='default/Argus_icon_Light_crop.png') }}" width="35px" >
         </a>
         <div class="dropdown-settings">
-            <button>Settings</button>
-            <div class="dropdown-settings-options">
-               <a id="colorModeButton" onclick="changeColorMode();">Dark Mode</a>
-               <a onclick="console.Log(Language)">German</a>
-               <a onclick="shutdownServer()">Shutdown Server</a>
-            </div>
+            <button onclick="redirectSettingsPage();">Settings</button>
         </div>
         <h2 id="header-title" onclick="window.location.href = '/{{id}}'">Flight-Report&nbsp;</h2>
         <h3 id="header-title-name" onclick="window.location.href = '/{{id}}'">{{ project.name }}</h3>
     </div>
 
     <script>
-        var colorMode = "light"; 
-
-        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-            colorMode = "dark";
-            changeColorMode();
-        }
-
-        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
-            colorMode = e.matches ? "dark" : "light";
-            changeColorMode();
-        });
-
-        function shutdownServer(){
-            console.log("shutdown");
-            $.get("/shutdown");
-        };
-
-        function changeColorMode(){
-            var x = document.getElementById("colorModeButton");
-            var oldLink = document.getElementById("currentCss");
-
-            var newlink = document.createElement("link");
-            newlink.setAttribute("rel", "stylesheet");
-            newlink.setAttribute("type", "text/css");
-            newlink.setAttribute("id", "currentCss");
-
-            if (colorMode == "dark") {
-                colorMode = "light";
-                x.innerHTML = "Light Mode";
-                newlink.setAttribute("href", "{{ url_for('static', filename='default/variables-dark.css') }}" );
-                img = document.getElementById("header-icon");
-                img.src = "{{ url_for('static', filename='default/Argus_icon_Dark_crop.png') }}";
-            } else {
-                colorMode = "dark";
-                x.innerHTML = "Dark Mode";
-                newlink.setAttribute("href", "{{ url_for('static', filename='default/variables-light.css') }}" );
-                img = document.getElementById("header-icon");
-                img.src = "{{ url_for('static', filename='default/Argus_icon_Light_crop.png') }}";
-            }
-            document.getElementsByTagName("head").item(0).replaceChild(newlink, oldLink);
-        };
+        const themeLinkLight = "{{ url_for('static', filename = 'default/variables-light.css') }}";
+        const themeLinkDark = "{{ url_for('static', filename = 'default/variables-dark.css') }}";
+        const iconLinkLight = "{{ url_for('static', filename = 'default/Argus_icon_Light_crop.png') }}";
+        const iconLinkDark = "{{ url_for('static', filename = 'default/Argus_icon_Dark_crop.png') }}";
     </script>
+    <script src="{{ url_for('static', filename='js/header.js') }}"></script>
 </body>
 </html>

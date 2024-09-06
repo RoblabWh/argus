@@ -1,79 +1,27 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <title>Title</title>
     <style>
-
-
-        .dropdown-settings {
-            display: inline-block;
-            position: relative;
-            float: right;
-            margin: 8px 16px;
-        }
-
-        .dropdown-settings button{
-            border:none;
-            border-radius:4px;
-            padding:5px 10px;
-            font-size:14px;
-            cursor:pointer;
-            background-color: var(--bg-color-page);
-            color: var(--accent-color-interaction);
-            margin-top: 55px;
-            transition: all 0.2s ease-in-out;
-        }
-
-        .dropdown-settings button:hover{
-            background-color: var(--bg-color-b);
-            color: var(--font-color-b);
-        }
-
-        .dropdown-settings-options {
-            display: none;
-            position: absolute;
-            left:-55px;
-            overflow: auto;
-            border-radius: 4px;
-        }
-
-        .dropdown-settings:hover .dropdown-settings-options {
-            display: block;
-        }
-
-        .dropdown-settings-options a {
-            display: block;
-            color: var(--font-color-a)
-            padding: 5px;
-            text-decoration: none;
-            padding:5px 10px;
-            background-color: var(--bg-color-a);
-        }
-
-        .dropdown-settings-options a:hover {
-            color: var(--font-color-b);
-            background-color: var(--bg-color-b);
-
-        }
-
-        .header{
+        .header {
             width: 100%;
             position: fixed;
             //background-color: var(--bg-color-b);
             background-color: var(--accent-color-interaction);
             top: 0;
-            z-index:1500;
+            z-index: 1500;
             display: block;
             transition: all 0.2s ease-in-out;
-            box-shadow: 0px 5px 5px rgba(0,0,0,0.2)
+            box-shadow: 0px 5px 5px rgba(0, 0, 0, 0.2)
         }
 
-        .header-scrolled{
+        .header-scrolled {
             background-color: var(--accent-color-interaction);
         }
 
-        .header-title-name{
+        .header-title-name {
             position: relative;
             float: left;
             margin: 12px;
@@ -87,14 +35,14 @@
             transition: all 0.2s ease-in-out;
         }
 
-        .header-title-name-scrolled{
+        .header-title-name-scrolled {
             margin: 4px;
             color: var(--font-color-b);
             font-size: 26px;
             padding-top: 5px;
         }
 
-        .header-icon{
+        #header-icon {
             position: relative;
             float: left;
             margin: 12px;
@@ -105,89 +53,71 @@
             transition: all 0.2s ease-in-out;
         }
 
-        .header-icon-scrolled{
-            margin: 4px;
-            padding: 0px;
-            padding-left: 10px;
-            width: 35px;
+
+        .dropdown-settings {
+            display: inline-block;
+            position: relative;
+            float: right;
+            margin: 8px 16px;
+        }
+
+        .dropdown-settings button {
+            border: none;
+            border-radius: 4px;
+            padding: 5px 10px;
+            font-size: 14px;
+            cursor: pointer;
+            background-color: var(--bg-color-page);
+            color: var(--accent-color-interaction);
+            margin-top: 55px;
+            transition: all 0.2s ease-in-out;
+        }
+
+        .dropdown-settings button:hover {
+            background-color: var(--bg-color-b);
+            color: var(--font-color-b);
         }
     </style>
 
     <script>
-        function shutdownServer(){
-            console.log("shutdown");
-            $.get("/shutdown");
-        };
 
-        $(window).scroll(function() {
-            if ($(this).scrollTop() > 1){
+        $(window).scroll(function () {
+            if ($(this).scrollTop() > 1) {
                 $('.header').addClass("header-scrolled");
-                $('.header-icon').addClass("header-icon-scrolled");
                 $('.header-title-name').addClass("header-title-name-scrolled");
                 $('.dropdown-settings button').css('margin-top', '0px');
+                $('#header-icon').css("width", "35px");
+                $('#header-icon').css("margin", "4px");
             }
-            else{
+            else {
                 $('.header').removeClass("header-scrolled");
-                $('.header-icon').removeClass("header-icon-scrolled");
                 $('.header-title-name').removeClass("header-title-name-scrolled");
                 $('.dropdown-settings button').css('margin-top', '55px');
+                $('#header-icon').css("width", "80px");
+                $('#header-icon').css("margin", "12px");
             }
         });
 
     </script>
 </head>
+
 <body>
     <div class="header">
         <div class="dropdown-settings">
-            <button>Settings</button>
-            <div class="dropdown-settings-options">
-               <a id="colorModeButton" onclick="changeColorMode();">Dark Mode</a>
-               <a onclick="console.Log(Language)">German</a>
-               <a onclick="shutdownServer()">Shutdown Server</a>
-            </div>
+            <button onclick="redirectSettingsPage();">Settings</button>
         </div>
-        <img class="header-icon" src="{{ url_for('static', filename='default/Argus_icon_Light_crop.png') }}" width="70px" >
+        <img id="header-icon" src="{{ url_for('static', filename='default/Argus_icon_Light_crop.png') }}" width="70px">
         <h3 class="header-title-name" onclick="window.location.href = '/'">ARGUS</h3>
     </div>
     <br><br><br><br><br><br><br>
+
     <script>
-    var colorMode = "light"; 
-
-        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-            colorMode = "dark";
-            changeColorMode();
-        }
-
-        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
-            colorMode = e.matches ? "dark" : "light";
-            changeColorMode();
-        });
-
-
-        function changeColorMode(){
-            var x = document.getElementById("colorModeButton");
-            var oldLink = document.getElementById("currentCss");
-
-            var newlink = document.createElement("link");
-            newlink.setAttribute("rel", "stylesheet");
-            newlink.setAttribute("type", "text/css");
-            newlink.setAttribute("id", "currentCss");
-
-            if (colorMode == "dark") {
-                colorMode = "light";
-                x.innerHTML = "Light Mode";
-                newlink.setAttribute("href", "{{ url_for('static', filename='default/variables-dark.css') }}" );
-                img = document.getElementsByClassName("header-icon")[0];
-                img.src = "{{ url_for('static', filename='default/Argus_icon_Dark_crop.png') }}";
-            } else {
-                colorMode = "dark";
-                x.innerHTML = "Dark Mode";
-                newlink.setAttribute("href", "{{ url_for('static', filename='default/variables-light.css') }}" );
-                img = document.getElementsByClassName("header-icon")[0];
-                img.src = "{{ url_for('static', filename='default/Argus_icon_Light_crop.png') }}";
-            }
-            document.getElementsByTagName("head").item(0).replaceChild(newlink, oldLink);
-        };
+        const themeLinkLight = "{{ url_for('static', filename = 'default/variables-light.css') }}";
+        const themeLinkDark = "{{ url_for('static', filename = 'default/variables-dark.css') }}";
+        const iconLinkLight = "{{ url_for('static', filename = 'default/Argus_icon_Light_crop.png') }}";
+        const iconLinkDark = "{{ url_for('static', filename = 'default/Argus_icon_Dark_crop.png') }}";
     </script>
+    <script src="{{ url_for('static', filename='js/header.js') }}"></script>
 </body>
+
 </html>

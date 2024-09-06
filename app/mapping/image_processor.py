@@ -220,12 +220,17 @@ class ImageProcessor:
         wind_dir_degrees = "N/A"
         visibility = "N/A"
         wind_dir_cardinal = "?"
-
-
+        ts = self.all_images[0].get_exif_header().get_creation_time_str()#yyyy:mm:dd hh:mm:ss
+        # systems time zone
+        current_time_zone = dt.datetime.now().astimezone().tzinfo
+        # convert from current time zone to UTC
+        ts = dt.datetime.strptime(ts, "%Y:%m:%d %H:%M:%S").replace(tzinfo=current_time_zone).astimezone(dt.timezone.utc).timestamp()
+        # if ts has a decimal, it is removed
+        ts = int(ts)
         try:
             actual_weather = Weather(imageWithGPSData.get_exif_header().get_gps().get_latitude(),
                                      imageWithGPSData.get_exif_header().get_gps().get_longitude(),
-                                     "e9d56399575efd5b03354fa77ef54abb")
+                                     api_key=None, timestamp=ts)
             # print(weather_info_lst)
             temperature = actual_weather.get_temperature()
             humidity = actual_weather.get_humidity()
