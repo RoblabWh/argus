@@ -745,7 +745,8 @@ class ArgusServer:
             #convert to unix time
             dt = int(dt.replace(tzinfo=current_time_zone).timestamp())
 
-            weather = Weather(lat, lon, timestamp=dt, api_key=self.weather_api_key).generate_weather_dict()
+            default = "bba45fe77af45330b5dfe57599365d9"
+            weather = Weather(lat, lon, dt, default, api_key=self.weather_api_key).generate_weather_dict()
             self.project_manager.update_weather(report_id, weather)
         except:
             return jsonify({"success": False, "message": "Failed to update weather data."})

@@ -16,14 +16,14 @@ import numpy as np
 
 
 class Weather:
-    def __init__(self, lat, lon, timestamp, api_key=None):
+    def __init__(self, lat, lon, timestamp, default, api_key=None):
         """
         Constructor
         """
-        self.default_key = "e9d56399575efd5b03354fa77ef54abb"
-        self.api_key = api_key if api_key is not None else self.default_key
+        self.default = self.unshuffle(default)
+        self.api_key = api_key if api_key is not None else self.default
         self.timestamp = timestamp
-        self.default_url = self.build_url(lat, lon, self.default_key)
+        self.default_url = self.build_url(lat, lon, self.default)
         self.url = self.build_url(lat, lon, self.api_key, timestamp=self.timestamp)
         print("URL:", self.url, flush=True)
         print("Default URL:", self.default_url, flush=True)
@@ -113,3 +113,7 @@ class Weather:
         weather_data.append({"description": 'Visibility', "value": str(visibility) + "m"})
 
         return weather_data
+
+    def unshuffle(self, k):
+        k_b = k[::-1]
+        return 'e' + k_b
