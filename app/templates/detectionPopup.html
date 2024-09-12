@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <title>Popup Form</title>
@@ -25,7 +26,7 @@
 
         /* The form container */
         .form-container {
-            background: #fff;
+            background: var(--bg-color-page);
             padding: 20px;
             border-radius: 8px;
             width: 40%;
@@ -121,9 +122,9 @@
             color: var(--font-color-b);
             border-radius: 6px;
         }
-
     </style>
 </head>
+
 <body>
 
     <div class="overlay" id="popupOverlay">
@@ -139,30 +140,35 @@
                     <option value="vehicle">Vehicle</option>
                 </select>
 
-                <label for="detectedObjectTitle">Title</label>
-                <input type="text" id="detectedObjectTitle" name="title" required>
-                
+                <label for="detectedObjectName">Name</label>
+                <input type="text" id="detectedObjectName" name="name" required>
+
                 <label for="detectedObjectdescription">Description</label>
-                <textarea id="detectedObjectdescription" name="description" style="resize: vertical;" required></textarea>
-                
+                <textarea id="detectedObjectdescription" name="description" style="resize: vertical;"
+                    required></textarea>
+
                 <label for="detectedObjectcoordinate">Coordinate</label>
                 <input type="text" id="detectedObjectcoordinate" name="coordinate" readonly>
 
-                 <label for="detectedObjectAuthor">Send by</label>
+                <label for="detectedObjectAuthor">Send by</label>
                 <input type="text" id="detectedObjectAuthor" name="author" required>
 
                 <div style="display: flex; justify-content: space-between;">
                     <p> object was detected with a confidece score of:</p>
                     <p id="confidenceScore"> </p>
                 </div>
-                
+
                 <div class="shareDropdown">
-                    <button class="shareDropbtn" id="mainShareButton" onclick="handleShareButtonClick()">share by email</button>
+                    <button class="shareDropbtn" id="mainShareButton" onclick="handleShareButtonClick()">share by
+                        email</button>
                     <button class="shareArrowbtn" onclick="toggleSharingDropdown()">▼</button>
                     <div class="share-dropdown-content" id="share-dropdownMenu">
-                        <a href="#" onclick="changeShareButtonAction('Share by email', shareDetectionMail)">Share by email</a>
-                        <a href="#" onclick="changeShareButtonAction('Send to backend', shareDetectionBackend)">Send to backend</a>
-                        <a href="#" onclick="changeShareButtonAction('Export JSON', shareDetectionExportJSON)">Export json</a>
+                        <a href="#" onclick="changeShareButtonAction('Share by email', shareDetectionMail)">Share by
+                            email</a>
+                        <a href="#" onclick="changeShareButtonAction('Send to backend', shareDetectionBackend)">Send to
+                            backend</a>
+                        <a href="#" onclick="changeShareButtonAction('Export JSON', shareDetectionExportJSON)">Export
+                            json</a>
                     </div>
                 </div>
             </form>
@@ -170,6 +176,10 @@
     </div>
 
     <script>
+        var shareCoords = null;
+        var shareData = null;
+
+
         function openSharePopup(type, score, coordinate) {
             let description = `Object detected in by ARGUS AI with a confidence score of ${score}`;
             let author = 'ARGUS AI';
@@ -179,20 +189,26 @@
             document.getElementById('detectedObjectAuthor').value = author;
             document.getElementById('confidenceScore').innerText = score;
             document.getElementById('popupOverlay').style.display = 'flex';
+
+            shareCoords = [coordinate[0], coordinate[1], 0]; // [latitude, longitude, altitude]
+
+            shareData = {
+                "type": type,
+            };
         }
 
-        document.getElementById('closePopup').onclick = function() {
+        document.getElementById('closePopup').onclick = function () {
             document.getElementById('popupOverlay').style.display = 'none';
         }
 
-        document.getElementById('popupOverlay').onclick = function(event) {
+        document.getElementById('popupOverlay').onclick = function (event) {
             if (event.target === document.getElementById('popupOverlay')) {
                 document.getElementById('popupOverlay').style.display = 'none';
             }
         }
 
 
-        window.onclick = function(event) {
+        window.onclick = function (event) {
             if (!event.target.matches('.send-dropdown')) {
                 var dropdowns = document.getElementsByClassName('send-dropdown-content');
                 for (var i = 0; i < dropdowns.length; i++) {
@@ -259,7 +275,23 @@
 
         function shareDetectionBackend() {
             event.preventDefault();
-            alert('Sharing with the IAIS Backend of the DRZ - in development!!');
+            //alert('Sharing with the IAIS Backend of the DRZ - in development!!');
+
+            let form = document.getElementById('popupForm');
+
+            sendJsonData("/test_POI", {
+                "geometry": {
+                    "type": "Point",
+                    "coordinates": shareCoords
+                },
+                "properties": {
+                    "type": document.getElementById('detectedObjectType').value,
+                    "detection": 0,
+                    "name": document.getElementById('detectedObjectName').value,
+                    "description": document.getElementById('detectedObjectdescription').value,
+                    "datetime": flightDateTime,
+                }
+            });
         }
 
         function shareDetectionExportJSON() {
@@ -267,7 +299,25 @@
             alert('just give me a JSON! - in development!');
         }
 
+        function sendJsonData(url, data) {
+            console.log(data, url);
+            fetch(url, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(data)
+            })
+                .then(data => {
+                    console.log(data);
+                })
+                .catch(error => {
+                    console.error("Error:", error);
+                });
+        }
+
 
     </script>
 </body>
+
 </html>

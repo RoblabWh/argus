@@ -153,6 +153,12 @@ class ArgusServer:
                                 view_func=self.get_POI_list)
         self.app.add_url_rule('/delete_poi', methods=['POST'],
                                 view_func=self.delete_POI)
+        self.app.add_url_rule('/settings/backend_url', methods=['POST'],
+                                view_func=self.set_backend_url)
+        self.app.add_url_rule('/settings/backend_url', methods=['GET'],
+                                view_func=self.get_backend_url)
+        self.app.add_url_rule('/settings/backend_url', methods=['DELETE'],
+                                view_func=self.reset_backend_url)
         self.app.add_url_rule('/create_project_group', methods=['POST'],
                                 view_func=self.create_project_group)
         self.app.add_url_rule('/delete_project_group/<int:project_group_id>', methods=['DELETE'],
@@ -1023,6 +1029,19 @@ class ArgusServer:
 
     def allowed_file_project(self, filename):
         return '.' in filename and filename.rsplit('.', 1)[1].lower() in self.ALLOWED_EXTENSIONS_PROJECT
+
+    def set_backend_url(self):
+        data = request.form
+        print("set_backend_url with: ", data, flush=True)
+        self.data_share_manager.update_backend_url(data["url"])
+        return data
+
+    def get_backend_url(self):
+        return jsonify({"url": self.data_share_manager.iais_url})
+
+    def reset_backend_url(self):
+        self.data_share_manager.update_backend_url(None)
+        return jsonify({"url": ""})
 
     def set_IAIS_settings(self):
         data = request.get_json()

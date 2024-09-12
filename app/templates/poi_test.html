@@ -47,16 +47,36 @@
     <br>
     <h2>Add POI</h2>
     <form id="form2">
+      <h3>Geometry:</h3>
       <label for="latitude">latitude:</label>
       <input type="number" id="latitude" name="latitude" required step="any"><br><br>
       <label for="longitude">longitude:</label>
       <input type="number" id="longitude" name="longitude" required step="any"><br><br>
+      <label for="altitude">altitude:</label>
+      <input type="number" id="altitude" name="altitude" step="any"><br><br>
+
+      <h3>Properties:</h3>
+      <label for="type">type enum:</label>
+      <input type="number" id="type" name="type" step="any"><br><br>
+
+      <label for="subtype">subtype string:</label>
+      <input type="text" id="subtype" name="subtype"><br><br>
+
+      <label for="danger_level">danger_level bool:</label>
+      <input type="checkbox" id="danger_level" name="danger_level"><br><br>
+
+      <label for="detection">detection enum:</label>
+      <input type="number" id="detection" name="detection" step="any"><br><br>
+
       <label for="name">Name:</label>
       <input type="text" id="name" name="name" required><br><br>
-      <label for="type">Type:</label>
-      <input type="text" id="type" name="type" required><br><br>
+
       <label for="description">Description:</label><br>
       <textarea id="description" name="description" rows="4" cols="50" required></textarea><br><br>
+
+      <label for="datetime">Datetime:</label>
+      <input type="datetime-local" id="datetime" name="datetime" required><br><br>
+
       <button type="submit">Add POI</button>
     </form>
     <br>
@@ -87,11 +107,19 @@
       event.preventDefault();
       //sendData("/test_POI", this);
       sendJsonData("/test_POI", {
-        "latitude": this["latitude"].value,
-        "longitude": this["longitude"].value,
-        "name": this["name"].value,
-        "type": this["type"].value,
-        "description": this["description"].value
+        "geometry": {
+          "type": "Point",
+          "coordinates": [this["longitude"].value, this["latitude"].value, this["altitude"].value]
+        },
+        "properties": {
+          "type": this["type"].value,
+          "subtype": this["subtype"].value,
+          "danger_level": this["danger_level"].checked,
+          "detection": this["detection"].value,
+          "name": this["name"].value,
+          "description": this["description"].value,
+          "datetime": this["datetime"].value,
+        }
       });
     });
 

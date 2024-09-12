@@ -815,6 +815,9 @@ function draw_individual_objects_on_map(objectDetectionData) {
         }
     }
 
+
+
+
     for (var i = 0; i < detections.length; i++) {
         let detection = detections[i];
         let categoryID = detection.category_id;
@@ -835,7 +838,17 @@ function draw_individual_objects_on_map(objectDetectionData) {
         let filename = image.file_name;
         let image_size = [image.width, image.height];
         let object_bounds = detection.bbox;
-        let object_center_gps = get_object_detection_coordinate(filename, object_bounds, image_size, detection.image_id, rgbMapData);
+        let object_center_gps = detection.gps_coords;
+        let ringcolor = 'grey';
+        
+        if (object_center_gps == null || object_center_gps == "" || object_center_gps == undefined) {
+            object_center_gps = get_object_detection_coordinate(filename, object_bounds, image_size, detection.image_id, rgbMapData);
+            detection.gps_coords = object_center_gps;
+        }
+        else {
+            ringcolor = 'white';
+        }
+            
 
         if (object_center_gps == null) {
             continue;
@@ -853,14 +866,15 @@ function draw_individual_objects_on_map(objectDetectionData) {
         }
 
         marker = L.circle(object_center_gps, {
-            color: 'white',
+            color: ringcolor,
             fillColor: color,
-            fillOpacity: 0.9,
-            radius: 2
+            fillOpacity: 0.8,
+            radius: 1.5
         }).addTo(objectDetectionLayer_detail);
 
         marker.on('click', function () { showImageByFileName(filename) });
     }
+
 
     //layerControl2.addOverlay(objectDetectionLayer_detail , 'taktischeZeichen_positioniert');
 }

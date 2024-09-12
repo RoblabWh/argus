@@ -52,7 +52,7 @@ The WebApp typically runs on port 5000. You can use either your localhost or the
 We have an already processed example project of a flooding in Germany in 2021 available [(ArgusExample01.zip)](https://dF2wQbFNW2zuCpK:fire@w-hs.sciebo.de/public.php/webdav/argus/ArgusExample01.zip
 ). Use the import feature under "new report" on the projects overview page to load the project. 
 
-Short Demo video on YouTube: [ARGUS - Aerial Rescue and Geospatial Utility System](https://www.youtube.com/watch?v=URO4lSgkyF8)
+Short Demo video on YouTube: [ARGUS - Aerial Rescue and Geospatial Utility System](https://www.youtube.com/watch?v=cUuceC7Efps)
 
 
 # Papers

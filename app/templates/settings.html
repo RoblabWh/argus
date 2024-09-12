@@ -174,8 +174,10 @@
                         placeholder="Enter the URL of the IAIS Backend">
                 </div>
                 <div class="dualButtonGroup">
-                    <input type="button" id="iais-backend-url-reset" class="setButton inactive" value="Reset">
-                    <input type="button" id="iais-backend-url-save" class="setButton inactive" value="Set">
+                    <input type="button" id="iais-backend-url-reset" class="setButton inactive" value="Reset"
+                    onclick="resetBackendURL()">
+                    <input type="button" id="iais-backend-url-save" class="setButton inactive" value="Set"
+                    onclick="setBackendURL()">
                 </div>
 
             </div>
@@ -446,8 +448,66 @@
             });
         }
 
+        function setBackendURL() {
+            $.ajax({
+                url: "/settings/backend_url",
+                type: "POST",
+                data: {
+                    "url": $("#iais-backend-url").val()
+                },
+                success: function (data) {
+                    console.log(data);
+                    //disable the save button
+                    $("#iais-backend-url-save").addClass("inactive");
+                    $("#iais-backend-url-save").prop("disabled", true);
+                }
+            });
+        }
+
+        function fillBackendURL() {
+            $.ajax({
+                url: "/settings/backend_url",
+                type: "GET",
+                success: function (data) {
+                    console.log(data);
+                    let url = data.url;
+                    console.log("URL: " + url);
+                    if (url !== "" && url !== undefined && url !== null) {
+                        console.log("Setting URL");
+                        $("#iais-backend-url-save").addClass("inactive");
+                        $("#iais-backend-url-save").prop("disabled", true);
+                        $("#iais-backend-url-reset").removeClass("inactive");
+                        $("#iais-backend-url-reset").prop("disabled", false);
+                        $("#iais-backend-url").val(url);
+                    }
+                    else {
+                        $("#iais-backend-url").val("");
+                    }
+                }
+            });
+        }
+
+        function resetBackendURL() {
+            $.ajax({
+                url: "/settings/backend_url",
+                type: "DELETE",
+                success: function (data) {
+                    console.log(data);
+                    //disable the reset button
+                    $("#iais-backend-url-reset").addClass("inactive");
+                    $("#iais-backend-url-reset").prop("disabled", true);
+                    //disable the save button
+                    $("#iais-backend-url-save").addClass("inactive");
+                    $("#iais-backend-url-save").prop("disabled", true);
+
+                    $("#iais-backend-url").val("");
+                }
+            });
+        }
+
         updateAppearanceSettings();
         fillWeatherApiKey();
+        fillBackendURL();
 
 
     </script>

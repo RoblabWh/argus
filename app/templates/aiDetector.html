@@ -106,7 +106,7 @@
 
             $.post("/run_detection/{{ id }}", {model_options: selectedModelOption, processing_options: selectedProcessingOption}, function(){
 
-                intervalIDDetection = window.setInterval(check_status_detection, 1500);
+                intervalIDDetection = window.setInterval(check_status_detection, 2000);
 
                 //console.log("Data: " + data );
                 //detections = data;
@@ -135,7 +135,7 @@
                     button.innerHTML = 'Detection is running...';
                     spinner = document.getElementById("detectionsRunningCircle");
                     spinner.style.display = "inline-block";
-                    intervalIDDetection = window.setInterval(check_status_detection, 1500);
+                    intervalIDDetection = window.setInterval(check_status_detection, 2000);
                 }
             });
         }
@@ -967,6 +967,10 @@
 
                     category = detections["categories"][annotation.category_id-1];
                     coordinates = ('50.712776, 14.005974');
+                    coordinates = annotation.gps_coords;
+                    if (coordinates == null || coordinates == "" || coordinates == undefined){
+                        coordinates = ('Nan, NaN');
+                    }
                     openSharePopup(category.name, annotation.score, coordinates);
                 });
 

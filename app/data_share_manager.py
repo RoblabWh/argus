@@ -1,6 +1,7 @@
 import json
 import uuid
 import requests
+import datetime as dt
 class DataShareManager:
     def __init__(self, iais_url, iais_username, iais_password):
         self.iais_username = iais_username
@@ -8,21 +9,24 @@ class DataShareManager:
         self.iais_url = iais_url
 
     def update_iais_connection(self, iais_url, iais_username, iais_password):
-        self.iais_url = iais_url
+        self.update_backend_url(iais_url)
         self.iais_username = iais_username
         self.iais_password = iais_password
 
-        #check if url starts wirh https://
-        if not self.iais_url.startswith('https://'):
-            #make sure it does not start with http://
-            if self.iais_url.startswith('http://'):
-                self.iais_url = self.iais_url.replace('http://', '')
-            else:
-                self.iais_url = 'https://' + self.iais_url
 
-        #check if url ends with /, if so remove it
-        if not self.iais_url.endswith('/'):
-            self.iais_url = self.iais_url + '/'
+    def update_backend_url(self, backend_url):
+        # check if url starts wirh https://
+        if not backend_url.startswith('https://'):
+            # make sure it does not start with http://
+            if backend_url.startswith('http://'):
+                backend_url = backend_url.replace('http://', '')
+
+            backend_url = 'https://' + backend_url
+
+        if not backend_url.endswith('/'):
+            backend_url = backend_url + '/'
+
+        self.iais_url = backend_url
 
     def get_all_pois_from_iais(self):
 
@@ -81,12 +85,29 @@ class DataShareManager:
         geometry = poi_data['geometry']
 
         type = poi_data['properties']['type']
-        subtype = poi_data['properties']['subtype']
-        danger_level = poi_data['properties']['danger_level']
+        #subtype = poi_data['properties']['subtype']
+        #danger_level = poi_data['properties']['danger_level']
         detection = poi_data['properties']['detection']
         name = poi_data['properties']['name']
         description = poi_data['properties']['description']
         datetime = poi_data['properties']['datetime']
+        #convert datetime from 03.08.2024 10:00 to 2024-03-08T10:00:00
+        datetime = dt.datetime.strptime(datetime, '%d.%m.%Y %H:%M').isoformat()
+
+        if type == "human":
+            type = 10
+            subtype = "Person"
+            danger_level = False
+        elif type == "fire":
+            type = 1
+            subtype = "Fire (medium)"
+            danger_level = False
+        elif type == "vehicle":
+            type = -1
+            subtype = "Land vehicle (car, truck, trailer)"
+            danger_level = False
+        else:
+            raise Exception("Unknown type", type)
 
         crs = {
             "properties": {
