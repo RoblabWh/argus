@@ -287,6 +287,7 @@ class ArgusServer:
         return json.dumps({'success': True, 'path': save_path}), 200, {'ContentType': 'application/json'}
 
     #handles the backend video file upload by dropzone, checks if it has the correct type and saves it with the project manager
+    #also handles the insv file, and saves it
     def upload_video_file_dropzone(self, report_id):
         print("upload_video_file_dropzone " + str(report_id), flush=True)
         if 'video' not in request.files:
@@ -316,6 +317,7 @@ class ArgusServer:
 
         return json.dumps({'success': True, 'path': save_path}), 200, {'ContentType': 'application/json'}
 
+    #insv1 file upload for the stella_vslam_upload_insv.html saves it with the project manager
     def upload_insv1_file_dropzone(self, report_id):
         print("upload_insv1_file_dropzone " + str(report_id), flush=True)
         if 'insv1' not in request.files:
@@ -339,6 +341,7 @@ class ArgusServer:
 
         return json.dumps({'success': True, 'path': save_path}), 200, {'ContentType': 'application/json'}
 
+    #insv2 file upload for the stella_vslam_upload_insv.html saves it with the project manager
     def upload_insv2_file_dropzone(self, report_id):
         print("upload_insv2_file_dropzone " + str(report_id), flush=True)
         if 'insv2' not in request.files:
@@ -362,6 +365,7 @@ class ArgusServer:
 
         return json.dumps({'success': True, 'path': save_path}), 200, {'ContentType': 'application/json'}
 
+    #upload mask file stores it with the project manager
     def upload_mask_file(self, report_id):
         print("upload_mask_file " + str(report_id))
         if 'maskfile' not in request.files:
@@ -411,6 +415,7 @@ class ArgusServer:
         else:
             return 'Invalid request.'
 
+    #function to delete the video file in files and project manager
     def delete_video_file(self, report_id):
         data = request.get_json()
         project = self.project_manager.get_project(report_id)
@@ -427,6 +432,7 @@ class ArgusServer:
         else:
             return 'Invalid request.'
 
+    # function to delete the mask file in files and project manager
     def delete_mask_file(self, report_id): #fix the delete methods on the server py and project manager
         data = request.get_json()
         project = self.project_manager.get_project(report_id)
@@ -443,6 +449,7 @@ class ArgusServer:
         else:
             return 'Invalid request.'
 
+    # function to delete the insv1 file in files and project manager
     def delete_insv1_file(self, report_id):
         data = request.get_json()
         project = self.project_manager.get_project(report_id)
@@ -456,6 +463,7 @@ class ArgusServer:
         else:
             return 'Invalid request.'
 
+    # function to delete the insv2 file in files and project manager
     def delete_insv2_file(self, report_id):
         data = request.get_json()
         project = self.project_manager.get_project(report_id)
@@ -635,6 +643,8 @@ class ArgusServer:
         return jsonify(
             "null")  # self.render_slam_report(report_id, start_slam=True, template='stella_vslam_upload.html');
 
+    #method to start the stitcher with the two insv files and a default output option, also copies calibration files to the project
+    # with project_manager.add_default_stitcher_config
     def start_stitcher(self, report_id):
         if request.method == 'POST':
             project = self.project_manager.get_project(report_id)
@@ -656,7 +666,6 @@ class ArgusServer:
             print("starting stitcher " + str(report_id), flush=True)
 
             stitcher_calibration = data['stitcher_config'][0]
-            print(stitcher_calibration)
 
             #slam thread or smth
             self.slam_manager.start_stitcher(report_id=report_id,
@@ -720,6 +729,7 @@ class ArgusServer:
         progress_dict = {"percentage": progress_mapping, "maps_done": maps_done, "maps_loaded": maps_sent}
         return jsonify(progress_dict)
 
+    #function that checks the progress of the mapping thread for vslam
     def check_slam_map_process_status(self, report_id):
         progress = -1
         for thread in self.threads:
@@ -741,8 +751,6 @@ class ArgusServer:
                 break
         result = {"progress": overallprogress, "mapping_result": mapping_result, "trajectory": trajectory, "vertices": vertices}
         return jsonify(result)
-
-
 
     def edit_report(self, report_id):
         print("editing report " + str(report_id))

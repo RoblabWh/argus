@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en" xmlns="http://www.w3.org/1999/html">
-
+<!-- Template for the Stella VSLAM upload that processes insv files with the stitcher -->
 <head>
   <meta charset="UTF-8">
   <title>Upload</title>
@@ -959,7 +959,9 @@
             }
           }
         }, "json");
-
+        if (!insv1UploadedSuccessfully && !insv2UploadedSuccessfully) {
+           window.location.href = '/{{ id }}';
+        }
       updateProcessButtonEnabling();
     }
 
@@ -1015,9 +1017,6 @@
                 insv2FileDropzone.enable();
                 document.getElementById('insv2-file-upload-dropzone').style.cursor = 'cursor';
                 insv2UploadedSuccessfully = false;
-            }
-            if (!insv1UploadedSuccessfully && !insv2UploadedSuccessfully) {
-                window.location.href = '/{{ id }}';
             }
             updateUploadProgress();
           } else {

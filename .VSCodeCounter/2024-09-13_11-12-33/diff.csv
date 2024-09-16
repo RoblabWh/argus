@@ -1,0 +1,10 @@
+"filename", "language", "Python", "JSON", "JavaScript", "comment", "blank", "total"
+"/home/jklasen/A-DRZ/argus/app/mapping/image_mapper_process.py", "Python", -1, 0, 0, 11, 13, 23
+"/home/jklasen/A-DRZ/argus/app/project_manager.py", "Python", 0, 0, 0, 16, -2, 14
+"/home/jklasen/A-DRZ/argus/app/server.py", "Python", -1, 0, 0, 1, 0, 0
+"/home/jklasen/A-DRZ/argus/app/static/default/js/main.js", "JavaScript", 0, 0, -189, 7, -25, -207
+"/home/jklasen/A-DRZ/argus/app/static/default/stitcher/calibration.json", "JSON", 0, -106, 0, 0, 0, -106
+"/home/jklasen/A-DRZ/argus/app/static/default/stitcher/stitcher_calibration.json", "JSON", 0, 106, 0, 0, 0, 106
+"/home/jklasen/A-DRZ/argus/app/static/default/stitcher_calibration.json", "JSON", 0, -106, 0, 0, 0, -106
+"/home/jklasen/A-DRZ/argus/stella_vslam_dense_argus/VSlamProcess.py", "Python", -3, 0, 0, -1, -1, -5
+"Total", "-", -5, -106, -189, 34, -15, -281

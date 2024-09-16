@@ -43,6 +43,7 @@ class ImageMapperProcess(threading.Thread):
         self.preprocessed_img_folder = None
         super().__init__()
 
+    #gets all images under image_folder
     def yield_images(self):
         path = self.image_folder.expanduser()
         for root, dirs, files in os.walk(path):
@@ -53,6 +54,7 @@ class ImageMapperProcess(threading.Thread):
                 if ext in self.extensions:
                     yield Path(os.path.join(root, file))
 
+    #gets all image paths under image_folder
     def get_image_paths(self):
         image_paths = list(self.yield_images())
         if (len(image_paths)) == 0:
@@ -60,12 +62,14 @@ class ImageMapperProcess(threading.Thread):
             sys.exit(1)
         return image_paths
 
+    #loads keyframe ids and poses from json file
     def load_keyframe_data(self, keyframe_json):
         f = open(keyframe_json)
         data = json.load(f)
         for keyframe in data:
             self.keyframe_manager.updateKeyframe(keyframe['id'], keyframe['pose'])
 
+    #sets translation and rotation data from pose
     def get_translation_and_rotation_from_pose(self, pose):
         pose_matrix = np.matrix(np.reshape(pose, (4, 4)))
         inv = np.linalg.inv(pose_matrix)
@@ -76,6 +80,9 @@ class ImageMapperProcess(threading.Thread):
                              [0, 0, 0, 1]])
         return translation, rotation
 
+    #creates a perspective projection from an equirectangular image
+    #pano: the equirectangular image
+    #result: the perspective projection
     def generate_image_from_equirectangular(self, pano):
         height, width = pano.shape[:2]
         u_deg = 0
@@ -87,6 +94,7 @@ class ImageMapperProcess(threading.Thread):
         result = e2p(pano, self.fov, u_deg, v_deg, output_shape, in_rot_deg, mode="bilinear")
         return result
 
+    #generates perspective image for all images in image paths
     def preprocess_images(self):
         self.remove_later = []
         if self.image_paths is None:
@@ -118,6 +126,8 @@ class ImageMapperProcess(threading.Thread):
     def unit_vector(self, vector):
         return vector / np.linalg.norm(vector)
 
+    #gets (minX, maxX), (-maxY,-minY), (minZ, maxZ) from all poses
+    #and a scale factor based on those intervals
     def getScaleFactorAndHeight(self):
         minX = 0
         minY = 0
@@ -147,6 +157,9 @@ class ImageMapperProcess(threading.Thread):
             scaleFactor = (self.map_shape[0] - (2 * self.border)) / (maxZ - minZ)
         return scaleFactor, (minX, maxX), (-maxY,-minY), (minZ, maxZ)
 
+    #analyses flight with pose data
+    #calculates overall flight distance, average distance between keyframes, largest distance between keyframes
+    #also can create a trajectory image
     def analyseFlight(self, x_interval, z_interval, scaleFactor, save_trajectory = False):
         flight_distance = 0
         latest_center = None
@@ -224,6 +237,7 @@ class ImageMapperProcess(threading.Thread):
             self.saved_trajectory = str(trajectory_file)
         return average_distance, largest_distance
 
+    #crops images that would be too big for the output map
     def cropImage(self, top, left, image):
         if (top < 0):
             crop = -top
@@ -241,7 +255,7 @@ class ImageMapperProcess(threading.Thread):
             image = image[0:image.shape[0] - crop, 0:image.shape[1]]
         return image, top, left
 
-    #should rotate a point by an angle(in rad)
+    #rotates a point by an angle(in rad)
     def rotate(self, origin, point, angle):
         """
         Rotate a point counterclockwise by a given angle around a given origin.
@@ -257,17 +271,9 @@ class ImageMapperProcess(threading.Thread):
     def run(self):
         self.start_timestamp = datetime.datetime.now()
         self.started = True
+
         self.preprocess_images()
         self.message = "Step 2/2: Mapping"
-        #test code to load images, so it doesnt calculate them again (takes rly long)
-        #self.preprocessed_img_folder = Path(self.img_prefix) / 'preprocessed'
-        #self.image_folder = self.preprocessed_img_folder
-        #self.yield_paths = self.yield_images()
-        #self.image_paths = []
-        #for image_path in self.yield_paths:
-        #    self.image_paths.append(Path(image_path))
-        #self.image_paths.sort(key=lambda path: int(re.findall("\\d+", str(path.stem))[0]))#sorting image_paths based on id
-        #end testcode
 
         #calculate max and min positions for keyframe poses#
         scaleFactor, x_interval, y_interval, z_interval = self.getScaleFactorAndHeight()
@@ -276,7 +282,7 @@ class ImageMapperProcess(threading.Thread):
 
         large_chunk_size = (largest_distance)*(1+(self.overlap_factor))
 
-        #converts points in keyframe coordinatesystem to pixels on image
+        #initiates the output_image with all zeros
         output_map = np.zeros((self.map_shape[0], (self.map_shape[1]), 3), dtype=np.uint8)
         img = None
         number_of_images_done = 0
@@ -285,6 +291,8 @@ class ImageMapperProcess(threading.Thread):
             img = cv2.imread(str(img_data[1]['path']))
             id = img_data[0]
             number_of_images_done += 1
+
+            #updates progress
             self.progress_mapping = (number_of_images_done / len(self.image_paths_with_distance)) * 0.95
 
             #calculate image position and orientation
@@ -295,54 +303,70 @@ class ImageMapperProcess(threading.Thread):
                 self.keyframe_manager.getKeyframePose(int(id)))
             positionCenterX = int((translation[0] - x_interval[0]) * scaleFactor + self.border)
             positionCenterY = int((-translation[2] + z_interval[1]) * scaleFactor + self.border)
+
+            #if image has distance is too small skip it
             if (img_data[1]['distance'] is None or int((img_data[1]['distance']) * (-translation[1] - y_interval[0]) / (
                     y_interval[1] - y_interval[0])) <= 0):
                 continue
+
+            #calculate output size for the small image
             map_size = (int(img_data[1]['distance'] * (1 + (self.overlap_factor))),
                         int(img_data[1]['distance'] * (1 + (self.overlap_factor))))
             top = int(positionCenterX - (map_size[0]/2))
             left = int(positionCenterY - (map_size[1]/2))
-            test_vector = np.array([0,0,100,1]) #in keyframe coordinate system this should be a vector pointing directly into the field of view
+
+            #some weird code to get the angle we need to rotate the small image around
+            test_vector = np.array([0,0,100,1])
             new_vector = np.linalg.inv(rotation).dot(test_vector)
             flat_vector = np.array([new_vector[0], new_vector[2]])
             flat_vector2 = np.array([0,100])
-            #get angle between those two vectors
+
             fv_u = self.unit_vector(flat_vector)
             fv2_u = self.unit_vector(flat_vector2)
             angle_rad = np.arccos(np.clip(np.dot(fv_u, fv2_u), -1.0, 1.0))
             angle_deg = 0
+
+            #angle_rad gets the absolute angle, but we need to get the direction as well
+            #so we do that with a simple test
             if (flat_vector[0] > flat_vector2[0]):
-                # angle is turning counterclockwise aka. mathematically positive, radiant angles being inverted for fun
                 angle_deg = angle_rad * 180 / math.pi
                 angle_rad = -angle_rad
             else:
-                # angle is turning clockwise aka. mathematically negative
                 angle_deg = -(angle_rad * 180 / math.pi)
-            #now we need the angle between new_vector and test_vector
+
             small_img = cv2.resize(img, map_size)
             original_shape = small_img.shape
             small_img_pil = Image.fromarray(small_img)
+
+            #initiates the vertices for the small image
             small_img_vertices = (
                 (top, left),
                 (top + map_size[0], left),
                 (top + map_size[0], left + map_size[1]),
                 (top, left + map_size[1])
             )
+            #rotates the vertices and stores them in all img vertices
             rotated_vertices = [self.rotate((positionCenterX, positionCenterY), (x,y), angle_rad) for x,y in small_img_vertices]
             all_img_vertices[id] = rotated_vertices
-            rotated_img = small_img_pil.rotate(angle_deg, expand=True) #kinda weird to convert cv2 img to pil and back to have a more comfortable rotate function
+
+            #rotate the small image by the angle
+            rotated_img = small_img_pil.rotate(angle_deg, expand=True)
             rotated_image = np.array(rotated_img)
             new_shape = rotated_image.shape
+
+            #shape_adaption is the difference in shapes from the shape after the rotation minus shape before the rotation
             shape_adaption = int((new_shape[0] - original_shape[0]) / 2)
+
+            #adjust position accordingly
             left = left - shape_adaption
             top = top - shape_adaption
+
+            #crop image
             rotated_image, top, left = self.cropImage(top, left, rotated_image)
                                 
-            #do alpha blending
+            #do alpha blending for the small image into the output image
             alpha = np.sum(rotated_image, axis=-1) > 0
             alpha = np.uint8(alpha*255)
-            #rotated_image = cv2.cvtColor(rotated_image, cv2.COLOR_RGB2RGBA)
-            #rotated_image[:,:,3] = alpha
             alpha_s = alpha/255.0
             alpha_l = 1.0 - alpha_s
             for c in range(0,3):
@@ -357,7 +381,6 @@ class ImageMapperProcess(threading.Thread):
         with open(self.output_folder / self.vertices_output_json, 'w') as f:
             json.dump(all_img_vertices, f, ensure_ascii=False, indent=4)
         self.saved_vertices = str(self.output_folder / self.vertices_output_json);
-        #start attaching images to the map based on keyframe poses
 
         #delete preprocessed images and reset image_paths
         shutil.rmtree(self.preprocessed_img_folder)
@@ -366,7 +389,7 @@ class ImageMapperProcess(threading.Thread):
             self.progress_mapping = 1
         self.finish_timestamp = datetime.datetime.now()
         calc_time = self.finish_timestamp - self.start_timestamp
-        print("mapping finished in " + str(calc_time), flush=True)
+        #print("mapping finished in " + str(calc_time), flush=True)
 
     def get_progress_preprocess(self):
         return self.progress_preprocess

@@ -90,7 +90,6 @@
 var keyframe_images = {{ keyframe_images | tojson }};
 var keyframe_folder = {{ keyframe_folder | tojson }};
 var keyframes = {{ keyfrms | tojson }};
-var detections = {{ detections | tojson }};
 var detection_data = [];
 var remove_mask_imgs = [];
 for (let i = 0; i < keyframe_images.length; i++) {
@@ -318,6 +317,7 @@ function calculateOrientation(currentPose, keyframepose) {
 let detectionsInScene = [];
 
 function generateDetectionsForCurrentScene(data) {
+    console.log(detections.categories);
     detectionsInScene = [];
     let detection_image_id = undefined;
     let detections_in_current_image = [];
@@ -372,7 +372,6 @@ function createObjectCss(width, height, color, index, label) {
     let cssSize = (20/190000)*(width*height)+(23.95);
     let style = document.createElement('style');
     style.id = styleClassName;
-    style.type = "text/css";
     style.innerHTML = '.' + styleClassName + '{ height: ' + height + 'px; width: ' + width + 'px; border-color:rgba(' + color[0] + ',' + color[1] + ',' + color[2] +'); border-style: solid; border-width: thick;}';
 	//style.innerHTML = '.' + styleClassName + '{ height: ' + cssSize + 'px; width: ' + cssSize + 'px; background:rgba(' + color[0] + ',' + color[1] + ',' + color[2] +',0.5); border-color:rgba(' + color[0] + ',' + color[1] + ',' + color[2] +',0.5); border-style: solid; border-width: thin;}';
     document.getElementsByTagName('head')[0].appendChild(style);
@@ -451,6 +450,37 @@ document.getElementById('toggleDetections').addEventListener('click', (e) => {
     }
 });
 {% endif %}
+
+function loadDetections() {
+    let controls = document.getElementById('controls');
+    let div = document.createElement('div');
+    div.setAttribute('class', 'ctrl');
+    div.setAttribute('id', 'toggleDetections');
+    let i = document.createElement('i');
+    i.setAttribute('class','fa fa-eye');
+    i.setAttribute('id','icon');
+    div.appendChild(i);
+    let lastChild = controls.childNodes[controls.childNodes.length-1];
+    controls.insertBefore(div, lastChild);
+    let detectionsVisible = false;
+    document.getElementById('toggleDetections').addEventListener('click', (e) => {
+    if(detectionsVisible) {
+        removeDetections(viewer);
+        viewer.off('load');
+        document.getElementById('toggleDetections').children[0].classList.remove("fa-eye-slash");
+        document.getElementById('toggleDetections').children[0].classList.add("fa-eye");
+        detectionsVisible = false;
+    } else {
+        generateDetectionsForCurrentScene(detections);
+        viewer.on('load', () => {
+            generateDetectionsForCurrentScene(detections);
+        });
+        document.getElementById('toggleDetections').children[0].classList.remove("fa-eye");
+        document.getElementById('toggleDetections').children[0].classList.add("fa-eye-slash");
+        detectionsVisible = true;
+    }
+});
+}
 
 function removeHotspots(viewer) {
     for (let id of hotspotsInScene) {

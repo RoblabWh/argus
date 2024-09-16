@@ -21,12 +21,21 @@ class ProjectManager:
             os.makedirs(projects_path)
         self.projects_path = projects_path
         self.CURRENT_PROJECT_FILE_VERSION = 1.1
+
+        #project dirs for mapping reports
         self.projects_dirs = ["rgb", "ir", "panos", "rgb/thumbnails" , "ir/thumbnails", "panos/thumbnails"]
-        self.slam_projects_dirs = ["keyframes","mapping_output", "map_db", "nerf_export"] #maybe one to output keyframes
+
+        #project dirs for 360° video reports
+        self.slam_projects_dirs = ["keyframes","mapping_output", "map_db", "nerf_export"]
+
+        #file path in the static files, is  the default orb vocab for stellaVslam
         self.default_vocab_path = "./static/default/orb_vocab.fbow"
-        self.default_stitcher_path = "./static/default/stitcher_calibration.json"
-        self.default_vingette_0_path = "./static/default/vingette_0.png"
-        self.default_vingette_1_path = "./static/default/vingette_1.png"
+
+        #file paths in the static files that are needed to calibrate the stitcher
+        self.default_stitcher_path = "./static/default/stitcher/stitcher_calibration.json"
+        self.default_vingette_0_path = "./static/default/stitcher/vingette_0.png"
+        self.default_vingette_1_path = "./static/default/stitcher/vingette_1.png"
+
         self.default_stitcher_video_file_ext = ".avi"
         #self.image_mapper = {}
 
@@ -61,14 +70,13 @@ class ProjectManager:
         with open(os.path.join(self.projects_path, str(id), "project.json"), "w") as json_file:
             json.dump(project, json_file)
 
-        #make subdirectories for project as dtermined in varable "project_dirs"
+        #make subdirectories for project as dtermined in varable "slam_project_dirs"
         for dir in self.slam_projects_dirs:
             os.makedirs(os.path.join(self.projects_path, str(id), dir))
 
         self.highest_id += 1
         self.projects = sorted(self.projects, key=lambda d: d['id'], reverse=True)
         return project
-
 
     def create_new_basics(self):
         id = self.generate_project_id()
@@ -160,19 +168,6 @@ class ProjectManager:
         #print('changed annotation_file_path paths', flush=True)
         return project
 
-    # def replace_project_id_in_path(self, path, new_id):
-    #     parts = path.split(os.path.sep)
-    #     # Find the index of 'projects' in the path
-    #     try:
-    #         projects_index = parts.index('projects')
-    #     except ValueError:
-    #         return path
-    #
-    #     parts[projects_index + 1] = new_id
-    #     new_path = os.path.join(*parts)
-    #
-    #     return new_path
-
     def load_project_from_directory(self, project_id):
         # load project.json from static/uploads/id
         # if no project.json exists, return None
@@ -182,7 +177,6 @@ class ProjectManager:
             with open(os.path.join(self.projects_path, project_id, "project.json"), "r") as json_file:
                 project = json.load(json_file)
                 self._check_for_annotations(project)
-
 
         # check if there is a project['version'] and if not, add it with self.CURRENT_PROJECT_FILE_VERSION
         try:
@@ -221,8 +215,6 @@ class ProjectManager:
             detection['category_id'] += 1
 
         return annotations
-
-
 
     def initiate_project_list(self):
         # check for every directory in static/uploads/ if there is project.json
@@ -364,6 +356,7 @@ class ProjectManager:
 
         return data['slide_file_paths']
 
+    #sets a video file to the project, also grabs the metadata, that are used later to fill the stellavslam yaml template
     def set_video_file(self, id, file_name):
         project = self.get_project(id)
         data = project['data']
@@ -434,6 +427,7 @@ class ProjectManager:
     def get_default_stitcher_video_name(self, report_id):
         return self.get_project_path(report_id) + "/" + str(report_id) + self.default_stitcher_video_file_ext
 
+    #adds default orb vocab from the static files to the project
     def add_default_orb_vocab(self, id):
         project = self.get_project(id)
         data = project['data']
@@ -443,6 +437,7 @@ class ProjectManager:
         self.set_orb_vocab(id, [dst])
         return data["orb_vocab"]
 
+    #adds default stitcher config files from the static files to the project
     def add_default_stitcher_config(self, id):
         project = self.get_project(id)
         data = project['data']
@@ -456,6 +451,7 @@ class ProjectManager:
         shutil.copyfile(self.default_vingette_1_path, dst3)
         return data["stitcher_config"]
 
+    #sets orb vocab to the project dicts and the project.json
     def set_orb_vocab(self, id, file_name):
         project = self.get_project(id)
         print(project, flush=True)
@@ -466,9 +462,9 @@ class ProjectManager:
         print("setting video to project with id: " + str(id))
         with open(self.projects_path + str(id) + "/project.json", "w") as json_file:
             json.dump(project, json_file)
-
         return data['orb_vocab']
 
+    # sets stitcher config to the project dicts and the project.json
     def set_stitcher_config(self, id, file_name):
         project = self.get_project(id)
         data = project['data']
@@ -481,6 +477,7 @@ class ProjectManager:
 
         return data['stitcher_config']
 
+    #grabs data from the video and the data stored in slam settings to fill the template and add it to the project files
     def generate_config_file(self, id):
         project = self.get_project(id)
         data = project['data']
@@ -516,6 +513,7 @@ class ProjectManager:
             self.set_config_file(id, [save_path])
         return True
 
+    #sets config to the project dicts and the project.json
     def set_config_file(self, id, file_name):
         project = self.get_project(id)
         print(project, flush=True)
@@ -529,6 +527,7 @@ class ProjectManager:
 
         return data['config']
 
+    # sets mask file to the project dicts and the project.json
     def set_mask_file(self, id, file_name):
         project = self.get_project(id)
         print(project, flush=True)
@@ -543,6 +542,7 @@ class ProjectManager:
 
         return data['mask']
 
+    # sets slam settings to the project dicts and the project.json
     def set_slam_settings(self, report_id, slam_settings):
         project = self.get_project(report_id)
         data = project['data']
@@ -553,6 +553,7 @@ class ProjectManager:
 
         return data['slam_settings']
 
+    #used after slam is finished, to add the map_db to the project dicts and the project.json
     def load_map_db_file(self, report_id):
         path = self.get_map_db_folder(report_id) + str(report_id) + '.db'
         if os.path.isfile(path):
@@ -567,11 +568,13 @@ class ProjectManager:
         else:
             return False
 
+    #gets the map_db from project dicts
     def get_map_db(self, report_id):
         project = self.get_project(report_id)
         data = project['data']
         return data['map_db']
 
+    #gets the folder to set the output for the nerf export script
     def get_nerf_export_folder(self, report_id):
         path = self.get_project_path(report_id) + "/nerf_export/"
         return path
@@ -586,6 +589,9 @@ class ProjectManager:
         else:
             return False
 
+    #sets mapping_settings to the project dicts and the project.json
+    #it's either true, if a map should get generated after slam
+    #or false otherwise
     def set_mapping_settings(self, report_id, mapping_setting):
         project = self.get_project(report_id)
         data = project['data']
@@ -596,6 +602,7 @@ class ProjectManager:
 
         return data['mapping_settings']
 
+    #gets mapping settings from project dicts
     def get_mapping_settings(self, report_id):
         project = self.get_project(report_id)
         data = project['data']
@@ -678,6 +685,7 @@ class ProjectManager:
             return True
         return False
 
+    #used after slam is finished, to add the keyframe images to the project dicts and the project.json
     def load_keyframe_images(self, report_id):
         project = self.get_project(report_id)
         data = project['data']
@@ -788,6 +796,7 @@ class ProjectManager:
         self.update_data_by_keyword(report_id, 'annotation_file_path', path)
         return path
 
+    #gets json file to put the keyframe infos from stellavslam into
     def get_keyframe_file_path(self, report_id):
         project = self.get_project(report_id)
         path = ""
@@ -798,6 +807,7 @@ class ProjectManager:
 
         return path
 
+    #generates new json file for keyframe storage
     def generate_new_keyframe_file_path(self, report_id):
         project = self.get_project(report_id)
         path = os.path.join(self.projects_path, str(report_id), "keyframes.json")
@@ -805,6 +815,7 @@ class ProjectManager:
         self.update_data_by_keyword(report_id, 'keyframe_file_path', path)
         return path
 
+    #gets json file to put the landmark infos from stellavslam into
     def get_landmark_file_path(self, report_id):
         project = self.get_project(report_id)
         path = ""
@@ -815,6 +826,7 @@ class ProjectManager:
 
         return path
 
+    #generates new json file for landmark storage
     def generate_new_landmark_file_path(self, report_id):
         project = self.get_project(report_id)
         path = os.path.join(self.projects_path, str(report_id), "landmarks.json")
@@ -822,6 +834,8 @@ class ProjectManager:
         self.update_data_by_keyword(report_id, 'landmark_file_path', path)
         return path
 
+    #gets json file to put the slam statistic infos from stellavslam into
+    #so far its just process time
     def get_slam_output_file_path(self, report_id):
         project = self.get_project(report_id)
         path = ""
@@ -832,6 +846,7 @@ class ProjectManager:
 
         return path
 
+    #generates new json file for slam statistic storage
     def generate_new_slam_output_file_path(self, report_id):
         project = self.get_project(report_id)
         path = self.get_project_path(report_id) + "/slam_output.json"
@@ -841,7 +856,6 @@ class ProjectManager:
 
     def update_mapping_result(self, report_id, mapping_output, trajectory, vertices):
         return self.update_data_by_keyword(report_id, 'mapping_output', (mapping_output, trajectory, vertices))
-
 
     def get_project_path(self, report_id):
         project = self.get_project(report_id)

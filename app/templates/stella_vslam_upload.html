@@ -759,7 +759,7 @@
         paramName: "video",
         maxFilesize: 5000, //MB
         acceptedFiles: ".mp4,.insv,.avi",
-        maxFiles: 1,
+        maxFiles: 1,//change to 2, but only accept 2 if file is insv
         accept: function(file,done) {
             done();
         },
@@ -772,6 +772,7 @@
                 this.emit('thumbnail', file, "{{ url_for('static', filename='default/placeholder_video.png') }}");
             });
             this.on('success', (file, response) => {
+                console.log(file);
                 if(file.name.includes('.insv')) {
                     console.log("reloading page")
                     window.location.href = '/{{ id }}';
@@ -830,11 +831,6 @@
             });
             this.on('complete', (file) => {
                 console.log('complete');
-                console.log(file);
-            });
-
-            this.on('processing', (file) => {
-                console.log('processing');
                 console.log(file);
             });
 

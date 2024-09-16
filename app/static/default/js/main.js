@@ -13,9 +13,6 @@ const BACKGROUND_COLOR = "rgb(255, 255, 255)";
 const REFERENCE_POINT_COLOR = [255, 0, 0];
 const MAPPING_INITIAL_SIZE = 300;
 
-// timestamp on received for measuring fps;
-let receiveTimestamp = 0;
-
 let property = {
     CameraMode: 'Follow',
     FixAngle: false,
@@ -48,9 +45,6 @@ function init() {
 
     // create a camera
     camera = new THREE.PerspectiveCamera(45, document.getElementsByClassName('vslam_model')[0].offsetWidth / document.getElementsByClassName('vslam_model')[0].offsetHeight, 0.01, 5000);
-
-    //initGui();
-    initProtobuf();
 
     // create a scene, that holds all elements such as cameras and points.
     scene = new THREE.Scene();
@@ -92,6 +86,10 @@ function init() {
     render();
 }
 
+/**
+ * loads keyframes from a json file, and adds them to the three js renderer
+ * @param keyframes the json file to load the keyframes from
+ */
 function loadKeyframes(keyframes) {
     var keyfrmOutput = [];
     for (let keyfrm of keyframes) {
@@ -114,6 +112,41 @@ function loadKeyframes(keyframes) {
     }
 }
 
+/**
+ * loads landmarks from a json file, and adds them to the three js renderer
+ * @param landmarks the json file to load the landmarks from
+ */
+function loadLandmarks(landmarks) {
+    var landmarkOutput = [];
+    for (let landmark of landmarks) {
+        let landmarkObj = {};
+        landmarkObj["id"] = landmark.id;
+        if (landmark.point_pos != undefined) {
+            landmarkObj["point_pos"] = landmark.point_pos;
+            landmarkObj["rgb"] = landmark.rgb;
+        }
+        landmarkOutput.push(landmarkObj)
+    }
+    for (let landmark of landmarkOutput) {
+        pointCloud.updatePoint(landmark.id,
+                               landmark.point_pos[0]*50,
+                               landmark.point_pos[1]*50,
+                               landmark.point_pos[2]*50,
+                               landmark.rgb[0],
+                               landmark.rgb[1],
+                               landmark.rgb[2])
+    }
+}
+
+/**
+ * loads the mapping result and places it as a ground texture in the three js scene
+ * also needs loaded keyframes to get the pose data
+ * @param imgUrl url to the mapping image result
+ * @param imgHeight width of the mapping image
+ * @param imgWidth height of the mapping image
+ * @param imgVertices vertices display the corner coordinates of the keyframes in the mapping image
+ * needed to calculate scaling and rotation
+ */
 function loadMappingResultSocketViewer(imgUrl, imgHeight, imgWidth, imgVertices) {
     setCameraMode('Bird');
     //get first and last entry of mapped img vertices
@@ -202,30 +235,6 @@ function initiateControls() {
     controlsInitiated = true;
 }
 
-function loadLandmarks(landmarks) {
-    var landmarkOutput = [];
-    for (let landmark of landmarks) {
-        let landmarkObj = {};
-        landmarkObj["id"] = landmark.id;
-        if (landmark.point_pos != undefined) {
-            landmarkObj["point_pos"] = landmark.point_pos;
-            landmarkObj["rgb"] = landmark.rgb;
-        }
-        landmarkOutput.push(landmarkObj)
-    }
-    for (let landmark of landmarkOutput) {
-        pointCloud.updatePoint(landmark.id,
-                               landmark.point_pos[0]*50,
-                               landmark.point_pos[1]*50,
-                               landmark.point_pos[2]*50,
-                               landmark.rgb[0],
-                               landmark.rgb[1],
-                               landmark.rgb[2])
-    }
-}
-
-
-
 // render method that updates each stats, camera frames, view controller, and renderer.
 function render() {
 
@@ -246,24 +255,6 @@ function render() {
     renderer.render(scene, camera);
 }
 
-// initialize gui by dat.gui
-function initGui() {
-    let gui = new dat.GUI({ width: 300 });
-
-    gui.add(property, 'CameraMode', ['Above', 'Follow', 'Bird', 'Subjective']).onChange(setCameraMode);
-    gui.add(property, 'FixAngle').onChange(toggleFixAngle);
-    gui.add(property, 'LandmarkSize', 0, 4, 0.1).onChange(setPointSize);
-    gui.add(property, 'KeyframeSize', 0, 4, 0.1).onChange(setKeyframeSize);
-    gui.add(property, 'CurrentFrameSize', 0, 4, 0.1).onChange(setCurrentframeSize);
-    gui.add(camera, 'far', 1000, 1000000, 1000).onChange(setFar);
-    gui.add(property, 'DrawGraph').onChange(setGraphVis);
-    gui.add(property, 'DrawGrid').onChange(setGridVis);
-    gui.add(property, 'DrawPoints').onChange(setPointsVis);
-    gui.add(property, 'LocalizationMode').onChange(setLocalizationMode);
-    gui.add(property, 'ResetSignal').domElement.children[0].innerHTML = "<button onclick='onClickReset()'>reset</button>";
-    gui.add(property, 'StopSignal').domElement.children[0].innerHTML = "<button onclick='onClickTerminate()'>terminate</button>";
-}
-
 function setCameraMode(val) {
     let suffix = "_rot";
     if (property.FixAngle) {
@@ -271,48 +262,6 @@ function setCameraMode(val) {
     }
     cameraFrames.setCurrentFrameVisibility(val !== "Subjective");
     viewControls.setMode(val + suffix);
-}
-function toggleFixAngle(val) {
-    // If view angle is fixed, camera could not be rotated.
-    setCameraMode(property.CameraMode);
-}
-function setPointSize(val) {
-    val = Math.pow(2, val);
-    pointCloud.setPointSize(val);
-}
-function setKeyframeSize(val) {
-    val = Math.pow(2, val);
-    cameraFrames.setKeyframeSize(val);
-}
-function setCurrentframeSize(val) {
-    val = Math.pow(2, val);
-    cameraFrames.setCurrentFrameSize(val);
-}
-function setFar(val) {
-    camera.updateProjectionMatrix();
-}
-function setGraphVis(val) {
-    cameraFrames.setGraphVisibility(val);
-}
-function setGridVis(val) {
-    grid.visible = val;
-}
-function setPointsVis(val) {
-    pointCloud.setPointsVisibility(val);
-}
-function setLocalizationMode(val) {
-    if (val == true) {
-        socket.emit("signal", "disable_mapping_mode");
-    }
-    else {
-        socket.emit("signal", "enable_mapping_mode");
-    }
-}
-function onClickReset() {
-    socket.emit("signal", "reset");
-}
-function onClickTerminate() {
-    socket.emit("signal", "terminate");
 }
 
 // function that converts array that have size of 16 to matrix that shape of 4x4
@@ -326,149 +275,6 @@ function array2mat44(mat, array) {
         }
         mat.push(raw);
     }
-}
-function loadProtobufData(obj, keyframes, edges, points, referencePointIds, currentFramePose) {
-    for (let keyframeObj of obj.keyframes) {
-        let keyframe = {};
-        keyframe["id"] = keyframeObj.id;
-        if (keyframeObj.pose != undefined) {
-            keyframe["camera_pose"] = [];
-            array2mat44(keyframe["camera_pose"], keyframeObj.pose.pose);
-        }
-        keyframes.push(keyframe);
-    }
-    for (let edgeObj of obj.edges) {
-        edges.push([edgeObj.id0, edgeObj.id1])
-    }
-    for (let landmarkObj of obj.landmarks) {
-        let landmark = {};
-        landmark["id"] = landmarkObj.id;
-        if (landmarkObj.coords.length != 0) {
-            landmark["point_pos"] = landmarkObj.coords;
-            landmark["rgb"] = landmarkObj.color;
-        }
-        points.push(landmark);
-    }
-    for (let id of obj.localLandmarks) {
-        referencePointIds.push(id);
-    }
-    array2mat44(currentFramePose, obj.currentFrame.pose);
-
-}
-
-let mapSegment = undefined;
-let mapMsg = undefined;
-function initProtobuf() {
-}
-
-function receiveProtobuf(msg) {
-    if (msg.length == 0 || mapSegment == undefined) {
-        return;
-    }
-
-    let keyframes = [];
-    let edges = [];
-    let points = [];
-    let referencePointIds = [];
-    let currentFramePose = [];
-
-    let buffer = base64ToUint8Array(msg);
-    let obj = mapSegment.decode(buffer);
-    console.log(obj.messages[0].tag + " ; " + obj.messages[0].txt);
-
-    if (obj.messages[0].tag == "RESET_ALL") {
-        removeAllElements();
-    }
-    else {
-        loadProtobufData(obj, keyframes, edges, points, referencePointIds, currentFramePose);
-        updateMapElements(keyframes, edges, points, referencePointIds, currentFramePose);
-    }
-}
-
-function receiveMsg(msg) {
-    let buffer = base64ToUint8Array(msg);
-    let obj = mapSegment.decode(buffer);
-    console.log(obj.messages[0].tag + " ; " + obj.messages[0].txt);
-
-}
-
-function base64ToUint8Array(base64) {
-    let binaryString = window.atob(base64);
-    let len = binaryString.length;
-    let bytes = new Uint8Array(len);
-    for (var i = 0; i < len; i++) {
-        bytes[i] = binaryString.charCodeAt(i);
-    }
-    return bytes;
-}
-
-function updateMapElements(keyframes, edges, points, referencePointIds, currentFramePose) {
-    cameraFrames.updateCurrentFrame(currentFramePose);
-    viewControls.setCurrentIntrinsic(currentFramePose);
-
-    if (cameraFrames.numValidKeyframe == 0 && keyframes.length == 0) {
-        return;
-    }
-
-    for (let point of points) {
-        let id = point["id"];
-        if (point["point_pos"] == undefined) {
-            pointCloud.removePoint(id);
-        }
-        else {
-            let x = point["point_pos"][0] * GLOBAL_SCALE;
-            let y = point["point_pos"][1] * GLOBAL_SCALE;
-            let z = point["point_pos"][2] * GLOBAL_SCALE;
-            let r = point["rgb"][0];
-            let g = point["rgb"][1];
-            let b = point["rgb"][2];
-            pointCloud.updatePoint(id, x, y, z, r, g, b);
-        }
-    }
-    for (let keyframe of keyframes) {
-        let id = keyframe["id"];
-        if (keyframe["camera_pose"] == undefined) {
-            cameraFrames.removeKeyframe(id);
-        }
-        else {
-            cameraFrames.updateKeyframe(id, keyframe["camera_pose"]);
-        }
-    }
-    cameraFrames.setEdges(edges);
-
-
-    let currentMillis = new Date().getTime();
-    if (receiveTimestamp != 0) {
-        let dt = currentMillis - receiveTimestamp;
-        if (dt < 2) dt = 2;
-        let fps = 1000.0 / dt;
-        // adaptive update rate
-        //viewControls.updateSmoothness(fps);
-        /*console.log(("         " + parseInt(msgSize / 1000)).substr(-6) + " KB"
-            + ("     " + (fps).toFixed(1)).substr(-7) + " fps, "
-            + ("         " + pointCloud.nValidPoint).substr(-6) + " pts, "
-            + ("         " + cameraFrames.numValidKeyframe).substr(-6) + " kfs");*/
-    }
-    receiveTimestamp = currentMillis;
-
-    pointCloud.colorizeReferencePoints(referencePointIds);
-
-}
-
-function removeAllElements() {
-    for (let id in pointCloud.vertexIds) {
-        if (id < 0 || id == undefined) {
-            continue;
-        }
-        pointCloud.removePoint(id);
-    }
-    for (let id in cameraFrames.keyframeIndices) {
-        if (id < 0 || id == undefined) {
-            continue;
-        }
-        cameraFrames.removeKeyframe(id);
-    }
-    cameraFrames.setEdges([]);
 }
 
 // calculate inverse of se3 pose matrix
@@ -500,16 +306,3 @@ let thumbEnlarge = false; // if thumbnail is clicked, that is enlarged and this 
 const THUMB_SCALING = 3; // thumbnail scaling magnification
 const THUMB_HEIGHT = 96; // normally thumbnail height (width is doubled height)
 const CANVAS_SIZE = [1024, 500]; // thumbnail image resolution
-function onThumbClick() {
-
-    thumbEnlarge = !thumbEnlarge; // inverse flag
-    if (!thumbEnlarge) {
-        document.getElementById("thumb").style.transform = 'translate(0px, 0px) scale(1)';
-    }
-    else {
-        let x = THUMB_HEIGHT * (THUMB_SCALING - 1);
-        let y = THUMB_HEIGHT / 2 * (THUMB_SCALING - 1);
-        document.getElementById("thumb").style.transform = 'translate(' + x + 'px, ' + y + 'px) scale(' + THUMB_SCALING + ')';
-    }
-
-}

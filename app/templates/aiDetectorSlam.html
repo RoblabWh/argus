@@ -52,7 +52,6 @@
         @keyframes s4 {to{transform: rotate(1turn)}}
     </style>
     <script>
-        var detections = {{ detections | tojson }};
         var currentImageAnnotations = [];
         var filteredSelection = [];
         var intervalIDDetection = null;
@@ -130,7 +129,7 @@
                     $.post("/load_detection_results/{{ id }}", function(data){
                         console.log(data);
                         detections = data;
-                        loadDetections(data);
+                        loadDetections();
                     });
 
                     var button = document.getElementById("runDetectionButton");

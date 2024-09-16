@@ -10,7 +10,8 @@ import cv2 as cv
 from scipy.spatial.transform import Rotation as R
 from numba import jit
 
-
+#export script to export the map db file from stellavslam with the images to nerf
+#script was written by Niklas Digakis
 @jit(nopython=True)
 def clip(value, min, max):
     if value > min and value < max:
