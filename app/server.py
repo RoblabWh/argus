@@ -751,7 +751,7 @@ class ArgusServer:
             #convert to unix time
             dt = int(dt.replace(tzinfo=current_time_zone).timestamp())
 
-            default = "bba45fe77af45330b5dfe57599365d9"
+            default = "b13f7582ca21d76ef5ea7df897dd8a6"
             weather = Weather(lat, lon, dt, default, api_key=self.weather_api_key).generate_weather_dict()
             self.project_manager.update_weather(report_id, weather)
         except:

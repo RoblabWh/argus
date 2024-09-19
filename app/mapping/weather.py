@@ -46,27 +46,52 @@ class Weather:
     def build_url(self, lat, lon, key, timestamp=None):
         if timestamp is not None:
             return "https://api.openweathermap.org/data/2.5/onecall/timemachine?lat=%s&lon=%s&dt=%s&appid=%s&units=metric" % (lat, lon, timestamp, key)
-        return     "https://api.openweathermap.org/data/2.5/onecall?lat=%s&lon=%s&appid=%s&units=metric" % (lat, lon, key)
+        return     "https://api.openweathermap.org/data/2.5/weather?lat=%s&lon=%s&appid=%s&units=metric" % (lat, lon, key)
 
     def get_data(self, url):
         response = requests.get(url)
         return json.loads(response.text)
 
+    def get_value(self, key):
+        # check if the data has the key  if not, check wether it has the key "main" or "current" and then check if the key is in the main dict
+        if key in self.data:
+            return self.data[key]
+
+        if "main" in self.data:
+            if key in self.data["main"]:
+                return self.data["main"][key]
+
+        if "current" in self.data:
+            if key in self.data["current"]:
+                return self.data["current"][key]
+
+        return "N/A"
+
+    def get_wind_value(self, key):
+        if "wind" in self.data:
+            if key in self.data["wind"]:
+                return self.data["wind"][key]
+
+        key = "wind_" + key
+
+        return self.get_value(key)
+
+
     def get_temperature(self):
-        return self.data["current"]["temp"]
+        return self.get_value("temp")
     
     def get_humidity(self):
-        return str(self.data["current"]["humidity"])
+        return str(self.get_value("humidity"))
     
     def get_altimeter(self):
-        return str(self.data["current"]["pressure"])
+        return str(self.get_value("pressure"))
 
     def get_visibility(self):
         #print("visibility", self.data["current"]["visibility"])
-        return str(self.data["current"]["visibility"])
+        return str(self.get_value("visibility"))
 
     def get_wind_speed(self):
-        return float(self.data["current"]["wind_speed"])
+        return float(self.get_wind_value("speed"))
 
     def get_wind_speed_kmh(self):
         kmh = self.get_wind_speed() * 3.6
@@ -77,10 +102,10 @@ class Weather:
         return math.floor(knots * 100) / 100
 
     def get_wind_dir_degrees(self):
-        return float(self.data["current"]["wind_deg"])
+        return float(self.get_wind_value("deg"))
 
     def get_wind_dir_cardinal(self):
-        return self.convert_wind_dir_degrees_to_cardinal_direction(float(self.data["current"]["wind_deg"]))
+        return self.convert_wind_dir_degrees_to_cardinal_direction(self.get_wind_dir_degrees())
 
     def convert_wind_dir_degrees_to_cardinal_direction(self, wind_dir_degrees):
         directions = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
@@ -91,14 +116,23 @@ class Weather:
 
 
         temperature = self.get_temperature()
+        print("Temperature:", temperature, flush=True)
         humidity = self.get_humidity()
+        print("Humidity:", humidity, flush=True)
         altimeter = self.get_altimeter()
+        print("Altimeter:", altimeter, flush=True)
         wind_speed_ms = self.get_wind_speed()
+        print("Wind Speed (m/s):", wind_speed_ms, flush=True)
         wind_speed_kmh = self.get_wind_speed_kmh()
+        print("Wind Speed (km/h):", wind_speed_kmh, flush=True)
         wind_speed_knots = self.get_wind_speed_knots()
+        print("Wind Speed (knots):", wind_speed_knots, flush=True)
         visibility = self.get_visibility()
+        print("Visibility:", visibility, flush=True)
         wind_dir_degrees = self.get_wind_dir_degrees()
+        print("Wind Direction (degrees):", wind_dir_degrees, flush=True)
         wind_dir_cardinal = self.get_wind_dir_cardinal()
+        print("Wind Direction (cardinal):", wind_dir_cardinal, flush=True)
 
 
         weather_data = []
@@ -116,4 +150,5 @@ class Weather:
 
     def unshuffle(self, k):
         k_b = k[::-1]
-        return 'e' + k_b
+        k = '3' + k_b
+        return k

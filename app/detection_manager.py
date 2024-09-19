@@ -44,7 +44,10 @@ class DetectionManager:
             for map in maps:
                 for image in map['image_coordinates']:
                     filename = image['file_name'].split('/')[-1]
-                    image_coords_dict[filename] = image['coordinates_gps']
+                    try:
+                        image_coords_dict[filename] = image['coordinates_gps']
+                    except:
+                        print("No gps coordinates found for image", filename)
 
             # add gps corners to detections
             for image in detections['images']:

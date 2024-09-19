@@ -228,7 +228,7 @@ class ImageProcessor:
         # if ts has a decimal, it is removed
         ts = int(ts)
         try:
-            default = "bba45fe77af45330b5dfe57599365d9"
+            default = "b13f7582ca21d76ef5ea7df897dd8a6"
             actual_weather = Weather(imageWithGPSData.get_exif_header().get_gps().get_latitude(),
                                      imageWithGPSData.get_exif_header().get_gps().get_longitude(),
                                      ts, default, api_key=None)
