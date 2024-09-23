@@ -133,12 +133,72 @@
             <h2>Share POI</h2>
             <p>Share the detection with others</p>
             <form id="popupForm">
-                <label for="detectedObjectType">Type</label>
-                <select id="detectedObjectType" name="type">
-                    <option value="fire">Fire</option>
-                    <option value="human">Human</option>
-                    <option value="vehicle">Vehicle</option>
-                </select>
+                <div style="display: flex;">
+                    <h3 style="font-weight: lighter;">Type:&nbsp;</label>
+                    <h3 id="detectedObjectType"></h3>
+                </div>
+                <div id="detailsAreaHuman">
+                    <label for="detectedObjectMainTypeHuman">organizational affiliation</label>
+                    <select id="detectedObjectMainTypeHuman" name="detail">
+                        <option value="2">USAR</option>
+                        <option value="3">EMS</option>
+                        <option value="4">Police</option>
+                        <option value="5">Army</option>
+                        <option value="6">Other</option>
+                        <option value="9">Command</option>
+                        <option value="10">People</option>
+                        <option value="-1" selected>All/ Unspecified</option>
+                    </select>
+
+                    <label for="detectedObjectSubTypeHuman">Subtype</label>
+                    <select id="detectedObjectSubTypeHuman" name="subtype">
+                        <option value="Person" selected>Person</option>
+                        <option value="Person in distress (trapped/buried)">Person in distress (trapped/buried)</option>
+                        <option value="Person injured">Person injured</option>
+                        <option value="Person dead">Person dead</option>
+                        <option value="Missing person">Missing person</option>
+                        <option value="Buried person">Buried person</option>
+                        <option value="Presumably buried person">Presumably buried person</option>
+                    </select>
+                </div>
+
+                <div id="detailsAreaVehicle">
+                    <label for="detectedObjectMainTypeVehicle">organizational affiliation</label>
+                    <select id="detectedObjectMainTypeVehicle" name="detail">
+                        <option value="2">USAR</option>
+                        <option value="3">EMS</option>
+                        <option value="4">Police</option>
+                        <option value="5">Army</option>
+                        <option value="6">Other</option>
+                        <option value="9">Command</option>
+                        <option value="10">People</option>
+                        <option value="-1" selected>All/ Unspecified</option>
+                    </select>
+
+                    <label for="detectedObjectSubTypeVehicle">Subtype</label>
+                    <select id="detectedObjectSubTypeVehicle" name="subtype">
+                        <option value="Land vehicle (car, truck, trailer)" selected>Land vehicle (car, truck, trailer)
+                        </option>
+                        <option value="Rail vehicle (locomotive, wagon)">Rail vehicle (locomotive, wagon)</option>
+                        <option value="Water vehicle (boat, ship)">Water vehicle (boat, ship)</option>
+                        <option value="Air vehicle (airplane, helicopter)">Air vehicle (airplane, helicopter)</option>
+                        <option value="Helicopter">Helicopter</option>
+                    </select>
+                </div>
+
+                <div id="detailsAreaFire">
+                    <select id="detectedObjectMainTypeFire" name="detail" style="display: none;">
+                        <option value="1" selected>Fire</option>
+                    </select>
+
+                    <label for="detectedObjectSubTypeFire">Subtype</label>
+                    <select id="detectedObjectSubTypeFire" name="subtype">
+                        <option value="Fire (small)">Fire (small)</option>
+                        <option value="Fire (medium)" selected>Fire (medium)</option>
+                        <option value="Fire (large)">Fire (large)</option>
+                    </select>
+                </div>
+
 
                 <label for="detectedObjectName">Name</label>
                 <input type="text" id="detectedObjectName" name="name" required>
@@ -177,24 +237,35 @@
 
     <script>
         var shareCoords = null;
-        var shareData = null;
 
 
         function openSharePopup(type, score, coordinate) {
             let description = `Object detected in by ARGUS AI with a confidence score of ${score}`;
             let author = 'ARGUS AI';
-            document.getElementById('detectedObjectType').value = type;
+            type = type.charAt(0).toUpperCase() + type.slice(1);
+            document.getElementById('detectedObjectType').innerHTML = type;
             document.getElementById('detectedObjectcoordinate').value = coordinate;
             document.getElementById('detectedObjectdescription').value = description;
             document.getElementById('detectedObjectAuthor').value = author;
             document.getElementById('confidenceScore').innerText = score;
             document.getElementById('popupOverlay').style.display = 'flex';
 
+            if (type === 'Human') {
+                document.getElementById('detailsAreaHuman').style.display = 'block';
+                document.getElementById('detailsAreaVehicle').style.display = 'none';
+                document.getElementById('detailsAreaFire').style.display = 'none';
+            } else if (type === 'Vehicle') {
+                document.getElementById('detailsAreaHuman').style.display = 'none';
+                document.getElementById('detailsAreaVehicle').style.display = 'block';
+                document.getElementById('detailsAreaFire').style.display = 'none';
+            } else if (type === 'Fire') {
+                document.getElementById('detailsAreaHuman').style.display = 'none';
+                document.getElementById('detailsAreaVehicle').style.display = 'none';
+                document.getElementById('detailsAreaFire').style.display = 'block';
+            }
+
             shareCoords = [coordinate[0], coordinate[1], 0]; // [latitude, longitude, altitude]
 
-            shareData = {
-                "type": type,
-            };
         }
 
         document.getElementById('closePopup').onclick = function () {
@@ -278,6 +349,9 @@
             //alert('Sharing with the IAIS Backend of the DRZ - in development!!');
 
             let form = document.getElementById('popupForm');
+            let type = document.getElementById('detectedObjectType').textContent;
+            let typeID = "detectedObjectMainType" + type;
+            let subtypeID = "detectedObjectSubType" + type;
 
             sendJsonData("/test_POI", {
                 "geometry": {
@@ -285,7 +359,8 @@
                     "coordinates": shareCoords
                 },
                 "properties": {
-                    "type": document.getElementById('detectedObjectType').value,
+                    "type": document.getElementById(typeID).value,
+                    "subtype": document.getElementById(subtypeID).value,
                     "detection": 0,
                     "name": document.getElementById('detectedObjectName').value,
                     "description": document.getElementById('detectedObjectdescription').value,

@@ -560,6 +560,7 @@ function getMapData(mapName) {
 }
 
 function generateObjectDetectionLayer(objectDetectionData) {
+    console.log("!!!!!!!!!----!!!!!!!!!! generateObjectDetectionLayer");
     let mapImagesCoordinates = getMapData("RGB").image_coordinates;
     if (mapImagesCoordinates == null) {
         return;
@@ -790,6 +791,7 @@ function setupObjectDetectionControl(objectDetectionData) {
 
 
 function draw_individual_objects_on_map(objectDetectionData) {
+    console.log("!!!!!!!!!----!!!!!!!!!! draw_individual_objects_on_map");
     //check if Layer already exists
     if (objectDetectionLayer_detail != null) {
         map.removeLayer(objectDetectionLayer_detail);
@@ -935,7 +937,7 @@ function get_object_detection_coordinate(filename, object_bounds, image_size, im
 
         let object_center_gps = new Array();
 
-        let object_center_px = [object_bounds[0], object_bounds[1]];
+        let object_center_px = [object_bounds[0] + 0.5 * object_bounds[2], object_bounds[1] + 0.5 * object_bounds[3]];
         let factor_w = 1 - (object_center_px[0] / image_size[0]);
         let factor_h = 1 - (object_center_px[1] / image_size[1]);
 
@@ -954,7 +956,7 @@ function get_object_detection_coordinate(filename, object_bounds, image_size, im
         let bottomright = coordinates_corners[2];
         let bottomleft = coordinates_corners[3];
 
-        let object_center_px = [object_bounds[0], object_bounds[1]];
+        let object_center_px = [object_bounds[0] + 0.5 * object_bounds[2], object_bounds[1] + 0.5 * object_bounds[3]];
         let factor_w = object_center_px[0] / image_size[0];
         let factor_h = object_center_px[1] / image_size[1];
 

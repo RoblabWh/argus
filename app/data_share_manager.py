@@ -85,8 +85,8 @@ class DataShareManager:
         geometry = poi_data['geometry']
 
         type = poi_data['properties']['type']
-        #subtype = poi_data['properties']['subtype']
-        #danger_level = poi_data['properties']['danger_level']
+        subtype = poi_data['properties']['subtype']
+        danger_level = False #poi_data['properties']['danger_level']
         detection = poi_data['properties']['detection']
         name = poi_data['properties']['name']
         description = poi_data['properties']['description']
@@ -94,20 +94,20 @@ class DataShareManager:
         #convert datetime from 03.08.2024 10:00 to 2024-03-08T10:00:00
         datetime = dt.datetime.strptime(datetime, '%d.%m.%Y %H:%M').isoformat()
 
-        if type == "human":
-            type = 10
-            subtype = "Person"
-            danger_level = False
-        elif type == "fire":
-            type = 1
-            subtype = "Fire (medium)"
-            danger_level = False
-        elif type == "vehicle":
-            type = -1
-            subtype = "Land vehicle (car, truck, trailer)"
-            danger_level = False
-        else:
-            raise Exception("Unknown type", type)
+        # if type == "human":
+        #     type = 10
+        #     subtype = "Person"
+        #     danger_level = False
+        # elif type == "fire":
+        #     type = 1
+        #     subtype = "Fire (medium)"
+        #     danger_level = False
+        # elif type == "vehicle":
+        #     type = -1
+        #     subtype = "Land vehicle (car, truck, trailer)"
+        #     danger_level = False
+        # else:
+        #     raise Exception("Unknown type", type)
 
         crs = {
             "properties": {

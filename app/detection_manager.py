@@ -64,7 +64,8 @@ class DetectionManager:
                 image = detections['images'][image_id]
                 image_coords = image['coordinates_gps']
                 height, width = image['height'], image['width']
-                gps_coords = self.calculate_gps_coords(image_coords, annotation['bbox'][:2], width, height)
+                center_px = [annotation['bbox'][0] + annotation['bbox'][2] / 2, annotation['bbox'][1] + annotation['bbox'][3] / 2]
+                gps_coords = self.calculate_gps_coords(image_coords, center_px, width, height)
                 annotation['gps_coords'] = gps_coords
 
             except Exception as e:

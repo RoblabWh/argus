@@ -1,18 +1,19 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <title>AI Detection</title>
     <style>
-        .tableButton{
+        .tableButton {
             cursor: pointer;
             color: var(--font-color-b);
             font-weight: bold;
-            background-color:var(--accent-color-interaction);
+            background-color: var(--accent-color-interaction);
             border-radius: 4px;
         }
 
-        .tableHyperlink{
+        .tableHyperlink {
             text-decoration: underline;
             cursor: pointer;
             color: var(--accent-color-interaction);
@@ -20,36 +21,48 @@
         }
 
         .spinner {
-          width: 42px;
-          --b: 8px; /* the border thickness */
-          aspect-ratio: 1;
-          border-radius: 50%;
-          padding: 1px;
-          background: conic-gradient(#0000 10%,var(--accent-color-interaction)) content-box;
-          -webkit-mask:
-            repeating-conic-gradient(#0000 0deg,#000 1deg 20deg,#0000 21deg 36deg),
-            radial-gradient(farthest-side,#0000 calc(100% - var(--b) - 1px),#000 calc(100% - var(--b)));
-          -webkit-mask-composite: destination-in;
-          mask-composite: intersect;
-          animation:s4 1s infinite steps(10);
+            width: 42px;
+            --b: 8px;
+            /* the border thickness */
+            aspect-ratio: 1;
+            border-radius: 50%;
+            padding: 1px;
+            background: conic-gradient(#0000 10%, var(--accent-color-interaction)) content-box;
+            -webkit-mask:
+                repeating-conic-gradient(#0000 0deg, #000 1deg 20deg, #0000 21deg 36deg),
+                radial-gradient(farthest-side, #0000 calc(100% - var(--b) - 1px), #000 calc(100% - var(--b)));
+            -webkit-mask-composite: destination-in;
+            mask-composite: intersect;
+            animation: s4 1s infinite steps(10);
         }
-        @keyframes s4 {to{transform: rotate(1turn)}}
+
+        @keyframes s4 {
+            to {
+                transform: rotate(1turn)
+            }
+        }
 
         .spinner-small {
-          width: 30px;
-          --b: 6px; /* the border thickness */
-          aspect-ratio: 1;
-          border-radius: 50%;
-          padding: 1px;
-          background: conic-gradient(#0000 10%,var(--accent-color-interaction)) content-box;
-          -webkit-mask:
-            repeating-conic-gradient(#0000 0deg,#000 1deg 20deg,#0000 21deg 36deg),
-            radial-gradient(farthest-side,#0000 calc(100% - var(--b) - 1px),#000 calc(100% - var(--b)));
-          -webkit-mask-composite: destination-in;
-          mask-composite: intersect;
-          animation:s4 1s infinite steps(10);
+            width: 30px;
+            --b: 6px;
+            /* the border thickness */
+            aspect-ratio: 1;
+            border-radius: 50%;
+            padding: 1px;
+            background: conic-gradient(#0000 10%, var(--accent-color-interaction)) content-box;
+            -webkit-mask:
+                repeating-conic-gradient(#0000 0deg, #000 1deg 20deg, #0000 21deg 36deg),
+                radial-gradient(farthest-side, #0000 calc(100% - var(--b) - 1px), #000 calc(100% - var(--b)));
+            -webkit-mask-composite: destination-in;
+            mask-composite: intersect;
+            animation: s4 1s infinite steps(10);
         }
-        @keyframes s4 {to{transform: rotate(1turn)}}
+
+        @keyframes s4 {
+            to {
+                transform: rotate(1turn)
+            }
+        }
     </style>
     <script>
         var detections = {{ detections | tojson }};
@@ -57,7 +70,7 @@
         var filteredSelection = [];
         var intervalIDDetection = null;
 
-        
+
 
         function showTableByCategory(category) {
             var x = document.getElementById("table" + category);
@@ -79,8 +92,8 @@
             //openSettings(document.getElementById('slideshow-settings-annotaions-tablink'), 'slideshow-settings-Annotations');
         }
 
-        function reRunAIDetection(){
-            if(confirm("Rerunning The Detection will overwrite old detection results")){
+        function reRunAIDetection() {
+            if (confirm("Rerunning The Detection will overwrite old detection results")) {
                 runAIDetection();
             }
         }
@@ -104,7 +117,7 @@
             //create new div that sits in left to the button and contains the loading circle
             //button.innerHTML = ;
 
-            $.post("/run_detection/{{ id }}", {model_options: selectedModelOption, processing_options: selectedProcessingOption}, function(){
+            $.post("/run_detection/{{ id }}", { model_options: selectedModelOption, processing_options: selectedProcessingOption }, function () {
 
                 intervalIDDetection = window.setInterval(check_status_detection, 2000);
 
@@ -126,10 +139,10 @@
             });
         }
 
-        function isDetectionAlreadyRunning(){
-            $.post("/detection_status/{{ id }}", function(detection_status){
-                console.log("Progress: " + detection_status );
-                if(detection_status == "running"){
+        function isDetectionAlreadyRunning() {
+            $.post("/detection_status/{{ id }}", function (detection_status) {
+                console.log("Progress: " + detection_status);
+                if (detection_status == "running") {
                     var button = document.getElementById("runDetectionButton");
                     button.disabled = true;
                     button.innerHTML = 'Detection is running...';
@@ -140,14 +153,14 @@
             });
         }
 
-        function check_status_detection(){
-            $.post("/detection_status/{{ id }}", function(detection_status){
-                console.log("Progress: " + detection_status );
-                if(detection_status == "finished"){
+        function check_status_detection() {
+            $.post("/detection_status/{{ id }}", function (detection_status) {
+                console.log("Progress: " + detection_status);
+                if (detection_status == "finished") {
                     clearInterval(intervalIDDetection);
 
                     //load data
-                    $.post("/load_detection_results/{{ id }}", function(data){
+                    $.post("/load_detection_results/{{ id }}", function (data) {
                         detections = data;
                         generateDetectionTable(data);
                         generateAnnotationSettings(data);
@@ -173,7 +186,7 @@
             var x = document.getElementById("detectionTable");
             var detectionTableContainer = document.getElementById("detectionTableContainer");
 
-            if (x != null){
+            if (x != null) {
                 detectionTableContainer.innerHTML = "";
             }
 
@@ -186,14 +199,14 @@
             var header = tbl.insertRow();
             //create header cells for "category", "findings", "threshold" and "images"
             var headings = ["Category", "Findings", "threshold", "Images"];
-            for (let i = 0; i < headings.length; i++){
+            for (let i = 0; i < headings.length; i++) {
                 var h1 = document.createElement('th');
                 h1.innerHTML = headings[i];
                 header.appendChild(h1);
             }
 
             //one line as a spacer
-            tbl.insertRow().insertCell().innerHTML="";
+            tbl.insertRow().insertCell().innerHTML = "";
 
             //create a selection of all images that have detections by categrory
             const imagesWithDetectionsByCategory = {};
@@ -205,7 +218,7 @@
 
             for (let i = 0; i < detectionData["annotations"].length; i++) {
                 var annotation = detectionData["annotations"][i];
-                var category = detectionData["categories"][annotation.category_id-1]["name"];
+                var category = detectionData["categories"][annotation.category_id - 1]["name"];
                 var image_id = annotation["image_id"];
 
 
@@ -215,12 +228,12 @@
             }
 
             //console.log(imagesWithDetectionsByCategory);
-            
+
 
 
             //for every "category" in detection data create a row
             var categories = detectionData["categories"];
-            for (let i = 0; i < categories.length; i++){
+            for (let i = 0; i < categories.length; i++) {
                 var category = categories[i];
                 var row = tbl.insertRow();
                 //console.log("category: " + category.name + " with a total of " + imagesWithDetectionsByCategory[category.name].length + " images");
@@ -228,9 +241,9 @@
                 subHeader = document.createElement('th');
                 subHeader.innerHTML = category.name;
                 row.append(subHeader);
-                row.insertCell().innerHTML= imagesWithDetectionsByCategory[category.name].length;
+                row.insertCell().innerHTML = imagesWithDetectionsByCategory[category.name].length;
                 var a = document.createElement('a');
-                if(imagesWithDetectionsByCategory[category.name].length > 0){
+                if (imagesWithDetectionsByCategory[category.name].length > 0) {
                     slider = document.createElement('input');
                     slider.setAttribute("type", "range");
                     slider.setAttribute("id", "slider_" + category.name + "_global_threshold");
@@ -238,11 +251,11 @@
                     slider.setAttribute("max", "1");
                     slider.setAttribute("step", "0.01");
                     slider.setAttribute("value", 0.3);
-                    (function(category, slider){
-                        slider.onchange = function(x) {
+                    (function (category, slider) {
+                        slider.onchange = function (x) {
                             updateSubTableThreshold(category.name, x.target.value);
                             map_slider = document.getElementById(category.name + "-slider-map");
-                            if (map_slider != null){
+                            if (map_slider != null) {
                                 map_slider.value = x.target.value;
                             }
                         }
@@ -250,8 +263,8 @@
                     row.insertCell().append(slider);//category.lowest_score;
                     a.innerHTML = "&#x00A0; show &#x25BE; &#x00A0;";
                     a.setAttribute("class", "tableButton");
-                }else{
-                    row.insertCell().innerHTML="-";
+                } else {
+                    row.insertCell().innerHTML = "-";
                     a.innerHTML = "no images with object found";
                 }
                 row.insertCell().appendChild(a);
@@ -268,7 +281,7 @@
 
                 var subTableHeader = subTable.insertRow();
                 var subHeadings = ["Image Name", "Number of detected objects"];
-                for (let j = 0; j < subHeadings.length; j++){
+                for (let j = 0; j < subHeadings.length; j++) {
                     var h1 = document.createElement('th');
                     h1.innerHTML = subHeadings[j];
                     subTableHeader.appendChild(h1);
@@ -277,28 +290,30 @@
                 //loop over all images in detectionData and add them to the table if the category matches
                 var images = detectionData["images"];
                 var selectedImages = imagesWithDetectionsByCategory[category.name];
-                for (let j = 0; j < selectedImages.length; j++){
+                for (let j = 0; j < selectedImages.length; j++) {
                     var image = images[selectedImages[j]];
-                    
+
                     var subTableRow = subTable.insertRow();
                     var lineHeading = document.createElement('th');
                     lineHeading.innerHTML = image.file_name;
                     subTableRow.append(lineHeading);
 
-                    subTableRow.insertCell().innerHTML=1;
+                    subTableRow.insertCell().innerHTML = 1;
                     subTableRow.cells[0].setAttribute("class", "tableHyperlink");
-                    subTableRow.cells[0].onclick = (function(opt) {return function(){
-                        showImageByFileName(opt);
+                    subTableRow.cells[0].onclick = (function (opt) {
+                        return function () {
+                            showImageByFileName(opt);
                         };
                     })(image.file_name);
-                    
+
                 }
 
                 subTableCell.appendChild(subTable);
 
-                if(imagesWithDetectionsByCategory[category.name].length > 0){
-                    row.cells[3].onclick = (function(opt) {return function(){
-                        showTableByCategory(opt)
+                if (imagesWithDetectionsByCategory[category.name].length > 0) {
+                    row.cells[3].onclick = (function (opt) {
+                        return function () {
+                            showTableByCategory(opt)
                         };
                     })(category.name);
                 }
@@ -308,12 +323,12 @@
 
         }
 
-        function updateSubTableThreshold(categoryName, threshold){
+        function updateSubTableThreshold(categoryName, threshold) {
             var subTable = document.getElementById("table" + categoryName);
             var rows = subTable.rows;
             categoryID = detections["categories"][detections["categories"].findIndex(x => x.name === categoryName)].id;
             categorySum = 0;
-            for (let i = 1; i < rows.length; i++){
+            for (let i = 1; i < rows.length; i++) {
                 var row = rows[i];
                 var cells = row.cells;
                 imageName = cells[0].innerHTML;
@@ -321,14 +336,14 @@
 
                 annotations = detections["annotations"];
                 sum = 0;
-                for (let j = 0; j < annotations.length; j++){
+                for (let j = 0; j < annotations.length; j++) {
                     var annotation = annotations[j];
-                    if (annotation.image_id === imageID){
-                        if (annotation.category_id === categoryID){
+                    if (annotation.image_id === imageID) {
+                        if (annotation.category_id === categoryID) {
                             //console.log("annotation.score: " + annotation.score + " threshold: " + threshold + "categoryID: " + categoryID + "categoryName: " + categoryName);
-                            if (annotation.score < threshold){
+                            if (annotation.score < threshold) {
                                 //noting to do
-                            }else{
+                            } else {
                                 sum += 1;
                             }
                         }
@@ -339,24 +354,24 @@
                 //console.log("categoryID: " + categoryID + " categoryName: " + categoryName + " imageID: " + imageID + " imageName: " + imageName + " sum: " + sum);
                 categorySum += sum;
             }
-            sumCell = document.getElementById("detectionTable").rows[(categoryID)*2].cells[1];
+            sumCell = document.getElementById("detectionTable").rows[(categoryID) * 2].cells[1];
             sumCell.innerHTML = categorySum;
-            try{
+            try {
                 var image_slider = document.getElementById("layer-threshold-slider-" + categoryName);
                 image_slider.value = threshold;
                 $("#layer-threshold-slider-" + categoryName).trigger("input");
-            }catch(err){
+            } catch (err) {
                 console.log("no slider found for category: " + categoryName);
             }
             //image_slider = document.getElementById("layer-threshold-slider-" + categoryName);
             //image_slider.value = threshold;
             //$("#layer-threshold-slider-" + categoryName).trigger("input");
-            if (objectDetectionLayer != null){
+            if (objectDetectionLayer != null) {
                 generateObjectDetectionLayer(detections);
             }
         }
 
-        function generateAnnotationSettings(detectionData){
+        function generateAnnotationSettings(detectionData) {
             //check if slideshow-settings-annotaions-tablink exists
             var x = document.getElementById("slideshow-settings-annotaions-tablink");
             console.log("generateAnnotationSettings");
@@ -368,20 +383,20 @@
                 tabLink.setAttribute("class", "tablink-vertical");
                 tabLink.innerHTML = "AI-Detections";
                 //call openSettings(event,'slideshow-settings-Annotations')
-                tabLink.onclick = function() {activateAiOverlays()};
-                tabsDiv.appendChild(tabLink);                
+                tabLink.onclick = function () { activateAiOverlays() };
+                tabsDiv.appendChild(tabLink);
             }
             populateAddAnnotationCategoryDropdown(detectionData);
 
         }
 
-        function populateAddAnnotationCategoryDropdown(detectionData){
+        function populateAddAnnotationCategoryDropdown(detectionData) {
             let addAnnotationDropdown = document.getElementById("addAnnotationDropdown");
             let categories = detectionData["categories"];
             console.log("populateAddAnnotationCategoryDropdown");
             addAnnotationDropdown.innerHTML = "";
 
-            for (let i = 0; i < categories.length; i++){
+            for (let i = 0; i < categories.length; i++) {
                 let category = categories[i];
                 let option = document.createElement("option");
                 option.value = category.id;
@@ -391,15 +406,15 @@
             }
         }
 
-        function generateAnnotationsLayerTableForImage(fileName){
+        function generateAnnotationsLayerTableForImage(fileName) {
 
             var tableContainer = document.getElementById("layer-table-container");
             tableContainer.innerHTML = "";
 
             var tbl = document.createElement("table");
             var header = tbl.insertRow();
-            var headings = ["Show", "Object", "Color","Total found objects", "Displayed objects", "Threshold"];
-            for (let i = 0; i < headings.length; i++){
+            var headings = ["Show", "Object", "Color", "Total found objects", "Displayed objects", "Threshold"];
+            for (let i = 0; i < headings.length; i++) {
                 var h1 = document.createElement('th');
                 h1.innerHTML = headings[i];
                 header.appendChild(h1);
@@ -408,7 +423,7 @@
 
             console.log("generateAnnotationsLayerTableForImage: " + fileName);
 
-            if (fileName == null || fileName == ""){
+            if (fileName == null || fileName == "") {
                 var row = tbl.insertRow();
                 var cell = row.insertCell();
                 cell.innerHTML = "No RGB image found";
@@ -419,19 +434,19 @@
 
             imageID = getImageIndexByName(fileName)
             currentImageAnnotations = [];
-            for (let i = 0; i < detections["annotations"].length; i++){
-                if (detections["annotations"][i].image_id === imageID){
+            for (let i = 0; i < detections["annotations"].length; i++) {
+                if (detections["annotations"][i].image_id === imageID) {
                     currentImageAnnotations.push(detections["annotations"][i]);
                 }
             }
             console.log("currentImageAnnotations: " + currentImageAnnotations.length);
-            
+
             var categories = detections["categories"];
 
-            annotationColorOffset = parseInt(360/categories.length);
+            annotationColorOffset = parseInt(360 / categories.length);
             filteredSelection = [];
 
-            if(currentImageAnnotations == null){
+            if (currentImageAnnotations == null) {
                 var row = tbl.insertRow();
                 var cell = row.insertCell();
                 cell.innerHTML = "No results found, please (re-)run the detection";
@@ -444,15 +459,15 @@
                 return;
             }
 
-            for(let i = 0; i < categories.length; i++){
+            for (let i = 0; i < categories.length; i++) {
                 var row = tbl.insertRow();
                 var category = categories[i];
                 var totalFoundObjects = 0;
                 var displayedObjects = 0;
 
-                for(let j = 0; j < currentImageAnnotations.length; j++){
+                for (let j = 0; j < currentImageAnnotations.length; j++) {
                     var annotation = currentImageAnnotations[j];
-                    if(annotation.category_id === category.id){
+                    if (annotation.category_id === category.id) {
                         totalFoundObjects++;
                         displayedObjects++;
                         filteredSelection.push(j);
@@ -469,8 +484,9 @@
                 checkbox.type = "checkbox";
                 checkbox.checked = true;
                 checkbox.id = "layer-checkbox-" + category.name;
-                checkbox.onclick = (function(opt) {return function(){
-                    toggleLayer(opt)
+                checkbox.onclick = (function (opt) {
+                    return function () {
+                        toggleLayer(opt)
                     };
                 })(category.name);
                 lableSwitch.appendChild(checkbox);
@@ -485,8 +501,9 @@
                 //color.value = hslToHex(i*annotationColorOffset, 100, 50);
                 color.value = hslToHex(category.colorHSL[0], category.colorHSL[1], category.colorHSL[2]);
                 color.id = "color" + category.name;
-                color.oninput = (function(opt) {return function(){
-                    changeColor(opt)
+                color.oninput = (function (opt) {
+                    return function () {
+                        changeColor(opt)
                     };
                 })(category.name);
 
@@ -502,16 +519,17 @@
                 slider.min = 0.3;
                 slider.max = 1;
                 slider.step = 0.01;
-                try{
+                try {
                     slider.value = document.getElementById("slider_" + category.name + "_global_threshold").value;
-                }catch(err){
+                } catch (err) {
                     slider.value = 0.3;
                 }
                 //slider.value = document.getElementById("slider_" + category.name + "_global_threshold").value;
                 slider.id = "layer-threshold-slider-" + category.name;
                 slider.className = "slider";
-                slider.oninput = (function(opt) {return function(){
-                    changeThreshold(opt)
+                slider.oninput = (function (opt) {
+                    return function () {
+                        changeThreshold(opt)
                     };
                 })(category.name);
 
@@ -521,7 +539,7 @@
                 sliderValue.style = "min-width:20px;display:inline-block";
 
 
-                if(totalFoundObjects <= 0){
+                if (totalFoundObjects <= 0) {
                     //lableSwitch.style = "opacity:0.5";
                     lableSwitch.style = "display: none";
                     color.style = "opacity:0.25";
@@ -554,31 +572,31 @@
             filterSelection();
         }
 
-        function changeThreshold(category){
+        function changeThreshold(category) {
             var slider = document.getElementById("layer-threshold-slider-" + category);
             var sliderValue = document.getElementById("layer-threshold-" + category);
             sliderValue.innerHTML = parseFloat(slider.value).toFixed(2);
             filterSelection();
-            if(displayingAI){
+            if (displayingAI) {
                 drawAnnotationsOnCurrentSlide();
             }
         }
 
-        function filterSelection(){
+        function filterSelection() {
             filteredSelection = [];
             //console.log("filterSelection");
             var categories = detections["categories"];
-            for(let i = 0; i < categories.length; i++){
+            for (let i = 0; i < categories.length; i++) {
                 var category = categories[i];
                 var checkbox = document.getElementById("layer-checkbox-" + category.name);
                 var displayedObjects = 0;
-                if (checkbox.checked){
+                if (checkbox.checked) {
                     var slider = document.getElementById("layer-threshold-slider-" + category.name);
                     var threshold = slider.value;
-                    for(let j = 0; j < currentImageAnnotations.length; j++){
+                    for (let j = 0; j < currentImageAnnotations.length; j++) {
                         var annotation = currentImageAnnotations[j];
-                        if(annotation.category_id == category.id){
-                            if (annotation.score >= threshold){
+                        if (annotation.category_id == category.id) {
+                            if (annotation.score >= threshold) {
                                 filteredSelection.push(j);
                                 displayedObjects++;
                             }
@@ -591,14 +609,14 @@
             //generateObjectDetectionLayer(detections);
         }
 
-        function get_global_thresholds(){
+        function get_global_thresholds() {
             var categories = detections["categories"];
             var thresholds = [];
-            for(let i = 0; i < categories.length; i++){
+            for (let i = 0; i < categories.length; i++) {
                 var category = categories[i];
                 //Check if there is a slider for this category
                 let threshold = 0.3;
-                if(document.getElementById("slider_" + category.name + "_global_threshold") != null){
+                if (document.getElementById("slider_" + category.name + "_global_threshold") != null) {
                     var slider = document.getElementById("slider_" + category.name + "_global_threshold");
                     threshold = slider.value;
                 }
@@ -609,70 +627,70 @@
 
 
 
-        function changeColor(category){
+        function changeColor(category) {
             var color = document.getElementById("color" + category);
             var colorValue = color.value;
             var categories = detections["categories"];
             var colorHSL = hexToHSL(colorValue);
-            for(let i = 0; i < categories.length; i++){
+            for (let i = 0; i < categories.length; i++) {
                 var categoryObj = categories[i];
-                if(categoryObj.name == category){
+                if (categoryObj.name == category) {
                     categoryObj.colorHSL = colorHSL;
                     break;
                 }
             }
 
             var colors = [];
-            for(let i = 0; i < categories.length; i++){
+            for (let i = 0; i < categories.length; i++) {
                 colors.push(categories[i].colorHSL);
             }
 
-            if(displayingAI){
+            if (displayingAI) {
                 drawAnnotationsOnCurrentSlide();
             }
 
             //console.log(colors);
 
-            $.post("/update_detections_colors/{{ id }}", {colorH: colorHSL[0], colorS: colorHSL[1], colorL: colorHSL[2], category_name: category});
+            $.post("/update_detections_colors/{{ id }}", { colorH: colorHSL[0], colorS: colorHSL[1], colorL: colorHSL[2], category_name: category });
         }
 
 
 
-        function getImageIndexByName(filename){
+        function getImageIndexByName(filename) {
             var images = detections["images"];
-            for (let i = 0; i < images.length; i++){
-                if (images[i].file_name === filename){
+            for (let i = 0; i < images.length; i++) {
+                if (images[i].file_name === filename) {
                     return images[i].id;
                 }
             }
         }
 
-        function toggleLayerSettings(disable){
+        function toggleLayerSettings(disable) {
             tableContainer = document.getElementById("layer-table-container");
             var table = tableContainer.getElementsByTagName("table")[0];
             var rows = table.rows;
-            if(rows[1] == null){
+            if (rows[1] == null) {
                 return;
             }
-            if (rows[1].cells.length == 1){
+            if (rows[1].cells.length == 1) {
                 //console.log(rows[1].cells);
                 //console.log("returing");
                 return;
             }
-            for (let i = 1; i < rows.length; i++){
+            for (let i = 1; i < rows.length; i++) {
                 var row = rows[i];
                 var labelSwitch = row.cells[0].getElementsByTagName("label")[0];
-                if (labelSwitch.style.display != "none"){
+                if (labelSwitch.style.display != "none") {
                     //loop over every cell and set the content to 0.5 opacity. If cell content is from tape input disable it
-                    for (let j = 0; j < row.cells.length; j++){
+                    for (let j = 0; j < row.cells.length; j++) {
                         var cell = row.cells[j];
                         var elements = cell.getElementsByTagName("*");
-                        for (let k = 0; k < elements.length; k++){
+                        for (let k = 0; k < elements.length; k++) {
                             var element = elements[k];
-                            if (element.tagName == "INPUT"){
+                            if (element.tagName == "INPUT") {
                                 element.disabled = disable;
                             }
-                            if (disable){
+                            if (disable) {
                                 element.style.opacity = 0.5;
                             } else {
                                 element.style.opacity = 1;
@@ -684,19 +702,19 @@
         }
 
 
-        function toggleLayer(category){
+        function toggleLayer(category) {
             row = document.getElementById("layer-row-" + category);
             checkbox = document.getElementById("layer-checkbox-" + category);
             //loop over every cell and set the content to 0.5 opacity. If cell content is from tape input disable it
-            for (let i = 1; i < row.cells.length; i++){
+            for (let i = 1; i < row.cells.length; i++) {
                 var cell = row.cells[i];
                 var elements = cell.getElementsByTagName("*");
-                for (let j = 0; j < elements.length; j++){
+                for (let j = 0; j < elements.length; j++) {
                     var element = elements[j];
-                    if (element.tagName == "INPUT"){
+                    if (element.tagName == "INPUT") {
                         element.disabled = !checkbox.checked;
                     }
-                    if (checkbox.checked){
+                    if (checkbox.checked) {
                         element.style.opacity = 1;
                     } else {
                         element.style.opacity = 0.5;
@@ -704,14 +722,14 @@
                 }
             }
             filterSelection();
-            if(displayingAI){
+            if (displayingAI) {
                 drawAnnotationsOnCurrentSlide();
             }
         }
 
 
 
-        function drawAnnotationsOnCurrentSlide(){
+        function drawAnnotationsOnCurrentSlide() {
 
             let canvasContainer = document.getElementsByClassName("canvas-container")[0];
 
@@ -721,7 +739,7 @@
             var img = document.getElementById("dynamic-image-RGB").getElementsByTagName("img")[0];
 
             //scale based on images source size and the current size of the image
-            var scale = img.width/ img.naturalWidth;
+            var scale = img.width / img.naturalWidth;
             console.log("scale: " + scale + " img.width: " + img.width + " img.naturalWidth: " + img.naturalWidth);
 
             imageIndex = getImageIndexByName(filename);
@@ -734,13 +752,13 @@
             console.log("Drawing " + filteredSelection.length + " annotations on " + filename);
             dynamicAnnotationsCanvas.clear();
 
-            for (let i = 0; i < filteredSelection.length; i++){
+            for (let i = 0; i < filteredSelection.length; i++) {
                 let annotation = currentImageAnnotations[filteredSelection[i]];
                 let categoryID = annotation.category_id;
-                let category = detections["categories"][categoryID-1];
+                let category = detections["categories"][categoryID - 1];
                 let color = document.getElementById("color" + category.name).value;
                 let strokeWidth = document.getElementById("annotationsLineWidth").value;
-                
+
                 let x, y, w, h;
                 x = annotation.bbox[0] * scale;
                 y = annotation.bbox[1] * scale;
@@ -768,28 +786,28 @@
                     myStartH: h,
                     myAnnotationID: annotation.id,
                 })
-                rect.on('mouseover', function(options) {
+                rect.on('mouseover', function (options) {
                     dynamicAnnotationsCanvas.setCursor('pointer');
-                    if (!this.myActive){
+                    if (!this.myActive) {
                         this.set('fill', color);
                         dynamicAnnotationsCanvas.renderAll();
                     }
                 });
-                rect.on('mouseout', function(options) {
+                rect.on('mouseout', function (options) {
                     dynamicAnnotationsCanvas.setCursor('default');
-                    if (!this.myActive){
+                    if (!this.myActive) {
                         this.set('fill', 'rgba(0,0,0,0)');
                         dynamicAnnotationsCanvas.renderAll();
                     }
                 });
-                rect.on('mousedown', function(options) {
-                    if (!this.myActive){
-                        
+                rect.on('mousedown', function (options) {
+                    if (!this.myActive) {
+
                         selectAnnotation(this, annotation);
                     }
                 });
-                rect.on('mouseup', function(options) {
-                    if (this.myEdit){
+                rect.on('mouseup', function (options) {
+                    if (this.myEdit) {
                         deactivateAllAnnotationsOptions();
                         activateAnnotationsEditButtons(this, annotation);
                     }
@@ -801,14 +819,14 @@
             dynamicAnnotationsCanvas.renderAll();
         }
 
-        function selectAnnotation(rect, annotation, activateEdit=false){
+        function selectAnnotation(rect, annotation, activateEdit = false) {
             console.log("selectAnnotation");
             console.log(annotation);
             console.log(rect);
             //close all active ones
             unselectAnnotations();
             //set this one to active
-            
+
 
             let category = rect.myCategoryName;
             let color = document.getElementById("color" + category).value;
@@ -820,22 +838,22 @@
             rect.set('stroke', 'rgba(0,0,0,1)');
             rect.set('opacity', 1);
 
-            if (activateEdit){
+            if (activateEdit) {
                 deactivateAllAnnotationsOptions();
                 activateAnnotationsEditButtons(rect, annotation);
             }
-            else{
+            else {
                 activateAnnotationsOptions(rect, annotation);
             }
 
             dynamicAnnotationsCanvas.renderAll();
         }
 
-        function unselectAnnotations(){
+        function unselectAnnotations() {
             //close all active ones
             let objects = dynamicAnnotationsCanvas.getObjects();
-            for (let i = 0; i < objects.length; i++){
-                if (objects[i].myActive){
+            for (let i = 0; i < objects.length; i++) {
+                if (objects[i].myActive) {
                     let category = objects[i].myCategoryName;
                     let color = document.getElementById("color" + category).value;
 
@@ -844,7 +862,7 @@
                     objects[i].set('stroke', color);
                     objects[i].set('opacity', 0.5);
 
-                    if(objects[i].myEdit){
+                    if (objects[i].myEdit) {
                         //reset slide
                         objects[i].set('myEdit', false);
                         resetAnnotationsRect(objects[i]);
@@ -858,30 +876,30 @@
             dynamicAnnotationsCanvas.renderAll();
         }
 
-        function activateAnnotationsOptions(rect, annotation){
+        function activateAnnotationsOptions(rect, annotation) {
             // show an red cicle with an x to delete the annotation in the top right corner
             // below show a circle with a share symbole that opens a popup on click
-            
+
             let iconSize = 30;
             let gap = 2;
             let btnLeft = rect.oCoords.tr.x + 15;
             let btnTop = rect.oCoords.tr.y - 15;
 
             //check if the buttons are outside of the canvas
-            if (btnLeft + iconSize/2 >= dynamicAnnotationsCanvas.width){
-                btnLeft = dynamicAnnotationsCanvas.width - iconSize/2 - 1;
+            if (btnLeft + iconSize / 2 >= dynamicAnnotationsCanvas.width) {
+                btnLeft = dynamicAnnotationsCanvas.width - iconSize / 2 - 1;
             }
-            if (btnTop - iconSize/2 <= 0){
-                btnTop = iconSize/2 + 1;
+            if (btnTop - iconSize / 2 <= 0) {
+                btnTop = iconSize / 2 + 1;
             }
-            if (btnTop + 2.5*iconSize + gap >= dynamicAnnotationsCanvas.height){
-                btnTop = dynamicAnnotationsCanvas.height - 2.5*iconSize - gap - 1;
+            if (btnTop + 2.5 * iconSize + gap >= dynamicAnnotationsCanvas.height) {
+                btnTop = dynamicAnnotationsCanvas.height - 2.5 * iconSize - gap - 1;
             }
-            if (btnLeft <= iconSize/2){
-                btnLeft = iconSize/2 + 1;
+            if (btnLeft <= iconSize / 2) {
+                btnLeft = iconSize / 2 + 1;
             }
 
-            fabric.loadSVGFromURL('{{ global_for("static/default/ui-elements/icon-delete.svg")}}', function(objects, options) {
+            fabric.loadSVGFromURL('{{ global_for("static/default/ui-elements/icon-delete.svg")}}', function (objects, options) {
                 let shape = fabric.util.groupSVGElements(objects, options);
                 shape.scaleToWidth(iconSize);
                 shape.scaleToHeight(iconSize);
@@ -901,18 +919,18 @@
 
                 dynamicAnnotationsCanvas.add(shape);
 
-                shape.on('mousedown', function(options) {
+                shape.on('mousedown', function (options) {
 
-                    if (!confirm("Do you really want to delete this detected object?")){
+                    if (!confirm("Do you really want to delete this detected object?")) {
                         return;
                     }
 
-                    $.post("/delete_annotation/{{ id }}", {annotation_id: annotation.id}, function(response){
+                    $.post("/delete_annotation/{{ id }}", { annotation_id: annotation.id }, function (response) {
                         //load data
-                        console.log("Data: " + response );
-                        if (response == "success"){
-                        
-                            $.post("/load_detection_results/{{ id }}", function(data){
+                        console.log("Data: " + response);
+                        if (response == "success") {
+
+                            $.post("/load_detection_results/{{ id }}", function (data) {
                                 detections = data;
                                 generateDetectionTable(data);
                                 generateAnnotationSettings(data);
@@ -921,19 +939,19 @@
                                 detections = data;
                                 showCurrentSlide();
                             });
-                        
+
                         }
                     });
                 });
 
-                shape.on('mouseover', function() {
+                shape.on('mouseover', function () {
                     let bgShape = shape._objects[0];
                     bgShape.set('opacity', 1.0);
 
                     dynamicAnnotationsCanvas.renderAll();
                 });
 
-                shape.on('mouseout', function() {
+                shape.on('mouseout', function () {
                     let bgShape = shape._objects[0];
                     bgShape.set('opacity', 0.5);
 
@@ -943,7 +961,7 @@
             })
 
 
-            fabric.loadSVGFromURL('{{ global_for("static/default/ui-elements/icon-share.svg")}}', function(objects, options) {
+            fabric.loadSVGFromURL('{{ global_for("static/default/ui-elements/icon-share.svg")}}', function (objects, options) {
                 let shape = fabric.util.groupSVGElements(objects, options);
                 shape.scaleToWidth(iconSize);
                 shape.scaleToHeight(iconSize);
@@ -963,25 +981,24 @@
 
                 dynamicAnnotationsCanvas.add(shape);
 
-                shape.on('mousedown', function(options) {
+                shape.on('mousedown', function (options) {
 
-                    category = detections["categories"][annotation.category_id-1];
-                    coordinates = ('50.712776, 14.005974');
-                    coordinates = annotation.gps_coords;
-                    if (coordinates == null || coordinates == "" || coordinates == undefined){
+                    let category = detections["categories"][annotation.category_id - 1];
+                    let coordinates = annotation.gps_coords;
+                    if (coordinates == null || coordinates == "" || coordinates == undefined) {
                         coordinates = ('Nan, NaN');
                     }
                     openSharePopup(category.name, annotation.score, coordinates);
                 });
 
-                shape.on('mouseover', function() {
+                shape.on('mouseover', function () {
                     let bgShape = shape._objects[0];
                     bgShape.set('opacity', 1.0);
 
                     dynamicAnnotationsCanvas.renderAll();
                 });
 
-                shape.on('mouseout', function() {
+                shape.on('mouseout', function () {
                     let bgShape = shape._objects[0];
                     bgShape.set('opacity', 0.5);
 
@@ -991,13 +1008,13 @@
             })
 
             //add edit image button
-            fabric.loadSVGFromURL('{{ global_for("static/default/ui-elements/icon-edit.svg")}}', function(objects, options) {
+            fabric.loadSVGFromURL('{{ global_for("static/default/ui-elements/icon-edit.svg")}}', function (objects, options) {
                 let shape = fabric.util.groupSVGElements(objects, options);
                 shape.scaleToWidth(iconSize);
                 shape.scaleToHeight(iconSize);
                 shape.set({
                     left: btnLeft,
-                    top: btnTop + 2*(iconSize + gap),
+                    top: btnTop + 2 * (iconSize + gap),
                     originX: 'center',
                     originY: 'center',
                     selectable: false,
@@ -1011,7 +1028,7 @@
 
                 dynamicAnnotationsCanvas.add(shape);
 
-                shape.on('mousedown', function(options) {
+                shape.on('mousedown', function (options) {
                     console.log("editIcon");
 
                     deactivateAllAnnotationsOptions();
@@ -1020,18 +1037,18 @@
                     rect.set('selectable', true);
                     console.log("rect.selectable: " + rect.selectable);
                     dynamicAnnotationsCanvas.setActiveObject(rect);
-                    
+
                 });
 
-                shape.on('mouseover', function() {
+                shape.on('mouseover', function () {
                     let bgShape = shape._objects[0];
                     bgShape.set('opacity', 1.0);
 
                     dynamicAnnotationsCanvas.renderAll();
                 });
 
-                shape.on('mouseout', function() {
-                    let bgShape = shape._objects[0];                    
+                shape.on('mouseout', function () {
+                    let bgShape = shape._objects[0];
                     bgShape.set('opacity', 0.5);
 
                     dynamicAnnotationsCanvas.renderAll();
@@ -1041,47 +1058,47 @@
 
             dynamicAnnotationsCanvas.renderAll();
             //var deleteBtn = '<img src="" class="deleteBtn" style="position:absolute;top:'+btnTop+'px;left:'+btnLeft+'px;cursor:pointer;width:20px;height:20px;"/>';
-            
+
         }
 
-        function deactivateAllAnnotationsOptions(){
+        function deactivateAllAnnotationsOptions() {
             let objects = dynamicAnnotationsCanvas.getObjects();
-            for (let i = 0; i < objects.length; i++){
-                if (objects[i].myType === 'delete' || objects[i].myType === 'share' || objects[i].myType === 'edit' || objects[i].myType === 'cancel' || objects[i].myType === 'confirm' || objects[i].myType === 'type'){
+            for (let i = 0; i < objects.length; i++) {
+                if (objects[i].myType === 'delete' || objects[i].myType === 'share' || objects[i].myType === 'edit' || objects[i].myType === 'cancel' || objects[i].myType === 'confirm' || objects[i].myType === 'type') {
                     dynamicAnnotationsCanvas.remove(objects[i]);
                 }
-                if (objects[i].selectable === true){
+                if (objects[i].selectable === true) {
                     objects[i].set('selectable', false);
                 }
             }
         }
 
-        function activateAnnotationsEditButtons(rect, annotation){
+        function activateAnnotationsEditButtons(rect, annotation) {
             rect.set('myEdit', true);
-            
+
             //add a cancel and confirm button and one for the type of annotation
             let iconSize = 30;
             let gap = 2;
             let btnLeft = rect.oCoords.tr.x + 15 + gap;
-            let btnTop = rect.oCoords.tr.y - iconSize/2;
+            let btnTop = rect.oCoords.tr.y - iconSize / 2;
 
             //check if the buttons are outside of the canvas
-            if (btnLeft + iconSize/2 >= dynamicAnnotationsCanvas.width){
+            if (btnLeft + iconSize / 2 >= dynamicAnnotationsCanvas.width) {
                 //btnLeft = dynamicAnnotationsCanvas.width - iconSize/2 - 1;
                 //place Icons on the left side of the rect
                 btnLeft = rect.oCoords.tl.x - iconSize - gap;
             }
-            if (btnTop - iconSize/2 <= 0){
-                btnTop = iconSize/2 + 1;
+            if (btnTop - iconSize / 2 <= 0) {
+                btnTop = iconSize / 2 + 1;
             }
-            if (btnTop + 2.5*iconSize + gap >= dynamicAnnotationsCanvas.height){
-                btnTop = dynamicAnnotationsCanvas.height - 2.5*iconSize - gap - 1;
+            if (btnTop + 2.5 * iconSize + gap >= dynamicAnnotationsCanvas.height) {
+                btnTop = dynamicAnnotationsCanvas.height - 2.5 * iconSize - gap - 1;
             }
-            if (btnLeft <= iconSize/2){
-                btnLeft = iconSize/2 + 1;
+            if (btnLeft <= iconSize / 2) {
+                btnLeft = iconSize / 2 + 1;
             }
 
-            fabric.loadSVGFromURL('{{ global_for("static/default/ui-elements/icon-back.svg")}}', function(objects, options) {
+            fabric.loadSVGFromURL('{{ global_for("static/default/ui-elements/icon-back.svg")}}', function (objects, options) {
                 let shape = fabric.util.groupSVGElements(objects, options);
                 shape.scaleToWidth(iconSize);
                 shape.scaleToHeight(iconSize);
@@ -1101,7 +1118,7 @@
 
                 dynamicAnnotationsCanvas.add(shape);
 
-                shape.on('mousedown', function(options) {
+                shape.on('mousedown', function (options) {
                     deactivateAnnotationsEditButtons(rect);
                     rect.set('selectable', false);
                     resetAnnotationsRect(rect);
@@ -1110,14 +1127,14 @@
                     selectAnnotation(rect, annotation);
                 });
 
-                shape.on('mouseover', function() {
-                    let bgShape = shape._objects[0];                    
+                shape.on('mouseover', function () {
+                    let bgShape = shape._objects[0];
                     bgShape.set('opacity', 1.0);
 
                     dynamicAnnotationsCanvas.renderAll();
                 });
 
-                shape.on('mouseout', function() {
+                shape.on('mouseout', function () {
                     let bgShape = shape._objects[0];
                     bgShape.set('opacity', 0.5);
 
@@ -1126,7 +1143,7 @@
                 });
             })
 
-            fabric.loadSVGFromURL('{{ global_for("static/default/ui-elements/icon-confirm.svg")}}', function(objects, options) {
+            fabric.loadSVGFromURL('{{ global_for("static/default/ui-elements/icon-confirm.svg")}}', function (objects, options) {
                 let shape = fabric.util.groupSVGElements(objects, options);
                 shape.scaleToWidth(iconSize);
                 shape.scaleToHeight(iconSize);
@@ -1146,7 +1163,7 @@
 
                 dynamicAnnotationsCanvas.add(shape);
 
-                shape.on('mousedown', function(options) {
+                shape.on('mousedown', function (options) {
                     console.log("confirmIcon");
 
                     deactivateAnnotationsEditButtons(rect);
@@ -1159,38 +1176,48 @@
                     let img = document.getElementById("dynamic-image-RGB").getElementsByTagName("img")[0];
                     let invertedScale = img.naturalWidth / img.width;
                     let bbox = rect.getBoundingRect();
+                    console.log("bbox: ");
+                    console.log(bbox);
                     let annotationID = annotation.id;
                     let categoryID = annotation.category_id;
+                    let gpsCoords = annotation.gps_coords;
                     bboxScaled = [Math.round(bbox.left * invertedScale), Math.round(bbox.top * invertedScale), Math.round(bbox.width * invertedScale), Math.round(bbox.height * invertedScale)];
                     console.log("bboxScaled: " + bboxScaled);
-                    $.post("/edit_annotation/{{ id }}", {annotation_id: annotationID, category_id: categoryID, annotation_bbox: JSON.stringify(bboxScaled)}, function(response){
-                        //load data
-                        console.log("Data: " + response );
-                        if (response == "success"){
-                        
-                            $.post("/load_detection_results/{{ id }}", function(data){
-                                detections = data;
-                                generateDetectionTable(data);
-                                generateAnnotationSettings(data);
-                                var currentImageName = document.getElementById("dynamic-slide").getElementsByTagName('a')[0].innerHTML.split(": ")[1];
-                                generateAnnotationsLayerTableForImage(currentImageName);
-                                detections = data;
-                                showCurrentSlide();
-                            });
-                        
-                        }
-                    });
+                    $.post("/edit_annotation/{{ id }}",
+                        {
+                            annotation_id: annotationID,
+                            category_id: categoryID,
+                            annotation_bbox: JSON.stringify(bboxScaled),
+                            gps_coords: JSON.stringify(gpsCoords)
+                        },
+                        function (response) {
+                            //load data
+                            console.log("Data: " + response);
+                            if (response == "success") {
+
+                                $.post("/load_detection_results/{{ id }}", function (data) {
+                                    detections = data;
+                                    generateDetectionTable(data);
+                                    generateAnnotationSettings(data);
+                                    var currentImageName = document.getElementById("dynamic-slide").getElementsByTagName('a')[0].innerHTML.split(": ")[1];
+                                    generateAnnotationsLayerTableForImage(currentImageName);
+                                    detections = data;
+                                    showCurrentSlide();
+                                });
+
+                            }
+                        });
 
                 });
 
-                 shape.on('mouseover', function() {
+                shape.on('mouseover', function () {
                     let bgShape = shape._objects[0];
                     bgShape.set('opacity', 1.0);
 
                     dynamicAnnotationsCanvas.renderAll();
                 });
 
-                shape.on('mouseout', function() {
+                shape.on('mouseout', function () {
                     let bgShape = shape._objects[0];
                     bgShape.set('opacity', 0.5);
 
@@ -1201,13 +1228,13 @@
 
             //add a button for the type of annotation
             let image_file = '{{ global_for("static/default/signs/icon/Brand-L.png")}}';
-            if (rect.myCategoryName == 'human'){
+            if (rect.myCategoryName == 'human') {
                 image_file = '{{ global_for("static/default/signs/icon/Person-L.png")}}';
-            } else if (rect.myCategoryName == 'vehicle'){
+            } else if (rect.myCategoryName == 'vehicle') {
                 image_file = '{{ global_for("static/default/signs/icon/Fahrzeug-L.png")}}';
-            } 
+            }
 
-            fabric.Image.fromURL(image_file, function(img) {
+            fabric.Image.fromURL(image_file, function (img) {
                 img.scaleToWidth(iconSize);
                 img.scaleToHeight(iconSize);
                 img.set({
@@ -1221,14 +1248,14 @@
                     stroke: 'black',
                     strokeWidth: 2,
                     fill: 'transparent',
-                    radius: iconSize/2,
+                    radius: iconSize / 2,
                     selectable: false,
                 });
                 console.log(cirlce);
 
                 typeGroup = new fabric.Group([img, cirlce], {
                     left: btnLeft,
-                    top: btnTop + 2*(iconSize + gap),
+                    top: btnTop + 2 * (iconSize + gap),
                     selectable: false,
 
                     originX: 'center',
@@ -1238,18 +1265,18 @@
 
                 dynamicAnnotationsCanvas.add(typeGroup);
 
-            
-                typeGroup.on('mousedown', function(options) {
+
+                typeGroup.on('mousedown', function (options) {
                     openEditTypePopup(annotation, rect.myCategoryName);
                 });
 
-                typeGroup.on('mouseover', function() {
+                typeGroup.on('mouseover', function () {
                     img.set('opacity', 1.0);
 
                     dynamicAnnotationsCanvas.renderAll();
                 });
 
-                typeGroup.on('mouseout', function() {
+                typeGroup.on('mouseout', function () {
                     img.set('opacity', 0.5);
 
                     dynamicAnnotationsCanvas.renderAll();
@@ -1261,12 +1288,12 @@
 
         }
 
-        function addDetection(){
+        function addDetection() {
             //tell the server to add a new detection on current image then rerender the canvas and set the new detection to active
             let annotation_imageid = getImageIndexByName(currentImageName);
             let annotation_category = document.getElementById("addAnnotationDropdown").value;
 
-            
+
             let image = document.getElementById("dynamic-image-RGB").getElementsByTagName("img")[0];
             let scale = image.naturalWidth / image.width;
             let centerX_scaled = image.width / 2 * scale;
@@ -1274,13 +1301,13 @@
             let annotation_bbox = [centerX_scaled - 100, centerY - 100, 200, 200];
 
             //let annotation_bbox = [100,100,100,100];
-            
-            $.post("/add_annotation//{{ id }}", {annotation_class: annotation_category, annotation_bbox: JSON.stringify(annotation_bbox), annotation_imageid: annotation_imageid}, function(response){
+
+            $.post("/add_annotation//{{ id }}", { annotation_class: annotation_category, annotation_bbox: JSON.stringify(annotation_bbox), annotation_imageid: annotation_imageid }, function (response) {
                 //load data
                 console.log("---RESPONSE : ")
-                console.log(response );
-                if (response.success){
-                    $.post("/load_detection_results/{{ id }}", function(data){
+                console.log(response);
+                if (response.success) {
+                    $.post("/load_detection_results/{{ id }}", function (data) {
                         detections = data;
                         generateDetectionTable(data);
                         generateAnnotationSettings(data);
@@ -1291,65 +1318,65 @@
 
                         //set the new detection to active
                         let annID = response.annotation_id;
-                        let annotation = (function(){
-                            for (let i = 0; i < detections["annotations"].length; i++){
-                                if (detections["annotations"][i].id === annID){
+                        let annotation = (function () {
+                            for (let i = 0; i < detections["annotations"].length; i++) {
+                                if (detections["annotations"][i].id === annID) {
                                     return detections["annotations"][i];
                                 }
                             }
                         })();
 
                         let objects = dynamicAnnotationsCanvas.getObjects();
-                        for (let i = 0; i < objects.length; i++){
-                            if (objects[i].myAnnotationID === annID){
+                        for (let i = 0; i < objects.length; i++) {
+                            if (objects[i].myAnnotationID === annID) {
                                 let rect = objects[i];
                                 selectAnnotation(rect, annotation, true);
 
-                                
+
                                 dynamicAnnotationsCanvas.setActiveObject(rect);
                             }
                         }
                     });
-                
+
                 }
             });
 
-            
 
 
-            
+
+
         }
 
-       
-        function deactivateAnnotationsEditButtons(rect){
+
+        function deactivateAnnotationsEditButtons(rect) {
             rect.set('myEdit', false);
             //remove the edit buttons
             let objects = dynamicAnnotationsCanvas.getObjects();
-            for (let i = 0; i < objects.length; i++){
-                if (objects[i].myType === 'cancel' || objects[i].myType === 'share' || objects[i].myType === 'edit' || objects[i].myType === 'confirm' || objects[i].myType === 'type'){
+            for (let i = 0; i < objects.length; i++) {
+                if (objects[i].myType === 'cancel' || objects[i].myType === 'share' || objects[i].myType === 'edit' || objects[i].myType === 'confirm' || objects[i].myType === 'type') {
                     dynamicAnnotationsCanvas.remove(objects[i]);
                 }
             }
         }
 
-        function resetAnnotationsRect(rect){
+        function resetAnnotationsRect(rect) {
             rect.set({
-                    'width': rect.myStartW,
-                    'height': rect.myStartH,
-                    'scaleX': 1,
-                    'scaleY': 1
+                'width': rect.myStartW,
+                'height': rect.myStartH,
+                'scaleX': 1,
+                'scaleY': 1
             });
             rect.set('left', rect.myStartX);
             rect.set('top', rect.myStartY);
             rect.setCoords();
             dynamicAnnotationsCanvas.renderAll();
         }
-            
 
 
-        function removeAnnotations(){
 
-            if (dynamicAnnotationsCanvas != null){
+        function removeAnnotations() {
+
+            if (dynamicAnnotationsCanvas != null) {
                 let canvasContainer = document.getElementsByClassName("canvas-container")[0];
                 canvasContainer.style.zIndex = 0;
 
@@ -1387,8 +1414,8 @@
             r /= 255;
             g /= 255;
             b /= 255;
-            let cmin = Math.min(r,g,b),
-                cmax = Math.max(r,g,b),
+            let cmin = Math.min(r, g, b),
+                cmax = Math.max(r, g, b),
                 delta = cmax - cmin,
                 h = 0,
                 s = 0,
@@ -1416,7 +1443,7 @@
             return [h, s, l];
         }
 
-        function hexToRGB(hex){
+        function hexToRGB(hex) {
             var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
             return result ? {
                 r: parseInt(result[1], 16),
@@ -1427,6 +1454,7 @@
 
     </script>
 </head>
+
 <body>
     <div style="display: flex; margin: 5px 0 15px 0">
         <select name="Detection Quality" id="ai_model_options" style="margin: auto 0 auto 0; display: none">
@@ -1459,8 +1487,9 @@
     </div>
     {% endif %}
     <script>
-    isDetectionAlreadyRunning();
+        isDetectionAlreadyRunning();
     </script>
 
 </body>
+
 </html>
