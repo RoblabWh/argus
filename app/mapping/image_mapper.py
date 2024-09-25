@@ -3,6 +3,8 @@ import os.path as path
 
 import cv2
 import time
+import rasterio
+import pyproj
 
 from .map import Map
 from .gps import GPS
@@ -370,12 +372,28 @@ class ImageMapper:
         cv2.imwrite(save_path, im)
         #print("Orthophoto saved under", save_path)
 
+        bounds_corners = []
+        dat = rasterio.open(path.join(results_folder, map_file))
+        utm_bounds = dat.bounds
+        utm_crs = dat.crs
+        print("UTM bounds: ", utm_bounds, flush=True)
+        print("UTM crs: ", utm_crs, flush=True)
+
+
+        transformer = pyproj.Transformer.from_crs(utm_crs, "EPSG:4326")
+        top_left = transformer.transform(utm_bounds.left, utm_bounds.top)
+        top_right = transformer.transform(utm_bounds.right, utm_bounds.top)
+        bottom_right = transformer.transform(utm_bounds.right, utm_bounds.bottom)
+        bottom_left = transformer.transform(utm_bounds.left, utm_bounds.bottom)
+
+        print("UTM bounds converted: ", top_left, top_right, bottom_left, bottom_right, flush=True)
+
         map = {
             "center": middle_gps,
             "zoom": 18,
             "file": save_path,
-            "bounds": bounds,
-            "bounds_corners": bounds_corners,
+            "bounds": [top_left, bottom_right],
+            "bounds_corners": [bottom_left, bottom_right, top_right, top_left],
             "size": map_size,
             "image_coordinates": None,
             "ir": ir,
