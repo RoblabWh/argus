@@ -193,7 +193,7 @@
         }
 
         details[open]>summary {
-          background-color: var(--font-color-a);
+            background-color: var(--font-color-a);
             color: var(--font-color-b);
         }
 
@@ -226,6 +226,31 @@
         #add-new-project-group summary:hover {
             font-weight: bold;
         }
+
+        .text-input-big, .reportName, .reportDescription {
+            width: 30%;
+            border-radius: 4px;
+            border-style: solid;
+            border-color: var(--bg-color-a);
+            background-color: var(--bg-color-page);
+            color: var(--font-color-a);
+        }
+
+        .reportName, .reportDescription {
+            border-radius: 6px; 
+            margin: 4px;
+        }
+
+        .reportName {
+            width: 40%;
+        }
+
+        .reportDescription {
+            width: 100%;
+            resize: none;
+        }
+
+
 
 
         .project-group-content {
@@ -446,13 +471,9 @@
                     <form style="display: flex; justify-content: space-between;" method="post"
                         action="/create_project_group">
                         <label style="line-height: 42px;" for="name">Name:</label>
-                        <input
-                            style="width:30%; border-radius: 4px; border-style: solid; border-color: var(--bg-color-a)"
-                            type="text" id="name" name="name" required>
+                        <input class="text-input-big" type="text" id="name" name="name" required>
                         <label style="line-height: 42px;" for="description">Description:</label>
-                        <textarea
-                            style="width:30%; border-radius: 4px; border-style: solid; border-color: var(--bg-color-a)"
-                            id="description" name="description" required></textarea>
+                        <textarea class="text-input-big" id="description" name="description" required></textarea>
                         <button class="placeholder big_button" title="Create new Project" onclick="createNewProject()">
                             Create new Project </button>
                     </form>
@@ -512,20 +533,16 @@
             <div class="addReportFormMask" style="height: 0px; display: flex; transition: all 0.3s;">
                 <div class="addReportForm oneLineLeftRight"
                     style="display: none; translateY(-100%); transition: transform 0.3s;">
-                    <div class="oneLineLeftRight" style="width: 60%;">
+                    <div class="oneLineLeftRight" style="width: 100%;">
 
                         <label style="line-height: 42px;" for="name">Name:</label>
-                        <input
-                            style="border-radius: 4px; border-style: solid; border-color: var(--bg-color-b); margin: 4px;"
-                            type="text" class="reportName" name="name" required>
+                        <input type="text" class="reportName" name="name" required>
 
                         <label style="line-height: 42px;" for="description">Description:</label>
-                        <textarea
-                            style="border-radius: 4px; border-style: solid; border-color: var(--bg-color-b); margin: 4px; width: inherit;"
-                            class="reportDescription" name="description" required></textarea>
+                        <textarea class="reportDescription" name="description" required></textarea>
 
-                    </div>
-                    <button class="newReport big_button" onclick="createNewReportInGroup(-1)" title="Create new report">
+                    </div>                    
+                    <button class="newReport big_button" onclick="createNewReportInGroup(-1)" title="Create new report" style="width: 145px;">
                         Create new report
                     </button>
                 </div>
@@ -602,21 +619,16 @@
                     <div class="addReportFormMask" style="height: 0px; display: flex; transition: all 0.3s;">
                         <div class="addReportForm oneLineLeftRight"
                             style="display: none; translateY(-100%); transition: transform 0.3s;">
-                            <div class="oneLineLeftRight" style="width: 60%;">
+                            <div class="oneLineLeftRight" style="width: 100%;">
 
                                 <label style="line-height: 42px;" for="name">Name:</label>
-                                <input
-                                    style="border-radius: 4px; border-style: solid; border-color: var(--bg-color-b); margin: 4px;"
-                                    type="text" class="reportName" name="name" required>
+                                <input type="text" class="reportName" name="name" required>
 
                                 <label style="line-height: 42px;" for="description">Description:</label>
-                                <textarea
-                                    style="border-radius: 4px; border-style: solid; border-color: var(--bg-color-b); margin: 4px; width: inherit;"
-                                    class="reportDescription" name="description" required></textarea>
+                                <textarea class="reportDescription" name="description" required></textarea>
 
                             </div>
-                            <button class="newReport big_button" onclick="createNewReportInGroup(01)"
-                                title="Create new report">
+                            <button class="newReport big_button" onclick="createNewReportInGroup(01)" style="width:145px" title="Create new report">
                                 Create new report
                             </button>
                         </div>
