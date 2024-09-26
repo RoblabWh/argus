@@ -42,6 +42,15 @@ class DetectionManager:
             maps = self.project_manager.get_maps(report_id)
             image_coords_dict = {}
             for map in maps:
+                #check if the map has image coordinates, if not, skip
+                if 'image_coordinates' not in map:
+                    print("No image coordinates found for map", map['name'], flush=True)
+                    continue
+                elif map['image_coordinates'] is None:
+                    print("No image coordinates found for map", map['name'], flush=True)
+                    continue
+
+                print("now going through images of map", map['name'], flush=True)
                 for image in map['image_coordinates']:
                     filename = image['file_name'].split('/')[-1]
                     try:
