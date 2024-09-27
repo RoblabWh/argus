@@ -1176,12 +1176,15 @@
                     let img = document.getElementById("dynamic-image-RGB").getElementsByTagName("img")[0];
                     let invertedScale = img.naturalWidth / img.width;
                     let bbox = rect.getBoundingRect();
+                    let currentFilename = document.getElementById("dynamic-slide").getElementsByTagName('a')[0].innerHTML.split(": ")[1];
                     console.log("bbox: ");
                     console.log(bbox);
                     let annotationID = annotation.id;
                     let categoryID = annotation.category_id;
-                    let gpsCoords = annotation.gps_coords;
                     bboxScaled = [Math.round(bbox.left * invertedScale), Math.round(bbox.top * invertedScale), Math.round(bbox.width * invertedScale), Math.round(bbox.height * invertedScale)];
+                    let gpsCoords = getObjectDetectionCoordinate(currentFilename, bboxScaled, [img.naturalWidth, img.naturalHeight], 1000000, getMapData('RGB'));
+                    annotation.gps_coords = gpsCoords;
+                    console.log("------------------gpsCoords: " + gpsCoords);
                     console.log("bboxScaled: " + bboxScaled);
                     $.post("/edit_annotation/{{ id }}",
                         {

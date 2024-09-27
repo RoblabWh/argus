@@ -60,6 +60,8 @@ class ArgusServer:
 
         self.setup_routes()
 
+        self.debug_counter = 0
+
     def setup_routes(self):
         self.app.add_url_rule('/',
                               view_func=self.projects_overview_b)
@@ -121,6 +123,8 @@ class ArgusServer:
                                 view_func=self.delete_annotation)
         self.app.add_url_rule('/edit_annotation/<int:report_id>', methods=['POST'],
                                 view_func=self.edit_annotation)
+        self.app.add_url_rule('/add_multiple_annotation_gps_coords/<int:report_id>', methods=['POST'],
+                                view_func=self.add_multiple_annotation_gps_coords)
         self.app.add_url_rule('/edit_annotation_type/<int:report_id>', methods=['POST'],
                                 view_func=self.edit_annotation_type)
         self.app.add_url_rule('/add_annotation/<int:report_id>', methods=['POST'],
@@ -609,9 +613,23 @@ class ArgusServer:
         category_id = request.form.get('category_id')
         annotation_bbox = request.form.get('annotation_bbox')
         annotation_bbox = json.loads(annotation_bbox)
-        print("edit_annotation for id" + str(report_id) + " with: " + str(annotation_id) + " and " + str(category_id) + " and " + str(annotation_bbox), flush=True)
+        gps_coords = request.form.get('gps_coords')
+        print("edit_annotation for id" + str(report_id) + " with: " + str(annotation_id) + " and " + str(category_id) + " and " + str(annotation_bbox) + " and " + str(gps_coords), flush=True)
+        if gps_coords is not None and gps_coords != "" and gps_coords != "null":
+            gps_coords = json.loads(gps_coords)
+            self.project_manager.edit_annotation(report_id, annotation_id, category_id, annotation_bbox, new_gps_coords=gps_coords)
         self.project_manager.edit_annotation(report_id, annotation_id, category_id, annotation_bbox)
         return "success"
+
+    #wenn auf der Website auffällt, dass eine annotation keinen gps koordinate hat, wird diese auf der website basierend auf dem Bild bzw der Karte neu interpoliert. Eine liste der betreffenden annotations und koordinaten wird dann an den server geschickt
+    def add_multiple_annotation_gps_coords(self, report_id):
+        annotations = request.form.get('annotations')
+        annotations = json.loads(annotations)
+        print("add_multiple_annotation_gps_coords for id" + str(report_id) + " with length of: " + str(len(annotations)), flush=True)
+        print(annotations, flush=True)
+        all_detections = self.project_manager.add_multiple_annotation_gps_coords(report_id, annotations)
+        #return "success" and annotations
+        return jsonify({"success": True, "annotations": all_detections})
 
     def edit_annotation_type(self, report_id):
         annotation_id = request.form.get('annotation_id')

@@ -8,11 +8,11 @@ var highlightOpacity = 0.6;
 
 var mapOverlayOpacity = 1.0;
 
-const map = L.map('map',{
-	fullscreenControl: true,
-	fullscreenControlOptions: {
-		position: 'topleft'
-	}
+const map = L.map('map', {
+    fullscreenControl: true,
+    fullscreenControlOptions: {
+        position: 'topleft'
+    }
 });
 
 buildMap();
@@ -48,7 +48,6 @@ function loadMapsFromServer() {
         url: '/maps/{{ project_id }}',
         async: false,
         success: function (data) {
-            console.log(data)
             console.log(data.maps)
             maps = data.maps;
         }
@@ -124,11 +123,10 @@ function setupSingleMap(mapOverlay) {
     if (filename[0] === ".") {
         filename = filename.substring(1);
     }
-    
-    console.log("corners: " + corners);
+
     let layer = null;
     if (corners === null || corners === undefined) {
-         layer = L.imageOverlay(filename, bounds);
+        layer = L.imageOverlay(filename, bounds);
     } else {
         let topleft = corners[3];
         let topright = corners[2];
@@ -165,7 +163,7 @@ function loadOutline(mapOverlay, layerGroup) {
     let lat2 = bounds[1][0];
     let long2 = bounds[1][1];
 
-    let debug_map= false;
+    let debug_map = false;
 
 
     let debugCoordsGrid = mapOverlay.debug_coords_grid;
@@ -180,8 +178,8 @@ function loadOutline(mapOverlay, layerGroup) {
             latlngs = coordinates_gps;
             //console.log("GPS coordinates found for image " + coordinates[i].file_name);
             //console.log(latlngs);
-        } else{
-            console.log("No GPS coordinates found for image " + coordinates[i].file_name + "using pixel coodrinated encoded in string");
+        } else {
+            //console.log("No GPS coordinates found for image " + coordinates[i].file_name + "using pixel coodrinated encoded in string");
 
             var polygonString = coordinates[i].coordinates_string;
             if (polygonString == "") {
@@ -212,10 +210,10 @@ function loadOutline(mapOverlay, layerGroup) {
             var pL4 = [p4[1] * lat1 + ((1 - p4[1]) * lat2), p4[0] * long2 + ((1 - p4[0]) * long1)];
             latlngs = [pL1, pL2, pL3, pL4];
         }
-        let r = 255-parseInt((i/coordinates.length)*255);
-        let g = parseInt((i/coordinates.length)*255);
-        let b = Math.max(parseInt((i*2/coordinates.length)*255),  255-parseInt((i*2/coordinates.length)*255));
-        let color = 'rgb('+r+','+g+','+b+')';
+        let r = 255 - parseInt((i / coordinates.length) * 255);
+        let g = parseInt((i / coordinates.length) * 255);
+        let b = Math.max(parseInt((i * 2 / coordinates.length) * 255), 255 - parseInt((i * 2 / coordinates.length) * 255));
+        let color = 'rgb(' + r + ',' + g + ',' + b + ')';
 
         var polygon = L.polygon(latlngs, { opacity: 0, fillOpacity: 0.0, fillColor: color });
         polygon.filename = coordinates[i].file_name;
@@ -236,40 +234,37 @@ function loadOutline(mapOverlay, layerGroup) {
             //draw small circle at center
             let center = [(latlngs[0][0] + latlngs[2][0]) / 2, (latlngs[0][1] + latlngs[2][1]) / 2];
             let circle = L.circle(center, { color: 'black', fillColor: 'black', fillOpacity: 1, radius: 2 });
-            layerGroup.addLayer(circle);          
+            layerGroup.addLayer(circle);
 
 
             //draw arrow from center in direction of gimbal
             let angle = parseFloat(orientation_gimbal);
-            console.log("angle: " + angle);
             let length = 0.000069;
             let dx = length * Math.cos(angle * Math.PI / 180);
             let dy = length * Math.sin(angle * Math.PI / 180);
-            console.log("dx: " + dx + " dy: " + dy);
             let x = center[0] + dx;
             let y = center[1] + dy;
-            console.log("x: " + x + " y: " + y);
-            let arrow = L.polyline([center, [x,y]], { color: 'green' });
+            let arrow = L.polyline([center, [x, y]], { color: 'green' });
 
             //draw arrow from center in direction of camera
             angle = parseFloat(orientation_flight);
-            length = length*1.4;
+            length = length * 1.4;
             dx = length * Math.cos(angle * Math.PI / 180);
             dy = length * Math.sin(angle * Math.PI / 180);
             arrow2 = L.polyline([center, [center[0] + dx, center[1] + dy]], { color: 'red' });
-            
+
             angle = parseFloat(orientation_corrected);
-            length = length*1.35;
+            length = length * 1.35;
             dx = length * Math.cos(angle * Math.PI / 180);
             dy = length * Math.sin(angle * Math.PI / 180);
             arrow3 = L.polyline([center, [center[0] + dx, center[1] + dy]], { color: 'blue' });
-            
-            
+
+
             layerGroup.addLayer(arrow);
             layerGroup.addLayer(arrow2);
             layerGroup.addLayer(arrow3);
 
-            
+
         }
 
 
@@ -307,13 +302,11 @@ function showImageFromMap(e) {
 
 function updateMap(singleMapData, addIfNotFound) {
     let mapName = singleMapData.name;
-    console.log("map name:" + mapName);
-    console.log(overlays[mapName]);
 
     for (let i = 0; i < mapsData.length; i++) {
         if (mapsData[i].name === mapName) {
             mapsData[i] = singleMapData;
-            
+
             map.removeLayer(overlays[mapName]);
             overlays[mapName].clearLayers();
             uodatedLayers = setupSingleMap(singleMapData).getLayers();
@@ -321,7 +314,7 @@ function updateMap(singleMapData, addIfNotFound) {
                 overlays[mapName].addLayer(uodatedLayers[j]);
             }
             map.addLayer(overlays[mapName]);
-            
+
             return;
         }
     }
@@ -379,7 +372,7 @@ function setupZoomHome() {
     });
 
 
-    L.control.scale( {position: 'bottomright'} ).addTo(map);
+    L.control.scale({ position: 'bottomright' }).addTo(map);
 
     let zoomHome = new L.Control.zoomHome();
     zoomHome.addTo(map);
@@ -411,7 +404,7 @@ $('#mapOverlayStyleCheckbox').change(function () {
     //         generateObjectDetectionLayer(detections);
     //     }
     // }
-    if(highlightOpacity === 0.0) {
+    if (highlightOpacity === 0.0) {
         highlightOpacity = 0.6;
     } else {
         highlightOpacity = 0.0;
@@ -456,17 +449,14 @@ function displayWindDirectionOnMap(angle) {
     let weatherTable = document.getElementById('weatherDataTable');
     for (let i = 0; i < weatherDataTable.rows.length; i++) {
         let title = weatherTable.rows[i].cells[0].innerHTML;
-        console.log(title);
         if (title === "Wind Direction") {
             let windDirString = weatherTable.rows[i].cells[1].innerHTML;
-            console.log(windDirString);
             windDir = parseFloat(windDirString.split('°')[0]);
-            console.log(windDir);
-            break;    
+            break;
         }
     }
 
-    if(windDir===-1.0){
+    if (windDir === -1.0) {
         return;
     }
     let windDirRotation = windDir + 180.0;
@@ -675,7 +665,7 @@ function generateObjectDetectionLayer(objectDetectionData) {
         // }
         let detectionIconStyleSetting = 'icon'; //'taktischeZeichen' or 'icon'
         let detectionIconSize = 50;
-        
+
 
         marker = L.marker(center, {
             icon: L.icon({
@@ -697,7 +687,7 @@ function generateObjectDetectionLayer(objectDetectionData) {
         objectDetectionLayer.addTo(map);
     }
     layerControl.addOverlay(objectDetectionLayer, 'taktischeZeichen');
-    draw_individual_objects_on_map(objectDetectionData);
+    drawIndividualObjectsOnMap(objectDetectionData);
 }
 
 function setupObjectDetectionControl(objectDetectionData) {
@@ -772,7 +762,7 @@ function setupObjectDetectionControl(objectDetectionData) {
         },
 
         toggleVisibilityDetection: function (event) {
-            draw_individual_objects_on_map(detections);
+            drawIndividualObjectsOnMap(detections);
         },
 
         updateThresholdDetection: function (event) {
@@ -790,8 +780,7 @@ function setupObjectDetectionControl(objectDetectionData) {
 
 
 
-function draw_individual_objects_on_map(objectDetectionData) {
-    console.log("!!!!!!!!!----!!!!!!!!!! draw_individual_objects_on_map");
+function drawIndividualObjectsOnMap(objectDetectionData) {
     //check if Layer already exists
     if (objectDetectionLayer_detail != null) {
         map.removeLayer(objectDetectionLayer_detail);
@@ -816,6 +805,8 @@ function draw_individual_objects_on_map(objectDetectionData) {
             category_visibilities[name] = checkbox.checked;
         }
     }
+
+    let anootationsToUpdate = new Array();
 
 
 
@@ -842,15 +833,16 @@ function draw_individual_objects_on_map(objectDetectionData) {
         let object_bounds = detection.bbox;
         let object_center_gps = detection.gps_coords;
         let ringcolor = 'grey';
-        
+
         if (object_center_gps == null || object_center_gps == "" || object_center_gps == undefined) {
-            object_center_gps = get_object_detection_coordinate(filename, object_bounds, image_size, detection.image_id, rgbMapData);
+            object_center_gps = getObjectDetectionCoordinate(filename, object_bounds, image_size, detection.image_id, rgbMapData);
             detection.gps_coords = object_center_gps;
+            if (object_center_gps != null) anootationsToUpdate.push(detection);
         }
         else {
             ringcolor = 'white';
         }
-            
+
 
         if (object_center_gps == null) {
             continue;
@@ -877,12 +869,43 @@ function draw_individual_objects_on_map(objectDetectionData) {
         marker.on('click', function () { showImageByFileName(filename) });
     }
 
+    if (anootationsToUpdate.length > 0) {
+        updateAnnotationsGps(anootationsToUpdate);
+    }
+
 
     //layerControl2.addOverlay(objectDetectionLayer_detail , 'taktischeZeichen_positioniert');
 }
 
+function updateAnnotationsGps(anootationsToUpdate) {
+    //a dictionsary of annotations to update with the id as key
+    let annotationsDataForUpdate = {}
+    for (var i = 0; i < anootationsToUpdate.length; i++) {
+        annotationID = anootationsToUpdate[i].id;
+        annotationGPSCoord = anootationsToUpdate[i].gps_coords;
+        
+        annotationsDataForUpdate[annotationID] = annotationGPSCoord;        
+    }
+    $.post("/add_multiple_annotation_gps_coords/" + reportID,
+        {
+            annotations: JSON.stringify(annotationsDataForUpdate)
+        },
+        function (response) {
+            console.log("Annotations updated, response:");
+            console.log(response);
+            if (response.success) {
+                if (response.detections != null) detections = response.detections;
+                console.log("Annotations updated successfully");
+            }
+            else {
+                console.log("Error while updating annotations");
+            }
+        }
+    );
+}
 
-function get_object_detection_coordinate(filename, object_bounds, image_size, image_id, rgbMapData) {
+
+function getObjectDetectionCoordinate(filename, object_bounds, image_size, image_id, rgbMapData) {
     let mapSizeRGB = rgbMapData.size;
     let long1RGB = rgbMapData.bounds[0][1];
     let lat1RGB = rgbMapData.bounds[0][0];
@@ -919,7 +942,7 @@ function get_object_detection_coordinate(filename, object_bounds, image_size, im
     let coordinates_corners = mapImagesCoordinates[image_index].coordinates_gps;
 
     if (coordinates_corners === null || coordinates_corners === undefined) {
-            
+
 
         let points_strings = coordinates_string.split(',');
         let image_bounds_gps = new Array();
@@ -963,10 +986,10 @@ function get_object_detection_coordinate(filename, object_bounds, image_size, im
         let u1 = [topright[0] - topleft[0], topright[1] - topleft[1]];
         let u2 = [bottomright[0] - bottomleft[0], bottomright[1] - bottomleft[1]];
 
-        u1 = [topleft[0]    + u1[0] * factor_w, topleft[1]    + u1[1] * factor_w];
+        u1 = [topleft[0] + u1[0] * factor_w, topleft[1] + u1[1] * factor_w];
         u2 = [bottomleft[0] + u2[0] * factor_w, bottomleft[1] + u2[1] * factor_w];
 
-        let v = [u2[0] -  u1[0], u2[1] - u1[1]];
+        let v = [u2[0] - u1[0], u2[1] - u1[1]];
 
 
         let object_center_gps = new Array();
@@ -988,7 +1011,6 @@ function get_object_detection_coordinate(filename, object_bounds, image_size, im
 
 
 function isUsedInMap(index, displayingIR) {
-    console.log("isUsedInMap ?");
     var filename = "";
     if (displayingIR) {
         filename = getFilePathBySlideIndex(index, 1);

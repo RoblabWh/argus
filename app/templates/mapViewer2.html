@@ -103,6 +103,7 @@
         var mapsData = {{ maps | tojson}};
         var flightTrajectory = {{ flight_trajectory | tojson}};
         var panos = {{ panos | tojson}}
+        var reportID = {{ id}}
     </script>
     <script src="{{ url_for('static', filename='js/mapViewer2.js') }}"></script>
 

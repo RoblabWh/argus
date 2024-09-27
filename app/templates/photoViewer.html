@@ -624,7 +624,6 @@
       } else if (slideIndex < 0){
         slideIndex = slideshowCouples.length - 1;
       }
-      console.log(slideIndex);
       if(displayingIR){
         if(slideshowCouples[slideIndex][1] == ""){
           plusSlides(n);
@@ -710,7 +709,6 @@
         } else if (n < 0){
             n = slideshowCouples.length - 1;
         }
-        console.log(n);
         slideIndex = n
 
 
@@ -748,7 +746,6 @@
         } else if (n < 0){
             n = slideshowCouples.length - 1;
         }
-        console.log(n);
         slideIndex = n
         activateIR();
         showCurrentSlide();
@@ -994,7 +991,6 @@
         /*set background properties for the magnifier glass:*/
         glass.style.backgroundImage = "url('" + img.src + "')";
         glass.style.backgroundRepeat = "no-repeat";
-        console.log(img.width + " " + img.height);
         glass.style.backgroundSize = (img.width * zoom) + "px " + (img.height * zoom) + "px";
         bw = 3;
         w = glass.offsetWidth / 2;
@@ -1352,7 +1348,6 @@
     }
 
     function activateAiOverlays(){
-        console.log("---activateAiOverlays---");
         openSettingsEvent('slideshow-settings-annotaions-tablink','slideshow-settings-Annotations')
         displayingAI = true;
 
@@ -1876,7 +1871,6 @@
     $("#ir-palette-chooser-display").change(function() {
 
         var ir_palette = $(this).val();
-        console.log(ir_palette);
         numbr_at_end_of_value = ir_palette.match(/\d+$/);
 
         gradientDiv = document.getElementById('gradientInSlider');
@@ -1888,7 +1882,6 @@
             
             drawGradientInMiddleOfSlider(document.getElementById('fromSlider'), document.getElementById('toSlider'));
             $.get('/gradient_lut/'+numbr_at_end_of_value, function(lut) {
-                console.log(lut);
                 gradient_lut = lut;
                 drawImage();
             });
@@ -2055,13 +2048,14 @@
     };
 
     {% if slide_file_paths %}
-    {% if slide_file_paths[0][0] != "" %}
+    
 
     var dynamicCanvas = document.getElementById('dynamic-canvas');
 
     context = dynamicCanvas.getContext('2d');
-    var imgA = new Image();
-    imgA.src = "{{ global_for(slide_file_paths[0][0]) }}";
+    const imgA = new Image();
+    let imgTemp = document.getElementById("dynamic-image-RGB").getElementsByTagName("img")[0];
+    imgA.src = imgTemp.src;
     imgA.onload = () => {
         //width of div of class container
         var body_width = document.getElementsByClassName("container")[0].offsetWidth;
@@ -2071,7 +2065,6 @@
         dynamicAnnotationsCanvas.setHeight(imgA.height * ( body_width/ imgA.width));
     };
 
-    {% endif %}
     {% endif %}
 
 

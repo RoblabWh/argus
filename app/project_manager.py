@@ -567,7 +567,7 @@ class ProjectManager:
         with open(path, "w") as json_file:
             json.dump(detections, json_file)
 
-    def edit_annotation(self, report_id, annotation_id, new_category_id, new_bbox):
+    def edit_annotation(self, report_id, annotation_id, new_category_id, new_bbox, new_gps_coords=None):
         project = self.get_project(report_id)
         annotation_id = int(annotation_id)
         new_category_id = int(new_category_id)
@@ -581,6 +581,8 @@ class ProjectManager:
                 if(annotations[i]['id'] == annotation_id):
                     annotations[i]['category_id'] = new_category_id
                     annotations[i]['bbox'] = new_bbox
+                    if new_gps_coords != None:
+                        annotations[i]['gps_coords'] = new_gps_coords
                     break
 
             detections['annotations'] = annotations
@@ -608,6 +610,28 @@ class ProjectManager:
 
         with open(path, "w") as json_file:
             json.dump(detections, json_file)
+
+    def add_multiple_annotation_gps_coords(self, report_id, new_annotations):
+        project = self.get_project(report_id)
+        path = project['data']['annotation_file_path']
+        #get annotations from file
+        detections = None
+        annotations = []
+        with open(path, "r") as json_file:
+            detections = json.load(json_file)
+            annotations = detections['annotations']
+
+        for annotation in annotations:
+            id = annotation['id']
+            if str(id) in new_annotations:
+                annotation['gps_coords'] = new_annotations[str(id)]
+
+        if detections != None and len(new_annotations) > 0:
+            with open(path, "w") as json_file:
+                detections['annotations'] = annotations
+                json.dump(detections, json_file)
+
+        return detections
 
     def add_annotation(self, report_id, category_id, bbox, image_id):
         project = self.get_project(report_id)
