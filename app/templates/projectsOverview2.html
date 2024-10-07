@@ -711,7 +711,8 @@
         //do the following, once the page has loaded
         document.addEventListener('DOMContentLoaded', function () {
             for (let i = 0; i < groups.length; i++) {
-                createProjectGroup(groups[i].id, groups[i].name, groups[i].description, groups[i].projects);
+                let order = groups.length - i;
+                createProjectGroup(groups[i].id, groups[i].name, groups[i].description, groups[i].projects, order);
             }
             setupDefaultProjectForUnsortedProjects();
         });
@@ -735,7 +736,7 @@
 
 
 
-        function createProjectGroup(groupID, groupName, groupDescription, groupProjects, insertOnTop = false) {
+        function createProjectGroup(groupID, groupName, groupDescription, groupProjects, order) {
             let clone = document.importNode(groupTemplate.content, true);
             clone.querySelector('details').setAttribute('id', `group${groupID}`);
             clone.querySelector('summary').textContent = groupName;
@@ -749,17 +750,31 @@
             clone.querySelector('.openGroupReportButton').setAttribute('onclick', `openGroupReport(${groupID});`);
             clone.querySelector('.deleteProjectGroupButton').setAttribute('onclick', `deleteProjectGroup(${groupID});`);
 
+            if (order == -1) {
+                //check if -1 or similar is alredy in use and if so, set it to the next lower number, to still appear on top
+                order = 0;
+                let groups = document.getElementById('groups-container').querySelectorAll('details');
+                for (let i = 0; i < groups.length; i++) {
+                    console.log(groups[i].style.order);
+                    if (groups[i].style.order <= order) {
+                        order = groups[i].style.order - 1;
+                        console.log('new order:', order);
+                    }
+                }
+                console.log('final order:', order);
+            }
+
+            //Set style order for the group
+            clone.querySelector('details').style.order = order;
+
 
             if (groupProjects) {
                 let projectsContainer = clone.querySelector('.group-reports-container');
                 createProjectsReports(groupProjects, projectsContainer, groupID);
             }
 
-            if (insertOnTop) {
-                groupContainer.insertBefore(clone, groupContainer.firstChild);
-            } else {
-                groupContainer.appendChild(clone);
-            }
+            groupContainer.appendChild(clone);
+            
         }
 
 
@@ -777,14 +792,15 @@
                 }
             }
 
-            currentReports.forEach(report => {
-                generateReportObjectsFromTemplate(report, reportsContainer, groupID);
+            currentReports.forEach((report, index) => {
+                order = currentReports.length - index;
+                generateReportObjectsFromTemplate(report, reportsContainer, groupID, order);
             });
 
         }
 
 
-        function generateReportObjectsFromTemplate(report, reportsContainer, groupID, insertOnTop = false) {
+        function generateReportObjectsFromTemplate(report, reportsContainer, groupID, order) {
             const template = document.getElementById('report-template');
             const clone = document.importNode(template.content, true);
 
@@ -797,11 +813,24 @@
             clone.querySelector('.edit-report').setAttribute('onclick', `editReport(${report.id});`);
             clone.querySelector('.delete-report').setAttribute('onclick', `deleteReport(${report.id});`);
 
-            if (insertOnTop) {
-                reportsContainer.insertBefore(clone, reportsContainer.firstChild);
-            } else {
-                reportsContainer.appendChild(clone);
+            if (order == -1) {
+                //check if -1 or similar is alredy in use and if so, set it to the next lower number, to still appear on top
+                let reports = reportsContainer.querySelectorAll('.report');
+                for (let i = 0; i < reports.length; i++) {
+                    console.log(reports[i].style.order);
+                    if (reports[i].style.order <= order) {
+                        order = reports[i].style.order - 1;
+                        console.log('new order:', order);
+                    }
+                }
+                console.log('final order:', order);
             }
+
+
+            clone.querySelector('.report').style.order = order;
+
+            reportsContainer.appendChild(clone);
+            
         }
 
 
@@ -878,7 +907,7 @@
                     //the response should include the new dictionary with the project data which will be added to the list in its own function
                     response.json().then(data => {
                         console.log('Success:', data);
-                        createProjectGroup(data.id, data.name, data.description, data.projects, true);
+                        createProjectGroup(data.id, data.name, data.description, data.projects, -1);
                         //open the new group
                         document.getElementById(`group${data.id}`).setAttribute('open', '');
                     });
@@ -987,7 +1016,7 @@
                         if (projectGroupID == -1) {
                             reportsContainer = document.getElementById('unsorted-reports-container').querySelector('.group-reports-container');
                         }
-                        generateReportObjectsFromTemplate(data, reportsContainer, projectGroupID, true);
+                        generateReportObjectsFromTemplate(data, reportsContainer, projectGroupID, -1);
                     });
                 } else {
                     // Server encountered an error, show alert

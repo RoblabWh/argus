@@ -16,11 +16,7 @@ class DataShareManager:
 
     def update_backend_url(self, backend_url):
         # check if url starts wirh https://
-        if not backend_url.startswith('https://'):
-            # make sure it does not start with http://
-            if backend_url.startswith('http://'):
-                backend_url = backend_url.replace('http://', '')
-
+        if not backend_url.startswith('https://') and not backend_url.startswith('http://'):
             backend_url = 'https://' + backend_url
 
         if not backend_url.endswith('/'):

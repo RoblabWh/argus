@@ -140,6 +140,7 @@
                 <div id="detailsAreaHuman">
                     <label for="detectedObjectMainTypeHuman">organizational affiliation</label>
                     <select id="detectedObjectMainTypeHuman" name="detail">
+                        <option value="1">Fire department</option>
                         <option value="2">USAR</option>
                         <option value="3">EMS</option>
                         <option value="4">Police</option>
@@ -165,6 +166,7 @@
                 <div id="detailsAreaVehicle">
                     <label for="detectedObjectMainTypeVehicle">organizational affiliation</label>
                     <select id="detectedObjectMainTypeVehicle" name="detail">
+                        <option value="1">Fire department</option>
                         <option value="2">USAR</option>
                         <option value="3">EMS</option>
                         <option value="4">Police</option>
@@ -188,7 +190,7 @@
 
                 <div id="detailsAreaFire">
                     <select id="detectedObjectMainTypeFire" name="detail" style="display: none;">
-                        <option value="1" selected>Fire</option>
+                        <option value="7" selected>Hazard</option>
                     </select>
 
                     <label for="detectedObjectSubTypeFire">Subtype</label>
@@ -264,7 +266,7 @@
                 document.getElementById('detailsAreaFire').style.display = 'block';
             }
 
-            shareCoords = [coordinate[0], coordinate[1], 0]; // [latitude, longitude, altitude]
+            shareCoords = [coordinate[1], coordinate[0], 0]; // [latitude, longitude, altitude]
 
         }
 
