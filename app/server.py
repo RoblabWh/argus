@@ -114,6 +114,8 @@ class ArgusServer:
                               view_func=self.check_slam_map_process_status)
         self.app.add_url_rule('/slam_status/<int:report_id>', methods=['POST', 'GET'],
                               view_func=self.check_slam_status)
+        self.app.add_url_rule('/on_slam_finish/<int:report_id>', methods=['POST', 'GET'],
+                              view_func=self.on_slam_finish)
         self.app.add_url_rule('/stitcher_status/<int:report_id>', methods=['POST', 'GET'],
                               view_func=self.check_stitcher_status)
         self.app.add_url_rule('/load_video_from_stitcher/<int:report_id>', methods=['POST'],
@@ -228,6 +230,7 @@ class ArgusServer:
                     # return render_standard_report(report_id, template='startProcessing.html')
                 return self.render_standard_report(report_id)
             elif self.project_manager.get_project(report_id)['type'] == "slam_project":
+                print(self.project_manager.get_project(report_id)['data']['keyframes'], flush=True)
                 if  len(self.project_manager.get_project(report_id)['data']['keyframes']) > 0:
                     return self.render_slam_report(report_id, template='stella_vslam_report.html')
                 elif len(self.project_manager.get_project(report_id)['data']['video']) > 0:
@@ -872,20 +875,11 @@ class ArgusServer:
         status = self.slam_manager.get_slam_status(report_id)
         if status[0] == "finished":
             try:
-                keyfrms = self.project_manager.get_keyframe_file_path(report_id)
-                landmarks = self.project_manager.get_landmark_file_path(report_id)
-                keyfrm_folder = self.project_manager.get_keyframe_folder(report_id)
-                output = self.project_manager.get_mapping_output_folder(report_id)
-                self.project_manager.load_keyframe_images(report_id)
+                self.load_keyframe_images(report_id)
                 mapping_settings = self.project_manager.get_mapping_settings(report_id)
-                #start image mapper thread stuff
+                # start image mapper thread stuff
                 if mapping_settings is not None:
-                    extensions = ['.jpg', '.png']
-                    fov = [80,80]
-                    print("starting mapping process", flush=True)
-                    thread = ImageMapperProcess(keyfrm_folder, output, extensions, fov, keyfrms, report_id)
-                    self.threads.append(thread)
-                    thread.start()
+                    self.start_mapping(report_id)
                 return jsonify(status=status)
             except:
                 return jsonify(status=status)
@@ -897,6 +891,32 @@ class ArgusServer:
             except:
                 return jsonify("something went wrong with slam")
         return jsonify(status=status)
+
+    def on_slam_finish(self, report_id):
+        self.load_keyframe_images(report_id)
+        mapping_settings = self.project_manager.get_mapping_settings(report_id)
+        # start image mapper thread stuff
+        if mapping_settings is not None:
+            self.start_mapping(report_id)
+        return jsonify("success")
+
+    def load_keyframe_images(self, report_id):
+        keyfrms = self.project_manager.get_keyframe_file_path(report_id)
+        landmarks = self.project_manager.get_landmark_file_path(report_id)
+        keyfrm_folder = self.project_manager.get_keyframe_folder(report_id)
+        output = self.project_manager.get_mapping_output_folder(report_id)
+        self.project_manager.load_keyframe_images(report_id)
+
+    def start_mapping(self, report_id):
+        keyfrms = self.project_manager.get_keyframe_file_path(report_id)
+        keyfrm_folder = self.project_manager.get_keyframe_folder(report_id)
+        output = self.project_manager.get_mapping_output_folder(report_id)
+        extensions = ['.jpg', '.png']
+        fov = [80, 80]
+        print("starting mapping process", flush=True)
+        thread = ImageMapperProcess(keyfrm_folder, output, extensions, fov, keyfrms, report_id)
+        self.threads.append(thread)
+        thread.start()
 
     def check_stitcher_status(self, report_id):
         status = self.slam_manager.get_stitcher_status(report_id)
@@ -1352,6 +1372,10 @@ class ArgusServer:
                 vertices = None
         except:
             slam_mapping_output = None
+        try:
+            slam_status =  self.slam_manager.get_slam_status(report_id)
+        except:
+            slam_status = None
 
         message = None
         processing = False
@@ -1377,7 +1401,7 @@ class ArgusServer:
                                keyfrms = keyfrms, landmarks=landmarks, slam_output = slam_output,
                                keyframe_folder = keyframe_folder, detections= detections, processing = processing,
                                point_cloud=point_cloud, project=project, message=message, slam_mapping_output = slam_mapping_output,
-                               nerf_export=nerf_export,
+                               nerf_export=nerf_export, slam_status=slam_status,
                                vertices = vertices, gradient_lut=gradient_lut)  #create a different render template maybe
 
     def render_standard_report(self, report_id, thread=None, template="baseReport.html"):

@@ -1240,9 +1240,22 @@
                 if (xhr.status === 200) {
                     try {
                         const response = JSON.parse(xhr.responseText);
-                        var bar_text = document.getElementById("progress-bar-text");
-                        var bar_slam = document.getElementById("progress-bar");
-                        if (response.status[0] === "finished") {
+                        update_status(response.status);
+                    } catch(e) {
+                        console.log(e);
+                    }
+                } else {
+                    console.error('Failed to retrieve progress:', xhr.status);
+                }
+            }
+        };
+        xhr.send();
+    }
+
+    function update_status(status) {
+        var bar_text = document.getElementById("progress-bar-text");
+        var bar_slam = document.getElementById("progress-bar");
+                        if (status[0] === "finished") {
                             clearInterval(intervalIDSlam);
                             bar_text.innerHTML = " estimated time: " + "00:00:000";
                             bar_slam.style.width = 100 + '%';
@@ -1250,7 +1263,7 @@
                             spinner.style.display = "none";
                             window.location.href = '/{{ id }}';
                         }
-                        else if (response.status[0] === "update") {
+                        else if (status[0] === "update") {
                             //ajax to fetch updated data
                             $.post("/load_keyframes/{{ id }}", function(data){
                                 keyframes = data;
@@ -1269,50 +1282,85 @@
                                 loadLandmarks(landmarks);
                             });
                         }
-                        if(response.status[1] === "progress") {
-                            if(response.status[2] > 0.01) {
-                                if (response.status[2] >= 0.995) {
+                        if(status[1] === "progress") {
+                            if(status[2] > 0.01) {
+                                if (status[2] >= 0.995) {
                                     bar_text.innerHTML = "2/2 generating keyframes";
                                     bar_slam.style.width = 100 + '%';
                                 } else {
-                                    console.log(response.status[2]);
+                                    console.log(status[2]);
                                     var currentTime = new Date();
-                                    let diff = currentTime.getTime() - startTime.getTime();
-                                    estimTime = diff / (response.status[2]); //in ms
-                                    let time_to_calculate = estimTime - diff;
-                                    var estimRunTime = "";
-                                    if (parseInt(time_to_calculate / (60000)) < 10) {
-                                        estimRunTime += '0' + parseInt(time_to_calculate / (60000)) + ":";
-                                    } else {
-                                        estimRunTime += parseInt(time_to_calculate / (60000)) + ":";
+                                    if(startTime !== null) {
+                                        let diff = currentTime.getTime() - startTime.getTime();
+                                        estimTime = diff / (status[2]); //in ms
+                                        let time_to_calculate = estimTime - diff;
+                                        var estimRunTime = "";
+                                        if (parseInt(time_to_calculate / (60000)) < 10) {
+                                            estimRunTime += '0' + parseInt(time_to_calculate / (60000)) + ":";
+                                        } else {
+                                            estimRunTime += parseInt(time_to_calculate / (60000)) + ":";
+                                        }
+                                        if (parseInt((time_to_calculate % (60000)) / 1000) < 10) {
+                                            estimRunTime += '0' + parseInt((time_to_calculate % (60000)) / 1000) + ".";
+                                        } else {
+                                            estimRunTime += parseInt((time_to_calculate % (60000)) / 1000) + ".";
+                                        }
+                                        estimRunTime += parseInt((time_to_calculate % 1000) / 10);
+                                        bar_text.innerHTML = "1/2 running slam: " + estimRunTime;
                                     }
-                                    if (parseInt((time_to_calculate % (60000)) / 1000) < 10) {
-                                        estimRunTime += '0' + parseInt((time_to_calculate % (60000)) / 1000) + ".";
-                                    } else {
-                                        estimRunTime += parseInt((time_to_calculate % (60000)) / 1000) + ".";
-                                    }
-                                    estimRunTime += parseInt((time_to_calculate % 1000) / 10);
-                                    bar_text.innerHTML = "1/2 running slam: " + estimRunTime;
-                                    bar_slam.style.width = (response.status[2] * 100) + '%';
+                                    bar_slam.style.width = (status[2] * 100) + '%';
                                 }
                             } else {
                                 bar_text.innerHTML = "1/2 running slam: " + "--:--.--";
-                                bar_slam.style.width = (response.status[2] * 100) + '%';
+                                bar_slam.style.width = (status[2] * 100) + '%';
                             }
                         }
-                    } catch(e) {
-                        console.log(e);
-                    }
-                } else {
-                    console.error('Failed to retrieve progress:', xhr.status);
-                }
-            }
-        };
-        xhr.send();
     }
 
     let keyframes = {{ keyfrms | tojson }};
     let landmarks = {{ landmarks | tojson }};
+    let slam_status = {{ slam_status | tojson }};
+    if (slam_status !== "not found") {
+        //setup all the ui elements before parsing the status
+        if (slam_status[0] === "finished") {
+            //tell server slam finished
+            $.post("/on_slam_finish/{{ id }}", function(response) {
+                console.log(response);
+                window.location.href = '/{{ id }}';
+            })
+        }
+        else {
+            var button = document.getElementById("startSlamButton");
+            var spinner = document.getElementById("slamRunningCircle");
+            spinner.style.display = "inline-block";
+            button.innerHTML = 'Running VSLAM...';
+            button.disabled = true;
+            button.style.backgroundColor = "var(--bg-color-b)";
+            button.style.cursor = "wait";
+            button.classList.remove("button_active");
+            var bar_div = document.getElementsByClassName("progress-bar-container")[0];
+            bar_div.style.visibility = "visible";
+            var bar_slam = document.getElementById("progress-bar");
+            bar_slam.style.width = (0) + '%';
+            //setup update loop
+            intervalIDSlam = setInterval(check_status_slam, 1000);
+            update_status(slam_status);
+            if (keyframes !== null) {
+                if (!controlsInitiated) {
+                    let d = document.getElementById('WebGL-output');
+                    console.log(d);
+                    d.style.visibility = 'visible';
+
+                    init();
+                    initiateControls();
+                }
+                loadKeyframes(keyframes);
+            }
+            if (landmarks !== null) {
+                loadLandmarks(landmarks);
+            }
+        }
+    }
 
   </script>
 

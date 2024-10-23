@@ -51,7 +51,7 @@ class SlamManager:
                         return ("update","progress", process['progress'])
                     else:
                         return ("running","progress", process['progress'])
-        return "running"
+        return "not found"
 
     def get_stitcher_status(self, report_id):
         response = requests.get(self.url+'/get_stitcher_status', headers={'Accept': 'application/json'})
