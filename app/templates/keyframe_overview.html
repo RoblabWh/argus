@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <style>
+        body{
+            margin-left: 0px;
+            margin-right: 0px;
+            margin-bottom: 0px;
+            background-color: var(--bg-color-page);
+            color: var(--font-color-a);
+        }
+
+        .bodyDiv {
+            min-height: 95vh;
+            width: 100%;
+            max-width: 1400px;
+            margin: 0 auto !important;
+            float: none !important;
+            font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+        }
+
+        .container{
+            width: 100%;
+            margin: 0 auto;
+            margin-top: 20px;
+            margin-bottom: 20px
+        }
+
+        .keyframe_gallery{
+            border:1px solid black;
+            overflow: auto;
+            padding: 20px;
+            border-ne: 3px solid var(--accent-color-interaction);
+            display: inherit;
+        }
+    </style>
+</head>
+<body>
+    <div class="bodyDiv">
+    {% if has_keyframe_images %}
+        <div id = "keyframe_viewer">
+        {% include 'panoViewerSlam.html' %}
+        </div>
+    {% endif %}
+    <div class="container">
+        {% if has_keyframe_images %}
+            <div class = "keyframe_gallery">
+            </div>
+        {% endif %}
+    </div>
+    </div>
+    <script>
+        //using keyframes_sort from panoViewerSlam.html
+        let keyframe_gallery = document.getElementsByClassName('keyframe_gallery')[0];
+        for (let keyframe of keyframes_sort) {
+            div = document.createElement('div');
+            div.style = "float:left;width:20%; min-width:240px;";
+            img = document.createElement('img');
+            img.loading = "lazy";
+            img.style = "padding: 5px;width:95%;cursor: pointer;";
+            img.id = "galleryImage" + keyframe;
+            img.src = keyframe_folder + keyframe;
+            img.setAttribute('onclick',"show_keyframe(" + keyframe.replace(/\D/g,'') + ")");
+            div.appendChild(img);
+            keyframe_gallery.appendChild(div);
+        }
+    </script>
+</body>
+</html>

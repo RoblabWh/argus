@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>AI Detection</title>
+    <style>
+        .tableButton{
+            cursor: pointer;
+            color: var(--font-color-b);
+            font-weight: bold;
+            background-color:var(--accent-color-interaction);
+            border-radius: 4px;
+        }
+
+        .tableHyperlink{
+            text-decoration: underline;
+            cursor: pointer;
+            color: var(--accent-color-interaction);
+            font-weight: bold;
+        }
+
+        .spinner {
+          width: 42px;
+          --b: 8px; /* the border thickness */
+          aspect-ratio: 1;
+          border-radius: 50%;
+          padding: 1px;
+          background: conic-gradient(#0000 10%,var(--accent-color-interaction)) content-box;
+          -webkit-mask:
+            repeating-conic-gradient(#0000 0deg,#000 1deg 20deg,#0000 21deg 36deg),
+            radial-gradient(farthest-side,#0000 calc(100% - var(--b) - 1px),#000 calc(100% - var(--b)));
+          -webkit-mask-composite: destination-in;
+          mask-composite: intersect;
+          animation:s4 1s infinite steps(10);
+        }
+        @keyframes s4 {to{transform: rotate(1turn)}}
+
+        .spinner-small {
+          width: 30px;
+          --b: 6px; /* the border thickness */
+          aspect-ratio: 1;
+          border-radius: 50%;
+          padding: 1px;
+          background: conic-gradient(#0000 10%,var(--accent-color-interaction)) content-box;
+          -webkit-mask:
+            repeating-conic-gradient(#0000 0deg,#000 1deg 20deg,#0000 21deg 36deg),
+            radial-gradient(farthest-side,#0000 calc(100% - var(--b) - 1px),#000 calc(100% - var(--b)));
+          -webkit-mask-composite: destination-in;
+          mask-composite: intersect;
+          animation:s4 1s infinite steps(10);
+        }
+        @keyframes s4 {to{transform: rotate(1turn)}}
+    </style>
+    <script>
+        var detections = {{ detections | tojson }};
+        var currentImageAnnotations = [];
+        var filteredSelection = [];
+        var intervalIDDetection = null;
+
+        function showTableByCategory(category) {
+            var x = document.getElementById("table" + category);
+            if (x.style.display === "none") {
+                x.style.display = "inline-table";
+            } else {
+                x.style.display = "none";
+            }
+        }
+
+        function showImageByFileName(fileName) {
+            console.log("galleryImage" + fileName);
+            var x = document.getElementById("galleryImage" + fileName);
+            x.click();
+            //generateAnnotationsLayerTableForImage(fileName);
+            $('#aiOverlayCheckbox').prop('checked', true);
+            $('#aiOverlayCheckbox').change();
+            openSettings(document.getElementById('slideshow-settings-annotaions-tablink'), 'slideshow-settings-Annotations');
+        }
+
+        function reRunAIDetection(){
+            if(confirm("Rerunning The Detection will overwrite old detection results")){
+                runAIDetection();
+            }
+        }
+
+        function runAIDetection() {
+            var modelOptions = document.getElementById("ai_model_options");
+            var selectedModelOption = modelOptions.value;//options[modelOptions.selectedIndex].value;
+
+            var processingOptions = document.getElementById("processing_options");
+            var selectedProcessingOption = processingOptions.options[processingOptions.selectedIndex].value;
+
+            console.log(selectedModelOption);
+            console.log(selectedProcessingOption);
+
+            //disable button with id runDetectionButton and start loading circle animation
+            var button = document.getElementById("runDetectionButton");
+            button.disabled = true;
+            button.innerHTML = 'Running Detection...';
+            spinner = document.getElementById("detectionsRunningCircle");
+            spinner.style.display = "inline-block";
+            //create new div that sits in left to the button and contains the loading circle
+            //button.innerHTML = ;
+
+            $.post("/run_detection/{{ id }}", {model_options: selectedModelOption, processing_options: selectedProcessingOption}, function(){
+
+                intervalIDDetection = window.setInterval(check_status_detection, 1500);
+
+                //console.log("Data: " + data );
+                //detections = data;
+                //generateDetectionTable(data);
+                //generateAnnotationSettings(data);
+                //var currentImageName = document.getElementById("dynamic-slide").getElementsByTagName('a')[0].innerHTML.split(": ")[1];
+                //generateAnnotationsLayerTableForImage(currentImageName);
+                //detections = data;
+
+                //var button = document.getElementById("runDetectionButton");
+                //button.disabled = false;
+                //button.innerHTML = 'Re-Run Detection';
+
+                //spinner = document.getElementById("detectionsRunningCircle");
+                //spinner.style.display = "none";
+
+            });
+        }
+
+        function check_status_detection(){
+            $.post("/detection_status/{{ id }}", (detection_status) => {
+                console.log("Progress: " + detection_status );
+                if(detection_status === "finished"){
+                    clearInterval(intervalIDDetection);
+
+                    //load data
+                    $.post("/load_detection_results/{{ id }}", function(data){
+                        console.log(data);
+                        detections = data;
+                        loadDetections(data);
+                    });
+
+                    var button = document.getElementById("runDetectionButton");
+                    button.disabled = false;
+                    button.innerHTML = 'Re-Run Detection';
+
+                    spinner = document.getElementById("detectionsRunningCircle");
+                    spinner.style.display = "none";
+
+
+                }
+            });
+        }
+
+        function generateDetectionTable(detectionData) {
+            //check if detectionTable exists
+            var x = document.getElementById("detectionTable");
+            var detectionTableContainer = document.getElementById("detectionTableContainer");
+
+            if (x != null){
+                detectionTableContainer.innerHTML = "";
+            }
+
+            //create detectionTable
+            var tbl = document.createElement("table");
+            tbl.id = "detectionTable";
+            detectionTableContainer.appendChild(tbl);
+
+            //create header
+            var header = tbl.insertRow();
+            //create header cells for "category", "findings", "threshold" and "images"
+            var headings = ["Category", "Findings", "threshold", "Images"];
+            for (let i = 0; i < headings.length; i++){
+                var h1 = document.createElement('th');
+                h1.innerHTML = headings[i];
+                header.appendChild(h1);
+            }
+
+            //one line as a spacer
+            tbl.insertRow().insertCell().innerHTML="";
+
+            //create a selection of all images that have detections by categrory
+            const imagesWithDetectionsByCategory = {};
+            //create an empy list for each category
+            for (let i = 0; i < detectionData["categories"].length; i++) {
+                var category = detectionData["categories"][i];
+                imagesWithDetectionsByCategory[category.name] = [];
+            }
+
+            for (let i = 0; i < detectionData["annotations"].length; i++) {
+                var annotation = detectionData["annotations"][i];
+                var category = detectionData["categories"][annotation.category_id]["name"];
+                var image_id = annotation["image_id"];
+
+
+                if (!imagesWithDetectionsByCategory[category].includes(image_id)) {
+                    imagesWithDetectionsByCategory[category].push(image_id);
+                }
+            }
+
+            console.log(imagesWithDetectionsByCategory);
+
+
+
+            //for every "category" in detection data create a row
+            var categories = detectionData["categories"];
+            for (let i = 0; i < categories.length; i++){
+                var category = categories[i];
+                var row = tbl.insertRow();
+                //console.log("category: " + category.name + " with a total of " + imagesWithDetectionsByCategory[category.name].length + " images");
+
+                subHeader = document.createElement('th');
+                subHeader.innerHTML = category.name;
+                row.append(subHeader);
+                row.insertCell().innerHTML= imagesWithDetectionsByCategory[category.name].length;
+                var a = document.createElement('a');
+                if(imagesWithDetectionsByCategory[category.name].length > 0){
+                    slider = document.createElement('input');
+                    slider.setAttribute("type", "range");
+                    slider.setAttribute("id", "slider_" + category.name + "_global_threshold");
+                    slider.setAttribute("min", "0");
+                    slider.setAttribute("max", "1");
+                    slider.setAttribute("step", "0.01");
+                    slider.setAttribute("value", 0.3);
+                    (function(category, slider){
+                        slider.onchange = function(x) {
+                            updateSubTableThreshold(category.name, x.target.value);
+                            map_slider = document.getElementById(category.name + "-slider-map");
+                            if (map_slider != null){
+                                map_slider.value = x.target.value;
+                            }
+                        }
+                    })(category, slider);
+                    row.insertCell().append(slider);//category.lowest_score;
+                    a.innerHTML = "&#x00A0; show &#x25BE; &#x00A0;";
+                    a.setAttribute("class", "tableButton");
+                }else{
+                    row.insertCell().innerHTML="-";
+                    a.innerHTML = "no images with object found";
+                }
+                row.insertCell().appendChild(a);
+
+
+                //create a new table in the next row that shows all the image names of the category
+                var expandableRow = tbl.insertRow();
+                var subTableCell = expandableRow.insertCell();
+                subTableCell.setAttribute("colspan", "4");
+                var subTable = document.createElement("table");
+
+                subTable.id = "table" + category.name;
+                subTable.style.display = "none";
+
+                var subTableHeader = subTable.insertRow();
+                var subHeadings = ["Image Name", "Number of detected objects"];
+                for (let j = 0; j < subHeadings.length; j++){
+                    var h1 = document.createElement('th');
+                    h1.innerHTML = subHeadings[j];
+                    subTableHeader.appendChild(h1);
+                }
+
+                //loop over all images in detectionData and add them to the table if the category matches
+                var images = detectionData["images"];
+                var selectedImages = imagesWithDetectionsByCategory[category.name];
+                for (let j = 0; j < selectedImages.length; j++){
+                    var image = images[selectedImages[j]];
+
+                    var subTableRow = subTable.insertRow();
+                    var lineHeading = document.createElement('th');
+                    lineHeading.innerHTML = image.file_name;
+                    subTableRow.append(lineHeading);
+
+                    subTableRow.insertCell().innerHTML=1;
+                    subTableRow.cells[0].setAttribute("class", "tableHyperlink");
+                    subTableRow.cells[0].onclick = (function(opt) {return function(){
+                        showImageByFileName(opt);
+                        };
+                    })(image.file_name);
+
+                }
+
+                subTableCell.appendChild(subTable);
+
+                if(imagesWithDetectionsByCategory[category.name].length > 0){
+                    row.cells[3].onclick = (function(opt) {return function(){
+                        showTableByCategory(opt)
+                        };
+                    })(category.name);
+                }
+                updateSubTableThreshold(category.name, 0.3);
+            }
+            generateObjectDetectionLayer(detectionData);
+
+        }
+
+        function updateSubTableThreshold(categoryName, threshold){
+            var subTable = document.getElementById("table" + categoryName);
+            var rows = subTable.rows;
+            categoryID = detections["categories"][detections["categories"].findIndex(x => x.name === categoryName)].id-1;
+            categorySum = 0;
+            for (let i = 1; i < rows.length; i++){
+                var row = rows[i];
+                var cells = row.cells;
+                imageName = cells[0].innerHTML;
+                imageID = detections["images"].findIndex(x => x.file_name === imageName);
+
+                annotations = detections["annotations"];
+                sum = 0;
+                for (let j = 0; j < annotations.length; j++){
+                    var annotation = annotations[j];
+                    if (annotation.image_id === imageID){
+                        if (annotation.category_id === categoryID){
+                            //console.log("annotation.score: " + annotation.score + " threshold: " + threshold + "categoryID: " + categoryID + "categoryName: " + categoryName);
+                            if (annotation.score < threshold){
+                                //noting to do
+                            }else{
+                                sum += 1;
+                            }
+                        }
+                    }
+                }
+                var cell = cells[1];
+                cell.innerHTML = sum;
+                console.log("categoryID: " + categoryID + " categoryName: " + categoryName + " imageID: " + imageID + " imageName: " + imageName + " sum: " + sum);
+                categorySum += sum;
+            }
+            sumCell = document.getElementById("detectionTable").rows[(categoryID+1)*2].cells[1];
+            sumCell.innerHTML = categorySum;
+            try{
+                var image_slider = document.getElementById("layer-threshold-slider-" + categoryName);
+                image_slider.value = threshold;
+                $("#layer-threshold-slider-" + categoryName).trigger("input");
+            }catch(err){
+                console.log("no slider found for category: " + categoryName);
+            }
+            //image_slider = document.getElementById("layer-threshold-slider-" + categoryName);
+            //image_slider.value = threshold;
+            //$("#layer-threshold-slider-" + categoryName).trigger("input");
+            if (objectDetectionLayer != null){
+                generateObjectDetectionLayer(detections);
+            }
+        }
+
+        function generateAnnotationSettings(detectionData){
+            //check if slideshow-settings-annotaions-tablink exists
+            var x = document.getElementById("slideshow-settings-annotaions-tablink");
+            if (x === null) {
+                //create slideshow-settings-annotaions-tablink
+                var tabsDiv = document.getElementById("slideshow-settings-tabs-links");
+                var tabLink = document.createElement("button");
+                tabLink.id = "slideshow-settings-annotaions-tablink";
+                tabLink.setAttribute("class", "tablink-vertical");
+                tabLink.innerHTML = "AI-Detections";
+                //call openSettings(event,'slideshow-settings-Annotations')
+                tabLink.onclick = function() {openSettings(event,'slideshow-settings-Annotations')};
+                tabsDiv.appendChild(tabLink);
+            }
+        }
+
+        function generateAnnotationsLayerTableForImage(fileName){
+
+            var tableContainer = document.getElementById("layer-table-container");
+            tableContainer.innerHTML = "";
+
+            var tbl = document.createElement("table");
+            var header = tbl.insertRow();
+            var headings = ["Show", "Object", "Color","Total found objects", "Displayed objects", "Threshold"];
+            for (let i = 0; i < headings.length; i++){
+                var h1 = document.createElement('th');
+                h1.innerHTML = headings[i];
+                header.appendChild(h1);
+            }
+            header.insertCell();
+
+            console.log("generateAnnotationsLayerTableForImage: " + fileName);
+
+            if (fileName == null || fileName == ""){
+                var row = tbl.insertRow();
+                var cell = row.insertCell();
+                cell.innerHTML = "No RGB image found";
+                cell.setAttribute("colspan", "6");
+                tableContainer.appendChild(tbl);
+                return;
+            }
+
+            imageID = getImageIndexByName(fileName)
+            currentImageAnnotations = [];
+            for (let i = 0; i < detections["annotations"].length; i++){
+                if (detections["annotations"][i].image_id === imageID){
+                    currentImageAnnotations.push(detections["annotations"][i]);
+                }
+            }
+            console.log("currentImageAnnotations: " + currentImageAnnotations.length);
+
+            //currentImageAnnotations = detections["annotations"][getImageIndexByName(fileName)];
+            var categories = detections["categories"];
+            //currentImageAnnotations = annotations;
+
+            annotationColorOffset = parseInt(360/categories.length);
+            filteredSelection = [];
+
+            if(currentImageAnnotations == null){
+                var row = tbl.insertRow();
+                var cell = row.insertCell();
+                cell.innerHTML = "No results found, please (re-)run the detection";
+                cell.setAttribute("colspan", "6");
+                tableContainer.appendChild(tbl);
+                if ($('#aiOverlayCheckbox').prop('checked')) {
+                    //$('#aiOverlayCheckbox').prop('checked', false);
+                    //$('#aiOverlayCheckbox').change();
+                }
+                return;
+            }
+
+            for(let i = 0; i < categories.length; i++){
+                var row = tbl.insertRow();
+                var category = categories[i];
+                var totalFoundObjects = 0;
+                var displayedObjects = 0;
+
+                for(let j = 0; j < currentImageAnnotations.length; j++){
+                    var annotation = currentImageAnnotations[j];
+                    if(annotation.category_id === category.id-1){
+                        totalFoundObjects++;
+                        displayedObjects++;
+                        filteredSelection.push(j);
+                    }
+                }
+
+
+
+                var lableSwitch = document.createElement("label");
+                lableSwitch.className = "switch";
+                var span = document.createElement("span");
+                span.className = "switch-slider round";
+                var checkbox = document.createElement("input");
+                checkbox.type = "checkbox";
+                checkbox.checked = true;
+                checkbox.id = "layer-checkbox-" + category.name;
+                checkbox.onclick = (function(opt) {return function(){
+                    toggleLayer(opt)
+                    };
+                })(category.name);
+                lableSwitch.appendChild(checkbox);
+                lableSwitch.appendChild(span);
+
+                var categoryName = document.createElement("span");
+                categoryName.innerHTML = category.name;
+
+
+                var color = document.createElement("input");
+                color.type = "color";
+                //color.value = hslToHex(i*annotationColorOffset, 100, 50);
+                color.value = hslToHex(category.colorHSL[0], category.colorHSL[1], category.colorHSL[2]);
+                color.id = "color" + category.name;
+                color.oninput = (function(opt) {return function(){
+                    changeColor(opt)
+                    };
+                })(category.name);
+
+                var totalFoundObjectsSpan = document.createElement("span");
+                totalFoundObjectsSpan.innerHTML = totalFoundObjects;
+
+                var displayedObjectsSpan = document.createElement("span");
+                displayedObjectsSpan.id = "layer-displayed-objects-" + category.name;
+                displayedObjectsSpan.innerHTML = displayedObjects;
+
+                var slider = document.createElement("input");
+                slider.type = "range";
+                slider.min = 0.3;
+                slider.max = 1;
+                slider.step = 0.01;
+                try{
+                    slider.value = document.getElementById("slider_" + category.name + "_global_threshold").value;
+                }catch(err){
+                    slider.value = 0.3;
+                }
+                //slider.value = document.getElementById("slider_" + category.name + "_global_threshold").value;
+                slider.id = "layer-threshold-slider-" + category.name;
+                slider.className = "slider";
+                slider.oninput = (function(opt) {return function(){
+                    changeThreshold(opt)
+                    };
+                })(category.name);
+
+                var sliderValue = document.createElement("span");
+                sliderValue.id = "layer-threshold-" + category.name;
+                sliderValue.innerHTML = parseFloat(slider.value).toFixed(2);
+                sliderValue.style = "min-width:20px;display:inline-block";
+
+
+                if(totalFoundObjects <= 0){
+                    //lableSwitch.style = "opacity:0.5";
+                    lableSwitch.style = "display: none";
+                    color.style = "opacity:0.25";
+                    slider.style = "opacity: 0.0; cursor: default";
+                    slider.className = "";
+                    //slider.style = "display:none";
+                    sliderValue.style = "opacity:0.0";
+                    //sliderValue.style = "display:none";
+                    categoryName.style = "opacity:0.5";
+                    totalFoundObjectsSpan.style = "opacity:0.5";
+                    displayedObjectsSpan.style = "opacity:0.5";
+                    slider.disabled = true;
+                    checkbox.disabled = true;
+                    checkbox.checked = false;
+                    color.disabled = true;
+                }
+
+                row.insertCell().appendChild(lableSwitch);
+                row.insertCell().appendChild(categoryName);
+                row.insertCell().appendChild(color);
+                row.insertCell().appendChild(totalFoundObjectsSpan);
+                row.insertCell().appendChild(displayedObjectsSpan);
+                row.insertCell().appendChild(slider);
+                row.insertCell().appendChild(sliderValue);
+
+                row.id = "layer-row-" + category.name;
+
+            }
+            tableContainer.appendChild(tbl);
+            filterSelection();
+        }
+
+        function changeThreshold(category){
+            var slider = document.getElementById("layer-threshold-slider-" + category);
+            var sliderValue = document.getElementById("layer-threshold-" + category);
+            sliderValue.innerHTML = parseFloat(slider.value).toFixed(2);
+            filterSelection();
+            if(displayingAI){
+                drawAnnotationsOnCurrentSlide();
+            }
+        }
+
+        function filterSelection(){
+            filteredSelection = [];
+            console.log("filterSelection");
+            var categories = detections["categories"];
+            for(let i = 0; i < categories.length; i++){
+                var category = categories[i];
+                var checkbox = document.getElementById("layer-checkbox-" + category.name);
+                var displayedObjects = 0;
+                if (checkbox.checked){
+                    var slider = document.getElementById("layer-threshold-slider-" + category.name);
+                    var threshold = slider.value;
+                    for(let j = 0; j < currentImageAnnotations.length; j++){
+                        var annotation = currentImageAnnotations[j];
+                        if(annotation.category_id == category.id-1){
+                            if (annotation.score >= threshold){
+                                filteredSelection.push(j);
+                                displayedObjects++;
+                            }
+                        }
+                    }
+                }
+                var displayedObjectsCell = document.getElementById("layer-displayed-objects-" + category.name);
+                displayedObjectsCell.innerHTML = displayedObjects;
+            }
+            //generateObjectDetectionLayer(detections);
+        }
+
+        function get_global_thresholds(){
+            var categories = detections["categories"];
+            var thresholds = [];
+            for(let i = 0; i < categories.length; i++){
+                var category = categories[i];
+                //Check if there is a slider for this category
+                let threshold = 0.3;
+                if(document.getElementById("slider_" + category.name + "_global_threshold") != null){
+                    var slider = document.getElementById("slider_" + category.name + "_global_threshold");
+                    threshold = slider.value;
+                }
+                thresholds.push(threshold);
+            }
+            return thresholds;
+        }
+
+
+
+        function changeColor(category){
+            var color = document.getElementById("color" + category);
+            var colorValue = color.value;
+            var categories = detections["categories"];
+            var colorHSL = hexToHSL(colorValue);
+            for(let i = 0; i < categories.length; i++){
+                var categoryObj = categories[i];
+                if(categoryObj.name == category){
+                    categoryObj.colorHSL = colorHSL;
+                    break;
+                }
+            }
+
+            var colors = [];
+            for(let i = 0; i < categories.length; i++){
+                colors.push(categories[i].colorHSL);
+            }
+
+            if(displayingAI){
+                drawAnnotationsOnCurrentSlide();
+            }
+
+            console.log(colors);
+
+            $.post("/update_detections_colors/{{ id }}", {colorH: colorHSL[0], colorS: colorHSL[1], colorL: colorHSL[2], category_name: category});
+        }
+
+
+
+        function getImageIndexByName(filename){
+            var images = detections["images"];
+            for (let i = 0; i < images.length; i++){
+                if (images[i].file_name === filename){
+                    return images[i].id;
+                }
+            }
+        }
+
+        function toggleLayerSettings(disable){
+            tableContainer = document.getElementById("layer-table-container");
+            var table = tableContainer.getElementsByTagName("table")[0];
+            var rows = table.rows;
+            if(rows[1] == null){
+                return;
+            }
+            if (rows[1].cells.length == 1){
+                console.log(rows[1].cells);
+                console.log("returing");
+                return;
+            }
+            for (let i = 1; i < rows.length; i++){
+                var row = rows[i];
+                var labelSwitch = row.cells[0].getElementsByTagName("label")[0];
+                if (labelSwitch.style.display != "none"){
+                    //loop over every cell and set the content to 0.5 opacity. If cell content is from tape input disable it
+                    for (let j = 0; j < row.cells.length; j++){
+                        var cell = row.cells[j];
+                        var elements = cell.getElementsByTagName("*");
+                        for (let k = 0; k < elements.length; k++){
+                            var element = elements[k];
+                            if (element.tagName == "INPUT"){
+                                element.disabled = disable;
+                            }
+                            if (disable){
+                                element.style.opacity = 0.5;
+                            } else {
+                                element.style.opacity = 1;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+
+        function toggleLayer(category){
+            row = document.getElementById("layer-row-" + category);
+            checkbox = document.getElementById("layer-checkbox-" + category);
+            //loop over every cell and set the content to 0.5 opacity. If cell content is from tape input disable it
+            for (let i = 1; i < row.cells.length; i++){
+                var cell = row.cells[i];
+                var elements = cell.getElementsByTagName("*");
+                for (let j = 0; j < elements.length; j++){
+                    var element = elements[j];
+                    if (element.tagName == "INPUT"){
+                        element.disabled = !checkbox.checked;
+                    }
+                    if (checkbox.checked){
+                        element.style.opacity = 1;
+                    } else {
+                        element.style.opacity = 0.5;
+                    }
+                }
+            }
+            filterSelection();
+            if(displayingAI){
+                drawAnnotationsOnCurrentSlide();
+            }
+        }
+
+
+
+        function drawAnnotationsOnCurrentSlide(){
+            filename = currentImageName;
+            var canvas = document.getElementById("dynamic-canvas");
+            var ctx = canvas.getContext("2d");
+            var img = document.getElementById("dynamic-image-RGB").getElementsByTagName("img")[0];
+
+            //scale based on images source size and the current size of the image
+            var scale = img.width/ img.naturalWidth;
+
+            imageIndex = getImageIndexByName(filename);
+            //annotationData = detections["annotations"][imageIndex];
+
+            canvas.width = img.width;
+            canvas.height = img.height;
+
+            console.log("Drawing " + filteredSelection.length + " annotations on " + filename);
+
+            for (let i = 0; i < filteredSelection.length; i++){
+                var annotation = currentImageAnnotations[filteredSelection[i]];
+                var categoryID = annotation.category_id;
+                var category = detections["categories"][categoryID];
+                var color = document.getElementById("color" + category.name).value;
+                //if (annotation.image_id === imageIndex){
+                    var x, y, w, h;
+                    x = annotation.bbox[0] * scale;
+                    y = annotation.bbox[1] * scale;
+                    w = annotation.bbox[2] * scale;
+                    h = annotation.bbox[3] * scale;
+                    ctx.lineWidth = document.getElementById("annotationsLineWidth").value;
+                    ctx.strokeStyle = color;
+                    //ctx.clearRect(x, y, w, h);
+                    ctx.strokeRect(x, y, w, h);
+
+                //}
+            }
+        }
+
+        function removeAnnotations(){
+            var canvas = document.getElementById("dynamic-slide").getElementsByTagName('canvas')[0];
+            var ctx = canvas.getContext("2d");
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+
+        function hslToHex(h, s, l) {
+            l /= 100;
+            const a = s * Math.min(l, 1 - l) / 100;
+            const f = n => {
+                const k = (n + h / 30) % 12;
+                const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+                return Math.round(255 * color).toString(16).padStart(2, '0');   // convert to Hex and prefix "0" if needed
+            };
+            return `#${f(0)}${f(8)}${f(4)}`;
+        }
+
+        function hexToHSL(H) {
+            // Convert hex to RGB first
+            let r = 0, g = 0, b = 0;
+            if (H.length == 4) {
+                r = "0x" + H[1] + H[1];
+                g = "0x" + H[2] + H[2];
+                b = "0x" + H[3] + H[3];
+            } else if (H.length == 7) {
+                r = "0x" + H[1] + H[2];
+                g = "0x" + H[3] + H[4];
+                b = "0x" + H[5] + H[6];
+            }
+            // Then to HSL
+            r /= 255;
+            g /= 255;
+            b /= 255;
+            let cmin = Math.min(r,g,b),
+                cmax = Math.max(r,g,b),
+                delta = cmax - cmin,
+                h = 0,
+                s = 0,
+                l = 0;
+
+            if (delta == 0)
+                h = 0;
+            else if (cmax == r)
+                h = ((g - b) / delta) % 6;
+            else if (cmax == g)
+                h = (b - r) / delta + 2;
+            else
+                h = (r - g) / delta + 4;
+
+            h = Math.round(h * 60);
+
+            if (h < 0)
+                h += 360;
+
+            l = (cmax + cmin) / 2;
+            s = delta == 0 ? 0 : delta / (1 - Math.abs(2 * l - 1));
+            s = +(s * 100).toFixed(1);
+            l = +(l * 100).toFixed(1);
+
+            return [h, s, l];
+        }
+
+    </script>
+</head>
+<body>
+    <div style="display: flex; margin: 5px 0 15px 0">
+        <select name="Detection Quality" id="ai_model_options" style="margin: auto 0 auto 0; display: none">
+            <option value="fast">quick (only two models)</option>
+            <option value="medium">medium (more models, more potential detections)</option>
+            <option selected="all" value="all">best (all models, but slowest)</option>
+        </select>
+        <label for="ai_model_options" style="margin: auto auto auto 16px; display: none"> Detection Quality </label>
+        <select name="Processing Options" id="processing_options" style="margin: auto 0 auto 0">
+            <option selected="full" value="full">Full keyframe (Faster but coarse analysis)</option>
+            <option value="one_split">Split into 4 Faces (Enhanced analysis) (not yet working>)</option>
+        </select>
+        <label for="processing_options" style="margin: auto auto auto 16px"> Processing Options </label>
+        <div style="float: right; margin: auto 8px auto 0">
+            <div id="detectionsRunningCircle" class="spinner-small" style="display: none;"></div>
+        </div>
+        {% if detections %}
+        <button id="runDetectionButton" class="big_button" onclick="reRunAIDetection()">Re-Run AI Detection</button>
+        {% else %}
+        <button id="runDetectionButton" class="big_button" onclick="runAIDetection()">Run AI Detection</button>
+        {% endif %}
+    </div>
+    <div id="detectionTableContainer">
+    </div>
+    <script>
+
+    </script>
+</body>
+</html>

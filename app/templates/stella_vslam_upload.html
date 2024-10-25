@@ -1,0 +1,1291 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/html">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Upload</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='default/variables-light.css') }}" id="currentCss">
+    <script type="text/javascript" src="{{url_for('static', filename='default/js/lib/dat.gui.min.js') }}"></script>
+    <script type="text/javascript" src="{{url_for('static', filename='default/js/lib/protobuf.min.js') }}"></script>
+    <script type="text/javascript" src="{{url_for('static', filename='default/js/lib/stats.min.js') }}"></script>
+    <script type="text/javascript" src="{{url_for('static', filename='default/js/lib/three.min.js') }}"></script>
+    <script type="text/javascript" src="{{url_for('static', filename='default/js/ViewControls.js') }}"></script>
+    <script type="text/javascript" src="{{url_for('static', filename='default/js/Mouse.js') }}"></script>
+    <script type="text/javascript" src="{{url_for('static', filename='default/js/PointCloud.js') }}"></script>
+    <script type="text/javascript" src="{{url_for('static', filename='default/js/CameraFrames.js') }}"></script>
+  <style>
+    body {
+      margin-left: 0px;
+      margin-right: 0px;
+      margin-bottom: 0px;
+      background-color: var(--bg-color-page);
+      color: var(--font-color-a);
+    }
+
+    .bodyDiv {
+      min-height: 95vh;
+      width: 94%;
+      max-width: 1400px;
+      margin: 0 auto !important;
+      float: none !important;
+      font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    }
+
+    .dz-upload {
+        display: block;
+        background-color: red;
+        height: 10px;
+        width: 0%;
+    }
+
+    .dz-success-mark {
+        display: none;
+    }
+
+    .dz-error-mark {
+        display: none;
+    }
+
+    .edit-text-button {
+      font-size: 18px;
+      height: fit-content;
+      width: 18px;
+      margin-top: 5px;
+      border-radius: 5px;
+      border-style: solid;
+      border-color: var(--bg-color-b);
+      border-width: 1px;
+      background-color: var(--bg-color-a);
+    }
+
+    .hidden {
+        visibility: hidden;
+        opacity: 0;
+        transition: visibility 0s 1s, opacity 1s linear;
+    }
+
+    .edit-text-button:hover {
+      background-color: var(--accent-color-interaction);
+      color: var(--font-color-b);
+    }
+
+    #descriptionText {
+      margin: 0px;
+      padding: 8px;
+      border-radius: 5px;
+      border-style: solid;
+      border-color: transparent;
+      background-color: transparent;
+    }
+
+    #title-name {
+      margin: 0px;
+      margin-left: -14px;
+      padding: 8px;
+      max-width: 95%;
+      border-radius: 6px;
+      border-style: solid;
+      border-color: transparent;
+    }
+
+    #descriptionText.editable,
+    #title-name.editable {
+      border-radius: 6px;
+      border-style: solid;
+      border-color: var(--accent-color-interaction);
+    }
+
+    .upload_and_model {
+        min-height: 500px;
+        overflow: hidden;
+        display: inherit;
+        padding: 30 px;
+    }
+
+    #WebGL-output {
+       height: 400px;
+       max-height: 50vh;
+       width: 100%;
+       display: flex;
+       justify-content: center;
+       margin: 0 auto;
+
+       position: absolute;
+       top: 20px;
+       bottom: 0;
+       border:1px solid black;
+       visibility: hidden;
+
+    }
+
+    .vslam_model {
+      width: 40%;
+      float: left;
+      position: relative;
+      height: 400px;
+      max-height: 50vh;
+    }
+
+    .upload-area {
+      width: 40%;
+      padding: 20px 5%;
+      overflow: hidden;
+        float: left;
+        test-align: left;
+    }
+
+    .small-upload-area {
+      width: 75%;
+      margin: 20px 0;
+      padding: 10px 5%;
+      border: 2px dashed #ccc;
+      border-radius: 10px;
+      text-align: center;
+    }
+
+    .dropzone {
+      width: 75%;
+      min-height: 200px;
+      margin: 20px 0;
+      padding: 10px 5%;
+      border: 2px dashed #ccc;
+      border-radius: 10px;
+      text-align: center;
+      cursor: pointer;
+    }
+
+    .upload-area__label {
+      font-size: 24px;
+      font-weight: bold;
+    }
+
+    .uploaded-videos {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-top: 20px;
+    }
+
+    .uploaded-video {
+      position: relative;
+      width: 136px;
+      height: 136px;
+      margin: 10px;
+      background-color: var(--bg-color-a);
+      color: var(--font-color-a);
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .uploaded-video:hover {
+      border: 1px solid var(--accent-color-interaction);
+    }
+
+    .uploaded-video video {
+      width: 100%;
+      height: 80%;
+      object-fit: cover;
+    }
+
+    .uploaded-video .loading-indicator {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(255, 255, 255, 0.8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .uploaded-video .delete-button {
+      position: absolute;
+      top: 5px;
+      right: 5px;
+      width: 25px;
+      height: 25px;
+      background-color: var(--accent-color-red);
+      border: 1px solid #ccc;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      z-index: 50;
+    }
+
+    .uploaded-video .delete-button:hover {
+      background-color: rgb(255, 0, 0);
+      ;
+    }
+
+    .filename-text {
+      font-size: 14px;
+      margin-top: 0px;
+      //color: #333;
+    }
+
+    .uploaded-masks {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-top: 20px;
+    }
+
+    .uploaded-mask {
+      position: relative;
+      width: 136px;
+      height: 136px;
+      margin: 10px;
+      background-color: var(--bg-color-a);
+      color: var(--font-color-a);
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .uploaded-mask:hover {
+      border: 1px solid var(--accent-color-interaction);
+    }
+
+    .uploaded-mask img {
+      width: 100%;
+      height: 80%;
+      object-fit: cover;
+    }
+
+    .uploaded-mask .loading-indicator {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(255, 255, 255, 0.8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .uploaded-mask .delete-button {
+      position: absolute;
+      top: 5px;
+      right: 5px;
+      width: 25px;
+      height: 25px;
+      background-color: var(--accent-color-red);
+      border: 1px solid #ccc;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      z-index: 50;
+    }
+
+    .uploaded-mask .delete-button:hover {
+      background-color: rgb(255, 0, 0);
+      ;
+    }
+
+    /* chrome and other browsers */
+    input::-webkit-outer-spin-button,
+    input::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+    }
+
+
+    input[type=number] {
+        -moz-appearance:textfield; /* Firefox */
+        width: 20px;
+    }
+
+
+    .filename-text {
+      font-size: 14px;
+      margin-top: 0px;
+      //color: #333;
+    }
+
+    input[type="file"] {
+      display: none;
+    }
+
+    .custom-file-upload {
+      border-radius: 4px;
+      display: inline-block;
+      padding: 8px 12px;
+      cursor: pointer;
+      background-color: var(--accent-color-interaction);
+      color: var(--font-color-b);
+    }
+
+    #dropzone-text {
+        <!-- css for the text inside the dropzone -->
+    }
+
+    .settings {
+      width: 48%;
+      text-align: left;
+    }
+
+    .separator {
+      border: none;
+      border-top: 1px solid #ccc;
+      margin: 15px 0;
+    }
+
+    .option {
+      //display: flex;
+      //align-items: left;
+      //justify-content: center;
+      margin-bottom: 5px;
+      margin-left: 20px;
+    }
+
+    .option label {
+      margin-left: 5px;
+    }
+
+    .button-container {
+      width: 48%;
+      height: 100%;
+      position: absolute;
+        overflow: hidden;
+      top: 0;
+      left: 52%;
+    }
+
+    button {
+      width: 90%;
+      height: 100%;
+      margin: auto;
+      display: block;
+        float: left;
+      padding: 10px;
+      background-color: var(--accent-color-interaction);
+      color: var(--font-color-b);
+      font-size: 16px;
+      font-weight: bold;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: 0.3s ease;
+    }
+
+    .button_active:hover {
+      color: var(--font-color-a);
+      font-weight: bold;
+      font-size: 20px;
+    }
+
+    .Progress {
+          width: 100%;
+          background-color: #ddd;
+        }
+
+        .progress-bar-container {
+          position: relative;
+          width: 100%;
+          height: 30px;
+          background-color: var(--bg-color-a);
+          margin-bottom: 10px;
+          border-radius: 6px;
+        }
+
+        .progress-bar-container a{
+            position: absolute;
+            top: 4px;
+            font-size: 22px;
+            width: 100%;
+            text-align: center;
+            color: var(--font-color-b);
+            font-weight: bold;
+        }
+
+        #progress-bar {
+          height: 100%;
+          background-color: var(--accent-color-green);
+          width: 0%;
+          transition: width 0.2s ease-in-out;
+          border-radius: 6px;
+        }
+
+    #summaryContent {
+      margin: auto auto auto 0;
+    }
+
+    #settingsPlaceholder {
+      margin: auto;
+    }
+
+    #editBtn {
+      width: 20%;
+      position: relative;
+      margin: 0;
+    }
+
+    .popup-container {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.5);
+      z-index: 999;
+    }
+
+    .popup-content {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background-color: white;
+      padding: 20px;
+      border-radius: 5px;
+    }
+
+    .close-btn {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      cursor: pointer;
+    }
+
+    #grad {
+      height: 100%;
+      background-color: purple;
+      width: 100%;
+    }
+
+    .grad-option1{
+          background-image: linear-gradient(to right, black, white);
+    }
+
+    .grad-option2{
+          background-image: linear-gradient(90deg, rgba(0,0,0,1) 0%, rgba(255,0,0,1) 37.5%, rgba(255,255,0,1) 75%,
+          rgba(255,255,255,1) 100%);
+    }
+
+    .grad-option3{
+          background-image:  linear-gradient(90deg, rgba(0,0,32,1) 0%, rgba(32,0,96,1) 12.5%, rgba(181,0,164,1) 37.5%,
+          rgba(255,64,0,1) 50%, rgba(255,255,0,1) 87.5%, rgba(255,255,200,1) 100%);
+    }
+
+    .grad-option4{
+          background-image:  linear-gradient(90deg, rgba(0,0,0,1) 0%, rgba(30,129,129,1) 35%, rgba(255,255,0,1) 75%,
+          rgba(255,65,0,1) 93.5%, rgba(225,0,0,1) 100%);
+    }
+
+
+    .grad-option5{
+          background-image: linear-gradient(90deg, rgba(0,0,0,1) 0%, rgba(221,60,221,1) 12.5%, rgba(32,32,255,1) 25%,
+           rgba(19,240,240,1) 37.5%, rgba(0,160,0,1) 55%, rgba(224,231,14,1) 70%, rgba(255,255,19,1) 75%,
+           rgba(255,32,32,1) 87.5%, rgba(255,255,255,1) 100%);
+    }
+
+
+    .grad-option6{
+          background-image: linear-gradient(90deg, rgba(0,0,0,1) 0%, rgba(0,64,255,1) 12.5%, rgba(0,160,60,1) 25%,
+          rgba(128,255,0,1) 37.5%, rgba(255,255,0,1) 50%, rgba(255,0,0,1) 75%, rgba(255,0,255,1) 87.5%,
+          rgba(255,255,255,1) 100%);
+    }
+
+
+    .grad-option7{
+          background-image: linear-gradient(90deg, rgba(127,0,0,1) 0%, rgba(255,0,193,1) 12.5%, rgba(207,0,255,1) 16.5%,
+          rgba(0,0,255,1) 33%, rgba(0,255,255,1) 50%, rgba(0,255,0,1) 66%,rgba(255,255,0,1) 82.5%, rgba(255,0,0,1) 100%);
+    }
+
+
+    .grad-option8{
+          background-image: linear-gradient(90deg, rgba(0,0,128,1) 0%, rgba(0,0,255,1) 12.5%, rgba(0,255,255,1) 37.5%,
+          rgba(255,255,0,1) 62.5%, rgba(255,0,0,1) 87.5%, rgba(128,0,0,1) 100%);
+    }
+
+
+    .grad-option9{
+          background-image:  linear-gradient(90deg, rgba(0,0,0,1) 0%, rgba(255,255,255,1) 70%, rgba(255,98,98,1) 87.5%,
+          rgba(222,0,0,1) 100%);
+    }
+
+    .grad-option10{
+        background-image:  linear-gradient(to right, white, black);
+    }
+
+    .spinner {
+          width: 42px;
+          --b: 8px; /* the border thickness */
+          aspect-ratio: 1;
+          border-radius: 50%;
+          padding: 1px;
+          background: conic-gradient(#0000 10%,var(--accent-color-interaction)) content-box;
+          -webkit-mask:
+            repeating-conic-gradient(#0000 0deg,#000 1deg 20deg,#0000 21deg 36deg),
+            radial-gradient(farthest-side,#0000 calc(100% - var(--b) - 1px),#000 calc(100% - var(--b)));
+          -webkit-mask-composite: destination-in;
+          mask-composite: intersect;
+          animation:s4 1s infinite steps(10);
+        }
+        @keyframes s4 {to{transform: rotate(1turn)}}
+
+        .spinner-small {
+          width: 30px;
+          --b: 6px; /* the border thickness */
+          aspect-ratio: 1;
+          border-radius: 50%;
+          padding: 1px;
+          background: conic-gradient(#0000 10%,var(--accent-color-interaction)) content-box;
+          -webkit-mask:
+            repeating-conic-gradient(#0000 0deg,#000 1deg 20deg,#0000 21deg 36deg),
+            radial-gradient(farthest-side,#0000 calc(100% - var(--b) - 1px),#000 calc(100% - var(--b)));
+          -webkit-mask-composite: destination-in;
+          mask-composite: intersect;
+          animation:s4 1s infinite steps(10);
+        }
+        @keyframes s4 {to{transform: rotate(1turn)}}
+
+  </style>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="{{url_for('static', filename='default/jquery-3.6.3.js') }}"></script>
+  <script src="{{url_for('static', filename='default/dropzone.min.js') }}"></script>
+  <script type="text/javascript" src="{{url_for('static', filename='default/js/main.js') }}"></script>
+  <link
+      rel="stylesheet"
+      src="{{url_for('static', filename='default/dropzone.min.css') }}"
+      type="text/css"
+  />
+</head>
+
+<body>
+  <script>
+
+    ////////////////////////////////////////
+    //  Description and Title  editing
+    ////////////////////////////////////////
+
+    function toggleTextfieldTitle() {
+      fakeButton = document.getElementById("edit-title-button");
+      toggleTextField("title-name", fakeButton, "update_title");
+    }
+
+    function toggleTextFieldDescription() {
+      fakeButton = document.getElementById("edit-description-button");
+      toggleTextField("descriptionText", fakeButton, "update_description");
+    }
+
+    function toggleTextField(textfieldID, button, link) {
+      var textfield = document.getElementById(textfieldID);
+      if (textfield.contentEditable == "true") {
+        textfield.contentEditable = false;
+        button.children[0].style.display = "inline-block";
+        button.children[1].style.display = "none";
+        $('#' + textfieldID).removeClass('editable');
+        $.post("/" + link + "/{{ id }}", { content: textfield.innerHTML });
+      } else {
+        textfield.contentEditable = "true";
+        $('#' + textfieldID).addClass('editable');
+        button.children[0].style.display = "none";
+        button.children[1].style.display = "inline-block";
+      }
+    }
+
+
+    ////////////////////////////////////////
+    //  process Button de/activation
+    ////////////////////////////////////////
+
+    function disableProcessButton() {
+      document.getElementById("startSlamButton").disabled = true;
+      document.getElementById("startSlamButton").style.backgroundColor = "var(--bg-color-b)";
+      document.getElementById("startSlamButton").style.cursor = "not-allowed";
+      document.getElementById("startSlamButton").classList.remove("button_active");
+    }
+
+    function enableProcessButton() {
+      document.getElementById("startSlamButton").disabled = false;
+      document.getElementById("startSlamButton").style.backgroundColor = "var(--accent-color-interaction)";
+      document.getElementById("startSlamButton").style.cursor = "pointer";
+      document.getElementById("startSlamButton").classList.add("button_active");
+    }
+
+
+  </script>
+  {% include 'headerReport.html' %}
+
+  <div class="bodyDiv">
+    <br>
+    <br>
+    <br>
+
+    <h4 style="margin-bottom: 2px;">Flight Report (ID:{{ id }})</h4>
+
+    <div style="width: 100%; display: flex;">
+      <h1 id="title-name">{{ project.name }}</h1>
+      <div id="edit-title-button" class="edit-text-button" style="margin: 12px; float:left"
+        onclick="toggleTextfieldTitle()">
+        <span
+          style="display: inline-block; transform: rotate(100deg); -ms-transform: rotate(100deg); -moz-transform: rotate(100deg); -webkit-transform: rotate(100deg);">&#x270E;</span>
+        <span style="display: none;">&check;</span>
+      </div>
+    </div>
+
+    <div style="display: inline-flex; width:100% ">
+      <div style="max-width: 97%; margin-right:10px">
+        <p id="descriptionText">
+          {% for line in project.description.splitlines()[:-1] %}
+          {{line}}<br>
+          {% endfor %}
+          {{project.description.splitlines()[-1]}}
+        </p>
+      </div>
+      <div id="edit-description-button" class="edit-text-button" onclick="toggleTextFieldDescription()">
+        <span
+          style="display: inline-block; transform: rotate(100deg); -ms-transform: rotate(100deg); -moz-transform: rotate(100deg); -webkit-transform: rotate(100deg);">&#x270E;</span>
+        <span style="display: none;">&check;</span>
+      </div>
+    </div>
+
+    <div class="progress-bar-container" style="visibility: hidden;">
+        <div id="progress-bar"></div>
+        <a id="progress-bar-text"> 1/2 running slam... </a>
+    </div>
+
+    <br>
+
+    <form id='processingForm' style="position: relative" method="post" action="/{{ id }}/startSlamProcess"> <!-- start slam-->
+      <div class="settings">
+        <hr class="separator">
+        <h3>VSLAM Settings</h3>
+
+        <div class="option">
+          <input type="checkbox" id="no_sleep" name="no_sleep" value="no_sleep">
+          <label for="no_sleep">No sleep</label>
+        </div>
+        <div class="option">
+          <input type="number" id="frame_skip" name="frame_skip" min="1" max="99" value="1">
+          <label for="frame_skip">Frame skip</label>
+        </div>
+        <!--<div class="option">
+          <input type="checkbox" id="patchmatch" name="patchmatch" value="patchmatch">
+          <label for="patchmatch">run with Patchmatch</label>
+        </div>-->
+          <br>
+          <div class="option">
+              <input type="checkbox" id="generate_overview_map" name="generate_overview_map" value="generate_overview_map" checked>
+              <label for="generate_overview_map">Generate overview map after Slam finished</label>
+          </div>
+          <div class="option">
+              <input type="number" id="update_frequency" name="update_frequency" min="10" max="999" value="15">
+              <label for="frame_skip">Update Frequency (in seconds)</label>
+          </div>
+        <hr class="separator">
+      </div>
+
+      <div class="button-container">
+        <div style="float: left; margin: auto 8px auto 0;">
+          <div id="slamRunningCircle" class="spinner-small" style="display: none;"></div>
+        </div>
+        <button id="startSlamButton">Start VSLAM</button>
+      </div>
+    </form>
+    <div class="upload_and_model">
+    <div class="upload-area" id="upload-area">
+        <div class="dropzone" id="video-file-upload-dropzone">
+            <h2>Video File Upload</h2>
+            <div id="dropzone-text" class="dz-message" data-dz-message><span>Drag and drop the video here or click in the area to open the file explorer.</span></div>
+        </div>
+      <div class="small-upload-area" id="mask-upload-area">
+        <div class="upload-area__label" id="mask-upload-label">Mask file Upload</div>
+        <br>
+        <a> Drag and drop the Mask here or use the file browser to select the mask file.</a>
+        <br>
+        <br>
+        <br>
+        <label for="mask-file-input" class="custom-file-upload" id="mask-file-upload-label">Select mask</label>
+        <input type="file" id="mask-file-input">
+        <div class="uploaded-masks" id="uploaded-masks"></div>
+      </div>
+    </div>
+    <div class="vslam_model">
+      <div id="Stats-output">
+      </div>
+      <div id="WebGL-output">
+      </div>
+      <div id="global-scale-slider">
+      </div>
+    </div>
+    </div>
+
+
+    
+  </div>
+
+  <script>
+
+    //check gpu or cuda requirements for patchmatch; probably ask the server.py about the cuda/gpu state
+
+    //video file upload gets handled by dropzone
+
+    Dropzone.autoDiscover = false;
+
+    const uploadArea = document.getElementById('upload-area');
+
+    var videoUploading = false;
+    var videoUploadedSuccessfully = false;
+    var videoFileName = "";
+
+    let videoFileDropzone = new Dropzone("#video-file-upload-dropzone",{
+        paramName: "video",
+        maxFilesize: 5000, //MB
+        acceptedFiles: '.mp4',
+        maxFiles: 1,
+        accept: function(file,done) {
+            done();
+        },
+        url: "/{{ id }}/uploadVideoFileDropzone",
+        method: "post",
+        forceChunking: true,
+        init: function() {
+            this.on('addedfile', (file) => {
+                videoUploading = true;
+                this.emit('thumbnail', file, "{{ url_for('static', filename='default/placeholder_video.png') }}");
+            });
+
+            this.on('success', (file, response) => {
+                videoUploadedSuccessfully = true;
+                var progressBar = file.previewElement.querySelector(".dz-progress");
+                progressBar.classList.add("hidden");
+                var thumbnail = file.previewElement.querySelector(".dz-image");
+                thumbnail.removeChild(thumbnail.firstChild);
+
+                const vid = document.createElement('video');
+                vid.style = "outline:none; width:100%;height:100%;";
+                vid.setAttribute("controls","controls");
+                vid.setAttribute("muted","muted");
+                const source = document.createElement('source')
+                source.id = "videoSource";
+                source.src = JSON.parse(response).path;
+                vid.appendChild(source);
+                
+                // Create the uploaded image container
+                const uploadedVideo = document.createElement('div');
+                uploadedVideo.className = 'uploaded-video';
+
+                const fallbackImg = document.createElement('img');
+                fallbackImg.src = "{{ url_for('static', filename='default/placeholder_video.png') }}";
+
+                // Create the delete button
+                const deleteButton = document.createElement('div');
+                deleteButton.className = 'delete-button';
+                deleteButton.innerHTML = '<a style="font-size: 17px; margin-top: auto; color: var(--font-color-b);">✖</a>';
+
+                const filenameText = document.createElement('div');
+                filenameText.className = 'filename-text';
+                filenameText.textContent = getFilenameFromPath(file.name);
+
+                //make deletebutton appear inactive
+                deleteButton.style.backgroundColor = 'var(--bg-color-b)';
+                deleteButton.style.cursor = 'not-allowed';
+
+                uploadedVideo.appendChild(vid);
+                uploadedVideo.appendChild(deleteButton);
+                uploadedVideo.appendChild(filenameText);
+
+                // Append the uploaded image container to the uploaded images container
+                thumbnail.appendChild(uploadedVideo);
+                updateUploadProgress();
+                document.getElementById('video-file-upload-dropzone').style.cursor = 'default';
+                this.disable();
+            });
+
+            this.on('error', (file, errorMessage) => {
+                console.log(errorMessage);
+            })
+
+            this.on('maxfilesexceeded', (file) => {
+                this.removeFile(file);
+            });
+        }
+    });
+
+    function getFilenameFromPath(path) {
+      return path.split('\\').pop().split('/').pop();
+    }
+
+    function isFilenameAlreadyUploaded(filename) {
+      //check if mask file is already uploaded; mask file upload needs to be fixed anyways
+      return false;
+    }
+
+    // mask file
+    var maskUploading = false;
+    var maskUploadedSuccessfully = false;
+    var maskFileName = "";
+
+    // Get the necessary DOM elements
+    const maskUploadArea = document.getElementById('mask-upload-area');
+    const maskUploadLabel = document.getElementById('mask-upload-label')
+    const maskFileInput = document.getElementById('mask-file-input');
+    const uploadedMasks = document.getElementById('uploaded-masks');
+
+    // Event listeners for file selection
+    maskFileInput.addEventListener('change', handleMaskFileSelect); //rename
+    maskUploadArea.addEventListener('drop', handleMaskFileSelect); //rename
+
+    // Prevent default behavior on dragover event to enable drop
+    maskUploadArea.addEventListener('dragover', (event) => {
+      event.preventDefault();
+    });
+
+    // Event listener for click on upload area
+    //uploadArea.addEventListener('click', function() {
+    //  fileInput.click();
+    //});
+
+
+    function uploadMaskFile(file, uploadedMask) { //rename
+      const formData = new FormData();
+      formData.append('maskfile', file);
+      console.log(file);
+
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', '/{{ id }}/uploadMaskFile', true);
+
+      xhr.onreadystatechange = function () {
+        if (xhr.readyState === XMLHttpRequest.DONE) {
+          // Handle response from the server if needed
+          if (xhr.status === 200) {
+            uploadedMask.querySelector('.loading-indicator').style.display = 'none';
+            maskUploadedSuccessfully = true;
+            updateUploadProgress();
+            //enableProcessButton();
+
+            //on click on uploaded video open the image in a new tab
+            response = JSON.parse(xhr.responseText);
+            console.log(response.path);
+
+          } else {
+            console.error('orb vocab upload failed:', xhr.status);
+          }
+        }
+      };
+
+      xhr.send(formData);
+    }
+
+    // Function to handle file selection
+    function handleMaskFileSelect(event) { //rename
+      event.preventDefault();
+
+      //showProgressBar();
+
+      const files = event.target.files || event.dataTransfer.files;
+      maskUploading = true;
+      maskFileName = "";
+
+      // Process each selected file
+      const file = files[0];
+      const imageType = /^image\//;
+
+      // Check if the file is an image
+      if (!imageType.test(file.type)) {
+          console.error('File', file.name, 'is not an image.');
+      } else {
+
+        const reader = new FileReader();
+
+        // Function to handle video loading
+        reader.onload = ((maskFile) => {
+          return function (e) {
+            // Check if the filename is already uploaded
+            if (isFilenameAlreadyUploaded(maskFile.name)) {
+              updateUploadProgress();
+            } else {
+              // Create the video element
+              const img = document.createElement('img');
+              img.onload = function () {
+                uploadMaskFile(maskFile, uploadedMaskFile);
+              };
+              img.src = e.target.result;
+              // Create the uploaded image container
+              const uploadedMaskFile = document.createElement('div');
+              uploadedMaskFile.className = 'uploaded-mask';
+
+              // Create the filename text element
+              const filenameText = document.createElement('div');
+              filenameText.className = 'filename-text';
+              filenameText.textContent = getFilenameFromPath(file.name);
+
+              // Create the loading indicator
+              const loadingIndicator = document.createElement('div');
+              loadingIndicator.className = 'loading-indicator';
+              loadingIndicator.textContent = 'Uploading...';
+
+              // Create the delete button
+              const deleteButton = document.createElement('div');
+              deleteButton.className = 'delete-button';
+              deleteButton.innerHTML = '<a style="font-size: 17px; margin-top: auto; color: var(--font-color-b);">✖</a>';
+
+              //make deletebutton appear inactive
+              deleteButton.style.backgroundColor = 'var(--bg-color-b)';
+              deleteButton.style.cursor = 'not-allowed';
+
+              // Append elements to the uploaded image container
+              uploadedMaskFile.appendChild(img);
+              uploadedMaskFile.appendChild(loadingIndicator);
+              uploadedMaskFile.appendChild(deleteButton);
+              uploadedMaskFile.appendChild(filenameText);
+
+              // Append the uploaded image container to the uploaded images container
+              uploadedMasks.appendChild(uploadedMaskFile);
+            }
+          };
+        })(file);
+
+        // Read the image file
+        reader.readAsDataURL(file);
+      }
+    }
+
+    var changedPaths = {};
+
+    function updateUploadProgress() {
+        $.post("/{{ id }}/checkUploadedFiles", function (response) {
+          if(response.video != null) {
+            const uploadedVideo = document.getElementsByClassName('uploaded-video'); //fix this code, also in server.py
+            if (uploadedVideo.length > 0) {
+                activateDeleteButton(uploadedVideo[0], response.video);
+            }
+          }
+          if (response.mask != null) {
+            const uploadedMask = document.getElementsByClassName('uploaded-mask');
+            if(uploadedMask.length > 0) {
+              activateDeleteButton(uploadedMask[0], response.mask);
+            }
+          }
+        }, "json");
+
+      updateProcessButtonEnabling();
+    }
+
+    function deleteFile(filename, uploadedFile) {
+      const xhr = new XMLHttpRequest();
+      let fileTypeDeleted = "";
+      switch (uploadedFile.className) {
+        case "uploaded-video":
+          xhr.open('POST', '/{{ id }}/deleteVideoFile', true);
+          fileTypeDeleted = "video";
+          break;
+        case "uploaded-mask":
+          xhr.open('POST', '/{{ id }}/deleteMaskFile', true);
+          fileTypeDeleted = "mask";
+          break;
+      }
+      xhr.setRequestHeader('Content-Type', 'application/json');
+
+      xhr.onreadystatechange = function () {
+        if (xhr.readyState === XMLHttpRequest.DONE) {
+          if (xhr.status === 200) {
+            console.log(xhr.responseText);
+            console.log('File deleted successfully.');
+
+            if (uploadedFile.querySelector('.loading-indicator') === null || uploadedFile.querySelector('.loading-indicator').style.display === 'none') {
+                switch(fileTypeDeleted) {
+                    case "video" :
+                        videoUploading = false;
+                        break;
+                    case "mask":
+                        maskUploading = false;
+                        maskUploadedSuccessfully = false;
+                        break;
+                }
+            }
+            updateUploadProgress();
+
+            if(fileTypeDeleted === "video") {
+                if (videoFileDropzone.files.length === 0 && videoUploadedSuccessfully) {
+                    let thumbnail = document.getElementById("video-file-upload-dropzone").children[2]
+                    thumbnail.remove();
+                } else {
+                    videoFileDropzone.removeAllFiles(true);
+                }
+                videoFileDropzone.enable();
+                document.getElementById('video-file-upload-dropzone').style.cursor = 'cursor';
+                videoUploadedSuccessfully = false;
+            } else {
+                uploadedFile.remove();
+            }
+            /*if (numberOfFilesUploading < 3) {
+              disableProcessButton();
+            }*/
+          } else {
+            console.error('Failed to delete file:', xhr.status);
+          }
+        }
+      };
+
+      const data = JSON.stringify({ 'filename': filename });
+      xhr.send(data);
+    }
+
+    function activateDeleteButton(uploadedFile, file) {
+      console.log(uploadedFile);
+      const deleteButton = uploadedFile.querySelector('.delete-button'); //fix
+      deleteButton.addEventListener('click', function (event) {
+        event.stopPropagation();
+        const uploadedFile = this.parentNode;
+        console.log(uploadedFile);
+        const filename = uploadedFile.querySelector('.filename-text').innerHTML;
+        deleteFile(filename, uploadedFile);
+      });
+
+      //make deletebutton appear active
+      deleteButton.style.backgroundColor = 'var(--accent-color-red)';
+      deleteButton.style.cursor = 'pointer';
+    }
+
+    function updateProcessButtonEnabling() {
+      if (videoUploadedSuccessfully) {
+        enableProcessButton();
+        return;
+      }
+      disableProcessButton();
+    }
+
+    function disableUpload() {
+      processing = true;
+      //disable upload button and deactivate the drag and drop for the upload area
+      var uploadButton = document.getElementsByClassName('custom-file-upload')[0];
+      uploadButton.style.cursor = 'not-allowed';
+      uploadButton.style.opacity = '0.5';
+
+      var inputFile = document.getElementById('file-input');
+      inputFile.disabled = true;
+
+      var uploadArea = document.getElementById('upload-area');
+      uploadArea.style.cursor = 'not-allowed';
+    }
+
+    //areas if files have beed uploaded
+    ////////////////////////////////////////////
+    // file upload area if already uploaded
+    ////////////////////////////////////////////
+
+    const video_file_path = {{ video| tojson }};
+    const mask_file_path = {{ mask| tojson }};
+    const video_file_size = {{ video_file_size| tojson }};
+    // Process each selected file and create an uploadImage
+    if (video_file_path.length > 0) { //change it do dropzone
+        videoFileDropzone.emit('addedfile', {name: video_file_path[0], size: video_file_size});
+        //get the thumbnail element
+        let thumbnail = document.getElementById("video-file-upload-dropzone").children[2].querySelector(".dz-image"); //as children[0] is the tooltip text of the dropzone div
+        thumbnail.removeChild(thumbnail.firstChild);
+
+        const vid = document.createElement('video');
+        vid.style = "outline:none; width:100%;height:100%;";
+        vid.setAttribute("controls", "controls");
+        vid.setAttribute("muted", "muted");
+        const source = document.createElement('source')
+        source.id = "videoSource";
+        source.src = video_file_path[0];
+        vid.appendChild(source);
+        // Create the uploaded image container
+        const uploadedVideo = document.createElement('div');
+        uploadedVideo.className = 'uploaded-video';
+
+        // Create the filename text element
+        const filenameText = document.createElement('div');
+        filenameText.className = 'filename-text';
+        filenameText.textContent = getFilenameFromPath(video_file_path[0]);
+
+        // Create the delete button
+        const deleteButton = document.createElement('div');
+        deleteButton.className = 'delete-button';
+        deleteButton.innerHTML = '<a style="font-size: 17px; margin-top: auto; color: var(--font-color-b);">✖</a>';
+
+        //make deletebutton appear inactive
+        deleteButton.style.backgroundColor = 'var(--bg-color-b)';
+        deleteButton.style.cursor = 'not-allowed';
+
+        // Append elements to the uploaded image container
+        uploadedVideo.appendChild(vid);
+        uploadedVideo.appendChild(deleteButton);
+        uploadedVideo.appendChild(filenameText);
+
+        // Append the uploaded image container to the uploaded images container
+        thumbnail.appendChild(uploadedVideo);
+        videoFileDropzone.disable();
+        document.getElementById('video-file-upload-dropzone').style.cursor = 'default';
+        videoUploadedSuccessfully = true;
+    }
+    if (mask_file_path.length > 0) {
+      const img = document.createElement('img');
+      img.onload = function () {
+        const loadingIndicator = uploadedMask.querySelector('.loading-indicator');
+        loadingIndicator.style.display = 'none';
+      };
+      img.src = mask_file_path[0];
+      // Create the uploaded image container
+      const uploadedMask = document.createElement('div');
+      uploadedMask.className = 'uploaded-mask';
+
+      // Create the filename text element
+      const filenameText = document.createElement('div');
+      filenameText.className = 'filename-text';
+      filenameText.textContent = getFilenameFromPath(mask_file_path[0]);
+
+      // Create the loading indicator
+      const loadingIndicator = document.createElement('div');
+      loadingIndicator.className = 'loading-indicator';
+      loadingIndicator.textContent = 'Uploading...';
+
+      // Create the delete button
+      const deleteButton = document.createElement('div');
+      deleteButton.className = 'delete-button';
+      deleteButton.innerHTML = '<a style="font-size: 17px; margin-top: auto; color: var(--font-color-b);">✖</a>';
+
+      //make deletebutton appear inactive
+      deleteButton.style.backgroundColor = 'var(--bg-color-b)';
+      deleteButton.style.cursor = 'not-allowed';
+
+      // Append elements to the uploaded image container
+      uploadedMask.appendChild(img);
+      uploadedMask.appendChild(loadingIndicator);
+      uploadedMask.appendChild(deleteButton);
+      uploadedMask.appendChild(filenameText);
+
+      // Append the uploaded image container to the uploaded images container
+      uploadedMasks.appendChild(uploadedMask);
+      maskUploadedSuccessfully = true;
+    }
+    updateUploadProgress();
+
+    ////////////////////////////////////////////
+    // Start Progress and process bar
+    ////////////////////////////////////////////
+
+    var intervalIDSlam = null;
+    var startTime = null;
+    var estimTime = null;
+
+    // Add event listener to form submission
+    const processingForm = document.getElementById('processingForm');
+    processingForm.addEventListener('submit', (event) => {
+      event.preventDefault(); // Prevent the form from being submitted
+      const formData = $(processingForm).serialize();
+      var button = document.getElementById("startSlamButton");
+      var spinner = document.getElementById("slamRunningCircle");
+      spinner.style.display = "inline-block";
+      button.innerHTML = 'Running VSLAM...';
+      button.disabled = true;
+      button.style.backgroundColor = "var(--bg-color-b)";
+      button.style.cursor = "wait";
+      button.classList.remove("button_active");
+      var bar_div = document.getElementsByClassName("progress-bar-container")[0];
+      bar_div.style.visibility = "visible";
+      var bar_slam = document.getElementById("progress-bar");
+      bar_slam.style.width = (0) + '%';
+      startTime = new Date();
+      $.post($(processingForm).attr('action'), formData, (response) => {
+      });
+
+      check_status_slam();
+
+      intervalIDSlam = setInterval(check_status_slam, 1000);
+    });
+
+    function check_status_slam() {
+        const xhr = new XMLHttpRequest();
+        xhr.open('GET', '/slam_status/{{ id }}', true);
+
+        xhr.onreadystatechange = function () {
+            if (xhr.readyState === XMLHttpRequest.DONE) {
+                if (xhr.status === 200) {
+                    try {
+                        const response = JSON.parse(xhr.responseText);
+                        var bar_text = document.getElementById("progress-bar-text");
+                        var bar_slam = document.getElementById("progress-bar");
+                        if (response.status[0] === "finished") {
+                            clearInterval(intervalIDSlam);
+                            bar_text.innerHTML = " estimated time: " + "00:00:000";
+                            bar_slam.style.width = 100 + '%';
+                            spinner = document.getElementById("slamRunningCircle");
+                            spinner.style.display = "none";
+                            window.location.href = '/{{ id }}';
+                        }
+                        else if (response.status[0] === "update") {
+                            //ajax to fetch updated data
+                            $.post("/load_keyframes/{{ id }}", function(data){
+                                keyframes = data;
+                                if (!controlsInitiated) {
+                                    let d = document.getElementById('WebGL-output');
+                                    console.log(d);
+                                    d.style.visibility = 'visible';
+
+                                    init();
+                                    initiateControls();
+                                }
+                                loadKeyframes(keyframes);
+                            });
+                            $.post("/load_landmarks/{{ id }}", function(data){
+                                landmarks = data;
+                                loadLandmarks(landmarks);
+                            });
+                        }
+                        if(response.status[1] === "progress") {
+                            if(response.status[2] > 0.01) {
+                                if (response.status[2] >= 0.995) {
+                                    bar_text.innerHTML = "2/2 generating keyframes";
+                                    bar_slam.style.width = 100 + '%';
+                                } else {
+                                    console.log(response.status[2]);
+                                    var currentTime = new Date();
+                                    let diff = currentTime.getTime() - startTime.getTime();
+                                    estimTime = diff / (response.status[2]); //in ms
+                                    let time_to_calculate = estimTime - diff;
+                                    var estimRunTime = "";
+                                    if (parseInt(time_to_calculate / (60000)) < 10) {
+                                        estimRunTime += '0' + parseInt(time_to_calculate / (60000)) + ":";
+                                    } else {
+                                        estimRunTime += parseInt(time_to_calculate / (60000)) + ":";
+                                    }
+                                    if (parseInt((time_to_calculate % (60000)) / 1000) < 10) {
+                                        estimRunTime += '0' + parseInt((time_to_calculate % (60000)) / 1000) + ".";
+                                    } else {
+                                        estimRunTime += parseInt((time_to_calculate % (60000)) / 1000) + ".";
+                                    }
+                                    estimRunTime += parseInt((time_to_calculate % 1000) / 10);
+                                    bar_text.innerHTML = "1/2 running slam: " + estimRunTime;
+                                    bar_slam.style.width = (response.status[2] * 100) + '%';
+                                }
+                            } else {
+                                bar_text.innerHTML = "1/2 running slam: " + "--:--.--";
+                                bar_slam.style.width = (response.status[2] * 100) + '%';
+                            }
+                        }
+                    } catch(e) {
+                        console.log(e);
+                    }
+                } else {
+                    console.error('Failed to retrieve progress:', xhr.status);
+                }
+            }
+        };
+        xhr.send();
+    }
+
+    let keyframes = {{ keyfrms | tojson }};
+    let landmarks = {{ landmarks | tojson }};
+
+  </script>
+
+  {% include 'footer.html' %}
+</body>
+
+</html>

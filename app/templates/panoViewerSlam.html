@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>panoviewer</title>
+    <link rel="stylesheet" href="{{url_for('static', filename='default/panellum/pannellum.css') }}"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+    <script type="text/javascript" src="{{url_for('static', filename='default/panellum/pannellum.js') }}"></script>
+
+    <style>
+    #panorama {
+        width: 100%;
+        height: 800px;
+    }
+    #controls {
+        position: absolute;
+        bottom: 0;
+        z-index: 2;
+        text-align: center;
+        width: 100%;
+        padding-bottom: 3px;
+    }
+    .ctrl {
+        padding: 8px 5px;
+        width: 30px;
+        text-align: center;
+        background: rgba(200, 200, 200, 0.8);
+        display: inline-block;
+        cursor: pointer;
+    }
+    .ctrl:hover {
+        background: rgba(200, 200, 200, 1);
+    }
+    div.objectLabel span {
+        visibility: hidden;
+        position: absolute;
+        border-radius:3px;
+        background-color:#fff;
+        font-size: 14px;
+        color:#000;
+        text-align:center;
+        max-width: 200px;
+        padding: 5px 10px;
+        margin-left: -220px;
+        cursor:default;
+    }
+    div.objectLabel:hover span{
+        visibility: visible;
+    }
+    div.objectLabel span:after {
+        content: '';
+        position: absolute;
+        width: 0;
+        height: 0;
+        border-width: 10px;
+        border-style: solid;
+        border-color: #fff transparent transparent transparent;
+        bottom: -20px;
+        left: -10px;
+        margin: 0 50%;
+    }
+    </style>
+</head>
+<body>
+
+<div id="panorama">
+    <div id="controls">
+        <div class="ctrl" id="load-previous-pano">&#9665;</div>
+        <div class="ctrl" id="pan-up">&#9650;</div>
+        <div class="ctrl" id="pan-down">&#9660;</div>
+        <div class="ctrl" id="pan-left">&#9666;</div>
+        <div class="ctrl" id="pan-right">&#9656;</div>
+        <div class="ctrl" id="zoom-in">&plus;</div>
+        <div class="ctrl" id="zoom-out">&minus;</div>
+        <div class="ctrl" id="fullscreen">&#x2922;</div>
+        <div class="ctrl" id="toggleHotspots">
+            <i class="fa fa-circle" id="icon"></i>
+        </div>
+        {% if detections %}
+        <div class="ctrl" id="toggleDetections">
+            <i class="fa fa-eye" id="icon"></i>
+        </div>
+        {% endif %}
+        <div class="ctrl" id="load-next-pano">&#9655;</div>
+
+    </div>
+</div>
+<script>
+
+var keyframe_images = {{ keyframe_images | tojson }};
+var keyframe_folder = {{ keyframe_folder | tojson }};
+var keyframes = {{ keyfrms | tojson }};
+var detections = {{ detections | tojson }};
+var detection_data = [];
+var remove_mask_imgs = [];
+for (let i = 0; i < keyframe_images.length; i++) {
+    if (keyframe_images[i].includes('mask')) {
+        remove_mask_imgs.push(keyframe_images[i]);
+    }
+}
+for (let remove_mask_img of remove_mask_imgs) {
+    keyframe_images.splice(keyframe_images.indexOf(remove_mask_img), 1);
+}
+var keyframes_sort = keyframe_images.sort((a,b) => {
+        let int_a = a.replace(/\D/g,'');
+        let int_b = b.replace(/\D/g,'');
+        return parseInt(int_a) - parseInt(int_b);
+});
+var keyframe_indices = [];
+
+
+const minDistance = 0;
+const maxDistance = Infinity;
+const maxHotspots = Infinity;
+const color1 = [0, 0, 255];
+const color2 = [255, 0, 0];
+const colorGrey1 = [0, 0, 0];
+const colorGrey2 = [200, 200, 200];
+const size1 = 20;
+const size2 = 5;
+const sigma = 0.005;
+const customSize = 20;
+const minDistCss = 0;
+const maxDistCss = 10;
+const minDetectionScore = 0.8;
+
+var pannellum_settings = {
+    "default": {
+        "firstScene": "0",
+        "author": "Matthew Petroff",
+        "sceneFadeDuration": 1000
+    },"scenes": {}
+}
+var pannellum_scenes = {};
+for (let i = 0; i < keyframes_sort.length; i++) {
+    keyframe_indices[i] = parseInt(keyframes_sort[i].replace(/\D/g,''));
+    let scene = {};
+    let id = keyframes_sort[i].replace(/\D/g,'');
+    let scene_settings = {};
+    scene_settings.title = keyframes_sort[i];
+    scene_settings.type = "equirectangular";
+    scene_settings.panorama = keyframe_folder + keyframes_sort[i];
+    scene_settings.preview = keyframe_folder + keyframes_sort[i];
+    scene_settings.autoLoad = true;
+    scene_settings.minHfov = 5;
+    scene_settings.maxHfov = 140;
+    scene_settings.showControls = false;
+    pannellum_settings.scenes[id]= scene_settings;
+}
+
+viewer = pannellum.viewer('panorama', pannellum_settings);
+
+let hotspotsInScene = [];
+
+function updateHotspots(viewer) {
+    hotspotsInScene = [];
+    let id = parseInt(viewer.getScene());
+    let currentPose = undefined;
+    let someMatrix = undefined;
+
+    for (let keyframe of keyframes) {
+        if(keyframe.id === id) {
+            currentPose = getInverseOfPose(keyframe.pose);
+            someMatrix = new THREE.Matrix4().set(currentPose.elements[0],currentPose.elements[1],currentPose.elements[2], 0,
+                                           currentPose.elements[4],currentPose.elements[5],currentPose.elements[6], 0,
+                                           currentPose.elements[8],currentPose.elements[9],currentPose.elements[10], 0,
+                                                        0,             0,             0, 1);
+            console.log(someMatrix);
+            break;
+        }
+    }
+    let keyframeStats = [];
+    let sortedKeyframesByDistance;
+    if(currentPose !== undefined) {
+        for (let keyframe of keyframes) {
+            if(keyframe.id === id) {
+                continue;
+            }
+            //calculate inverse pose matrix
+            let pose = getInverseOfPose(keyframe.pose);
+
+            //calculate distance and pitch and yaw based on currentPose and keyframe.pose
+            let dx = pose.elements[12] - currentPose.elements[12];
+            let dy = pose.elements[13] - currentPose.elements[13];
+            let dz = pose.elements[14] - currentPose.elements[14];
+            let camDiff = new THREE.Vector3(dx,dy,dz);
+
+            camDiff.applyMatrix4(someMatrix);
+            let x = camDiff.getComponent(0);
+            let y = camDiff.getComponent(1);
+            let z = camDiff.getComponent(2);
+
+            let distance = Math.sqrt((x*x)+(y*y)+(z*z));
+            let pitch = 90 - Math.acos(-y / distance) * (180 / Math.PI);
+            let yaw = Math.atan2(x, z) * (180 / Math.PI);
+
+            keyframeStats[keyframe.id] = {
+                "pitch": pitch,
+                "yaw": yaw,
+                "clickHandlerArgs": [keyframe.id, pitch, yaw, distance, currentPose, keyframe.pose],
+                "distance": distance
+            };
+        }
+        sortedKeyframesByDistance = keyframeStats.sort((a,b) => {
+            return b.distance - a.distance;
+        });
+        for (let keyframe of sortedKeyframesByDistance) {
+            if(keyframe === undefined) {
+                continue;
+            }
+            let css = updateCss(keyframe.clickHandlerArgs[0], keyframe.distance);
+            viewer.addHotSpot({
+                "pitch": keyframe.pitch,
+                "yaw": keyframe.yaw,
+                "type": "info",
+                "clickHandlerFunc": swapScene,
+                "cssClass": css,
+                "clickHandlerArgs": keyframe.clickHandlerArgs,
+                "id": keyframe.clickHandlerArgs[0],
+                "scale": true
+            }, viewer.getScene());
+            hotspotsInScene.push(keyframe.clickHandlerArgs[0]);
+        }
+    }
+}
+
+function getInverseOfPose(pose) {
+    let matrix = new THREE.Matrix4();
+    matrix.set(pose[0],pose[1],pose[2],pose[3],
+               pose[4],pose[5],pose[6],pose[7],
+               pose[8],pose[9],pose[10],pose[11],
+               pose[12],pose[13],pose[14],pose[15]);
+    let matrix2 = new THREE.Matrix4().getInverse(matrix);
+    return matrix2;
+}
+
+function updateCss(id, distance) {
+    let styleClassName = "hotspotCSS" + id;
+    let percentageDistance = (distance - minDistCss) / (maxDistCss - minDistCss);
+    if (percentageDistance < 0) {
+        percentageDistance = 0;
+    } else if (percentageDistance > 1) {
+        percentageDistance = 1;
+    }
+    let size = size1 - ((size1 - size2) * percentageDistance);
+    let color = calculateColor(percentageDistance);
+    let estimatedInnerHTML = '.' + styleClassName + '{ height: ' + size + 'px; width: ' + size + 'px;' +
+            ' background:rgba(' + color[0] + ',' + color[1] + ',' + color[2] + ',0.6); border-radius:' +
+            ' 50%;border-color: #000000; border-style: solid; border-width: thin;}';
+    if(document.getElementById(styleClassName) === null) {
+        let style = document.createElement('style');
+        style.id = styleClassName;
+        style.innerHTML = estimatedInnerHTML
+        document.getElementsByTagName('head')[0].appendChild(style);
+    } else {
+        document.getElementById(styleClassName).innerHTML;
+        var sizeCss = parseFloat(document.getElementById(styleClassName).innerHTML.replace('.' + styleClassName + '{ height: ','').split(" ")[0]);
+        if(Math.abs(size - sizeCss) > sigma) {
+            document.getElementById(styleClassName).innerHTML = estimatedInnerHTML;
+        }
+  }
+  return styleClassName;
+}
+
+function calculateColor(percentageDistance) {
+  //simple gradient algorith between two colors
+  let red = percentageDistance * color1[0] + ((1 - percentageDistance) * color2[0]);
+  let green = percentageDistance * color1[1] + ((1 - percentageDistance) * color2[1]);
+  let blue = percentageDistance * color1[2] + ((1 - percentageDistance) * color2[2]);
+  return [red, green, blue];
+}
+
+function swapScene(hotSpotDiv, args) {
+    //args[0]: id, args[1]: pitch, args[2]: yaw, args[3]: distance, args[4]: currentPose, args[5]: keyframepose
+    defaultHFov = 100;
+    let zoomHfov = (((40-70) / (maxDistCss - minDistCss)) * args[3] + (40-(((40-70)/(maxDistCss - minDistCss)) * maxDistCss)));
+    viewer.lookAt(args[1], args[2], zoomHfov, 1000);
+    viewer.on('animatefinished', () => {
+        viewer.off('animatefinished');
+        let angle = calculateOrientation(args[4], args[5]); //angle[0]: pitch, angle[1]: yaw, but needs rounding
+        let pitch = Math.round(angle[0] * 100) / 100;
+        let yaw = Math.round(angle[1] * 100) / 100;
+        //could delete all Hotspots in the scene here, cuz im not sure if they either get deleted on scene change,
+        //or will not get added to a scene that already contain that Hotspot
+        viewer.loadScene(args[0], pitch, yaw, defaultHFov);
+    });
+}
+
+function calculateOrientation(currentPose, keyframepose) {
+    let keyfrmPose = getInverseOfPose(keyframepose);
+    let dx = keyfrmPose.elements[12] - currentPose.elements[12];
+    let dy = keyfrmPose.elements[13] - currentPose.elements[13];
+    let dz = keyfrmPose.elements[14] - currentPose.elements[14];
+    let matrix = new THREE.Matrix4().set(keyfrmPose.elements[0], keyfrmPose.elements[4], keyfrmPose.elements[8], 0,
+        keyfrmPose.elements[1], keyfrmPose.elements[5], keyfrmPose.elements[9], 0,
+        keyfrmPose.elements[2], keyfrmPose.elements[6], keyfrmPose.elements[10], 0,
+        0,0,0,1);
+    let matrixInv = new THREE.Matrix4().getInverse(matrix);
+    let nextShotVector = new THREE.Vector3(dx, dy, dz);
+
+    nextShotVector.applyMatrix4(matrixInv);
+    let x = nextShotVector.getComponent(0);
+    let y = nextShotVector.getComponent(1);
+    let z = nextShotVector.getComponent(2);
+
+    let distance = Math.sqrt((x * x) + (y * y) + (z * z));
+    let pitch = 90 - Math.acos(-y / distance) * (180 / Math.PI);
+    let yaw = Math.atan2(x, z) * (180 / Math.PI);
+    return [pitch, yaw];
+}
+
+let detectionsInScene = [];
+
+function generateDetectionsForCurrentScene(data) {
+    detectionsInScene = [];
+    let detection_image_id = undefined;
+    let detections_in_current_image = [];
+    let cImage = undefined;
+    for (let image of data.images) {
+        if(parseInt(viewer.getScene()) === parseInt(image.file_name.replace(/\D/g,''))) {
+            detection_image_id = parseInt(image.id);
+            cImage = image;
+        }
+    }
+    for (let annotation of data.annotations) {
+        if(annotation.image_id === detection_image_id) {
+            detections_in_current_image.push(annotation);
+        }
+    }
+    for (let object of detections_in_current_image) {
+        if(object.score < minDetectionScore) {
+            continue;
+        }
+        let category = detections.categories[object.category_id-1].name;
+        let normXMid = (object.bbox[0] + (object.bbox[2]/2)) - (cImage.width/2);
+        let normYMid = -(object.bbox[1] + (object.bbox[3]/2) - (cImage.height/2));
+        let yaw = normXMid/(cImage.width/2)*180;
+        let pitch = normYMid/(cImage.height/2)*90;
+        let cssName = createObjectCss(object.bbox[2], object.bbox[3], detections.categories[object.category_id-1].colorHSL, object.id, category);
+        viewer.addHotSpot({
+            "pitch": pitch,
+            "yaw": yaw,
+            "type": "info",
+            "id": "" + viewer.getScene() + "_obj_" + category,
+            "cssClass": cssName,
+            "createTooltipFunc": objectLabel,
+            "createTooltipArgs": [category, object.score],
+            "scale": true
+        }, viewer.getScene()); //add detection score to label
+        detectionsInScene.push("" + viewer.getScene() + "_obj_" + category);
+    }
+}
+
+function objectLabel(hotSpotDiv, args) {
+    hotSpotDiv.classList.add("objectLabel");
+    let span = document.createElement("span");
+    hotSpotDiv.appendChild(span);
+    span.innerHTML = (Math.round(args[1]*100)/100) + " : " + args[0];
+    span.style.width = span.scrollWidth - 20 + 'px';
+    span.style.marginLeft = - (span.scrollWidth - hotSpotDiv.offsetWidth)/2+'px';
+    span.style.marginTop = - span.scrollHeight - 12 + 20 + 'px';
+}
+
+function createObjectCss(width, height, color, index, label) {
+    let styleClassName = label + index;
+    let cssSize = (20/190000)*(width*height)+(23.95);
+    let style = document.createElement('style');
+    style.id = styleClassName;
+    style.type = "text/css";
+    style.innerHTML = '.' + styleClassName + '{ height: ' + height + 'px; width: ' + width + 'px; border-color:rgba(' + color[0] + ',' + color[1] + ',' + color[2] +'); border-style: solid; border-width: thick;}';
+	//style.innerHTML = '.' + styleClassName + '{ height: ' + cssSize + 'px; width: ' + cssSize + 'px; background:rgba(' + color[0] + ',' + color[1] + ',' + color[2] +',0.5); border-color:rgba(' + color[0] + ',' + color[1] + ',' + color[2] +',0.5); border-style: solid; border-width: thin;}';
+    document.getElementsByTagName('head')[0].appendChild(style);
+	return styleClassName;
+}
+
+var numOfPanos = {{ keyframe_images | length }};
+
+// Make buttons work
+document.getElementById('pan-up').addEventListener('click', function(e) {
+    viewer.setPitch(viewer.getPitch() + 10);
+});
+document.getElementById('pan-down').addEventListener('click', function(e) {
+    viewer.setPitch(viewer.getPitch() - 10);
+});
+document.getElementById('pan-left').addEventListener('click', function(e) {
+    viewer.setYaw(viewer.getYaw() - 10);
+});
+document.getElementById('pan-right').addEventListener('click', function(e) {
+    viewer.setYaw(viewer.getYaw() + 10);
+});
+document.getElementById('zoom-in').addEventListener('click', function(e) {
+    viewer.setHfov(viewer.getHfov() - 10);
+});
+document.getElementById('zoom-out').addEventListener('click', function(e) {
+    viewer.setHfov(viewer.getHfov() + 10);
+});
+document.getElementById('fullscreen').addEventListener('click', function(e) {
+    viewer.toggleFullscreen();
+});
+document.getElementById('load-previous-pano').addEventListener('click', function(e) {
+    index = keyframe_indices.indexOf(parseInt(viewer.getScene()))
+    viewer.loadScene(keyframe_indices[(index - 1).mod(keyframe_indices.length)]);
+});
+document.getElementById('load-next-pano').addEventListener('click', function(e) {
+    index = keyframe_indices.indexOf(parseInt(viewer.getScene()))
+    viewer.loadScene(keyframe_indices[(index + 1).mod(keyframe_indices.length)]);
+});
+
+let hotspotsVisible = false;
+document.getElementById('toggleHotspots').addEventListener('click', (e) => {
+    if(hotspotsVisible) {
+        removeHotspots(viewer);
+        viewer.off('load');
+        document.getElementById('toggleHotspots').children[0].classList.remove("fa-circle-xmark");
+        document.getElementById('toggleHotspots').children[0].classList.add("fa-circle");
+        hotspotsVisible = false;
+    } else {
+        updateHotspots(viewer);
+        viewer.on('load', () => {
+            updateHotspots(viewer);
+        });
+        document.getElementById('toggleHotspots').children[0].classList.remove("fa-circle");
+        document.getElementById('toggleHotspots').children[0].classList.add("fa-circle-xmark");
+        hotspotsVisible = true;
+    }
+});
+
+{% if detections %}
+let detectionsVisible = false;
+document.getElementById('toggleDetections').addEventListener('click', (e) => {
+    if(detectionsVisible) {
+        removeDetections(viewer);
+        viewer.off('load');
+        document.getElementById('toggleDetections').children[0].classList.remove("fa-eye-slash");
+        document.getElementById('toggleDetections').children[0].classList.add("fa-eye");
+        detectionsVisible = false;
+    } else {
+        generateDetectionsForCurrentScene(detections);
+        viewer.on('load', () => {
+            generateDetectionsForCurrentScene(detections);
+        });
+        document.getElementById('toggleDetections').children[0].classList.remove("fa-eye");
+        document.getElementById('toggleDetections').children[0].classList.add("fa-eye-slash");
+        detectionsVisible = true;
+    }
+});
+{% endif %}
+
+function removeHotspots(viewer) {
+    for (let id of hotspotsInScene) {
+        viewer.removeHotSpot(id);
+    }
+    hotspotsInScene = [];
+}
+
+function removeDetections(viewer) {
+    for (let id of detectionsInScene) {
+        viewer.removeHotSpot(id);
+    }
+    detectionsInScene = [];
+}
+
+function show_keyframe(scene_number) {
+    if(parseInt(viewer.getScene()) !== scene_number) {
+        viewer.loadScene(""+scene_number);
+    }
+
+    $('html, body').animate({
+        scrollTop: $('#panorama').offset().top - 100
+    }, 500);
+}
+
+//fix for javascript modulo "bug" as a negative number modulo a positive number returns a negative one
+Number.prototype.mod = function(n) {
+    return ((this%n)+n)%n;
+}
+</script>
+
+</body>
+</html>

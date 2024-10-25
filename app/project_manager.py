@@ -6,6 +6,8 @@ import shutil
 import uuid
 import zipfile
 from datetime import datetime
+import cv2
+from string import Template
 
 
 class ProjectManager:
@@ -22,6 +24,8 @@ class ProjectManager:
         self.projects_dirs = ["rgb", "ir", "panos", "rgb/thumbnails" , "ir/thumbnails", "panos/thumbnails"]
         self.project_group_file = os.path.join(self.projects_path, "project_groups.json")
         # self.update_project_groups_file()
+        self.slam_projects_dirs = ["keyframes","mapping_output"] #maybe one to output keyframes
+        self.default_vocab_path = "./static/default/orb_vocab.fbow"
         #self.image_mapper = {}
 
 
@@ -32,7 +36,7 @@ class ProjectManager:
         version = self.CURRENT_PROJECT_FILE_VERSION
         creation_time = datetime.now().strftime("%d.%m.%Y %H:%M:%S")
         project = ({'name': name, 'description': description, 'id': id, 'creation_time': creation_time,
-                    'version': version, 'data': data})
+                    'version': version, 'data': data, 'type': "mapping_project"})
         self.projects.append(project)
         with open(os.path.join(self.projects_path, str(id), "project.json"), "w") as json_file:
             json.dump(project, json_file)
@@ -44,6 +48,26 @@ class ProjectManager:
         self.highest_id += 1
         self.projects = sorted(self.projects, key=lambda d: d['id'], reverse=True)
         return project
+
+    def create_slam_project(self, name, description): #maybe add a project type e.g. slam project or mapping project
+        id = self.create_new_basics()
+        data = self.generate_empty_slam_data_dict()
+        version = self.CURRENT_PROJECT_FILE_VERSION
+        creation_time = datetime.now().strftime("%d.%m.%Y %H:%M:%S")
+        project = ({'name': name, 'description': description, 'id': id, 'creation_time': creation_time,
+                    'version': version, 'data': data, 'type': "slam_project"})
+        self.projects.append(project)
+        with open(os.path.join(self.projects_path, str(id), "project.json"), "w") as json_file:
+            json.dump(project, json_file)
+
+        #make subdirectories for project as dtermined in varable "project_dirs"
+        for dir in self.slam_projects_dirs:
+            os.makedirs(os.path.join(self.projects_path, str(id), dir))
+
+        self.highest_id += 1
+        self.projects = sorted(self.projects, key=lambda d: d['id'], reverse=True)
+        return project
+
 
     def create_new_basics(self):
         id = self.generate_project_id()
@@ -305,6 +329,10 @@ class ProjectManager:
         data = {"file_names": [], "file_names_ir" : [], "panos": [], "flight_data": [], "camera_specs": [], "weather": [], "maps": [], "ir_settings": {}}
         return data
 
+    def generate_empty_slam_data_dict(self):
+        data = {"video" : [], "video_metadata": {}, "orb_vocab": [], "config": [], "mask": [], "keyframes": [], "map_db": [], "point_cloud": [], "slam_settings": [], "mapping_settings": [],"mapping_output": []}
+        return data
+
     def update_file_names(self, id, file_names):
         # append filenames to filenames inside of data of project with id
         project = self.get_project(id)
@@ -350,6 +378,107 @@ class ProjectManager:
             json.dump(project, json_file)
 
         return data['slide_file_paths']
+
+    def set_video_file(self, id, file_name):
+        project = self.get_project(id)
+        data = project['data']
+        video = []
+        video.append(file_name[0])#we need for yaml file creation: fps
+        cap = cv2.VideoCapture(file_name[0])
+        fps = round(cap.get(cv2.CAP_PROP_FPS))
+        video_width = cap.get(cv2.CAP_PROP_FRAME_WIDTH)
+        video_height = cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
+        data['video'] = video
+        data['video_metadata']['fps'] = fps
+        data['video_metadata']['width'] = int(video_width)
+        data['video_metadata']['height'] = int(video_height)
+        print("setting video to project with id: " + str(id))
+        with open(self.projects_path + str(id) + "/project.json", "w") as json_file:
+            json.dump(project, json_file)
+        return data['video']
+
+    def add_default_orb_vocab(self, id):
+        project = self.get_project(id)
+        data = project['data']
+        #target self.default_vocab_path
+        dst = os.path.join(self.projects_path, str(id), "orb_vocab.fbow")
+        shutil.copyfile(self.default_vocab_path, dst)
+        data["orb_vocab"] = [dst]
+        return data["orb_vocab"]
+
+    def generate_config_file(self, id):
+        project = self.get_project(id)
+        data = project['data']
+        video = data['video']
+        if not video:
+            return False
+        template_data = {
+            'fps': data['video_metadata']['fps'],
+            'width': data['video_metadata']['width'],
+            'height': data['video_metadata']['height'],
+            'patch_match': False
+        }
+        with open('./static/default/template.yaml', 'r') as template:
+            src = Template(template.read())
+            result = src.substitute(template_data)
+            save_path = os.path.join(self.projects_path, str(id), "config.yaml")
+            with open(save_path, "x") as config:
+                config.write(result)
+            #set config in project file
+            self.set_config_file(id, [save_path])
+        return True
+
+    def set_config_file(self, id, file_name):
+        project = self.get_project(id)
+        print(project, flush=True)
+        data = project['data']
+        config = []
+        config.append(file_name[0])
+        data['config'] = config
+        print("setting video to project with id: " + str(id))
+        with open(self.projects_path + str(id) + "/project.json", "w") as json_file:
+            json.dump(project, json_file)
+
+        return data['config']
+
+    def set_mask_file(self, id, file_name):
+        project = self.get_project(id)
+        print(project, flush=True)
+        data = project['data']
+        mask = []
+        mask.append(file_name[0])
+
+        data['mask'] = mask
+        print("setting video to project with id: " + str(id))
+        with open(self.projects_path + str(id) + "/project.json", "w") as json_file:
+            json.dump(project, json_file)
+
+        return data['mask']
+
+    def set_slam_settings(self, report_id, slam_settings):
+        project = self.get_project(report_id)
+        data = project['data']
+        data['slam_settings'] = slam_settings
+
+        with open(self.projects_path + str(report_id) + "/project.json", "w") as json_file:
+            json.dump(project, json_file)
+
+        return data['slam_settings']
+
+    def set_mapping_settings(self, report_id, mapping_setting):
+        project = self.get_project(report_id)
+        data = project['data']
+        data['mapping_settings'] = mapping_setting
+
+        with open(self.projects_path + str(report_id) + "/project.json", "w") as json_file:
+            json.dump(project, json_file)
+
+        return data['mapping_settings']
+
+    def get_mapping_settings(self, report_id):
+        project = self.get_project(report_id)
+        data = project['data']
+        return data['mapping_settings']
 
     def overwrite_file_names_sorted(self, id, file_names_rgb=None, file_names_ir=None):
         project = self.get_project(id)
@@ -430,6 +559,17 @@ class ProjectManager:
             #os.rmdir(self.projects_path + str(id))
             return True
         return False
+
+    def load_keyframe_images(self, report_id):
+        project = self.get_project(report_id)
+        data = project['data']
+        keyframes = data['keyframes']
+        keyframe_folder = self.get_keyframe_folder(report_id)
+        files = os.listdir(keyframe_folder)
+        for file in files:
+            if file.lower().endswith(('.png', '.jpg', '.jpeg')):
+                keyframes.append(file)
+        self.update_data_by_keyword(report_id, 'keyframes', keyframes)
 
     def get_file_names(self, id):
         return self.get_data_by_keyword(id, 'file_names') + self.get_data_by_keyword(id, 'file_names_ir') + self.get_file_names_panos(id)
@@ -521,6 +661,74 @@ class ProjectManager:
         path = self.projects_path + str(report_id) + "/detection_annotations.json"
         project['data']['annotation_file_path'] = path
         self.update_data_by_keyword(report_id, 'annotation_file_path', path)
+        return path
+
+    def get_keyframe_file_path(self, report_id):
+        project = self.get_project(report_id)
+        path = ""
+        try:
+            path = project['data']['keyframe_file_path']
+        except:
+            path = self.generate_new_keyframe_file_path(report_id)
+
+        return path
+
+    def generate_new_keyframe_file_path(self, report_id):
+        project = self.get_project(report_id)
+        path = self.projects_path + str(report_id) + "/keyframes.json"
+        project['data']['keyframe_file_path'] = path
+        self.update_data_by_keyword(report_id, 'keyframe_file_path', path)
+        return path
+
+    def get_landmark_file_path(self, report_id):
+        project = self.get_project(report_id)
+        path = ""
+        try:
+            path = project['data']['landmark_file_path']
+        except:
+            path = self.generate_new_landmark_file_path(report_id)
+
+        return path
+
+    def generate_new_landmark_file_path(self, report_id):
+        project = self.get_project(report_id)
+        path = self.get_project_path(report_id) + "/landmarks.json"
+        project['data']['landmark_file_path'] = path
+        self.update_data_by_keyword(report_id, 'landmark_file_path', path)
+        return path
+
+    def get_slam_output_file_path(self, report_id):
+        project = self.get_project(report_id)
+        path = ""
+        try:
+            path = project['data']['slam_output_file_path']
+        except:
+            path = self.generate_new_slam_output_file_path(report_id)
+
+        return path
+
+    def generate_new_slam_output_file_path(self, report_id):
+        project = self.get_project(report_id)
+        path = self.get_project_path(report_id) + "/slam_output.json"
+        project['data']['slam_output_file_path'] = path
+        self.update_data_by_keyword(report_id, 'slam_output_file_path', path)
+        return path
+
+    def update_mapping_result(self, report_id, mapping_output, trajectory):
+        return self.update_data_by_keyword(report_id, 'mapping_output', (mapping_output, trajectory))
+
+
+    def get_project_path(self, report_id):
+        project = self.get_project(report_id)
+        path = self.projects_path + str(report_id)
+        return path
+
+    def get_keyframe_folder(self, report_id):
+        path = self.get_project_path(report_id) + "/keyframes/"
+        return path
+
+    def get_mapping_output_folder(self, report_id):
+        path = self.get_project_path(report_id) + "/mapping_output/"
         return path
 
     def update_slide_file_paths(self, report_id, slide_file_paths):
@@ -695,6 +903,31 @@ class ProjectManager:
             data['contains_unprocessed_images'] = False
         else:
             data['contains_unprocessed_images'] = True
+        with open(os.path.join(self.projects_path, str(report_id), "project.json"), "w") as json_file:
+            json.dump(project, json_file)
+
+    def remove_from_file_name_video(self, report_id, file_path):
+        project = self.get_project(report_id)
+        data = project['data']
+        try:
+            video = data['video']
+        except:
+            video = []
+        video.remove(file_path)
+        data["video_metadata"] = {}
+        print(project, flush=True)
+        with open(os.path.join(self.projects_path, str(report_id), "project.json"), "w") as json_file:
+            json.dump(project, json_file)
+
+    def remove_from_file_name_mask(self, report_id, file_path):
+        project = self.get_project(report_id)
+        data = project['data']
+        try:
+            mask = data['mask']
+        except:
+            mask = []
+        mask.remove(file_path)
+        print(project, flush=True)
         with open(os.path.join(self.projects_path, str(report_id), "project.json"), "w") as json_file:
             json.dump(project, json_file)
 

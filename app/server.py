@@ -2,6 +2,7 @@ import json
 import datetime
 
 from mapping.mapper_thread import MapperThread
+from mapping.image_mapper_process import ImageMapperProcess
 from thermal.thermal_analyser import ThermalAnalyser
 from mapping.filter_thread import FilterThread
 from mapping.weather import Weather
@@ -29,7 +30,7 @@ from werkzeug.utils import secure_filename
 #         return self.application
 
 class ArgusServer:
-    def __init__(self, address, port, project_manager, nodeodm_manager, webodm_manager, detection_manager):
+    def __init__(self, address, port, project_manager, nodeodm_manager, webodm_manager, detection_manager, slam_manager):
         self.app = Flask(__name__)
         self.app.jinja_env.globals.update(global_for=self.global_for)
         self.app.jinja_env.globals.update(thumbnail_for=self.thumbnail_for)
@@ -37,7 +38,9 @@ class ArgusServer:
         self.app.secret_key = "DasIstBlauesLicht-UndWasMachtEs?-EsLeuchtetBlau"
         self.app.config['UPLOAD_FOLDER'] = project_manager.projects_path
         self.app.config['MAX_CONTENT_LENGTH'] = 500 * 10000 * 10000
+        self.app.config['TEMPLATES_AUTO_RELOAD'] = True
         self.ALLOWED_EXTENSIONS = set(['png', 'jpg', 'jpeg', 'PNG', 'JPG', 'JPEG'])
+        self.ALLOWED_VIDEO_EXTENSIONS = set(['mp4', 'MP4'])
         self.ALLOWED_EXTENSIONS_PROJECT = set(['zip'])
 
         self.threads = []
@@ -51,6 +54,7 @@ class ArgusServer:
         self.nodeodm_manager = nodeodm_manager
         self.webodm_manager = webodm_manager
         self.detection_manager = detection_manager
+        self.slam_manager = slam_manager
         self.thermal_analyser = ThermalAnalyser(project_manager)
         self.data_share_manager = DataShareManager("localhost", "admin", "admin")
 
@@ -79,18 +83,40 @@ class ArgusServer:
                               view_func=self.render_report)
         self.app.add_url_rule('/group/<int:project_group_id>',
                               view_func=self.render_project_group)
+        self.app.add_url_rule('/<int:report_id>/update',
+                              view_func=self.render_report_update)
         self.app.add_url_rule('/<int:report_id>/uploadFile', methods=['POST'],
                               view_func=self.upload_image_file)
+        self.app.add_url_rule('/<int:report_id>/uploadVideoFile', methods=['POST'],
+                              view_func=self.upload_video_file)
+        self.app.add_url_rule('/<int:report_id>/uploadVideoFileDropzone', methods=['POST'],
+                              view_func=self.upload_video_file_dropzone)
+        self.app.add_url_rule('/<int:report_id>/uploadMaskFile', methods=['POST'],
+                              view_func=self.upload_mask_file)
         self.app.add_url_rule('/<int:report_id>/deleteFile', methods=['POST'],
                               view_func=self.delete_file)
+        self.app.add_url_rule('/<int:report_id>/deleteVideoFile', methods=['POST'],
+                              view_func=self.delete_video_file)
+        self.app.add_url_rule('/<int:report_id>/deleteMaskFile', methods=['POST'],
+                              view_func=self.delete_mask_file)
         self.app.add_url_rule('/<int:report_id>/checkUploadedImages', methods=['GET', 'POST'],
-                                view_func=self.check_upload_processing_progress)
+                              view_func=self.check_upload_processing_progress)
+        self.app.add_url_rule('/<int:report_id>/checkUploadedFiles', methods=['GET', 'POST'],
+                              view_func=self.check_upload_processing_progress_slam)
         self.app.add_url_rule('/<int:report_id>/processFromUpload', methods=['POST', 'GET'],
                               view_func=self.initial_process)
+        self.app.add_url_rule('/<int:report_id>/startSlamProcess', methods=['POST', 'GET'],
+                              view_func=self.start_slam)
+        self.app.add_url_rule('/slam_map_update', methods=['POST', 'GET'],
+                              view_func=self.slam_map_update)
         self.app.add_url_rule('/<int:report_id>/preprocessProgress', methods=['GET', 'POST'],
                               view_func=self.check_preprocess_progress)
         self.app.add_url_rule('/<int:report_id>/process_status', methods=['GET', 'POST'],
                               view_func=self.check_preprocess_status)
+        self.app.add_url_rule('/<int:report_id>/slam_map_process_status', methods=['GET', 'POST'],
+                              view_func=self.check_slam_map_process_status)
+        self.app.add_url_rule('/slam_status/<int:report_id>', methods=['POST', 'GET'],
+                              view_func=self.check_slam_status)
         self.app.add_url_rule('/<int:report_id>/edit', methods=['POST', 'GET'],
                               view_func=self.edit_report)
         self.app.add_url_rule('/get_map/<int:report_id>/<int:map_index>', methods=['GET', 'POST'],
@@ -116,9 +142,13 @@ class ArgusServer:
         self.app.add_url_rule('/shutdown',
                               view_func=self.shutdown)
         self.app.add_url_rule('/load_detection_results/<int:report_id>', methods=['GET', 'POST'],
-                                view_func=self.load_detection_results)
+                              view_func=self.load_detection_results)
+        self.app.add_url_rule('/load_keyframes/<int:report_id>', methods=['GET', 'POST'],
+                              view_func=self.load_keyframes)
+        self.app.add_url_rule('/load_landmarks/<int:report_id>', methods=['GET', 'POST'],
+                              view_func=self.load_landmarks)
         self.app.add_url_rule('/detection_status/<int:report_id>', methods=['GET', 'POST'],
-                                view_func=self.check_detection_status)
+                              view_func=self.check_detection_status)
         self.app.add_url_rule('/delete_annotation/<int:report_id>', methods=['POST'],
                                 view_func=self.delete_annotation)
         self.app.add_url_rule('/edit_annotation/<int:report_id>', methods=['POST'],
@@ -132,13 +162,13 @@ class ArgusServer:
         self.app.add_url_rule('/process_in_webodm/<int:report_id>', methods=['GET', 'POST'],
                                 view_func=self.process_in_webodm)
         self.app.add_url_rule('/get_webodm_port', methods=['GET', 'POST'],
-                                view_func=self.get_webodm_port)
+                              view_func=self.get_webodm_port)
         self.app.add_url_rule('/webodm_project_exists/<int:report_id>', methods=['GET', 'POST'],
                               view_func=self.webodm_project_exists)
         self.app.add_url_rule('/get_webodm_last_task/<int:report_id>', methods=['GET', 'POST'],
                               view_func=self.get_webodm_last_task)
         self.app.add_url_rule('/get_webodm_all_tasks/<int:report_id>', methods=['GET', 'POST'],
-                                view_func=self.get_webodm_all_tasks)
+                              view_func=self.get_webodm_all_tasks)
         self.app.add_url_rule('/<int:report_id>/prepare_download', methods=['GET', 'POST'],
                               view_func=self.download_prepare_project)
         self.app.add_url_rule('/<int:report_id>/download', methods=['GET', 'POST'],
@@ -147,6 +177,8 @@ class ArgusServer:
                               view_func=self.import_project)
         self.app.add_url_rule('/ir_temp_data_of_image/<int:report_id>', methods=['GET', 'POST'],
                               view_func=self.get_ir_temp_data_of_image)
+        self.app.add_url_rule("/get_slam_map/<int:report_id>", methods=['GET', 'POST'],
+                              view_func=self.get_slam_map)
         self.app.add_url_rule('/poi_test',
                               view_func=self.render_poi_test)
         self.app.add_url_rule('/set_IAIS_settings', methods=['POST'],
@@ -210,12 +242,18 @@ class ArgusServer:
     def create_report(self):
         name = request.form.get("name")
         description = request.form.get("description")
-        self.project_manager.create_project(name, description)
+        #TODO add Type on website
+        type = request.form.get("report-type")
+        if type == "mapping":
+            self.project_manager.create_project(name, description)
+        elif type == "slam":
+            self.project_manager.create_slam_project(name, description)
         projects_dict_list = self.project_manager.get_projects()
         order_by_filght_date = self.calculate_order_based_on_flight_date(projects_dict_list)
         return render_template('projectsOverview.html', projects=projects_dict_list, flightOrder=order_by_filght_date)
 
     def create_report_with_project_group(self):
+        # TODO add Type
         data = request.get_json()
 
         name = data.get('name')
@@ -263,11 +301,18 @@ class ArgusServer:
     def render_report(self, report_id):
         print("upload_form for id: " + str(report_id), flush=True)
         if (self.project_manager.has_project(report_id)):
-            if not self.project_manager.get_project(report_id)['data']['flight_data']:
-                # file_names = project_manager.get_project(report_id)['data']['file_names']
-                return self.render_standard_report(report_id, template='simpleUpload.html')
-                # return render_standard_report(report_id, template='startProcessing.html')
-            return self.render_standard_report(report_id)
+            #TODO what will happen wehen there is no type
+            if self.project_manager.get_project(report_id)['type'] == "mapping_project":
+                if not self.project_manager.get_project(report_id)['data']['flight_data']:
+                    # file_names = project_manager.get_project(report_id)['data']['file_names']
+                    return self.render_standard_report(report_id, template='simpleUpload.html')
+                    # return render_standard_report(report_id, template='startProcessing.html')
+                return self.render_standard_report(report_id)
+            elif self.project_manager.get_project(report_id)['type'] == "slam_project":
+                if  len(self.project_manager.get_project(report_id)['data']['keyframes']) > 0:
+                    return self.render_slam_report(report_id, template='stella_vslam_report.html')
+                else:
+                    return self.render_slam_report(report_id, template='stella_vslam_upload.html')
         else:
             projects_dict_list = self.project_manager.get_projects()
             order_by_filght_date = self.calculate_order_based_on_flight_date(projects_dict_list)
@@ -286,6 +331,21 @@ class ArgusServer:
 
 
 
+    def render_report_update(self, report_id):
+        print("upload_form for id: " + str(report_id), flush=True)
+        if (self.project_manager.has_project(report_id)):
+            if self.project_manager.get_project(report_id)['type'] == "slam_project":
+                try:
+                    keyfrms = self.project_manager.get_keyframe_file_path(report_id)
+                    landmarks = self.project_manager.get_landmark_file_path(report_id)
+                    return self.render_slam_report(report_id, template='stella_vslam_upload.html')
+                except:
+                    return self.render_slam_report(report_id, template='stella_vslam_upload.html')
+        else:
+            projects_dict_list = self.project_manager.get_projects()
+            order_by_filght_date = self.calculate_order_based_on_flight_date(projects_dict_list)
+            return render_template('projectsOverview.html', projects=projects_dict_list,
+                                   message="Report does not exist", flightOrder=order_by_filght_date)
 
     def upload_image_file(self, report_id):
         print("upload_image_file " + str(report_id))
@@ -315,6 +375,66 @@ class ArgusServer:
 
         return json.dumps({'success': True, 'path': save_path}), 200, {'ContentType': 'application/json'}
 
+    #backend video fileupload function
+    def upload_video_file(self, report_id):
+        print("upload_video_file " + str(report_id))
+        if 'video' not in request.files:
+            print('no "video" found in request.files:', request.files)
+            return json.dumps({'success': False}), 418, {'ContentType': 'application/json'}
+        file = request.files['video']
+        file_name = []
+        if file and self.allowed_video_file(file.filename):
+            filename = secure_filename(file.filename)
+            save_path = os.path.join(self.project_manager.projects_path, str(report_id), filename)
+            file_name.append(save_path)
+            file.save(save_path)
+        else:
+            flash('Allowed video types are -> mp4')
+            return json.dumps({'success': False}), 415, {'ContentType': 'application/json'}
+
+        self.project_manager.set_video_file(report_id, file_name)  #maybe create a thread to read video file metadata
+
+        return json.dumps({'success': True, 'path': save_path}), 200, {'ContentType': 'application/json'}
+
+    def upload_video_file_dropzone(self, report_id):
+        print("upload_video_file_dropzone " + str(report_id), flush=True)
+        if 'video' not in request.files:
+            print('no "video" found in request.files:', request.files, flush=True)
+            return json.dumps({'success': False}), 418, {'ContentType': 'application/json'}
+        file = request.files['video']
+        file_name = []
+        if file and self.allowed_video_file(file.filename):
+            filename = secure_filename(file.filename)
+            save_path = os.path.join(self.project_manager.projects_path, str(report_id), filename)
+            file_name.append(save_path)
+            file.save(save_path)
+        else:
+            flash('Allowed video types are -> mp4')
+            return json.dumps({'success': False}), 415, {'ContentType': 'application/json'}
+
+        self.project_manager.set_video_file(report_id, file_name)
+
+        return json.dumps({'success': True, 'path': save_path}), 200, {'ContentType': 'application/json'}
+
+    def upload_mask_file(self, report_id):
+        print("upload_mask_file " + str(report_id))
+        if 'maskfile' not in request.files:
+            print('no "mask" found in request.files:', request.files)
+            return json.dumps({'success': False}), 418, {'ContentType': 'application/json'}
+        file = request.files['maskfile']
+        file_name = []
+        if file and self.allowed_file(file.filename):
+            filename = secure_filename(file.filename)
+            save_path = os.path.join(self.project_manager.projects_path, str(report_id), filename)
+            file_name.append(save_path)
+            file.save(save_path)
+        else:
+            flash('Allowed mask types are -> png')
+            return json.dumps({'success': False}), 415, {'ContentType': 'application/json'}
+
+        self.project_manager.set_mask_file(report_id, file_name)  # maybe create a thread to read video file metadata
+
+        return json.dumps({'success': True, 'path': save_path}), 200, {'ContentType': 'application/json'}
 
     def delete_file(self, report_id):
         data = request.get_json()
@@ -347,6 +467,37 @@ class ArgusServer:
         else:
             return 'Invalid request.'
 
+    def delete_video_file(self, report_id):
+        data = request.get_json()
+        project = self.project_manager.get_project(report_id)
+        video_file = project['data']['video']
+        print(video_file, flush=True) #type list
+        print("len of file_names: ", len(video_file))
+        if video_file:
+
+            if self.delete_video_file_in_folder(report_id, video_file[0]):
+                return 'File deleted successfully.'
+
+            return 'File not found.'
+
+        else:
+            return 'Invalid request.'
+
+    def delete_mask_file(self, report_id): #fix the delete methods on the server py and project manager
+        data = request.get_json()
+        project = self.project_manager.get_project(report_id)
+        config_file = project['data']['mask']
+        self.project_manager.set_unprocessed_changes(report_id, True)
+        print("len of file_names: ", len(config_file))
+        if config_file:
+
+            if self.delete_mask_file_in_folder(report_id, config_file[0]):
+                return 'File deleted successfully.'
+
+            return 'File not found.'
+
+        else:
+            return 'Invalid request.'
 
     def check_upload_processing_progress(self, report_id):
         print('asking for upload progress of report ' + str(report_id))
@@ -391,11 +542,30 @@ class ArgusServer:
             n_pano = self.project_manager.get_image_objects_panos_count(report_id)
             ir_readable = True
             if n_ir > 0:
-                ir_readable = self.thermal_analyser.are_settings_extractable(self.project_manager.get_image_objects_ir(report_id)[0].get_image_path())
+                ir_readable = self.thermal_analyser.are_settings_extractable(
+                    self.project_manager.get_image_objects_ir(report_id)[0].get_image_path())
 
-            return jsonify({'done': done, "dataSummary": {"rgb": n_rgb, "ir": n_ir, "panos": n_pano, "ir_readable": ir_readable}, "pathChanges": path_changes})
+            return jsonify(
+                {'done': done, "dataSummary": {"rgb": n_rgb, "ir": n_ir, "panos": n_pano, "ir_readable": ir_readable},
+                 "pathChanges": path_changes})
 
         return jsonify({'done': done, "dataSummary": {}, "pathChanges": path_changes})
+
+    def check_upload_processing_progress_slam(self, report_id):  #fix method
+        print('asking for upload progress of report ' + str(report_id))
+        done = True
+        done_threads = []
+        video = []
+        mask = []
+        video_metadata = {}
+        project = self.project_manager.get_project(report_id)
+        data = project["data"]
+        if data["video"]:
+            video = data["video"]
+            video_metadata = data["video_metadata"]
+        if data['mask']:
+            mask = data["mask"]
+        return jsonify({'done': done, "dataSummary": {}, "video": video, "mask": mask})
 
     def initial_process(self, report_id):
         if request.method == 'POST':
@@ -420,15 +590,69 @@ class ArgusServer:
             file_names = self.project_manager.get_file_names(report_id)
             data = self.project_manager.get_project(report_id)['data']
 
-            print("initial_process " + str(report_id), "with_mapping: " + str(with_mapping), "with_odm: " + str(with_odm),
-                    "ai_detection: " + str(ai_detection), "map_resolution: " + str(map_resolution))
+            print("initial_process " + str(report_id), "with_mapping: " + str(with_mapping),
+                  "with_odm: " + str(with_odm), "ai_detection: " + str(ai_detection),
+                  "map_resolution: " + str(map_resolution))
 
-            thread = MapperThread(self.project_manager, self.webodm_manager, with_mapping, with_odm, report_id, (max_width, max_height), file_names, data)
+            thread = MapperThread(self.project_manager, self.webodm_manager, with_mapping, with_odm, report_id,
+                                  (max_width, max_height), file_names, data)
             self.threads.append(thread)
             thread.start()
             print("process started")
             return jsonify(thread.get_progress_preprocess())
 
+    def start_slam(self, report_id):
+        if request.method == 'POST':
+            no_sleep = request.form.get('no_sleep')
+            frame_skip = request.form.get('frame_skip')
+            generate_overview_map = request.form.get('generate_overview_map')
+            update_frequency = int(request.form.get('update_frequency'))
+            no_sleep = True if no_sleep is not None else False
+            slam_settings = {"no_sleep": no_sleep, "frame_skip": frame_skip}
+            generate_map = True if generate_overview_map is not None else False
+            self.project_manager.set_slam_settings(report_id, slam_settings)
+            self.project_manager.set_mapping_settings(report_id, generate_overview_map)
+            #set generate map settings with project manager
+
+            #load default file from static and add it to project folder
+            self.project_manager.add_default_orb_vocab(report_id)
+
+            #generates config file from video metadata (and settings later)
+            if not self.project_manager.generate_config_file(report_id):
+                return jsonify("something went wrong")
+
+            #set or link orb vocab file from static
+
+            project = self.project_manager.get_project(report_id)
+            data = project['data']
+
+            print("starting slam " + str(report_id), "no sleep: " + str(no_sleep),
+                  "frame_skip: " + str(frame_skip), flush=True)
+
+            print(self.project_manager.get_keyframe_file_path(report_id), flush=True)
+            print(self.project_manager.get_landmark_file_path(report_id), flush=True)
+            print(self.project_manager.get_slam_output_file_path(report_id), flush=True)
+
+            #slam thread or smth
+            self.slam_manager.start_slam(report_id=report_id,
+                video=data["video"],
+                orb_vocab=data["orb_vocab"],
+                config=data["config"],
+                mask=data["mask"],
+                slam_options={"no_sleep": no_sleep, "frame_skip": frame_skip},
+                other_options={"generate_overview_map": generate_overview_map, "update_frequency": update_frequency},
+                keyfrm_path=self.project_manager.get_keyframe_file_path(report_id),
+                landmark_path=self.project_manager.get_landmark_file_path(report_id),
+                keyfrm_folder_path = self.project_manager.get_keyframe_folder(report_id),
+                slam_output_path = self.project_manager.get_slam_output_file_path(report_id))
+        return jsonify("null") #self.render_slam_report(report_id, start_slam=True, template='stella_vslam_upload.html');
+
+    def slam_map_update(self):
+        data = request.get_json()
+        report_id = data["report_id"]
+        map_msg = data["map_publish"]
+        print(report_id)
+        return jsonify("null")
 
     def check_preprocess_progress(self, report_id):
         print('asking for preprocessing progress of report ' + str(report_id))
@@ -454,7 +678,7 @@ class ArgusServer:
                     self.project_manager.update_slide_file_paths(report_id, couples_path_list)
                     self.project_manager.update_flight_trajectory(report_id, flight_trajectory)
                     self.project_manager.overwrite_file_names_sorted(report_id, file_names_rgb=file_names_rgb,
-                                                                file_names_ir=file_names_ir)
+                                                                     file_names_ir=file_names_ir)
                     self.project_manager.update_contains_unprocessed_images(report_id, False)
                     self.project_manager.set_unprocessed_changes(report_id, False)
                     thread.metadata_delivered = True
@@ -482,6 +706,28 @@ class ArgusServer:
 
         progress_dict = {"percentage": progress_mapping, "maps_done": maps_done, "maps_loaded": maps_sent}
         return jsonify(progress_dict)
+
+    def check_slam_map_process_status(self, report_id):
+        progress = -1
+        for thread in self.threads:
+            if thread.report_id == report_id:
+                progress_preprocess = thread.get_progress_preprocess()
+                progress_mapping = thread.get_progress_mapping()
+                overallprogress = (progress_preprocess * 0.8) + (progress_mapping * 0.2) #progress between 0 and 1
+                trajectory = thread.get_saved_trajectory_result()
+                mapping_result = thread.get_saved_mapping_result()
+                if(progress_mapping == 1):
+                    #add and load mapping results
+                    trajectory = thread.get_saved_trajectory_result()
+                    mapping_result = thread.get_saved_mapping_result()
+                    print(mapping_result, flush=True)
+                    self.project_manager.update_mapping_result(report_id, mapping_result, trajectory)
+                    print('mapping done')
+                break
+        result = {"progress": overallprogress, "mapping_result": mapping_result, "trajectory": trajectory}
+        return jsonify(result)
+
+
 
     def edit_report(self, report_id):
         print("editing report " + str(report_id))
@@ -569,7 +815,8 @@ class ArgusServer:
             numbr_of_models = 3
 
         processing_setting = request.form.get('processing_options')
-        print("run_detection for id" + str(report_id) + " with: " + str(numbr_of_models) + " models and " + str(processing_setting) + " processing")
+        print("run_detection for id" + str(report_id) + " with: " + str(numbr_of_models) + " models and " + str(
+            processing_setting) + " processing")
         split_images = False
         max_splits = 0
         print(f'processing_setting: {processing_setting}')
@@ -578,13 +825,21 @@ class ArgusServer:
             if processing_setting == "one_split":
                 max_splits = 1
 
+        #TODO what happens if there is no type - maybe own function instead
+        print(self.project_manager.project_path(report_id), flush=True)
+        print(self.project_manager.get_annotation_file_path(report_id), flush=True)
+        if self.project_manager.get_project(report_id)['type'] == "mapping_project":
+            self.detection_manager.detect_objects(options={"numbr_of_models": numbr_of_models, "max_splits": max_splits},
+                                              report_id=report_id,
+                                              image_folder=self.project_manager.project_path(report_id),
+                                              ann_path=self.project_manager.get_annotation_file_path(report_id))
+        if self.project_manager.get_project(report_id)['type'] == "slam_project":
+            self.detection_manager.detect_objects_slam(options={"numbr_of_models": numbr_of_models, "max_splits": max_splits},
+                                                report_id=report_id,
+                                                image_folder=self.project_manager.get_keyframe_folder(report_id),
+                                                ann_path=self.project_manager.get_annotation_file_path(report_id))
 
-        self.detection_manager.detect_objects(options={"numbr_of_models": numbr_of_models, "max_splits": max_splits},
-                            report_id=report_id,
-                            image_folder=self.project_manager.project_path(report_id),
-                            ann_path=self.project_manager.get_annotation_file_path(report_id))
-
-        return jsonify("null") #detections
+        return jsonify("null")  #detections
 
     def update_detections_colors(self, report_id):
         color = [request.form.get('colorH'), request.form.get('colorS'), request.form.get('colorL')]
@@ -598,9 +853,42 @@ class ArgusServer:
 
 
     def check_detection_status(self, report_id):
-        print('asking for detection status of report ' + str(report_id) + " with " + str(len(self.detection_threads)) + " threads")
+        print('asking for detection status of report ' + str(report_id) + " with " + str(
+            len(self.detection_threads)) + " threads")
         return self.detection_manager.get_detection_status(report_id)
 
+    def check_slam_status(self, report_id):
+        status = self.slam_manager.get_slam_status(report_id)
+        if status[0] == "finished":
+            try:
+                keyfrms = self.project_manager.get_keyframe_file_path(report_id)
+                landmarks = self.project_manager.get_landmark_file_path(report_id)
+                keyfrm_folder = self.project_manager.get_keyframe_folder(report_id)
+                output = self.project_manager.get_mapping_output_folder(report_id)
+                self.project_manager.load_keyframe_images(report_id)
+                mapping_settings = self.project_manager.get_mapping_settings(report_id)
+                #start image mapper thread stuff
+                if mapping_settings:
+                    extensions = ['.jpg', '.png']
+                    fov = [80,80]
+                    thread = ImageMapperProcess(keyfrm_folder, output, extensions, fov, keyfrms, report_id)
+                    self.threads.append(thread)
+                    thread.start()
+                return jsonify(status=status)
+            except:
+                return jsonify(status=status)
+        if status[0] == "update":
+            try:
+                keyfrms = self.project_manager.get_keyframe_file_path(report_id)
+                landmarks = self.project_manager.get_landmark_file_path(report_id)
+                return jsonify(status=status,keyframes=keyfrms, landmarks=landmarks)
+            except:
+                return jsonify("something went wrong with slam")
+        return jsonify(status=status)
+
+    def get_slam_map(self, report_id):
+        print('asking for slam map of report ' + str(report_id))
+        return self.slam_manager.get_slam_map(report_id)
     def delete_annotation(self, report_id):
         annotation_id = request.form.get('annotation_id')
         print("delete_annotation for id" + str(report_id) + " with: " + str(annotation_id), flush=True)
@@ -661,6 +949,22 @@ class ArgusServer:
             #print(data)
             return jsonify(data)
 
+    def load_keyframes(self, report_id):
+        #get path of projects annotation file
+        path = self.project_manager.get_keyframe_file_path(report_id)
+        #load results from json file
+        with open(path) as json_file:
+            data = json.load(json_file)
+            return jsonify(data)
+
+    def load_landmarks(self, report_id):
+        #get path of projects annotation file
+        path = self.project_manager.get_landmark_file_path(report_id)
+        #load results from json file
+        with open(path) as json_file:
+            data = json.load(json_file)
+            return jsonify(data)
+
     def process_in_webodm(self, report_id):
         token = self.webodm_manager.authenticate()
         if token is None:
@@ -682,7 +986,8 @@ class ArgusServer:
             self.webodm_manager.upload_and_process_images(token, wo_project_id, self.project_manager.get_file_names_rgb(report_id))
             return jsonify({"success": True, "port": self.webodm_manager.public_port})
         else:
-            print("Failed to open or create a webodm project with name {}".format(self.project_manager.get_project_name(report_id)), flush=True)
+            print("Failed to open or create a webodm project with name {}".format(
+                self.project_manager.get_project_name(report_id)), flush=True)
             return jsonify({"success": False})
 
     def webodm_project_exists(self, report_id):
@@ -698,7 +1003,8 @@ class ArgusServer:
                 return jsonify({"success": False})
         except Exception as e:
             print(e, flush=True)
-            wo_project_id = self.webodm_manager.get_project_id(token, self.project_manager.get_project_name(report_id), self.project_manager.get_project_description(report_id))
+            wo_project_id = self.webodm_manager.get_project_id(token, self.project_manager.get_project_name(report_id),
+                                                               self.project_manager.get_project_description(report_id))
             if wo_project_id is not None:
                 self.project_manager.set_webodm_project_id(report_id, wo_project_id)
 
@@ -753,7 +1059,7 @@ class ArgusServer:
             return jsonify({"success": False})
 
         tasks = self.webodm_manager.get_all_tasks(token, wo_project_id)
-        return jsonify({"success": True,"tasks": tasks})
+        return jsonify({"success": True, "tasks": tasks})
 
     def update_weather(self, report_id):
         print("update_weather for id" + str(report_id) + " with: " + str(request), flush=True)
@@ -890,6 +1196,79 @@ class ArgusServer:
         indices = sorted(range(len(times)), key=lambda i: times[i], reverse=True)
         return indices
 
+    def render_slam_report(self, report_id, thread=None, template="stella_vslam_report.html"):  #need new slamReport.html
+        data = self.project_manager.get_project(report_id)['data']
+        video = data["video"]
+        try:
+            video_file_size = os.path.getsize(video[0])
+        except:
+            video_file_size = None
+        mask = data["mask"]
+        slam_settings = data["slam_settings"]
+        keyframe_images = data["keyframes"]
+        map_db = data["map_db"]
+        point_cloud = data["point_cloud"]
+        keyframe_folder = self.project_manager.get_keyframe_folder(report_id)
+        if (len(keyframe_images) > 0):
+            has_keyframe_images = True
+        else:
+            has_keyframe_images = False
+
+        try:
+            keyfrms_path = data["keyframe_file_path"]
+            keyfrms = json.load(open(keyfrms_path))
+        except:
+            keyfrms = None
+
+        try:
+            detections_path = data["annotation_file_path"]
+            detections = json.load(open(detections_path))
+        except:
+            detections = None
+
+        try:
+            landmark_path = data["landmark_file_path"]
+            landmarks = json.load(open(landmark_path))
+        except:
+            landmarks = None
+
+        try:
+            slam_output_path = data['slam_output_file_path']
+            slam_output = json.load(open(slam_output_path))
+        except:
+            slam_output = None
+
+        try:
+            slam_mapping_output = data['mapping_output'] #mapping output
+        except:
+            slam_mapping_output = None
+
+        message = None
+        processing = False
+        for thread in self.threads:
+            processing = False
+            if thread.report_id == report_id:
+                processing = True
+                # if(thread.progress_mapping == 100):
+                #     processing = False
+                # else:
+                #     processing = True
+                message = thread.message
+                break
+
+        gradient_lut = json.load(open("./static/default/gradient_luts/gradient_lut_1.json"))
+
+        project = {"id": report_id, "name": self.project_manager.get_project_name(report_id),
+                   "description": self.project_manager.get_project_description(report_id),
+                   'creation_time': self.project_manager.get_project_creation_time(report_id)}
+        return render_template(template, id=report_id, video=video, video_file_size=video_file_size, mask=mask,
+                               slam_settings=slam_settings, keyframe_images=keyframe_images, map_db=map_db,
+                               has_keyframe_images = has_keyframe_images,
+                               keyfrms = keyfrms, landmarks=landmarks, slam_output = slam_output,
+                               keyframe_folder = keyframe_folder, detections= detections, processing = processing,
+                               point_cloud=point_cloud, project=project, message=message, slam_mapping_output = slam_mapping_output,
+                               gradient_lut=gradient_lut)  #create a different render template maybe
+
     def render_standard_report(self, report_id, thread=None, template="baseReport.html"):
         data = self.project_manager.get_project(report_id)['data']
         flight_data = data["flight_data"]
@@ -967,47 +1346,46 @@ class ArgusServer:
                                processing=processing, gradient_lut=gradient_lut, ir_settings=ir_settings,
                                detections=detections, unprocessed_images=contains_unprocessed_images,
                                unprocessed_changes=unprocessed_changes)
+
     def render_upload_report(self, report_id, template="simpleUpload.html"):
-            data = self.project_manager.get_project(report_id)['data']
-            file_names_rgb = data["file_names"]
-            file_names_ir = data["file_names_ir"]
-            file_names_panos = [p['file'] for p in data["panos"]]
-            file_names_upload = file_names_rgb.copy() + file_names_ir.copy() + file_names_panos.copy()
+        data = self.project_manager.get_project(report_id)['data']
+        file_names_rgb = data["file_names"]
+        file_names_ir = data["file_names_ir"]
+        file_names_panos = [p['file'] for p in data["panos"]]
+        file_names_upload = file_names_rgb.copy() + file_names_ir.copy() + file_names_panos.copy()
 
-            ir_settings = {}
-            try:
-                ir_settings = data["ir_settings"]
-                if ir_settings == None:
-                    print("ir settings are None", flush=True)
-                    ir_settings = {}
-            except:
-                print("no ir settings found", flush=True)
+        ir_settings = {}
+        try:
+            ir_settings = data["ir_settings"]
+            if ir_settings == None:
+                print("ir settings are None", flush=True)
+                ir_settings = {}
+        except:
+            print("no ir settings found", flush=True)
 
-            has_ir = False
-            if file_names_ir != []:
-                has_ir = True
+        has_ir = False
+        if file_names_ir != []:
+            has_ir = True
 
-            contains_unprocessed_images = False
-            try:
-                contains_unprocessed_images = data["contains_unprocessed_images"]
-            except:
-                pass
+        contains_unprocessed_images = False
+        try:
+            contains_unprocessed_images = data["contains_unprocessed_images"]
+        except:
+            pass
 
-
+        processing = False
+        for thread in self.threads:
             processing = False
-            for thread in self.threads:
-                processing = False
-                if thread.report_id == report_id:
-                    processing = True
-                    break
+            if thread.report_id == report_id:
+                processing = True
+                break
 
-
-            project = {"id": report_id, "name": self.project_manager.get_project_name(report_id),
-                       "description": self.project_manager.get_project_description(report_id),
-                       'creation_time': self.project_manager.get_project_creation_time(report_id),
-                       'ir_settings': ir_settings}
-            return render_template(template, id=report_id, project=project, file_names=file_names_upload,
-                                   processing=processing)
+        project = {"id": report_id, "name": self.project_manager.get_project_name(report_id),
+                   "description": self.project_manager.get_project_description(report_id),
+                   'creation_time': self.project_manager.get_project_creation_time(report_id),
+                   'ir_settings': ir_settings}
+        return render_template(template, id=report_id, project=project, file_names=file_names_upload,
+                               processing=processing)
 
     def render_settings(self):
         return render_template('settings.html')
@@ -1032,6 +1410,25 @@ class ArgusServer:
             return True
         return False
 
+    def delete_video_file_in_folder(self, report_id, filename):
+        file_path = filename
+        print(file_path,flush=True)
+        if os.path.exists(file_path):
+            os.remove(file_path)
+            print("file deleted @" + file_path)
+            self.project_manager.remove_from_file_name_video(report_id, file_path)
+            return True
+        return False
+
+    def delete_mask_file_in_folder(self, report_id, filename):
+        file_path = filename
+        if os.path.exists(file_path):
+            os.remove(file_path)
+            print("file deleted @" + file_path)
+            self.project_manager.remove_from_file_name_mask(report_id, file_path)
+            return True
+        return False
+
     def process_html_strings(self, html_string, no_newline=False):
         html_string = html_string.replace("\n", "")
         html_string = html_string.strip()
@@ -1044,6 +1441,9 @@ class ArgusServer:
 
     def allowed_file(self, filename):
         return '.' in filename and filename.rsplit('.', 1)[1].lower() in self.ALLOWED_EXTENSIONS
+
+    def allowed_video_file(self, filename):
+        return '.' in filename and filename.rsplit('.', 1)[1].lower() in self.ALLOWED_VIDEO_EXTENSIONS
 
     def allowed_file_project(self, filename):
         return '.' in filename and filename.rsplit('.', 1)[1].lower() in self.ALLOWED_EXTENSIONS_PROJECT
@@ -1163,3 +1563,4 @@ class ArgusServer:
     def reset_weather_api_key(self):
         self.weather_api_key = None
         return jsonify({"api_key": ""})
+

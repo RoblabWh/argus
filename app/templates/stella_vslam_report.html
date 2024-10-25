@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+<link rel="stylesheet" href="{{ url_for('static', filename='default/variables-light.css') }}" id="currentCss">
+    <script type="text/javascript" src="{{url_for('static', filename='default/js/lib/dat.gui.min.js') }}"></script>
+    <script type="text/javascript" src="{{url_for('static', filename='default/js/lib/protobuf.min.js') }}"></script>
+    <script type="text/javascript" src="{{url_for('static', filename='default/js/lib/stats.min.js') }}"></script>
+    <script type="text/javascript" src="{{url_for('static', filename='default/js/lib/three.min.js') }}"></script>
+    <script type="text/javascript" src="{{url_for('static', filename='default/js/ViewControls.js') }}"></script>
+    <script type="text/javascript" src="{{url_for('static', filename='default/js/Mouse.js') }}"></script>
+    <script type="text/javascript" src="{{url_for('static', filename='default/js/PointCloud.js') }}"></script>
+    <script type="text/javascript" src="{{url_for('static', filename='default/js/CameraFrames.js') }}"></script>
+    <style>
+
+        body{
+            margin-left: 0px;
+            margin-right: 0px;
+            margin-bottom: 0px;
+            background-color: var(--bg-color-page);
+            color: var(--font-color-a);
+        }
+
+        .bodyDiv {
+            min-height: 95vh;
+            width: 94%;
+            max-width: 1400px;
+            margin: 0 auto !important;
+            float: none !important;
+            font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+        }
+
+        .alertBanner {
+            width: 100%;
+            padding: 10px;
+            background-color: var(--accent-color-red);
+            color: var(--font-color-b);
+
+        }
+
+        .alertBanner p{
+            color: var(--font-color-b);
+            width: 100%;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .edit-text-button{
+            font-size: 18px;
+            height: fit-content;
+            width: 18px;
+            margin-top:5px;
+            border-radius: 5px;
+            border-style: solid;
+            border-color: var(--bg-color-b);
+            border-width: 1px;
+            background-color: var(--bg-color-a);
+        }
+
+        .edit-text-button:hover{
+            background-color: var(--accent-color-interaction);
+            color: var(--font-color-b);
+        }
+
+        #descriptionText{
+            margin: 0px;
+            padding: 8px;
+            border-radius: 5px;
+            border-style: solid;
+            border-color: transparent;
+            background-color: transparent;
+        }
+
+        #title-name{
+            margin: 0px;
+            margin-left: -14px;
+            padding: 8px;
+            max-width: 95%;
+            border-radius: 6px;
+            border-style: solid;
+            border-color: transparent;
+        }
+
+        #descriptionText.editable, #title-name.editable{
+            border-radius: 6px;
+            border-style: solid;
+            border-color: var(--accent-color-interaction);
+        }
+
+        .big_upload{
+          float:left;
+          width: 63%;
+          position: relative;
+          padding: 10px 0px 10px 10px;
+          border-radius: 3px;
+          border-color: rgb(204, 204, 204);
+          border-style: solid;
+          border-width: 1px;
+        }
+
+
+        .big_button{
+            width: 25%;
+            height: 42px;
+            padding: 4px;
+            background-color: var(--accent-color-interaction);
+            color: var(--font-color-b);
+            border-radius: 4px;
+            border-style: none;
+            cursor: pointer;
+            transition: 0.3s;
+            position: relative;
+        }
+
+        .big_button:hover {
+          color: var(--font-color-a);
+          font-weight: bold;
+        }
+
+        .big_button:disabled{
+          background-color: var(--bg-color-a);
+          color: var(--bg-color-b);
+          cursor: not-allowed;
+        }
+
+        .map_container {
+          padding: 18 px;
+          background-color: var(--bg-color-page);
+          overflow: hidden;
+        }
+
+        p {
+            text-align: justify;
+            font-size: 16px;
+        }
+
+        summary {
+          background-color: var(--accent-color-interaction);
+          color: var(--font-color-b);
+          font-weight: medium;
+          padding: 1rem;
+          margin-bottom: 1rem;
+          outline: none;
+          border-radius: 4px;
+          cursor: pointer;
+          position: relative;
+          transition: 0.3s;
+        }
+
+        details[open]>summary{
+          background-color: var(--bg-color-a);
+          color: var(--font-color-a);
+          border-style: solid;
+          border-radius: 6px;
+          border-width: 3px;
+          border-color: var(--accent-color-interaction);
+        }
+        details[open]>summary:hover, summary:hover {
+          color: var(--font-color-a);
+          font-weight: bold;
+        }
+
+        details > summary::after {
+          position: absolute;
+          content: "+";
+          right: 20px;
+        }
+        details[open] > summary::after {
+          position: absolute;
+          content: "-";
+          right: 20px;
+        }
+        details > summary::-webkit-details-marker {
+          display: none;
+        }
+
+        .tab-content{
+          margin: 20px;
+        }
+
+        .wrapper {
+          display: flex;
+          flex-direction: row;
+          flex-wrap: wrap;
+          justify-content: space-between;
+          padding:15px;
+        }
+
+        .Progress {
+          width: 100%;
+          background-color: #ddd;
+        }
+
+        .progress-bar-container {
+          position: relative;
+          width: 100%;
+          height: 30px;
+          background-color: var(--bg-color-a);
+          margin-bottom: 10px;
+          border-radius: 6px;
+        }
+
+        .progress-bar-container a{
+            position: absolute;
+            top: 4px;
+            font-size: 22px;
+            width: 100%;
+            text-align: center;
+            color: var(--font-color-b);
+            font-weight: bold;
+        }
+
+        #progress-bar {
+          height: 100%;
+          background-color: var(--accent-color-green);
+          width: 0%;
+          transition: width 0.2s ease-in-out;
+          border-radius: 6px;
+        }
+
+        .small_img {
+            position: absolute;
+            top: 0px;
+            left: 0px;
+            width: 300px;
+            height: 300px;
+            margin: 10px;
+            overflow: hidden;
+        }
+
+        .top {
+            position:absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+
+        .spinner-small-export {
+          width: 1.25rem;
+          --b: 6px; /* the border thickness */
+          aspect-ratio: 1;
+          border-radius: 50%;
+          padding: 1px;
+          background: conic-gradient(#0000 10%,var(--accent-color-interaction)) content-box;
+          -webkit-mask:
+            repeating-conic-gradient(#0000 0deg,#000 1deg 20deg,#0000 21deg 36deg),
+            radial-gradient(farthest-side,#0000 calc(100% - var(--b) - 1px),#000 calc(100% - var(--b)));
+          -webkit-mask-composite: destination-in;
+          mask-composite: intersect;
+          animation:s4 1s infinite steps(10);
+        }
+        @keyframes s4 {to{transform: rotate(1turn)}}
+
+        .vslam_stats {
+            width: 39%;
+            text-align: left;
+            float: left;
+            min-width: 200px;
+        }
+
+        .vslam_results {
+            position: relative;
+            min-height: 500px;
+            overflow: hidden;
+            display: inherit;
+            padding: 30 px;
+        }
+
+        .separator {
+            border: none;
+            border-top: 1px solid #ccc;
+            margin: 15px 0;
+        }
+
+        .vslam_model {
+            width: 60%;
+            float: left;
+            position: relative;
+            height: 420px;
+            max-height: 85vh;
+        }
+
+        #mapping_output{
+            position: relative;
+        }
+
+        #WebGL-output {
+            height: 420px;
+            max-height: 85vh;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            margin: 0 auto;
+
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            border:1px solid black;
+        }
+
+        {% include 'tableStyle.css' %}
+
+
+    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src="{{url_for('static', filename='default/jquery-3.6.3.js') }}"></script>
+</head>
+<body>
+    {% include 'headerReport.html' %}
+    <div class="bodyDiv">
+    <br>
+    <br>
+        <br>
+        <div style="position: relative;">
+            <h4 style="margin-bottom: 2px;">Flight Report (ID:{{ id }})</h4>
+<!--            <button style="position: absolute; top: -4px;" class="big_button" onClick="location.href = '/{{id}}/edit'"> Change settings and reprocess</button>-->
+        </div>
+
+        <div style="width: 100%; display: flex;">
+            <h1 id="title-name">{{ project.name }}</h1>
+            <div id="edit-title-button" class="edit-text-button" style="margin: 12px; float:left" onclick="toggleTextfieldTitle()">
+                <span style="display: inline-block; transform: rotate(100deg); -ms-transform: rotate(100deg); -moz-transform: rotate(100deg); -webkit-transform: rotate(100deg);">&#x270E;</span>
+                <span style="display: none;">&check;</span>
+            </div>
+        </div>
+
+        <div style="display: inline-flex; width:100% ">
+            <div style="max-width: 97%; margin-right:10px">
+                <p id="descriptionText">
+                    {% for line in project.description.splitlines()[:-1] %}
+                        {{line}}<br>
+                    {% endfor %}
+                        {{project.description.splitlines()[-1]}}
+                </p>
+            </div>
+            <div id="edit-description-button" class="edit-text-button" onclick="toggleTextFieldDescription()">
+                <span style="display: inline-block; transform: rotate(100deg); -ms-transform: rotate(100deg); -moz-transform: rotate(100deg); -webkit-transform: rotate(100deg);">&#x270E;</span>
+                <span style="display: none;">&check;</span>
+            </div>
+        </div>
+
+    {% if processing %}
+    <div class="progress-bar-container">
+        <div id="progress-bar"></div>
+        <a id="progress-bar-text"> MAPPING... </a>
+    </div>
+    {% endif %}
+    <br>
+    <div class = "vslam_results">
+        <hr class="separator">
+            <div class="vslam_stats">
+                <h3>VSLAM Results</h3>
+            </div>
+            <div class="vslam_model">
+                <div id="Stats-output">
+                </div>
+                <div id="WebGL-output">
+                </div>
+                <div id="global-scale-slider">
+                </div>
+            </div>
+    </div>
+        <div>
+            {% include 'aiDetectorSlam.html' %}
+        </div>
+        <div>
+            {% include 'keyframe_overview.html' %}
+        </div>
+    </div>
+    <script type="text/javascript" src="{{url_for('static', filename='default/js/main.js') }}"></script>
+    <script>
+
+        function toggleTextfieldTitle(){
+            fakeButton = document.getElementById("edit-title-button");
+            toggleTextField("title-name", fakeButton, "update_title");
+        }
+
+        function toggleTextFieldDescription(){
+            fakeButton = document.getElementById("edit-description-button");
+            toggleTextField("descriptionText", fakeButton, "update_description");
+        }
+
+        function toggleTextField(textfieldID, button, link){
+            var textfield = document.getElementById(textfieldID);
+            if (textfield.contentEditable == "true") {
+                textfield.contentEditable = false;
+                button.children[0].style.display = "inline-block";
+                button.children[1].style.display = "none";
+                $('#'+textfieldID).removeClass('editable');
+                $.post("/"+link+"/{{ id }}", {content: textfield.innerHTML});
+            } else {
+                textfield.contentEditable = "true";
+                $('#'+textfieldID).addClass('editable');
+                button.children[0].style.display = "none";
+                button.children[1].style.display = "inline-block";
+            }
+        }
+
+        var keyframes = {{ keyfrms | tojson }};
+        var landmarks = {{ landmarks | tojson }};
+        var slam_output = {{ slam_output | tojson }};
+        var processing = {{ processing | tojson }};
+        var slam_mapping_output = {{ slam_mapping_output | tojson }}
+
+        window.onload = (event) => {
+            init();
+            initiateControls();
+            loadKeyframes(keyframes);
+            loadLandmarks(landmarks);
+            loadSlamMappingOutput(slam_mapping_output);
+        }
+
+        window.addEventListener('resize', onResize, false);
+
+        const vslam_stats = document.getElementsByClassName('vslam_stats');
+
+        if (slam_output != null) {
+            const slam_time_div = document.createElement('div');
+            slam_time_div.className = "slam_time_div";
+
+            const slam_time_text = document.createElement('div');
+            slam_time_text.className = 'slam_time_text';
+            slam_time_text.textContent = "Calculation time: " + slam_output.calculation_time;
+
+            slam_time_div.appendChild(slam_time_text);
+            vslam_stats[0].appendChild(slam_time_div);
+
+            vslam_stats[0].appendChild(document.createElement('br'));
+        }
+        
+        const keyframeDiv = document.createElement('div');
+        keyframeDiv.className = "keyframe_div";
+
+        const keyframeText = document.createElement('div');
+        keyframeText.className = 'keyframe_text';
+        keyframeText.textContent = keyframes.length + " Keyframes";
+
+        keyframeDiv.appendChild(keyframeText);
+        vslam_stats[0].appendChild(keyframeDiv);
+
+        vslam_stats[0].appendChild(document.createElement('br'));
+
+        const landmarkDiv = document.createElement('div');
+        landmarkDiv.className = "landmark_div";
+
+        const landmarkText = document.createElement('div');
+        landmarkText.className = 'landmark_text';
+        landmarkText.textContent = landmarks.length + " Landmarks";
+
+        landmarkDiv.appendChild(landmarkText);
+        vslam_stats[0].appendChild(landmarkDiv);
+
+        function check_slam_map_progress(report_id) {
+            $.get('/{{ id }}/slam_map_process_status', (result) => {
+                var progress = result.progress;
+                var mapping_result = result.mapping_result;
+                var trajectory = result.trajectory;
+
+                var bar_mapping = document.getElementById("progress-bar");
+                bar_mapping.style.width = (progress * 100) + '%';
+
+                console.log(progress);
+
+                if(progress === 1) {
+                    console.log('done');
+                    document.getElementById("progress-bar-text").innerHTML = "DONE";
+                    window.clearInterval(intervalID);
+                    $.get('/stop_mapping_thread/{{ id }}');
+                    results = [mapping_result, trajectory];
+                    loadSlamMappingOutput(results);
+                }
+            })
+        }
+
+        function loadSlamMappingOutput(slam_mapping_output) {
+            console.log(slam_mapping_output);
+            if(slam_mapping_output !== null && slam_mapping_output.length > 0) {
+                let div = document.createElement('div');
+                div.id = "mapping_output";
+                let vslam_stats = document.getElementsByClassName("vslam_stats")[0];
+                if (slam_mapping_output.length > 1) {
+                    //map + trajectory
+                    const img = document.createElement('img');
+                    img.src = slam_mapping_output[0];
+                    img.classList.add("small_img");
+                    const trajectory = document.createElement('img');
+                    trajectory.src = slam_mapping_output[1];
+                    trajectory.classList.add("small_img");
+                    trajectory.classList.add("top");
+                    div.appendChild(img);
+                    div.appendChild(trajectory);
+                    vslam_stats.appendChild(div);
+                } else {
+                    //map
+                    const img = document.createElement('img');
+                    img.src = slam_mapping_output[0];
+                    img.classList.add("small_img");
+                    div.appendChild(img);
+                    vslam_stats.appendChild(div);
+                }
+            } else {
+                console.log("no slam mapping outputs found");
+            }
+        }
+
+        {% if processing %}
+        console.log("next checking progess");
+        //check_progress({{ id }}, 'progress_bar');
+        var intervalID = window.setInterval(check_slam_map_progress, 1000);
+        check_slam_map_progress({{ id }});
+
+        {% endif %}
+    </script>
+    {% include 'footer.html' %}
+</body>
+</html>
