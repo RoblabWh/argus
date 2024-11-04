@@ -90,7 +90,6 @@
 var keyframe_images = {{ keyframe_images | tojson }};
 var keyframe_folder = {{ keyframe_folder | tojson }};
 var keyframes = {{ keyfrms | tojson }};
-var detections = {{ detections | tojson }};
 var detection_data = [];
 var remove_mask_imgs = [];
 for (let i = 0; i < keyframe_images.length; i++) {
@@ -123,10 +122,11 @@ const customSize = 20;
 const minDistCss = 0;
 const maxDistCss = 10;
 const minDetectionScore = 0.8;
+const firstSceneId = "0";
 
 var pannellum_settings = {
     "default": {
-        "firstScene": "0",
+        "firstScene": firstSceneId,
         "author": "Matthew Petroff",
         "sceneFadeDuration": 1000
     },"scenes": {}
@@ -136,19 +136,23 @@ for (let i = 0; i < keyframes_sort.length; i++) {
     keyframe_indices[i] = parseInt(keyframes_sort[i].replace(/\D/g,''));
     let scene = {};
     let id = keyframes_sort[i].replace(/\D/g,'');
-    let scene_settings = {};
-    scene_settings.title = keyframes_sort[i];
-    scene_settings.type = "equirectangular";
-    scene_settings.panorama = keyframe_folder + keyframes_sort[i];
-    scene_settings.preview = keyframe_folder + keyframes_sort[i];
-    scene_settings.autoLoad = true;
-    scene_settings.minHfov = 5;
-    scene_settings.maxHfov = 140;
-    scene_settings.showControls = false;
-    pannellum_settings.scenes[id]= scene_settings;
+        let scene_settings = {};
+        scene_settings.title = keyframes_sort[i];
+        scene_settings.type = "equirectangular";
+        scene_settings.panorama = keyframe_folder + keyframes_sort[i];
+        scene_settings.preview = keyframe_folder + keyframes_sort[i];
+        scene_settings.autoLoad = true;
+        scene_settings.minHfov = 5;
+        scene_settings.maxHfov = 140;
+        scene_settings.showControls = false;
+        pannellum_settings.scenes[id] = scene_settings;
 }
 
 viewer = pannellum.viewer('panorama', pannellum_settings);
+viewer.on('scenechange', () => {
+    console.log(viewer.getScene());
+    highlight_small_area(viewer.getScene());
+});
 
 let hotspotsInScene = [];
 
@@ -165,7 +169,6 @@ function updateHotspots(viewer) {
                                            currentPose.elements[4],currentPose.elements[5],currentPose.elements[6], 0,
                                            currentPose.elements[8],currentPose.elements[9],currentPose.elements[10], 0,
                                                         0,             0,             0, 1);
-            console.log(someMatrix);
             break;
         }
     }
@@ -178,7 +181,6 @@ function updateHotspots(viewer) {
             }
             //calculate inverse pose matrix
             let pose = getInverseOfPose(keyframe.pose);
-
             //calculate distance and pitch and yaw based on currentPose and keyframe.pose
             let dx = pose.elements[12] - currentPose.elements[12];
             let dy = pose.elements[13] - currentPose.elements[13];
@@ -191,9 +193,12 @@ function updateHotspots(viewer) {
             let z = camDiff.getComponent(2);
 
             let distance = Math.sqrt((x*x)+(y*y)+(z*z));
+            if(distance === 0){
+                continue;
+            }
+
             let pitch = 90 - Math.acos(-y / distance) * (180 / Math.PI);
             let yaw = Math.atan2(x, z) * (180 / Math.PI);
-
             keyframeStats[keyframe.id] = {
                 "pitch": pitch,
                 "yaw": yaw,
@@ -312,6 +317,7 @@ function calculateOrientation(currentPose, keyframepose) {
 let detectionsInScene = [];
 
 function generateDetectionsForCurrentScene(data) {
+    console.log(detections.categories);
     detectionsInScene = [];
     let detection_image_id = undefined;
     let detections_in_current_image = [];
@@ -366,7 +372,6 @@ function createObjectCss(width, height, color, index, label) {
     let cssSize = (20/190000)*(width*height)+(23.95);
     let style = document.createElement('style');
     style.id = styleClassName;
-    style.type = "text/css";
     style.innerHTML = '.' + styleClassName + '{ height: ' + height + 'px; width: ' + width + 'px; border-color:rgba(' + color[0] + ',' + color[1] + ',' + color[2] +'); border-style: solid; border-width: thick;}';
 	//style.innerHTML = '.' + styleClassName + '{ height: ' + cssSize + 'px; width: ' + cssSize + 'px; background:rgba(' + color[0] + ',' + color[1] + ',' + color[2] +',0.5); border-color:rgba(' + color[0] + ',' + color[1] + ',' + color[2] +',0.5); border-style: solid; border-width: thin;}';
     document.getElementsByTagName('head')[0].appendChild(style);
@@ -445,6 +450,37 @@ document.getElementById('toggleDetections').addEventListener('click', (e) => {
     }
 });
 {% endif %}
+
+function loadDetections() {
+    let controls = document.getElementById('controls');
+    let div = document.createElement('div');
+    div.setAttribute('class', 'ctrl');
+    div.setAttribute('id', 'toggleDetections');
+    let i = document.createElement('i');
+    i.setAttribute('class','fa fa-eye');
+    i.setAttribute('id','icon');
+    div.appendChild(i);
+    let lastChild = controls.childNodes[controls.childNodes.length-1];
+    controls.insertBefore(div, lastChild);
+    let detectionsVisible = false;
+    document.getElementById('toggleDetections').addEventListener('click', (e) => {
+    if(detectionsVisible) {
+        removeDetections(viewer);
+        viewer.off('load');
+        document.getElementById('toggleDetections').children[0].classList.remove("fa-eye-slash");
+        document.getElementById('toggleDetections').children[0].classList.add("fa-eye");
+        detectionsVisible = false;
+    } else {
+        generateDetectionsForCurrentScene(detections);
+        viewer.on('load', () => {
+            generateDetectionsForCurrentScene(detections);
+        });
+        document.getElementById('toggleDetections').children[0].classList.remove("fa-eye");
+        document.getElementById('toggleDetections').children[0].classList.add("fa-eye-slash");
+        detectionsVisible = true;
+    }
+});
+}
 
 function removeHotspots(viewer) {
     for (let id of hotspotsInScene) {

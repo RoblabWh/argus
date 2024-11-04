@@ -6,6 +6,7 @@ class CameraFrames {
         this.CURRENT_FRAME_MATERIAL = new THREE.LineBasicMaterial({ color: CURRENT_FRAME_COLOR });
         this.KEYFRAME_MATERIAL = new THREE.LineBasicMaterial({ color: KEYFRAME_COLOR });
         this.EDGE_MATERIAL = new THREE.LineBasicMaterial({ color: EDGE_COLOR });
+        this.HIGHLIGHT_FRAME_MATERIAL = new THREE.LineBasicMaterial({ color: HIGHLIGHT_COLOR});
 
         this.keyframeIndices = [];
         this.keyframeObjects = [];
@@ -197,6 +198,16 @@ class CameraFrames {
     }
     setGraphVisibility(visible) {
         this.edges.visible = visible;
+    }
+
+    getKeyframeOrigin(id) {
+        let index = this.keyframeIndices[id];
+        let pose_ = this.keyframePoses[index];
+
+        let pose = inv(pose_);
+        let Ox = pose[0][3] * GLOBAL_SCALE; let Oy = pose[1][3] * GLOBAL_SCALE; let Oz = pose[2][3] * GLOBAL_SCALE;
+        return [Ox, Oy, Oz];
+
     }
 
 }

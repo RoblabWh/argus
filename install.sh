@@ -9,7 +9,7 @@ ARGUS_INSTALL_PATH=/opt/argus
 sudo -v
 
 # build the argus containers and download the rest
-. "$ARGUS_PATH/argus.sh" build
+. "$ARGUS_PATH/argus.sh" build --build-arg NUM_THREADS=4
 . "$ARGUS_PATH/argus.sh" pull --ignore-buildable
 
 # install argus to known global path

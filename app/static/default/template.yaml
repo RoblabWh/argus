@@ -15,21 +15,28 @@ Camera:
 
   color_order: "RGB"
 
-#================#
-# ORB Parameters #
-#================#
+#=====================#
+# Tracking Parameters #
+#=====================#
 
-Feature:
-  max_num_keypoints: 3000
-  scale_factor: 1.2
-  num_levels: 8
-  ini_fast_threshold: 20
-  min_fast_threshold: 7
+Preprocessing:
+  min_size: 800
   mask_rectangles:
     - [0.0, 1.0, 0.0, 0.1]
     - [0.0, 1.0, 0.84, 1.0]
     - [0.0, 0.2, 0.7, 1.0]
     - [0.8, 1.0, 0.7, 1.0]
+
+#================#
+# ORB Parameters #
+#================#
+
+Feature:
+  name: "default ORB feature extraction setting"
+  scale_factor: 1.2
+  num_levels: 8
+  ini_fast_threshold: 20
+  min_fast_threshold: 7
 
 #====================#
 # Mapping Parameters #
@@ -37,15 +44,40 @@ Feature:
 
 Mapping:
   baseline_dist_thr_ratio: 0.02
+  redundant_obs_ratio_thr: 0.95
   
+  
+#=========================#
+# LoopDetector Parameters #
+#=========================#
+
+LoopDetector:
+  enabled: true
+  reject_by_graph_distance: true
+  min_distance_on_graph: 50
+
+  
+#====================#
+# Keyframe  Inserter #
+#====================#
+$KeyframeInserter
+  
+#=============================#
+# SocketPublisher Parameters #
+#=============================#
+SocketPublisher:
+  publish_points: $publish_points
+  publish_frames: false
+  image_quality: 0
+
 #=========================#
 # PatchMatch Parameters #
 #=========================#
 
 PatchMatch:
   enabled: $patch_match
-  cols: 640
-  rows: 320
+  cols: 640 #patchmatch resolution, add like 2 models: 1hd: cols 640, rows 320, patchmatch_iterations 4
+  rows: 320 #2dense: cols 1440, rows 720, patchmatch_iterations 6
   min_patch_std_dev: 0
   patch_size: 7
   patchmatch_iterations: 4
