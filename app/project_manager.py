@@ -1087,3 +1087,10 @@ class ProjectManager:
         project_group['description'] = description
         self.update_project_groups_file()
         return project_group
+
+    def get_project_type(self, report_id):
+        project = self.get_project(report_id)
+        try:
+            return project['type']
+        except:
+            return 'mapping_project'

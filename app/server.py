@@ -242,8 +242,11 @@ class ArgusServer:
     def create_report(self):
         name = request.form.get("name")
         description = request.form.get("description")
-        #TODO add Type on website
-        type = request.form.get("report-type")
+        try:
+            type = request.form.get("report_type")
+        except:
+            type = "mapping"
+
         if type == "mapping":
             self.project_manager.create_project(name, description)
         elif type == "slam":
@@ -260,7 +263,19 @@ class ArgusServer:
         description = data.get('description')
         project_group_id = data.get('project_group_id')
 
-        project = self.project_manager.create_project(name, description)
+        try:
+            report_type = data.get("report_type")
+        except:
+            report_type = "mapping"
+
+        print("create_report_with_project_group", name, description, project_group_id, report_type, flush=True)
+
+        project = None
+        if report_type == "mapping":
+            project = self.project_manager.create_project(name, description)
+        elif report_type == "slam":
+            project = self.project_manager.create_slam_project(name, description)
+
         print(project, flush=True)
 
         if project_group_id is None or project_group_id == -1:
@@ -301,18 +316,20 @@ class ArgusServer:
     def render_report(self, report_id):
         print("upload_form for id: " + str(report_id), flush=True)
         if (self.project_manager.has_project(report_id)):
-            #TODO what will happen wehen there is no type
-            if self.project_manager.get_project(report_id)['type'] == "mapping_project":
-                if not self.project_manager.get_project(report_id)['data']['flight_data']:
-                    # file_names = project_manager.get_project(report_id)['data']['file_names']
-                    return self.render_standard_report(report_id, template='simpleUpload.html')
-                    # return render_standard_report(report_id, template='startProcessing.html')
-                return self.render_standard_report(report_id)
-            elif self.project_manager.get_project(report_id)['type'] == "slam_project":
+
+            type = self.project_manager.get_project_type(report_id)
+            if type == "slam_project":
                 if  len(self.project_manager.get_project(report_id)['data']['keyframes']) > 0:
                     return self.render_slam_report(report_id, template='stella_vslam_report.html')
                 else:
                     return self.render_slam_report(report_id, template='stella_vslam_upload.html')
+
+            if not self.project_manager.get_project(report_id)['data']['flight_data']:
+                # file_names = project_manager.get_project(report_id)['data']['file_names']
+                return self.render_standard_report(report_id, template='simpleUpload.html')
+                # return render_standard_report(report_id, template='startProcessing.html')
+            return self.render_standard_report(report_id)
+
         else:
             projects_dict_list = self.project_manager.get_projects()
             order_by_filght_date = self.calculate_order_based_on_flight_date(projects_dict_list)
@@ -334,7 +351,7 @@ class ArgusServer:
     def render_report_update(self, report_id):
         print("upload_form for id: " + str(report_id), flush=True)
         if (self.project_manager.has_project(report_id)):
-            if self.project_manager.get_project(report_id)['type'] == "slam_project":
+            if self.project_manager.get_project_type(report_id) == "slam_project":
                 try:
                     keyfrms = self.project_manager.get_keyframe_file_path(report_id)
                     landmarks = self.project_manager.get_landmark_file_path(report_id)
@@ -825,15 +842,16 @@ class ArgusServer:
             if processing_setting == "one_split":
                 max_splits = 1
 
-        #TODO what happens if there is no type - maybe own function instead
         print(self.project_manager.project_path(report_id), flush=True)
         print(self.project_manager.get_annotation_file_path(report_id), flush=True)
-        if self.project_manager.get_project(report_id)['type'] == "mapping_project":
+
+        type = self.project_manager.get_project_type(report_id)
+        if type == "mapping_project":
             self.detection_manager.detect_objects(options={"numbr_of_models": numbr_of_models, "max_splits": max_splits},
                                               report_id=report_id,
                                               image_folder=self.project_manager.project_path(report_id),
                                               ann_path=self.project_manager.get_annotation_file_path(report_id))
-        if self.project_manager.get_project(report_id)['type'] == "slam_project":
+        elif type == "slam_project":
             self.detection_manager.detect_objects_slam(options={"numbr_of_models": numbr_of_models, "max_splits": max_splits},
                                                 report_id=report_id,
                                                 image_folder=self.project_manager.get_keyframe_folder(report_id),

@@ -102,6 +102,77 @@
         }
 
 
+        /* Split button container */
+        .split-button {
+            position: relative;
+            display: inline-flex;
+        }
+
+        /* Main button styling */
+        .main-button {
+            width: max-content;
+            padding: 10px 15px;
+            background-color: var(--accent-color-interaction);
+            color: var(--font-color-b);
+            border: 1px solid var(--accent-color-interaction);
+            border-radius: 5px 0 0 5px;
+            cursor: pointer;
+            outline: none;
+        }
+
+        /* Dropdown toggle button styling */
+        .dropdown-toggle {
+            padding: 12px;
+            background-color: var(--accent-color-interaction);
+            color: var(--font-color-b);
+            border: 1px solid var(--accent-color-interaction);
+            border-radius: 0 5px 5px 0;
+            cursor: pointer;
+            outline: none;
+            border-left: 2px solid var(--bg-color-a);
+        }
+
+        /* Dropdown menu styling */
+        .dropdown-menu {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            background-color: var(--bg-color-page);
+            border: 3px solid var(--bg-color-page);
+            border-radius: 0 0 6px 6px;
+            min-width: 100%;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+            z-index: 2;
+    box-sizing: border-box;
+        }
+
+        /* Dropdown menu buttons */
+        .dropdown-menu button {
+            width: 100%;
+            padding: 10px;
+            background-color: var(--bg-color-page);
+            color: var(--font-color-a);
+            border: none;
+            text-align: left;
+            cursor: pointer;
+            outline: none;
+            z-index: 2;
+            border-radius: 3px;
+        }
+
+        .dropdown-menu button:hover {
+            background-color: var(--accent-color-interaction);
+            color: var(--font-color-b);
+            font-weight: bold;
+        }
+
+        /* Show dropdown when active */
+        .dropdown-menu.show {
+            display: block;
+        }
+
+
 
         .sort-by {
             display: flex;
@@ -279,6 +350,12 @@
             flex-direction: column;
             overflow: hidden;
             transition: all 0.3s;
+        }
+
+        group-reports-container {
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 2.5rem;
         }
 
 
@@ -542,12 +619,23 @@
                         <textarea class="reportDescription" name="description" required></textarea>
 
                     </div>                    
-                    <button class="newReport big_button" onclick="createNewReportInGroup(-1)" title="Create new report" style="width: 145px;">
+                    {# <button class="newReport big_button" onclick="createNewReportInGroup(-1)" title="Create new report" style="width: 145px;">
                         Create new report
-                    </button>
+                    </button> #}
+
+                    <div class="split-button">
+                        <button id="actionButton" class="newReport main-button" onclick="createNewReportInGroup(-1, false)">create mapping report</button>
+
+                        <button class="dropdown-toggle" onclick="toggleDropdown()">▼</button>
+
+                        <div id="dropdownMenu" class="dropdown-menu">
+                            <button onclick="selectAction(this, 'create mapping report', -1, false)">create mapping report</button>
+                            <button onclick="selectAction(this, 'create 360 report', -1, true)">create 360 report</button>
+                        </div>
+                    </div>
+
                 </div>
             </div>
-
             <div class="group-reports-container" style="padding: 0;"></div>
         </div>
 
@@ -628,17 +716,14 @@
                                 <textarea class="reportDescription" name="description" required></textarea>
 
                             </div>
-                            <button class="newReport big_button" onclick="createNewReportInGroup(01)" style="width:145px" title="Create new report">
+                            <button class="newReport big_button" onclick="createNewReportInGroup(01, false)" style="width:145px" title="Create new report">
                                 Create new report
                             </button>
                         </div>
                     </div>
 
 
-
-
-                    <div class="group-reports-container"
-                        style="display: flex; flex-direction: column; margin-bottom: 2.5rem;">
+                    <div class="group-reports-container">
                     </div>
                 </div>
             </details>
@@ -726,7 +811,7 @@
             let unsortedSection = document.getElementById('unsorted-reports-container');
             let projectsContainer = unsortedSection.querySelector('.group-reports-container');
 
-            unsortedSection.querySelector('.newReport').setAttribute('onclick', `createNewReportInGroup(-1);`);
+            unsortedSection.querySelector('.newReport').setAttribute('onclick', `createNewReportInGroup(-1, false);`);
             unsortedSection.querySelector('.showAddButton').setAttribute('onclick', `showAddReportForm(-1);`);
             unsortedSection.querySelector('.addReportForm').setAttribute('id', `addReportForm-1`);
             unsortedSection.querySelector('.addReportFormMask').setAttribute('id', `addReportFormMask-1`);
@@ -743,7 +828,7 @@
             clone.querySelector('.group-description').textContent = groupDescription;
             clone.querySelector('.group-id').textContent = groupID;
 
-            clone.querySelector('.newReport').setAttribute('onclick', `createNewReportInGroup(${groupID});`);
+            clone.querySelector('.newReport').setAttribute('onclick', `createNewReportInGroup(${groupID}, false);`);
             clone.querySelector('.showAddButton').setAttribute('onclick', `showAddReportForm(${groupID});`);
             clone.querySelector('.addReportForm').setAttribute('id', `addReportForm${groupID}`);
             clone.querySelector('.addReportFormMask').setAttribute('id', `addReportFormMask${groupID}`);
@@ -978,7 +1063,15 @@
                 form.style.display = 'flex';
                 form.style.transform = 'translateY(0)';
                 mask.style.webkitTransitionDelay = '0.1s';
+                //after 0.1 seconds, set the overflow to visible, so the form can be displayed
+                setTimeout(() => {
+                    mask.style.overflow = 'visible';
+                    form.style.transform = "none";
+                }, 300);
+                
+
             } else {
+                mask.style.overflow = 'hidden';
                 mask.style.height = '0px';
                 form.style.transform = 'translateY(-100%)';
                 mask.style.webkitTransitionDelay = '0s';
@@ -986,7 +1079,7 @@
 
         }
 
-        function createNewReportInGroup(projectGroupID) {
+        function createNewReportInGroup(projectGroupID, slam) {
             let name = document.querySelector(`.addReportFormMask #addReportForm${projectGroupID} .reportName`).value;
             let description = document.querySelector(`.addReportFormMask #addReportForm${projectGroupID} .reportDescription`).value;
             //clear the input fields
@@ -994,6 +1087,19 @@
             document.querySelector(`.addReportFormMask #addReportForm${projectGroupID} .reportDescription`).value = '';
 
             showAddReportForm(projectGroupID);
+
+            let reportType = 'mapping';
+
+            if (slam) {
+                console.log('Creating new 360 report');
+                reportType = 'slam';
+            }
+
+            console.log('Creating new report with following data:');
+            console.log('Name:', name);
+            console.log('Description:', description);
+            console.log('Project Group ID:', projectGroupID);
+            console.log('Report Type:', reportType);
 
 
 
@@ -1005,7 +1111,8 @@
                 body: JSON.stringify({
                     'name': name,
                     'description': description,
-                    'project_group_id': projectGroupID
+                    'project_group_id': projectGroupID,
+                    'report_type': reportType
                 })
             }).then(response => {
                 if (response.ok) {
@@ -1033,6 +1140,36 @@
             console.log("showing" + id);
             window.location.href = "/group/" + id;
         }
+
+
+        function toggleDropdown() {
+            document.querySelector(".dropdown-menu").classList.toggle("show");
+        }
+
+        function selectAction(buttonElement, actionText, parameterA, parameterB) {
+            let mainButton = buttonElement.closest('.split-button').querySelector('.main-button');
+
+            mainButton.innerText = actionText;
+
+            mainButton.onclick = function() {
+                createNewReportInGroup(parameterA, parameterB); // Call the function with the provided parameter
+            };
+
+            document.querySelector(".dropdown-menu").classList.remove("show");
+        }
+
+        window.onclick = function(event) {
+        if (!event.target.matches('.dropdown-toggle')) {
+            let dropdowns = document.getElementsByClassName("dropdown-menu");
+            for (let i = 0; i < dropdowns.length; i++) {
+            let openDropdown = dropdowns[i];
+            if (openDropdown.classList.contains('show')) {
+                openDropdown.classList.remove('show');
+            }
+            }
+        }
+        }
+
 
 
 
@@ -1411,6 +1548,10 @@
                 }
             });
         }
+
+
+
+
 
 
 
