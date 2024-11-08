@@ -144,7 +144,7 @@
             min-width: 100%;
             box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
             z-index: 2;
-    box-sizing: border-box;
+            box-sizing: border-box;
         }
 
         /* Dropdown menu buttons */
@@ -298,7 +298,9 @@
             font-weight: bold;
         }
 
-        .text-input-big, .reportName, .reportDescription {
+        .text-input-big,
+        .reportName,
+        .reportDescription {
             width: 30%;
             border-radius: 4px;
             border-style: solid;
@@ -307,8 +309,9 @@
             color: var(--font-color-a);
         }
 
-        .reportName, .reportDescription {
-            border-radius: 6px; 
+        .reportName,
+        .reportDescription {
+            border-radius: 6px;
             margin: 4px;
         }
 
@@ -319,6 +322,12 @@
         .reportDescription {
             width: 100%;
             resize: none;
+        }
+
+        .group-reports-container {
+            display: flex;
+            flex-direction: column-reverse;
+            margin-bottom: 2.5rem;
         }
 
 
@@ -352,11 +361,6 @@
             transition: all 0.3s;
         }
 
-        group-reports-container {
-            display: flex;
-            flex-direction: column;
-            margin-bottom: 2.5rem;
-        }
 
 
 
@@ -371,6 +375,7 @@
             padding: 12px;
             margin-bottom: 10px;
             cursor: pointer;
+            transition: transform 0s ease;
         }
 
         .report:hover {
@@ -599,7 +604,7 @@
 
             <div class="oneLineFromLeft">
                 <h2 style="margin-right: 12px">Unsorted reports</h2>
-                <button class="showAddButton big_button" onclick="showAddReportForm(-1)" title="New Report">
+                <button class="showAddButton big_button" onclick="showAddReportForm(-1, false)" title="New Report">
                     New Report
                 </button>
 
@@ -618,19 +623,23 @@
                         <label style="line-height: 42px;" for="description">Description:</label>
                         <textarea class="reportDescription" name="description" required></textarea>
 
-                    </div>                    
-                    {# <button class="newReport big_button" onclick="createNewReportInGroup(-1)" title="Create new report" style="width: 145px;">
+                    </div>
+                    {# <button class="newReport big_button" onclick="createNewReportInGroup(-1)"
+                        title="Create new report" style="width: 145px;">
                         Create new report
                     </button> #}
 
                     <div class="split-button">
-                        <button id="actionButton" class="newReport main-button" onclick="createNewReportInGroup(-1, false)">create mapping report</button>
+                        <button id="actionButton" class="newReport main-button"
+                            onclick="createNewReportInGroup(-1, false)">create mapping report</button>
 
                         <button class="dropdown-toggle" onclick="toggleDropdown()">▼</button>
 
                         <div id="dropdownMenu" class="dropdown-menu">
-                            <button onclick="selectAction(this, 'create mapping report', -1, false)">create mapping report</button>
-                            <button onclick="selectAction(this, 'create 360 report', -1, true)">create 360 report</button>
+                            <button onclick="selectAction(this, 'create mapping report', -1, false)">create mapping
+                                report</button>
+                            <button onclick="selectAction(this, 'create 360 report', -1, true)">create 360
+                                report</button>
                         </div>
                     </div>
 
@@ -690,7 +699,7 @@
 
                     <div class="oneLineLeftRight" style="margin: 10px 0">
                         <div>
-                            <button class="showAddButton big_button" onclick="showAddReportForm(01)" title="Add Report">
+                            <button class="showAddButton big_button" onclick="showAddReportForm(01, false)" title="Add Report">
                                 Add Report
                             </button>
                             <button class="openGroupReportButton big_button" onclick="openGroupReport(01)"
@@ -716,7 +725,8 @@
                                 <textarea class="reportDescription" name="description" required></textarea>
 
                             </div>
-                            <button class="newReport big_button" onclick="createNewReportInGroup(01, false)" style="width:145px" title="Create new report">
+                            <button class="newReport big_button" onclick="createNewReportInGroup(01, false)"
+                                style="width:145px" title="Create new report">
                                 Create new report
                             </button>
                         </div>
@@ -810,9 +820,10 @@
             let unsortedProjects = reportsTmpCopy.filter(report => report.project_group_id == null);
             let unsortedSection = document.getElementById('unsorted-reports-container');
             let projectsContainer = unsortedSection.querySelector('.group-reports-container');
+            unsortedProjects.reverse();
 
             unsortedSection.querySelector('.newReport').setAttribute('onclick', `createNewReportInGroup(-1, false);`);
-            unsortedSection.querySelector('.showAddButton').setAttribute('onclick', `showAddReportForm(-1);`);
+            unsortedSection.querySelector('.showAddButton').setAttribute('onclick', `showAddReportForm(-1, false);`);
             unsortedSection.querySelector('.addReportForm').setAttribute('id', `addReportForm-1`);
             unsortedSection.querySelector('.addReportFormMask').setAttribute('id', `addReportFormMask-1`);
 
@@ -829,7 +840,7 @@
             clone.querySelector('.group-id').textContent = groupID;
 
             clone.querySelector('.newReport').setAttribute('onclick', `createNewReportInGroup(${groupID}, false);`);
-            clone.querySelector('.showAddButton').setAttribute('onclick', `showAddReportForm(${groupID});`);
+            clone.querySelector('.showAddButton').setAttribute('onclick', `showAddReportForm(${groupID}, false);`);
             clone.querySelector('.addReportForm').setAttribute('id', `addReportForm${groupID}`);
             clone.querySelector('.addReportFormMask').setAttribute('id', `addReportFormMask${groupID}`);
             clone.querySelector('.openGroupReportButton').setAttribute('onclick', `openGroupReport(${groupID});`);
@@ -859,7 +870,7 @@
             }
 
             groupContainer.appendChild(clone);
-            
+
         }
 
 
@@ -901,21 +912,93 @@
             if (order == -1) {
                 //check if -1 or similar is alredy in use and if so, set it to the next lower number, to still appear on top
                 let reports = reportsContainer.querySelectorAll('.report');
+                let highestOrder = 0;
                 for (let i = 0; i < reports.length; i++) {
                     console.log(reports[i].style.order);
-                    if (reports[i].style.order <= order) {
-                        order = reports[i].style.order - 1;
+                    if (Number(reports[i].style.order) <= order) {
+                        order = Number(reports[i].style.order) - 1;
                         console.log('new order:', order);
+                    }
+                    if (Number(reports[i].style.order) > highestOrder) {
+                        highestOrder = Number(reports[i].style.order);
                     }
                 }
                 console.log('final order:', order);
+
+                insertOnTopAndAnimateDown(clone, reportsContainer, highestOrder, order);
+            } else {
+                clone.querySelector('.report').style.order = order;
+
+                reportsContainer.appendChild(clone);
             }
 
+        }
 
-            clone.querySelector('.report').style.order = order;
-
+        function insertOnTopAndAnimateDown(clone, reportsContainer, highestOrder, order) {
+            console.log('insert on top with order:', (Number(highestOrder) + 1) , 'and animate down to:', order);
+            let reportDiv = clone.querySelector('.report');
+            reportDiv.style.order = (Number(highestOrder) + 1) + "";
+            reportDiv.style.zIndex = '13';
             reportsContainer.appendChild(clone);
+            //wait for DOM to update
+            setTimeout(() => {
+                animateReportDown(reportsContainer, reportDiv, order);
+            }, 350);
             
+        
+        }
+
+        function animateReportDown(reportsContainer, reportDiv, order) {
+            console.log('animate down');
+            let items = Array.from(reportsContainer.querySelectorAll('.report'));
+            let positions = items.map(item => item.getBoundingClientRect());
+            reportDiv.style.order = order;
+            console.log('order:', order);
+
+            requestAnimationFrame(() => {
+                // Capture new positions after the order change
+                let highestDeltaY = 0;
+                items.forEach((item, index) => {
+                    let newPosition = item.getBoundingClientRect();
+                    let deltaY = positions[index].top - newPosition.top;
+                    if (Math.abs(deltaY) > Math.abs(highestDeltaY)) {
+                        highestDeltaY = deltaY;
+                    }
+                });
+                
+                let duration =  -1 * highestDeltaY / 400;
+                if (duration < 0.8) {
+                    duration = 0.8;
+                }
+                console.log('duration:', duration);
+
+                items.forEach((item, index) => {
+                    const newPosition = item.getBoundingClientRect();
+                    const deltaY = positions[index].top - newPosition.top;
+
+                    // Apply a transform to animate back to the old position
+                    item.style.transform = `translateY(${deltaY}px)`;
+                    reportDiv.style.boxShadow = '0px 0px 20px 0px rgba(0,0,0,0.4)';
+
+                    // Force reflow to make sure the transform is applied
+                    item.offsetHeight; // Trigger reflow
+
+                    // Remove the transform to let it smoothly transition to its new position
+                    requestAnimationFrame(() => {
+                        item.style.transition = `transform ${duration}s ease`;
+                        item.style.transform = '';
+                    });
+                });
+
+                // Clean up transition style after animation completes
+                items.forEach(item => {
+                    item.addEventListener('transitionend', () => {
+                        item.style.transition = '';
+                        item.style.zIndex = '';
+                        item.style.boxShadow = '';
+                    }, { once: true });
+                });
+            });
         }
 
 
@@ -1053,10 +1136,14 @@
             window.location.href = "/group/" + id;
         }
 
-        function showAddReportForm(groupID) {
+        function showAddReportForm(groupID, hideWithoutAnimation) {
             console.log(`trying to find forms with ids: addReportFormMask${groupID} and addReportForm${groupID}`);
             let mask = document.getElementById(`addReportFormMask${groupID}`);
             let form = document.getElementById(`addReportForm${groupID}`);
+
+            if(hideWithoutAnimation){
+                mask.style.transition = 'all 0.0s';
+            }
 
             if (mask.style.height === '0px') {
                 mask.style.height = '80px';
@@ -1068,7 +1155,7 @@
                     mask.style.overflow = 'visible';
                     form.style.transform = "none";
                 }, 300);
-                
+
 
             } else {
                 mask.style.overflow = 'hidden';
@@ -1076,6 +1163,11 @@
                 form.style.transform = 'translateY(-100%)';
                 mask.style.webkitTransitionDelay = '0s';
             }
+            setTimeout(() => {
+                mask.style.transition = 'all 0.3s';
+            }, 100);
+
+            
 
         }
 
@@ -1086,7 +1178,7 @@
             document.querySelector(`.addReportFormMask #addReportForm${projectGroupID} .reportName`).value = '';
             document.querySelector(`.addReportFormMask #addReportForm${projectGroupID} .reportDescription`).value = '';
 
-            showAddReportForm(projectGroupID);
+            showAddReportForm(projectGroupID, true);
 
             let reportType = 'mapping';
 
@@ -1151,23 +1243,23 @@
 
             mainButton.innerText = actionText;
 
-            mainButton.onclick = function() {
+            mainButton.onclick = function () {
                 createNewReportInGroup(parameterA, parameterB); // Call the function with the provided parameter
             };
 
             document.querySelector(".dropdown-menu").classList.remove("show");
         }
 
-        window.onclick = function(event) {
-        if (!event.target.matches('.dropdown-toggle')) {
-            let dropdowns = document.getElementsByClassName("dropdown-menu");
-            for (let i = 0; i < dropdowns.length; i++) {
-            let openDropdown = dropdowns[i];
-            if (openDropdown.classList.contains('show')) {
-                openDropdown.classList.remove('show');
+        window.onclick = function (event) {
+            if (!event.target.matches('.dropdown-toggle')) {
+                let dropdowns = document.getElementsByClassName("dropdown-menu");
+                for (let i = 0; i < dropdowns.length; i++) {
+                    let openDropdown = dropdowns[i];
+                    if (openDropdown.classList.contains('show')) {
+                        openDropdown.classList.remove('show');
+                    }
+                }
             }
-            }
-        }
         }
 
 

@@ -521,8 +521,8 @@ class ProjectManager:
             template_data['publish_points'] = False
             template_data['KeyframeInserter'] = "KeyframeInserter: \n max_interval: 0.333 \n min_interval: 0.1 \n max_distance: 1.0 \n lms_ratio_thr_almost_all_lms_are_tracked: 0.9 \n lms_ratio_thr_view_changed: 0.5 \n enough_lms_thr: 100 \n wait_for_local_bundle_adjustment: false"
         #disable landmark output for large videos
-        if data['video_metadata']['width'] > 5000:
-            template_data['publish_points'] = False
+        # if data['video_metadata']['width'] > 5000:
+        #     template_data['publish_points'] = False
         print(template_data, flush=True)
         with open('./static/default/template.yaml', 'r') as template:
             src = Template(template.read())

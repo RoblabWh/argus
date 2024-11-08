@@ -21,7 +21,7 @@ services:
       - ARGUS_WEBODM_PORT
     restart: unless-stopped
   detection:
-    image: argus_mmdetection
+    image: argus_detection
     build: ./detection
     container_name: argus_detection
     ports:
