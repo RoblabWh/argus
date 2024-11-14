@@ -55,7 +55,7 @@
             img.loading = "lazy";
             img.style = "padding: 5px;width:95%;cursor: pointer;";
             img.id = "galleryImage" + keyframe;
-            img.src = keyframe_folder + keyframe;
+            img.src = keyframe_folder + 'thumbnails/' + keyframe;
             img.setAttribute('onclick',"show_keyframe(" + keyframe.replace(/\D/g,'') + ")");
             div.appendChild(img);
             keyframe_gallery.appendChild(div);

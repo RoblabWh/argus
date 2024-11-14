@@ -740,6 +740,8 @@ class ArgusServer:
             print(keyframe_chooser, flush=True)
             generate_overview_map = request.form.get('generate_overview_map')
             update_frequency = int(request.form.get('update_frequency'))
+            flip_video = request.form.get('flip_video')
+            flip_video = True if flip_video is not None else False
             no_sleep = True if no_sleep is not None else False
             slam_settings = {"no_sleep": no_sleep, "frame_skip": frame_skip, "keyframe-profile": keyframe_chooser}
             generate_map = True if generate_overview_map is not None else False
@@ -758,6 +760,10 @@ class ArgusServer:
 
             project = self.project_manager.get_project(report_id)
             data = project['data']
+
+
+            if flip_video:
+                self.slam_manager.flip_video(data["video"][0])
 
             print("starting slam " + str(report_id), "no sleep: " + str(no_sleep),
                   "frame_skip: " + str(frame_skip), flush=True)
@@ -1062,6 +1068,7 @@ class ArgusServer:
         keyfrm_folder = self.project_manager.get_keyframe_folder(report_id)
         output = self.project_manager.get_mapping_output_folder(report_id)
         self.project_manager.load_keyframe_images(report_id)
+        self.slam_manager.create_thumbnails(keyfrm_folder)
 
     def start_mapping(self, report_id):
         keyfrms = self.project_manager.get_keyframe_file_path(report_id)
