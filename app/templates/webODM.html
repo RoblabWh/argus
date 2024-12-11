@@ -150,13 +150,13 @@
 
         $.get('/process_in_webodm/{{ id }}', function(response) {
             if (response.success) {
-                document.getElementById("processInWebODMButton").innerHTML = "Successfuly send to WebODM";
+                document.getElementById("processInWebODMButton").innerHTML = "Successfully sent to WebODM";
                 url = window.location.protocol + "//" + window.location.hostname + ":" + response.port;
                 console.log(url);
                 window.open(url, '_blank').focus();
                 updateODMTasksTable();
             } else {
-                document.getElementById("processInWebODMButton").innerHTML = "Failed to send to WebODM";
+                document.getElementById("processInWebODMButton").innerHTML = "Failed to sent to WebODM";
                 updateODMTasksTable();
             }
         });
