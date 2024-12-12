@@ -438,10 +438,14 @@ class ImageMapper:
         return ir_settings
 
     def generate_error_map(self, images, ir=False):
-        if len(images) > self.minimum_number_of_images:
-            map_scaler = MapScaler(images, self.map_width_px, self.map_height_px)
-            map_elements = map_scaler.get_map_elements()
-            self.__calculate_gps_for_mapbox_plugin_initial_guess(map_scaler, map_elements)
+        try:
+            if len(images) > self.minimum_number_of_images:
+                map_scaler = MapScaler(images, self.map_width_px, self.map_height_px)
+                map_elements = map_scaler.get_map_elements()
+                self.__calculate_gps_for_mapbox_plugin_initial_guess(map_scaler, map_elements)
+        except Exception as e:
+            print("Error: Generating with backup gps bounds - error:", e)
+
 
         lat1 = self.corner_gps_left_bottom.get_latitude()
         long1 = self.corner_gps_left_bottom.get_longitude()
@@ -471,11 +475,12 @@ class ImageMapper:
         self.middle_gps = GPS(0, 51.57399, 7.02826)
 
     def _generate_fallback_gps_from_images(self, images):
+        print("Fallback GPS from images", flush=True)
         try:
             lat_max = 999999999.9
-            lat_min = 0.0
+            lat_min = -999999999.9
             long_max = 999999999.9
-            long_min = 0.0
+            long_min = -999999999.9
             for image in images:
                 try:
                     gps = image.get_exif_header().get_gps()
@@ -497,6 +502,7 @@ class ImageMapper:
             self.corner_gps_left_bottom = GPS(0, lat_min, long_min)
             self.corner_gps_right_top = GPS(0, lat_max, long_max)
             self.middle_gps = GPS(0, (lat_max + lat_min) / 2, (long_max + long_min) / 2)
+            print("Fallback GPS: ", self.corner_gps_left_bottom, self.corner_gps_right_top, self.middle_gps, flush=True)
             return True
         except:
             print("Error: Fallback GPS failed!")

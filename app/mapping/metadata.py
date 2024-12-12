@@ -171,9 +171,14 @@ class Metadata:
         """
         relative_altitude = 1
         try:
-            relative_altitude = float(self._get_if_exist(self.data_dict, keys['relative_altitude']))
-        except:
-            print('___UNUSABLE___ Error while loading relative altitude', flush=True)
+            rel_alt = self._get_if_exist(self.data_dict, keys['relative_altitude'])
+            #chack if there is any text like m or ft in the string
+            if any(char.isdigit() for char in rel_alt):
+                relative_altitude = float(re.sub('[a-zA-Z\'\"]', '', rel_alt))
+            else:
+                relative_altitude = float()
+        except Exception as e:
+            print('___UNUSABLE___ Error while loading relative altitude:' + str(e), flush=True)
             relative_altitude = 1
             self.usable = False
         try:
@@ -181,8 +186,14 @@ class Metadata:
                 re.sub('[a-zA-Z\'\"]', '', str(self._get_if_exist(self.data_dict, keys['latitude'])))).split()
             longitude_gms = (
                 re.sub('[a-zA-Z\'\"]', '', str(self._get_if_exist(self.data_dict, keys['longitude'])))).split()
-            latitude = GPS.gms_to_dg(latitude_gms)
-            longitude = GPS.gms_to_dg(longitude_gms)
+            west = False
+            south = False
+            if self._get_if_exist(self.data_dict, keys['latitude'])[-1] == 'S':
+                south = True
+            if self._get_if_exist(self.data_dict, keys['longitude'])[-1] == 'W':
+                west = True
+            latitude = GPS.gms_to_dg(latitude_gms, south)
+            longitude = GPS.gms_to_dg(longitude_gms, west)
             return GPS(relative_altitude, latitude, longitude)
         except:
             print('___UNUSABLE___ Error while loading GPS', flush=True)
@@ -249,7 +260,7 @@ class Metadata:
                 return camera_properties
 
             except Exception as e:
-                print('__UNUSABLE__ Error while loading camera properties: ' + str(e), flush=True)
+                print('__UNUSABLE__ Error while loading camera properties of ' + camera_model_name + ': ' + str(e), flush=True)
                 self.usable = False
                 return None
 

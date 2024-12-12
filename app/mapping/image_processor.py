@@ -185,6 +185,22 @@ class ImageProcessor:
             if imageWithCameraData.get_exif_header().get_camera_properties() is not None:
                 break
 
+        if imageWithCameraData.get_exif_header().get_camera_properties() is None:
+            try:
+                for i in range(len(self.all_images)):
+                    image = self.all_images[i]
+                    if image.get_exif_header().camera_model is not None:
+                        camera_specs = [{"description": 'Camera Model', "value": image.get_exif_header().camera_model},
+                                        {"description": 'Focal Length', "value": "N/A"},
+                                        {"description": 'Horizontal FOV', "value": "N/A"},
+                                        {"description": 'Vertical FOV', "value": "N/A"},
+                                        {"description": 'Sensor Size', "value": "N/A"}]
+
+                        return camera_specs
+            except Exception as e:
+                print("Error while extracting camera specs: ", e)
+                return [{"description": 'Camera Model', "value": "data not available"},]
+
         # extract camera model, focal length, horizontal_fov, vertical_fov, sensor size
         camera_properties = imageWithCameraData.get_exif_header().get_camera_properties()
         camera_model = camera_properties.get_model()
@@ -270,8 +286,8 @@ class ImageProcessor:
                 # if a coordinates is closer than 0.0001, to its previous one, it is not added to the list
                 if len(coordinates) == 0:
                     coordinates.append(coordinate)
-                elif (abs(coordinates[-1][0] - coordinate[0]) > 0.000022 and
-                      abs(coordinates[-1][1] - coordinate[1]) > 0.000022):
+                elif (abs(coordinates[-1][0] - coordinate[0]) > 0.00001 and
+                      abs(coordinates[-1][1] - coordinate[1]) > 0.00001):
                     coordinates.append(coordinate)
             except:
                 print("no gps data on image: ", image.get_image_path())

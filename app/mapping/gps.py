@@ -142,12 +142,16 @@ class GPS:
 
     #GPSUtils
     @staticmethod
-    def gms_to_dg(coordinate):
+    def gms_to_dg(coordinate, southOrWest=False):
         """
         Converting GMS to DG.
         :param coordinate: gps coordinate
         :return: gps coordinate in DG
         """
+
+        if southOrWest:
+            return -1 * GPS.gms_to_dg(coordinate)
+
         grad = float(coordinate[0])
         minutes = float(coordinate[1])
         seconds = float(coordinate[2])
