@@ -8,6 +8,13 @@ ARGUS is a documentation and analysis app designed for structured work with dron
 Since ARGUS is a WebApp, it can be accessed from every device within the same network as the server. It is recommended to use Chrome (or any Chrome-based browser).
 Currently, Argus has only been tested with data from DJI drones (Matrice M30T, Mavic Enterprise, Mavic 2, Mavic 3). Using data from other drones can lead to problems.
 
+As a new feature argus can now process 360° videos and reconstruct camera paths and partial point clouds, as well as giving you a 360 panoramic tour similar to google street view.
+The user can also upload two separate videos (e.g., in Insta360 format) instead of a pre-stitched 360° video. 
+These will then be stitched together into a 360° video. However, it is recommended to perform this step in advance using the manufacturer's software for the 360° camera, as this typically provides faster and more reliable results.
+To speed up 360° video processing, increase the frame skip value (a value of 3 is a good starting point, adjustable in the 360° report settings), but note it may cause reconstruction errors. 
+A 360 Report can currently only be created in the unsorted reports section. Keep in mind, that the 360 Report is not as polished as the other reports. 
+A sample Video for testing is linked down below in the Example section.
+
 This WebApp was developed at the Westphalian University of Applied Sciences (Westfälische Hochschule) as part of the E-DRZ research project, funded by the German Federal Ministry of Education and Research. For more details about our latest research findings, you can read our paper published at [IEEE International Symposium on Safety, Security, and Rescue Robotics (SSRR2023), Fukushima, Japan, 13-15. Nov. 2023](https://github.com/RoblabWh/argus/blob/main/papers/ssrr2023-surmann.pdf).
 
 *Please note that ARGUS is intended for use in a scientific context and does not offer the reliability and stability of fully developed commercial software.*
@@ -53,6 +60,8 @@ The WebApp typically runs on port 5000. You can use either your localhost or the
 We have an already processed example project of a flooding in Germany in 2021 available [(ArgusExample01.zip)](https://dF2wQbFNW2zuCpK:fire@w-hs.sciebo.de/public.php/webdav/argus/ArgusExample01.zip
 ). Use the import feature under "new report" on the projects overview page to load the project. 
 
+A 360° video for testing the new feature can be found [here](https://dF2wQbFNW2zuCpK:fire@w-hs.sciebo.de/public.php/webdav/argus/VID_20221029_010013_00_004.mp4) (processing took a little bit more than 5 minutes with frame skip set to 3, on a Ryzen 7 5800X, with 32GB of RAM and an NVIDIA RTX 3080).
+
 Short Demo video on YouTube: [ARGUS - Aerial Rescue and Geospatial Utility System](https://www.youtube.com/watch?v=cUuceC7Efps)
 
 
@@ -69,3 +78,4 @@ Short Demo video on YouTube: [ARGUS - Aerial Rescue and Geospatial Utility Syste
 - Currently, ARGUS primarily supports and is tested with DJI drones (DJI M30T, as well as multiple Mavic and Mavic Enterprise models).
 - In order to generate fast orthophotos, the UAVs gimbal should orient the camera orthogonal towards ground (-90°).
 - If WebODM has many 'WARNING Bad Request: /api/token-auth/' during startup and the redirection from ARGUS does not work, try pulling a new WebODM image with './argus.sh pull --ignore-buildable' and rebuild the server with './argus.sh up --build'.
+- Some older Linus operating systems may have problems with calling docker compose without a hyphen in between (docker-compose instead of docker compose).
