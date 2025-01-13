@@ -100,7 +100,7 @@ class MapScalerImproved:
         utm_grid_north_divergence = self.calculate_grid_north_convergence(zone, *gps)
 
         # camera and photo specs
-        focal_length = image.get_exif_header().camera_properties.get_focal_length()
+        focal_length = 1#image.get_exif_header().camera_properties.get_focal_length()
         fov_horizontal = image.get_exif_header().camera_properties.get_fov()
         image_width_px = image.get_width()
         image_height_px = image.get_height()
@@ -110,6 +110,13 @@ class MapScalerImproved:
                         "corrected": orientation}
         # print("orientations: ", orientations, flush=True)
         # print("offset: ", rotation_offset, flush=True)
+
+        # # the fov is not handled very consistent.
+        # # if the fov is the diagonal, not the horizontal fov, it is calculated like this:
+        # fov = fov_horizontal
+        # focal_length_estimated = (math.hypot(image_width_px, image_height_px)*0.5) / math.cos(math.radians(fov/2))
+        # fov_horizontal = math.degrees(2 * math.atan2(image_width_px / 2, focal_length_estimated))
+        # vertical_fov = math.degrees(2 * math.atan2(image_height_px / 2, focal_length_estimated))
 
         sensor_width_mm = math.tan(math.radians(fov_horizontal) / 2) * (2 * focal_length)
         sensor_height_mm = sensor_width_mm / (image_width_px / image_height_px)

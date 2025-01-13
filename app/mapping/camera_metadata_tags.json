@@ -111,6 +111,35 @@
       "flight_yaw": "XMP:Yaw",
       "flight_pitch": "XMP:Pitch"
     }
+  },
+
+   "E20Tvx 0.1.34A": {
+    "creation_time": "EXIF:DateTimeOriginal",
+    "image_size": "Composite:ImageSize",
+    "projection_type": "XMP:ProjectionType",
+    "gps": {
+      "longitude": "Composite:GPSLongitude",
+      "latitude": "Composite:GPSLatitude",
+      "relative_altitude": "XMP:AboveHomeAltitude"
+    },
+    "ir": {
+      "ir": "",
+      "ir_value": "",
+      "ir_image_size": {"x":640,"y":512},
+      "filename_suffix": "_T"
+    },
+    "camera_properties": {
+      "focal_length": "EXIF:FocalLength",
+      "fov": "Composite:FOV"
+    },
+    "orientation": {
+      "gimbal_roll": "XMP:GimbalRoll",
+      "gimbal_yaw": "XMP:DroneYaw",
+      "gimbal_pitch": "XMP:GimbalPitch",
+      "flight_roll": "XMP:DroneRoll",
+      "flight_yaw": "XMP:DroneYaw",
+      "flight_pitch": "XMP:DronePitch"
+    }
   }
 
 }

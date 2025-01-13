@@ -8,6 +8,8 @@
     "MAVIC2-ENTERPRISE-ADVANCED": {"Composite:FOV":62.0, "EXIF:FocalLength":4.5},
     "MAVIC2-ENTERPRISE-ADVANCED_IR": {"Composite:FOV":42.0, "EXIF:FocalLength":4.5},
     "M30T": {"Composite:FOV":70.7, "EXIF:FocalLength":4.4},
-    "M30T_IR": {"Composite:FOV":44.5, "EXIF:FocalLength":9.1}
+    "M30T_IR": {"Composite:FOV":44.5, "EXIF:FocalLength":9.1},
+    "E20Tvx 0.1.34A": {"Composite:FOV":82, "EXIF:FocalLength":1},
+    "E20Tvx 0.1.34A_IR": {"Composite:FOV":41.4, "EXIF:FocalLength":1}
 }
 

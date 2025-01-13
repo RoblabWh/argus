@@ -22,6 +22,8 @@ class Metadata:
         data_string = json.dumps(self.data, sort_keys=True, indent=4, separators=(',', ': '))
         self.data_dict = json.loads(data_string)[0]
 
+        # print("Data dict: " + str(self.data_dict), flush=True)
+
         metadata_tags = json.load(open(camera_metadata_tags_path))
         metadata_tags_dict = None
 
@@ -38,6 +40,7 @@ class Metadata:
         self.camera_properties = None
 
         self.camera_model = self.get_camera_model()
+        # print("Camera model: " + self.camera_model, flush=True)
 
         if self.camera_model:
             try:
@@ -86,6 +89,8 @@ class Metadata:
 
         # check if it is an ir image
         self.ir = self.check_ir(tags_dict['ir'])
+        # if self.ir:
+        #     print(self.image_path, self.creation_time, self.data_dict, flush=True)
 
         self.camera_properties = self.load_camera_properties(tags_dict['camera_properties'], self.ir)
         self.xmp_metadata = self.load_orientation(tags_dict['orientation'])
@@ -102,6 +107,7 @@ class Metadata:
             creation_time = dt.datetime.strptime(creation_time_str, '%Y:%m:%d %H:%M:%S').timestamp()
 
         except Exception as e:
+            print("exception reading time of" + self.image_path + ": " + str(e), flush=True)
             creation_time = os.path.getmtime(self.image_path)
             creation_time_str = dt.datetime.fromtimestamp(creation_time).strftime('%Y:%m:%d %H:%M:%S')
 
@@ -172,11 +178,13 @@ class Metadata:
         relative_altitude = 1
         try:
             rel_alt = self._get_if_exist(self.data_dict, keys['relative_altitude'])
-            #chack if there is any text like m or ft in the string
-            if any(char.isdigit() for char in rel_alt):
-                relative_altitude = float(re.sub('[a-zA-Z\'\"]', '', rel_alt))
+            if isinstance(rel_alt, float):
+                relative_altitude = rel_alt
             else:
-                relative_altitude = float()
+                if any(char.isdigit() for char in rel_alt):
+                    relative_altitude = float(re.sub('[a-zA-Z\'\"]', '', rel_alt))
+                else:
+                    relative_altitude = float(rel_alt)
         except Exception as e:
             print('___UNUSABLE___ Error while loading relative altitude:' + str(e), flush=True)
             relative_altitude = 1
@@ -249,6 +257,7 @@ class Metadata:
             camera_properties = CameraProperties(camera_model_name, fov, focal_length)
             return camera_properties
         except Exception as e:
+            # print('loading camera properties failed with error: ' + str(e), flush=True)
             try:
                 focal_length_str = self._get_if_exist(self.data_dict, keys['focal_length'])
                 fov_str = self._get_if_exist(self.data_dict, keys['fov'])
@@ -304,22 +313,23 @@ class Metadata:
 
 
     def get_data_from_camera_specs(self,camera_model_name, key):
+        # print("get_data_from_camera_specs with params: " + str(camera_model_name) + " and " + str(key), flush=True)
         with open('./mapping/camera_specs.json') as f:
-                data = json.load(f)
-                # print("Camera model name: " + camera_model_name, flush=True)
-                # print("Key: " + key, flush=True)
-                # print("Data: " + str(data), flush=True)
-                if camera_model_name in data:
-                    val = float(data[camera_model_name][key])
-                    # print("Value: " + str(val) + " for key: " + key + " with model: " + camera_model_name, flush=True)
-                    msg = "Using camera_specs.json..."
-                    f.close()
-                else:
-                    msg = "Untested configuration for camera model:\""+str(camera_model_name)+"\", please add Horizontal FOV and Focal Length to camera_specs.json!"
-                    # exit()
-                    f.close()
-                    raise Exception(msg)
-                return val
+            data = json.load(f)
+            # print("Camera model name: " + camera_model_name, flush=True)
+            # print("Key: " + key, flush=True)
+            # print("Data: " + str(data), flush=True)
+            if camera_model_name in data:
+                val = float(data[camera_model_name][key])
+                # print("Value: " + str(val) + " for key: " + key + " with model: " + camera_model_name, flush=True)
+                msg = "Using camera_specs.json..."
+                f.close()
+            else:
+                msg = "Untested configuration for camera model:\""+str(camera_model_name)+"\", please add Horizontal FOV and Focal Length to camera_specs.json!"
+                # exit()
+                f.close()
+                raise Exception(msg)
+            return val
 
 
     def get_gps(self):
