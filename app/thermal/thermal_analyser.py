@@ -37,6 +37,7 @@ class ThermalAnalyser:
             temperature = self.parse_image(image_filename)
             return temperature
         except Exception as e:
+            print('Error parsing image: ', e, flush=True)
             return self.approximate_temp_matrix_fast_multi(report_id, image_filename)
 
     def parse_image(self, image_filename):

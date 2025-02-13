@@ -40,7 +40,7 @@ class ArgusServer:
         self.app.config['UPLOAD_FOLDER'] = project_manager.projects_path
         self.app.config['MAX_CONTENT_LENGTH'] = 500 * 10000 * 10000
         self.app.config['TEMPLATES_AUTO_RELOAD'] = True
-        self.ALLOWED_EXTENSIONS = set(['png', 'jpg', 'jpeg', 'PNG', 'JPG', 'JPEG'])
+        self.ALLOWED_EXTENSIONS = set(['png', 'jpg', 'jpeg', 'PNG', 'JPG', 'JPEG', 'tif', 'TIF'])
         self.ALLOWED_VIDEO_EXTENSIONS = set(['mp4', 'MP4','avi','AVI'])
         self.ALLOWED_INSV_EXTENSIONS = set(['insv', 'INSV'])
         self.ALLOWED_EXTENSIONS_PROJECT = set(['zip'])
@@ -148,6 +148,10 @@ class ArgusServer:
                               view_func=self.update_title)
         self.app.add_url_rule('/update_ir_settings/<int:report_id>/<string:settings>/', methods=['GET'],
                               view_func=self.update_ir_settings)
+        self.app.add_url_rule('/update_altitude_settings/<int:report_id>/<string:rel_alt_string>/', methods=['GET'],
+                                view_func=self.update_altitude_settings)
+        self.app.add_url_rule('/altitude_settings/<int:report_id>', methods=['GET', 'POST'],
+                                view_func=self.send_altitude_settings)
         self.app.add_url_rule('/gradient_lut/<int:gradient_id>', methods=['GET', 'POST'],
                               view_func=self.send_gradient_lut)
         self.app.add_url_rule('/run_detection/<int:report_id>', methods=['GET', 'POST'],
@@ -645,8 +649,13 @@ class ArgusServer:
                     pano_images.append(image)
                 else:
                     rgb_images.append(image)
+
+                if image.exif_header.gps_coordinate.altitude == 0:
+                    self.project_manager.update_relative_alt_missing(report_id, True)
+
             else:
                 done = False
+
 
         for thread in done_threads:
             self.image_filter_threads.remove(thread)
@@ -664,8 +673,10 @@ class ArgusServer:
                 ir_readable = self.thermal_analyser.are_settings_extractable(
                     self.project_manager.get_image_objects_ir(report_id)[0].get_image_path())
 
+            relative_alt_missing = self.project_manager.get_relative_alt_missing(report_id)
+
             return jsonify(
-                {'done': done, "dataSummary": {"rgb": n_rgb, "ir": n_ir, "panos": n_pano, "ir_readable": ir_readable},
+                {'done': done, "dataSummary": {"rgb": n_rgb, "ir": n_ir, "panos": n_pano, "ir_readable": ir_readable, "relative_alt_missing": relative_alt_missing},
                  "pathChanges": path_changes})
 
         return jsonify({'done': done, "dataSummary": {}, "pathChanges": path_changes})
@@ -703,10 +714,12 @@ class ArgusServer:
             with_mapping = request.form.get('with_mapping')
             with_odm = request.form.get('with_odm')
             ai_detection = request.form.get('ai_detection')
+            with_plausibility_check = request.form.get('with_plausibility_check')
 
             with_mapping = True if with_mapping is not None else False
             with_odm = True if with_odm is not None else False
             ai_detection = True if ai_detection is not None else False
+            with_plausibility_check = True if with_plausibility_check is not None else False
 
             map_resolution = request.form.get('map resolution')
             resolutions = {
@@ -724,8 +737,8 @@ class ArgusServer:
                   "with_odm: " + str(with_odm), "ai_detection: " + str(ai_detection),
                   "map_resolution: " + str(map_resolution))
 
-            thread = MapperThread(self.project_manager, self.webodm_manager, with_mapping, with_odm, report_id,
-                                  (max_width, max_height), file_names, data)
+            thread = MapperThread(self.project_manager, self.webodm_manager, with_mapping, with_odm,
+                                  with_plausibility_check,report_id, (max_width, max_height), file_names, data)
             self.threads.append(thread)
             thread.start()
             print("process started")
@@ -969,6 +982,19 @@ class ArgusServer:
         self.project_manager.update_ir_settings_from_website(report_id, settings)
         return "success"
 
+    def update_altitude_settings(self, report_id, rel_alt_string):
+        rel_alt = float(rel_alt_string)
+        print("update_height_settings for id" + str(report_id) + " with: " + str(rel_alt), flush=True)
+        self.project_manager.update_manual_relative_alt_from_website(report_id, rel_alt)
+        return "success"
+
+    def send_altitude_settings(self, report_id):
+        rel_alt_missing = self.project_manager.get_relative_alt_missing(report_id)
+        rel_alt = 0
+        if rel_alt_missing:
+            rel_alt = self.project_manager.get_manual_relative_alt(report_id)
+        return jsonify({'show_settings': rel_alt_missing, 'rel_alt': rel_alt})
+
     def send_gradient_lut(self, gradient_id):
         lut = json.load(open("./static/default/gradient_luts/gradient_lut_" + str(gradient_id) + ".json"))
         return lut
@@ -977,8 +1003,10 @@ class ArgusServer:
         filename = request.form.get('filename')
         print("get_ir_temp_data_of_image for id" + str(report_id) + " with: " + str(filename), flush=True)
         temp_matrix = self.thermal_analyser.get_image_temp_matrix(report_id, filename)
+        print("thermal_analyser.get_image_temp_matrix done", flush=True)
         temperature_matrix = temp_matrix.tolist()
         return jsonify({'temperature_matrix': temperature_matrix})
+
 
 
     def run_detection(self, report_id):

@@ -22,7 +22,7 @@ class Metadata:
         data_string = json.dumps(self.data, sort_keys=True, indent=4, separators=(',', ': '))
         self.data_dict = json.loads(data_string)[0]
 
-        # print("Data dict: " + str(self.data_dict), flush=True)
+        #print("Data dict: " + str(self.data_dict), flush=True)
 
         metadata_tags = json.load(open(camera_metadata_tags_path))
         metadata_tags_dict = None
@@ -40,7 +40,7 @@ class Metadata:
         self.camera_properties = None
 
         self.camera_model = self.get_camera_model()
-        # print("Camera model: " + self.camera_model, flush=True)
+        #print("Camera model: " + self.camera_model, flush=True)
 
         if self.camera_model:
             try:
@@ -175,7 +175,8 @@ class Metadata:
         :param keys: dictionary
         :return: GPS object
         """
-        relative_altitude = 1
+        relative_altitude = 0
+        loaded_altitude = False
         try:
             rel_alt = self._get_if_exist(self.data_dict, keys['relative_altitude'])
             if isinstance(rel_alt, float):
@@ -185,9 +186,10 @@ class Metadata:
                     relative_altitude = float(re.sub('[a-zA-Z\'\"]', '', rel_alt))
                 else:
                     relative_altitude = float(rel_alt)
+            loaded_altitude = True
         except Exception as e:
             print('___UNUSABLE___ Error while loading relative altitude:' + str(e), flush=True)
-            relative_altitude = 1
+            relative_altitude = 0
             self.usable = False
         try:
             latitude_gms = (
@@ -202,12 +204,42 @@ class Metadata:
                 west = True
             latitude = GPS.gms_to_dg(latitude_gms, south)
             longitude = GPS.gms_to_dg(longitude_gms, west)
-            return GPS(relative_altitude, latitude, longitude)
+            gps = GPS(relative_altitude, latitude, longitude)
+
+            #print("altitude: " + str(gps.get_altitude()) + " estimate would be:" + str(gps.estimate_relative_altitude(self.load_gps_altitude())), flush=True)
+
+            if not loaded_altitude:
+                #Esitimating the altitude or use manually entered altitude if available
+                self.usable = False
+                # gps_altitude = self.load_gps_altitude()
+                # if gps.estimate_relative_altitude(gps_altitude):
+                #     print("Estimating relative altitude for " + self.image_path + " with value: " + str(gps.get_altitude()))
+                #     self.usable = True
+                # else:
+                #     print("Failed to estimate relative altitude for " + self.image_path, flush=True)
+                #     self.usable = False
+            return gps
         except:
             print('___UNUSABLE___ Error while loading GPS', flush=True)
             self.usable = False
             return None
 
+    def load_gps_altitude(self):
+        """
+        Load the gps altitude
+        :return: float
+        """
+        keys = ['Composite:GPSAltitude', 'EXIF:GPSAltitude']
+        for key in keys:
+            try:
+                gps_altitude = self._get_if_exist(self.data_dict, key)
+                # the altitude will start with a decimal number, but may be followd with " m" or even more text, that needs to be removed
+                gps_altitude = float(gps_altitude.split()[0])
+                if gps_altitude > 0:
+                    return gps_altitude
+            except:
+                continue
+        return None
 
     def check_ir(self, keys):
         """
@@ -290,6 +322,11 @@ class Metadata:
             gimbal_pitch_degree = float(self._get_if_exist(self.data_dict, keys['gimbal_pitch']))
             gimbal_roll_degree = float(self._get_if_exist(self.data_dict, keys['gimbal_roll']))
             flight_roll_degree = float(self._get_if_exist(self.data_dict, keys['flight_roll']))
+
+            if self.camera_model == "XT711":
+                flight_pitch_degree = flight_pitch_degree - 90
+                gimbal_pitch_degree = gimbal_pitch_degree - 90
+
             xmp_metadata = XMP(flight_yaw_degree, flight_pitch_degree, flight_roll_degree, gimbal_yaw_degree,
                                     gimbal_pitch_degree, gimbal_roll_degree)
             return xmp_metadata
@@ -374,3 +411,25 @@ class Metadata:
         if self.pano:
             print("---PANO--- updating path: " + path, flush=True)
             self.pano_data['file'] = path
+
+    def reconsider_usability(self):
+        #check if the image is usable
+        #image size
+        if self.image_size is None:
+            self.usable = False
+            return
+        if self.gps_coordinate is None:
+            self.usable = False
+            return
+        if self.gps_coordinate.get_altitude() is None or self.gps_coordinate.get_altitude() == 0:
+            self.usable = False
+            return
+        if self.camera_properties is None:
+            self.usable = False
+            return
+        if self.xmp_metadata is None:
+            self.usable = False
+            return
+
+        self.usable = True
+        return

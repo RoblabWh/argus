@@ -2008,6 +2008,10 @@
     document.getElementById('canvasIRTest').addEventListener("mousemove", function(e) {
         if($('#irModeCheckbox').is(':checked')){
             var tempMatrix = allTemperaturesIR[slideIndex];
+            if (tempMatrix == null){
+                console.log("No temperature data available for this image (yet)");
+                return;
+            }
             var tempGlass = document.getElementById('dynamic-temp-glass');
             tempGlass.style.opacity = 1.0;
             matrix_coord_x = Math.floor(e.offsetX / this.clientWidth * tempMatrix[0].length);

@@ -8,11 +8,6 @@ from .infrared_rgb_sorter import InfraredRGBSorter
 from .weather import Weather
 import datetime as dt
 
-#TODO
-# als erstes die Kamera feststellen
-# abhängig davon checken, IR oder RGB (entweder über Kamera oder über Dateinamen oder über Bildgröße)
-# und entsprechend eine flag setzen, ob die Temperaturen ausgelesen werden können oder nicht
-
 class ImageProcessor:
     def __init__(self, image_paths, rgb_images, ir_images, pano_images):
         self.all_image_paths = []
@@ -364,3 +359,15 @@ class ImageProcessor:
             i += 1
 
             self.couples_path_list = couples
+
+
+    def add_relative_altitude_to_not_mappable_images(self, rel_alt):
+        for image in self.all_rgb_images:
+            if image.exif_header.usable and not image.exif_header.gps_coordinate.manual_altitude:
+                continue
+            if image.exif_header.gps_coordinate.altitude is None \
+                    or image.exif_header.gps_coordinate.altitude == 0 \
+                    or image.exif_header.gps_coordinate.manual_altitude:
+                image.exif_header.gps_coordinate.altitude = rel_alt
+                image.exif_header.gps_coordinate.manual_altitude = True
+                image.exif_header.reconsider_usability()

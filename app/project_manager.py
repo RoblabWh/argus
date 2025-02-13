@@ -674,6 +674,13 @@ class ProjectManager:
     def update_ir_settings(self, id, ir_settings):
         return self.update_data_by_keyword(id, 'ir_settings', ir_settings)
 
+    def update_relative_alt_missing(self, report_id, relative_alt_missing):
+        #chek if value is already set
+        # current_val = self.get_relative_alt_missing(report_id)
+        # if current_val == relative_alt_missing:
+        #     return current_val
+        return self.update_data_by_keyword(report_id, 'relative_alt_missing', relative_alt_missing)
+
     def update_panos(self, id, panos):
         return self.update_data_by_keyword(id, 'panos', panos)
 
@@ -785,6 +792,21 @@ class ProjectManager:
         project = self.get_project(report_id)
         return project['data']['ir_settings']
 
+    def get_relative_alt_missing(self, report_id):
+        project = self.get_project(report_id)
+        try:
+            return project['data']['relative_alt_missing']
+        except:
+            self.update_relative_alt_missing(report_id, False)
+            return False
+
+    def get_manual_relative_alt(self, project_id):
+        project = self.get_project(project_id)
+        try:
+            return project['data']['manual_relative_alt']
+        except:
+            return None
+
     def get_webodm_project_id(self, report_id):
         project = self.get_project(report_id)
         return project['data']['webodm_project_id']
@@ -801,6 +823,9 @@ class ProjectManager:
         ir_settings['ir_color_scheme'] = settings[2]
 
         self.update_ir_settings(report_id, ir_settings)
+
+    def update_manual_relative_alt_from_website(self, project_id, relative_alt):
+        self.update_data_by_keyword(project_id, 'manual_relative_alt', relative_alt)
 
     def get_annotation_file_path(self, report_id):
         project = self.get_project(report_id)

@@ -5,7 +5,7 @@ from .image_mapper import ImageMapper
 
 
 class MapperThread(threading.Thread):
-    def __init__(self, project_manager, webodm_manager, fast_mapping, odm_mapping, report_id, map_resolution, file_names, data):
+    def __init__(self, project_manager, webodm_manager, fast_mapping, odm_mapping, with_plausibility, report_id, map_resolution, file_names, data):
         self.fast_mapping = fast_mapping
         self.with_odm = odm_mapping
         self.report_id = report_id
@@ -20,7 +20,7 @@ class MapperThread(threading.Thread):
         self.mapping = False
         self.metadata_delivered = False
         self.image_mapper = ImageMapper(project_manager, webodm_manager, report_id, map_width_px=map_resolution[0],
-                                            map_height_px=map_resolution[1], with_odm=odm_mapping)
+                                            map_height_px=map_resolution[1], with_odm=odm_mapping, check_plausibility=with_plausibility)
         self.ir = False
         self.flight_data = None
         self.camera_specs = None
@@ -112,6 +112,9 @@ class MapperThread(threading.Thread):
         processor.filter_images()
         self.progress_preprocess = 40
 
+        manual_altitude = self.project_manager.get_manual_relative_alt(self.report_id)
+        processor.add_relative_altitude_to_not_mappable_images(manual_altitude)
+
         processor.sort_images()
         self.progress_preprocess = 50
 
@@ -128,6 +131,9 @@ class MapperThread(threading.Thread):
         self.flight_trajectory = processor.flight_trajectory
         #print("flight trajectory: " + str(self.flight_trajectory))
         self.progress_preprocess = 75
+
+        for rgb_img in self.rgb_images:
+            print("rgb image: " + str(rgb_img.get_image_path()) + " " + str(rgb_img.exif_header.usable))
 
 
         #next step: calculate metadata for report

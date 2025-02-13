@@ -15,7 +15,7 @@ from .map_scaler_improved import MapScalerImproved
 
 class ImageMapper:
     def __init__(self, project_manager, webodm_manager, report_id, map_width_px=2048, map_height_px=2048, blending=0.7, optimize=True,
-                 max_gimbal_pitch_deviation=10, with_odm=True):
+                 max_gimbal_pitch_deviation=10, with_odm=True, check_plausibility=True):
         self.project_manager = project_manager
         self.webodm_manager = webodm_manager
         self.report_id = report_id
@@ -26,7 +26,7 @@ class ImageMapper:
         self.max_gimbal_pitch_deviation = max_gimbal_pitch_deviation
         self.with_odm = with_odm
 
-        self.minimum_number_of_images = 2
+        self.minimum_number_of_images = 3
 
         self.map_elements_IR = None
         self.map_elements_RGB = None
@@ -38,6 +38,7 @@ class ImageMapper:
         self.middle_gps = None
         self.placeholder_map = None
         self.has_ir = False
+        self.check_plausibility = check_plausibility
 
     def generate_map_elements_from_images(self, rgb_images=None, ir_images=None):
         if rgb_images is not None:
@@ -51,6 +52,7 @@ class ImageMapper:
             if not self._generate_fallback_gps_from_images(rgb_images):
                 if not self._generate_fallback_gps_from_images(ir_images):
                     self._generate_fallback_gps()
+            print("No images found, using fallback gps", flush=True)
             return False
 
         if self.map_scaler_RGB is not None:
@@ -64,11 +66,13 @@ class ImageMapper:
     def generate_map_elements_and_scaler(self, images):
         #print(images, flush=True)
         filtered_images = [image for image in images if image.get_exif_header().usable]
-        filtered_images = self.filter_unplausible_images_by_time(filtered_images)
+        if self.check_plausibility:
+            filtered_images = self.filter_unplausible_images_by_time(filtered_images)
         filtered_images = GimbalPitchFilter(89 - self.max_gimbal_pitch_deviation).filter(filtered_images)
 
 
         if len(filtered_images) < self.minimum_number_of_images:
+            print("Error: Not enough images for mapping!", flush=True)
             return None, []
         #map_scaler = MapScaler(filtered_images, self.map_width_px, self.map_height_px)
         map_scaler = MapScalerImproved(filtered_images, self.map_width_px, self.map_height_px)
@@ -514,7 +518,10 @@ class ImageMapper:
         time_list = [image.get_exif_header().get_creation_time() for image in filtered_images]
 
         time_diff = [time_list[i+1] - time_list[i] for i in range(len(time_list)-1)]
-        median_time = time_diff[len(time_diff)//2]
+        #make a copy of the time_diff list and sort it
+        time_diff_sorted = time_diff.copy()
+        time_diff_sorted.sort()
+        median_time = time_diff_sorted[len(time_diff_sorted)//2]
 
         list_of_connected_flights = []
         plausible_flight = []

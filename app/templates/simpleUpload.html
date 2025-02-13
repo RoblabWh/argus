@@ -479,6 +479,12 @@
           <input type="checkbox" id="with_odm" name="with_odm" value="odm">
           <label for="with_odm">ODM Orthophoto</label>
         </div>
+        <br>
+        <div class="option">
+          <input type="checkbox" id="with_plausibility_check" name="with_plausibility_check" value="plausibility" checked>
+          <label for="with_plausibility_check">Flight consitency check</label>
+        </div>
+        <button id="openAltitutePopup" style="margin-right: 0px; width: 30%; min-width: 230px; display: none;" onclick="openAltitudePopup()">Set Altitude</button>
         <hr class="separator">
       </div>
 
@@ -519,6 +525,17 @@
 
 
           <button onclick="applySettings()">Apply Settings</button>
+      </div>
+    </div>
+
+    <div id="altitudePopup" class="popup-container">
+      <div class="popup-content">
+        <span class="close-btn" onclick="closeAltitudePopup()">&times;</span>
+        <h2>Missing altitude data</h2>
+        <p>Relative altitude above gorund can not be read from the images. Please enter the relative Altitude in meters to be used for all Images.</p>
+        <label for="relativeAltitudeInput">Relative Altitude:</label>
+        <input type="number" id="relativeAltitudeInput" name="relativeAltitudeInput" value=0><br><br>
+        <button onclick="applyAltitudeSettings()">Apply altitude</button>
       </div>
     </div>
 
@@ -589,6 +606,8 @@
     //uploadArea.addEventListener('click', function() {
     //  fileInput.click();
     //});
+
+    displayOpenAltitudePopupButton();
 
 
     function uploadImage(file, uploadedImage) {
@@ -696,6 +715,7 @@
         // Function to handle image loading
         reader.onload = (function (imageFile) {
           return function (e) {
+            console.log('Image loaded:', imageFile.name);
             // Check if the filename is already uploaded
             if (isFilenameAlreadyUploaded(imageFile.name)) {
               doubleNames.push(imageFile.name);
@@ -838,6 +858,11 @@
             else {
               removeIRSettingsSummary();
             }
+
+            if (response.dataSummary.relative_alt_missing) {
+              openAltitudePopup();
+            }
+
             updateProcessButtonEnabling();
           } else {
             window.setTimeout( function() { checkUploadResuls(); }, 750);
@@ -953,6 +978,41 @@
             numbr_at_end_of_value = ir_palette.match(/\d+$/);
         });
     });
+
+
+    function openAltitudePopup() {
+      let altitudePopup = document.getElementById('altitudePopup');
+      altitudePopup.style.display = 'block';
+    }
+
+    function closeAltitudePopup() {
+      let altitudePopup = document.getElementById('altitudePopup');
+      altitudePopup.style.display = 'none';
+    }
+
+    function applyAltitudeSettings() {
+      let altitude = document.getElementById('relativeAltitudeInput').value;
+      $.get( "/update_altitude_settings/{{ id }}/" + Number(altitude));
+      closeAltitudePopup();
+    }
+
+    function displayOpenAltitudePopupButton() {
+      //getting settings to display from server at /altitude_settings/report_id
+      $.post("/altitude_settings/{{ id }}", function (response) {
+        if (response.show_settings) {
+          let openAltitudePopupButton = document.getElementById('openAltitutePopup');
+          openAltitudePopupButton.style.display = 'block';
+          let input = document.getElementById('relativeAltitudeInput');
+          input.value = response.rel_alt;
+          console.log(response);
+        }
+      }, "json");
+
+      let openAltitudePopupButton = document.getElementById('openAltitutePopup');
+      openAltitudePopupButton.addEventListener('click', function (event) {
+        event.preventDefault();
+      });
+    }
 
 
 
