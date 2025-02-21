@@ -6,6 +6,7 @@ import sys
 from .image import Image
 from .infrared_rgb_sorter import InfraredRGBSorter
 from .weather import Weather
+from .gps import GPS
 import datetime as dt
 
 class ImageProcessor:
@@ -29,7 +30,7 @@ class ImageProcessor:
             try:
                 images.append(Image(path))
             except:
-                print("Error while processing image: ", path)
+                print("generate_images Error while processing image: ", path)
                 print(sys.exc_info())
         return images
 
@@ -48,11 +49,11 @@ class ImageProcessor:
             path = image.get_image_path()
             self.all_image_paths.remove(path)
 
-        print('all image paths: ', self.all_image_paths, flush=True)
-        print('pano length: ', len(self.all_pano_images), flush=True)
+        # print('all image paths: ', self.all_image_paths, flush=True)
+        # print('pano length: ', len(self.all_pano_images), flush=True)
         for image in self.all_pano_images:
             path = image.get_image_path()
-            print('pano path: ', path, flush=True)
+            # print('pano path: ', path, flush=True)
             self.all_image_paths.remove(path)
 
 
@@ -165,7 +166,7 @@ class ImageProcessor:
             try:
                 total_altitude += image.get_exif_header().get_gps().get_altitude()
             except:
-                print("no altitude data on image: ", image.get_image_path())
+                print("_calculate_average_flight_height error: no altitude data on image: ", image.get_image_path())
         return str(round(total_altitude / len(images), 2))
 
     def _calculate_covered_area(self, images):
@@ -193,7 +194,7 @@ class ImageProcessor:
 
                         return camera_specs
             except Exception as e:
-                print("Error while extracting camera specs: ", e)
+                print("extract_camera_specs error:", e)
                 return [{"description": 'Camera Model', "value": "data not available"},]
 
         # extract camera model, focal length, horizontal_fov, vertical_fov, sensor size
@@ -253,9 +254,8 @@ class ImageProcessor:
             visibility = actual_weather.get_visibility()
             wind_dir_degrees = actual_weather.get_wind_dir_degrees()
             wind_dir_cardinal = actual_weather.get_wind_dir_cardinal()
-        except:
-            print("-Ignoring weather details...")
-            print("--", sys.exc_info())
+        except Exception as e:
+            print("load_weather_data error: " + e)
             pass
 
         weather_data = []
@@ -281,11 +281,10 @@ class ImageProcessor:
                 # if a coordinates is closer than 0.0001, to its previous one, it is not added to the list
                 if len(coordinates) == 0:
                     coordinates.append(coordinate)
-                elif (abs(coordinates[-1][0] - coordinate[0]) > 0.00001 and
-                      abs(coordinates[-1][1] - coordinate[1]) > 0.00001):
+                else:
                     coordinates.append(coordinate)
             except:
-                print("no gps data on image: ", image.get_image_path())
+                print("generate_flight_trajectory error: no gps data on image: ", image.get_image_path())
 
         self.flight_trajectory = coordinates
 
@@ -361,13 +360,49 @@ class ImageProcessor:
             self.couples_path_list = couples
 
 
-    def add_relative_altitude_to_not_mappable_images(self, rel_alt):
-        for image in self.all_rgb_images:
+    def add_relative_altitude_to_not_mappable_images(self, use_elevation_data, rel_alt=50):
+        self._add_relative_altitude_to_not_mappable_images_per_list(use_elevation_data, rel_alt, self.all_rgb_images)
+        self._add_relative_altitude_to_not_mappable_images_per_list(use_elevation_data, rel_alt, self.all_ir_images)
+
+    def _add_relative_altitude_to_not_mappable_images_per_list(self, use_elevation_data, rel_alt, images):
+        selection = []
+        coordinates = []
+        for image in images:
             if image.exif_header.usable and not image.exif_header.gps_coordinate.manual_altitude:
                 continue
             if image.exif_header.gps_coordinate.altitude is None \
                     or image.exif_header.gps_coordinate.altitude == 0 \
                     or image.exif_header.gps_coordinate.manual_altitude:
+
+                selection.append(image)
+                coordinates.append([image.exif_header.gps_coordinate.latitude, image.exif_header.gps_coordinate.longitude])
+
+
+        while True:
+            batch_size = 250
+            if len(selection) == 0:
+                break
+            if len(selection) > batch_size:
+                selection_batch = selection[:batch_size]
+                coordinates_batch = coordinates[:batch_size]
+                selection = selection[batch_size:]
+                coordinates = coordinates[batch_size:]
+            else:
+                selection_batch = selection
+                coordinates_batch = coordinates
+                selection = []
+                coordinates = []
+
+            ground_levels = GPS.request_elevation_for_multiple_coordinates(coordinates_batch)
+
+            for i in range(len(selection_batch)):
+                image = selection_batch[i]
+                ground_level = ground_levels[i]
                 image.exif_header.gps_coordinate.altitude = rel_alt
+
+                if use_elevation_data:
+                    gps_alt = image.exif_header.load_gps_altitude()
+                    image.exif_header.gps_coordinate.estimate_relative_altitude(gps_alt, ground_level=ground_level)
+
                 image.exif_header.gps_coordinate.manual_altitude = True
                 image.exif_header.reconsider_usability()

@@ -4,6 +4,7 @@ import cv2
 import numpy as np
 from .thermal import Thermal
 import multiprocessing
+import os
 
 
 
@@ -33,6 +34,10 @@ class ThermalAnalyser:
             return False
 
     def get_image_temp_matrix(self, report_id, image_filename):
+        #check if file exist using os.path.isfile
+        if not os.path.isfile(image_filename):
+            print('File does not exist: ', image_filename, flush=True)
+            return None
         try:
             temperature = self.parse_image(image_filename)
             return temperature

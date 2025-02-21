@@ -915,6 +915,7 @@
           mapLayer = L.imageOverlay(map.file, mapBounds);
         } else{
           console.log("rotated map found in project " + projectId + " with map " + mapName);
+          console.log(map.file);
           let topleft = mapCorners[3];
           let topright = mapCorners[2];
           let bottomleft = mapCorners[0];

@@ -198,10 +198,10 @@ class WebodmManager():
         if not os.path.exists(proxy_path):
             os.mkdir(proxy_path)
 
-        print("Scaling images", image_paths)
+        print(f"Scaling {len(image_paths)} images for webODM", flush=True)
         scaled_image_paths = []
         nmbr_of_processes = self.calculate_number_of_safely_usable_processes(image_paths[0])
-        print('number of processes: ', nmbr_of_processes)
+        print('number of scaling processes: ', nmbr_of_processes)
         if nmbr_of_processes < len(image_paths):
             nmbr_of_processes = len(image_paths)
         pool = multiprocessing.Pool(nmbr_of_processes)

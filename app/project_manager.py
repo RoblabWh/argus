@@ -807,6 +807,13 @@ class ProjectManager:
         except:
             return None
 
+    def get_use_elevation_data(self, project_id):
+        project = self.get_project(project_id)
+        try:
+            return project['data']['use_elevation_data']
+        except:
+            return False
+
     def get_webodm_project_id(self, report_id):
         project = self.get_project(report_id)
         return project['data']['webodm_project_id']
@@ -826,6 +833,9 @@ class ProjectManager:
 
     def update_manual_relative_alt_from_website(self, project_id, relative_alt):
         self.update_data_by_keyword(project_id, 'manual_relative_alt', relative_alt)
+
+    def update_use_elevation_data_from_website(self, project_id, use_elevation_data):
+        self.update_data_by_keyword(project_id, 'use_elevation_data', use_elevation_data)
 
     def get_annotation_file_path(self, report_id):
         project = self.get_project(report_id)
@@ -948,17 +958,17 @@ class ProjectManager:
         path = project['data']['annotation_file_path']
 
         with open(path, "r") as json_file:
-            print("loading detections", flush=True)
+            #print("loading detections", flush=True)
             detections = json.load(json_file)
             annotations = detections['annotations']
 
-            print(len(annotations), flush=True)
+            #print(len(annotations), flush=True)
 
             for i in range(len(annotations)):
                 if(annotations[i]['id'] == annotation_id):
                     print("deleting annotation with id: " + str(annotation_id) + " from list with length " + str(len(annotations)), flush=True)
                     annotations.pop(i)
-                    print("new length: " + str(len(annotations)), flush=True)
+                    #print("new length: " + str(len(annotations)), flush=True)
                     break
 
             detections['annotations'] = annotations

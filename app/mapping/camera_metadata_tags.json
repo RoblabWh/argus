@@ -173,6 +173,70 @@
       "flight_yaw": "XMP:Yaw",
       "flight_pitch": "XMP:Pitch"
     }
+  },
+
+  "XT711_IR": {
+    "creation_time": "EXIF:DateTimeOriginal",
+    "image_size": "Composite:ImageSize",
+    "projection_type": "XMP:ProjectionType",
+    "gps": {
+      "longitude": "Composite:GPSLongitude",
+      "latitude": "Composite:GPSLatitude",
+      "relative_altitude": "XMP:AboveHomeAltitude"
+    },
+    "ir": {
+      "ir": "",
+      "ir_value": "",
+      "ir_image_size": {
+        "x": 640,
+        "y": 512
+      },
+      "filename_suffix": ""
+    },
+    "camera_properties": {
+      "focal_length": "EXIF:FocalLength",
+      "fov": "Composite:FOV"
+    },
+    "orientation": {
+      "gimbal_roll": "XMP:Roll",
+      "gimbal_yaw": "XMP:Yaw",
+      "gimbal_pitch": "XMP:Pitch",
+      "flight_roll": "XMP:Roll",
+      "flight_yaw": "XMP:Yaw",
+      "flight_pitch": "XMP:Pitch"
+    }
+  },
+
+  "Altum-PT": {
+    "creation_time": "EXIF:DateTimeOriginal",
+    "image_size": "Composite:ImageSize",
+    "projection_type": "XMP:ProjectionType",
+    "gps": {
+      "longitude": "Composite:GPSLongitude",
+      "latitude": "Composite:GPSLatitude",
+      "relative_altitude": "XMP:AboveHomeAltitude"
+    },
+    "ir": {
+      "ir": "",
+      "ir_value": "",
+      "ir_image_size": {
+        "x": 640,
+        "y": 512
+      },
+      "filename_suffix": ""
+    },
+    "camera_properties": {
+      "focal_length": "EXIF:FocalLength",
+      "fov": "Composite:FOV"
+    },
+    "orientation": {
+      "gimbal_roll": "XMP:IrradianceRoll",
+      "gimbal_yaw": "XMP:IrradianceYaw",
+      "gimbal_pitch": "XMP:IrradiancePitch",
+      "flight_roll": "XMP:Roll",
+      "flight_yaw": "XMP:Yaw",
+      "flight_pitch": "XMP:Pitch"
+    }
   }
 
 }

@@ -57,33 +57,34 @@ class GPS:
         location = geolocator.reverse(str(self.latitude) + " " + str(self.longitude))
         return str(location.address)
 
-    def estimate_relative_altitude(self, gps_altitude):
+    def estimate_relative_altitude(self, gps_altitude, ground_level=None):
         # API link looks like https://api.open-meteo.com/v1/elevation?latitude={}&longitude={}
         if gps_altitude is None:
             return False
 
         try:
-            #api works, but returns seem to be wrong
-            #url = f"https://api.open-meteo.com/v1/elevation?latitude={self.latitude}&longitude={self.longitude}"
-            #response = requests.get(url)
-            #print("Response from open-meteo API: ", response.json(), flush=True)
-            #ground_level = response.json()['elevation'][0]
+            if ground_level is None:
+                #api works, but returns seem to be wrong
+                #url = f"https://api.open-meteo.com/v1/elevation?latitude={self.latitude}&longitude={self.longitude}"
+                #response = requests.get(url)
+                #print("Response from open-meteo API: ", response.json(), flush=True)
+                #ground_level = response.json()['elevation'][0]
 
-            #Free API not applicable for this purpose, due to to high number of requests per second
-            #url = f"https://api.opentopodata.org/v1/test-dataset?locations={self.latitude},{self.longitude}"
-            #response = requests.get(url)
-            #print("Response from open-meteo API: ", response.json(), flush=True)
-            #ground_level = response.json()['results']['elevation']
+                #Free API not applicable for this purpose, due to to high number of requests per second
+                #url = f"https://api.opentopodata.org/v1/test-dataset?locations={self.latitude},{self.longitude}"
+                #response = requests.get(url)
+                #print("Response from open-meteo API: ", response.json(), flush=True)
+                #ground_level = response.json()['results']['elevation']
 
-            #google maps api
-            yek = "AIzaSyBOMc1dHgyUHXj1ZrkazxgGh03h_NjjkRs"
-            url = f"https://maps.googleapis.com/maps/api/elevation/json?locations={self.latitude},{self.longitude}&key={yek}"
-            response = requests.get(url)
-            print("Response from google maps API: ", response.json(), flush=True)
-            ground_level = response.json()['results'][0]['elevation']
+                #google maps api
+                yek = "AIzaSyBOMc1dHgyUHXj1ZrkazxgGh03h_NjjkRs"
+                url = f"https://maps.googleapis.com/maps/api/elevation/json?locations={self.latitude},{self.longitude}&key={yek}"
+                response = requests.get(url)
+                #print("Response from google maps API: ", response.json(), flush=True)
+                ground_level = response.json()['results'][0]['elevation']
 
             relative_altitude = abs(gps_altitude - ground_level)
-            print("relative altitude: ", relative_altitude, "altitude b4:", self.altitude, "gps altitude", gps_altitude, flush=True)
+            #print("relative altitude: ", relative_altitude, "altitude b4:", self.altitude, "gps altitude", gps_altitude, flush=True)
         except:
             return False
 
@@ -194,3 +195,29 @@ class GPS:
     def calc_distance_between(gps1, gps2):
         return vincenty((gps1.get_latitude(), gps1.get_longitude()),(gps2.get_latitude(),gps2.get_longitude())) * 1000.0
 
+
+    @staticmethod
+    def request_elevation_for_multiple_coordinates(coordinates):
+        """
+        Requesting elevation for multiple coordinates.
+        :param coordinates: list of coordinates
+        :return: list of elevations
+        """
+        elevations = []
+        coords_str = ""
+        for coordinate in coordinates:
+            coords_str += str(coordinate[0]) + "," + str(coordinate[1]) + "|"
+        coords_str = coords_str[:-1]
+        #print("coords_str: ", coords_str, flush=True)
+        try:
+            yek = "AIzaSyBOMc1dHgyUHXj1ZrkazxgGh03h_NjjkRs"
+            url = f"https://maps.googleapis.com/maps/api/elevation/json?locations={coords_str}&key={yek}"
+            response = requests.get(url)
+            # print("Response from google maps API: ", response.json(), flush=True)
+            for result in response.json()['results']:
+                elevations.append(result['elevation'])
+        except Exception as e:
+            print("requesting elevation failed with error: ", e, flush=True)
+            return False
+
+        return elevations

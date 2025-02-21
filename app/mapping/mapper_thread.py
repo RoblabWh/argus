@@ -113,7 +113,8 @@ class MapperThread(threading.Thread):
         self.progress_preprocess = 40
 
         manual_altitude = self.project_manager.get_manual_relative_alt(self.report_id)
-        processor.add_relative_altitude_to_not_mappable_images(manual_altitude)
+        use_elevation_data = self.project_manager.get_use_elevation_data(self.report_id)
+        processor.add_relative_altitude_to_not_mappable_images(use_elevation_data, manual_altitude)
 
         processor.sort_images()
         self.progress_preprocess = 50
@@ -132,8 +133,8 @@ class MapperThread(threading.Thread):
         #print("flight trajectory: " + str(self.flight_trajectory))
         self.progress_preprocess = 75
 
-        for rgb_img in self.rgb_images:
-            print("rgb image: " + str(rgb_img.get_image_path()) + " " + str(rgb_img.exif_header.usable))
+        # for rgb_img in self.rgb_images:
+        #     print("rgb image: " + str(rgb_img.get_image_path()) + " " + str(rgb_img.exif_header.usable))
 
 
         #next step: calculate metadata for report

@@ -89,7 +89,16 @@ class Image:
                     image = cv2.cvtColor(cv2.imread(self.image_path,cv2.IMREAD_UNCHANGED),cv2.COLOR_BGR2BGRA)
                 return image
             else:
-                return cv2.cvtColor(cv2.imread(self.image_path,cv2.IMREAD_UNCHANGED),cv2.COLOR_BGR2BGRA)
+                image = cv2.imread(self.image_path,cv2.IMREAD_UNCHANGED)
+                # print(f"image dtype: {image.dtype}, shape: {image.shape}, min: {np.min(image)}, max: {np.max(image)}",
+                #   flush=True)
+                # check if image has only one channel
+                if len(image.shape) == 2 and image.dtype == np.uint16:
+                    image = cv2.normalize(image, None, 0, 255, cv2.NORM_MINMAX)
+                    image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGRA)
+                else:
+                    image = cv2.cvtColor(image, cv2.COLOR_BGR2BGRA)
+                return image
         else:
             return self.matrix
 

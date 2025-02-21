@@ -532,8 +532,10 @@
       <div class="popup-content">
         <span class="close-btn" onclick="closeAltitudePopup()">&times;</span>
         <h2>Missing altitude data</h2>
-        <p>Relative altitude above gorund can not be read from the images. Please enter the relative Altitude in meters to be used for all Images.</p>
-        <label for="relativeAltitudeInput">Relative Altitude:</label>
+        <p>The relative altitude (vertical distance from ground) can not be read from the images. Select the following option to calculate altitude using ground elevation and GPS data. If not selected or calculation fails, the manually set altitude will be used.</p>
+        <label for="useElevationData">Calculate altitude using elevation:</label>
+        <input type="checkbox" id="useElevationData" name="useElevationData" value="useElevationData" checked><br><br>
+        <label for="relativeAltitudeInput">Manual altitude:</label>
         <input type="number" id="relativeAltitudeInput" name="relativeAltitudeInput" value=0><br><br>
         <button onclick="applyAltitudeSettings()">Apply altitude</button>
       </div>
@@ -724,15 +726,26 @@
             }
             else {
               // Create the image element
+              let isTiff = imageFile.type === 'image/tiff' || imageFile.name.endsWith('.tif');
               const img = document.createElement('img');
-              img.onload = function () {
-                uploadImage(imageFile, uploadedImage);
-              };
-              img.src = e.target.result;
+
               // Create the uploaded image container
               const uploadedImage = document.createElement('div');
               uploadedImage.className = 'uploaded-image';
               a = document.createElement('a');
+
+
+              if (isTiff) {
+                console.warn('TIFF images are not natively supported in <img>. no solution yet');
+                  uploadImage(imageFile, uploadedImage);
+              } else {
+                img.onload = function () {
+                  uploadImage(imageFile, uploadedImage);
+                };
+                img.src = e.target.result;
+              }
+
+
 
               // Open the image in big size on click
               uploadedImage.addEventListener('click', function (event) {
@@ -992,7 +1005,8 @@
 
     function applyAltitudeSettings() {
       let altitude = document.getElementById('relativeAltitudeInput').value;
-      $.get( "/update_altitude_settings/{{ id }}/" + Number(altitude));
+      let use_elevation_data = document.getElementById('useElevationData').checked;
+      $.get( "/update_altitude_settings/{{ id }}/" + Number(altitude) + "," + use_elevation_data);
       closeAltitudePopup();
     }
 
@@ -1000,11 +1014,15 @@
       //getting settings to display from server at /altitude_settings/report_id
       $.post("/altitude_settings/{{ id }}", function (response) {
         if (response.show_settings) {
-          let openAltitudePopupButton = document.getElementById('openAltitutePopup');
-          openAltitudePopupButton.style.display = 'block';
-          let input = document.getElementById('relativeAltitudeInput');
-          input.value = response.rel_alt;
           console.log(response);
+          let openAltitudePopupButton = document.getElementById('openAltitutePopup');
+          let input = document.getElementById('relativeAltitudeInput');
+          let useElevationData = document.getElementById('useElevationData');
+          
+          openAltitudePopupButton.style.display = 'block';
+
+          useElevationData.checked = response.use_elevation_data;
+          input.value = response.rel_alt;
         }
       }, "json");
 

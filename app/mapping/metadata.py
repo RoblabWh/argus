@@ -2,6 +2,7 @@ import json
 import re
 import os
 import datetime as dt
+import math
 
 import pyexifinfo as p
 
@@ -126,7 +127,7 @@ class Metadata:
             height = int(image_size[1])
             image_size = (width, height)
         except KeyError:
-            print("__UNUSABLE__ Error while loading image size", flush=True)
+            print("__UNUSABLE__ Error image size", flush=True)
             image_size = None
             self.usable = False
         return image_size
@@ -188,7 +189,7 @@ class Metadata:
                     relative_altitude = float(rel_alt)
             loaded_altitude = True
         except Exception as e:
-            print('___UNUSABLE___ Error while loading relative altitude:' + str(e), flush=True)
+            print('__UNUSABLE__ Error relative altitude:' + str(e), flush=True)
             relative_altitude = 0
             self.usable = False
         try:
@@ -220,7 +221,7 @@ class Metadata:
                 #     self.usable = False
             return gps
         except:
-            print('___UNUSABLE___ Error while loading GPS', flush=True)
+            print('__UNUSABLE__ Error GPS', flush=True)
             self.usable = False
             return None
 
@@ -301,7 +302,7 @@ class Metadata:
                 return camera_properties
 
             except Exception as e:
-                print('__UNUSABLE__ Error while loading camera properties of ' + camera_model_name + ': ' + str(e), flush=True)
+                print('__UNUSABLE__ Error camera properties of ' + camera_model_name + ': ' + str(e), flush=True)
                 self.usable = False
                 return None
 
@@ -327,11 +328,24 @@ class Metadata:
                 flight_pitch_degree = flight_pitch_degree - 90
                 gimbal_pitch_degree = gimbal_pitch_degree - 90
 
+            if self.camera_model == "Altum-PT": #convert from radiants to degrees
+                ratio = 180 / math.pi
+                flight_yaw_degree = flight_yaw_degree * ratio
+                flight_pitch_degree = flight_pitch_degree * ratio - 90
+                flight_roll_degree = flight_roll_degree * ratio
+                # gimbal_yaw_degree = gimbal_yaw_degree
+                # gimbal_pitch_degree = gimbal_pitch_degree - 90
+                # gimbal_roll_degree = gimbal_roll_degree
+                gimbal_yaw_degree = flight_yaw_degree
+                gimbal_pitch_degree = flight_pitch_degree
+                gimbal_roll_degree = flight_roll_degree
+
+
             xmp_metadata = XMP(flight_yaw_degree, flight_pitch_degree, flight_roll_degree, gimbal_yaw_degree,
                                     gimbal_pitch_degree, gimbal_roll_degree)
             return xmp_metadata
         except Exception as e:
-            print("__UNUSABLE__ Error while loading orientation: " + str(e), flush=True)
+            print("__UNUSABLE__ Error orientation: " + str(e), flush=True)
             self.usable = False
             return None
 
@@ -345,7 +359,7 @@ class Metadata:
         if key in data:
             return data[key]
         else:
-            msg = str(key) + " does not exist in EXIF-Header of input image: " + str(self.image_path)
+            msg = "no '"+ str(key) + "' in " + str(self.image_path)
             raise Exception(msg)
 
 

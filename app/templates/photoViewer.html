@@ -714,7 +714,7 @@
 
 
     function showSlide(n) {
-        console.log("showSlide: " + n);
+        console.log("showSlide: " + n + " currently displaying IR: " + displayingIR);
         if(n >= slideshowCouples.length){
             n = 0;
         } else if (n < 0){
@@ -735,14 +735,18 @@
 
 
         if(displayingIR){
-            deactivateIR();
+            activateMagnifier();
+            displayingIR = false;
         }
-        displayingIR = false;
-        showCurrentSlide();
+        else{
+            displayingIR = false;
+            showCurrentSlide();
+        }
     }
 
 
     function showSlideIR(n) {
+        console.log("showSlideIR called with: " + n);
         var details = document.getElementById("gallery-details");
         if(!details.open){
             details.open = true;
@@ -759,11 +763,12 @@
         }
         slideIndex = n
         activateIR();
-        showCurrentSlide();
+        //showCurrentSlide();
     }
 
 
     function showCurrentSlide() {
+        console.log("showCurrentSlide called");
         var details = document.getElementById("gallery-details");
         if(!details.open){
             details.open = true;
@@ -1223,6 +1228,13 @@
 
         if(infraredDataMatrix == null){
             $.post('/ir_temp_data_of_image/{{id}}', {filename: imageName}, function(response) {
+                if (!response.success) {
+                    console.log('Error loading infrared data');
+                    // deactivate analysis mode
+                    document.getElementById("irModeCheckbox").checked = false;
+                    activateMagnifier();
+                    return;
+                }
                 infraredDataMatrix = response.temperature_matrix;
                 allTemperaturesIR[slideIndex] = infraredDataMatrix;
                 drawImage();

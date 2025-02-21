@@ -983,17 +983,23 @@ class ArgusServer:
         return "success"
 
     def update_altitude_settings(self, report_id, rel_alt_string):
-        rel_alt = float(rel_alt_string)
-        print("update_height_settings for id" + str(report_id) + " with: " + str(rel_alt), flush=True)
+        rel_alt, use_elevation_data = rel_alt_string.split(",")
+        rel_alt = float(rel_alt)
+        use_elevation_data = use_elevation_data == "true"
+        print("update_height_settings for id" + str(report_id) + " with: " + str(rel_alt) + " and " + str(
+            use_elevation_data), flush=True)
         self.project_manager.update_manual_relative_alt_from_website(report_id, rel_alt)
+        self.project_manager.update_use_elevation_data_from_website(report_id, use_elevation_data)
         return "success"
 
     def send_altitude_settings(self, report_id):
         rel_alt_missing = self.project_manager.get_relative_alt_missing(report_id)
         rel_alt = 0
+        use_elevation_data = False
         if rel_alt_missing:
             rel_alt = self.project_manager.get_manual_relative_alt(report_id)
-        return jsonify({'show_settings': rel_alt_missing, 'rel_alt': rel_alt})
+            use_elevation_data = self.project_manager.get_use_elevation_data(report_id)
+        return jsonify({'show_settings': rel_alt_missing, 'rel_alt': rel_alt, 'use_elevation_data': use_elevation_data})
 
     def send_gradient_lut(self, gradient_id):
         lut = json.load(open("./static/default/gradient_luts/gradient_lut_" + str(gradient_id) + ".json"))
@@ -1004,8 +1010,10 @@ class ArgusServer:
         print("get_ir_temp_data_of_image for id" + str(report_id) + " with: " + str(filename), flush=True)
         temp_matrix = self.thermal_analyser.get_image_temp_matrix(report_id, filename)
         print("thermal_analyser.get_image_temp_matrix done", flush=True)
+        if temp_matrix is None:
+            return jsonify({'temperature_matrix': None, 'success': False})
         temperature_matrix = temp_matrix.tolist()
-        return jsonify({'temperature_matrix': temperature_matrix})
+        return jsonify({'temperature_matrix': temperature_matrix, 'success': True})
 
 
 
