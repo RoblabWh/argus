@@ -1,8 +1,4 @@
-ARG PYTORCH="2.2.0"
-ARG CUDA="12.1"
-ARG CUDNN="8"
-
-FROM pytorch/pytorch:${PYTORCH}-cuda${CUDA}-cudnn${CUDNN}-devel
+FROM nvcr.io/nvidia/pytorch:24.12-py3
 
 RUN mkdir -p /data/.huggingface
 
@@ -11,15 +7,6 @@ ENV TORCH_CUDA_ARCH_LIST="6.0 6.1 7.0 7.5 8.0 8.6+PTX" \
     CMAKE_PREFIX_PATH="$(dirname $(which conda))/../" \
     FORCE_CUDA="1" \
     HF_HOME="/data/.huggingface"
-
-
-# Python 3.8 and pip3
-RUN apt-get update
-RUN apt-get install -y software-properties-common
-RUN apt-get install -y python3.9
-RUN ln -s /usr/bin/python3.9 /usr/bin/python
-RUN apt-get install -y python3-pip
-
 
 # (Optional, use Mirror to speed up downloads)
 # RUN sed -i 's/http:\/\/archive.ubuntu.com\/ubuntu\//http:\/\/mirrors.aliyun.com\/ubuntu\//g' /etc/apt/sources.list && \

@@ -12,6 +12,13 @@ set +a
 
 # detect if a gpu is available
 set +e
+arch="$(uname -m)"
+if [ "$arch" != "x86_64" ]; then
+	export ARGUS_GPU_NVIDIA=false
+	export ARGUS_GPU_INTEL=false
+	export ARGUS_GPU_AMD=false
+	echo "GPU is only supported on amd64, falling back to CPU"
+fi
 if [ -z ${ARGUS_GPU_NVIDIA+x} ]; then
 	export ARGUS_GPU_NVIDIA=false
 
