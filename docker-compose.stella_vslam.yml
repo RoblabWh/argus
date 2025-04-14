@@ -1,0 +1,18 @@
+services:
+  stella_vslam:
+    image: argus_stella_vslam_dense
+    build:
+      context: ./stella_vslam_dense_argus
+      args:
+        - NUM_THREADS=${BUILD_THREADS}
+    container_name: argus_stella_vslam
+    expose:
+      - 7000
+    volumes:
+      - ${ARGUS_PROJECTS}:/stella_vslam/static/projects:rw
+    restart: unless-stopped
+  argus:
+    links:
+      - stella_vslam
+    depends_on:
+      - stella_vslam
