@@ -183,6 +183,26 @@
             </div>
         </div>
 
+        <!-- IAIS WMS Server -->
+        <div class="settings-section">
+            <h2>WMS Server (for sharing orthophotos)</h2>
+            <div class="oneLineSpacer">
+
+                <div class="oneLineSetting">
+                    <label for="iais-mapserver-url">IAIS mapserver URL:</label>
+                    <input type="text" id="iais-mapserver-url" name="iais-mapserver-url"
+                        placeholder="Enter the URL of the mapserver">
+                </div>
+                <div class="dualButtonGroup">
+                    <input type="button" id="iais-mapserver-url-reset" class="setButton inactive" value="Reset"
+                    onclick="console.log('reset not implemented yet')">
+                    <input type="button" id="iais-mapserver-url-save" class="setButton inactive" value="Set"
+                    onclick="setMapserverURL()">
+                </div>
+
+            </div>
+        </div>
+
     </div>
     {% include 'footer.html' %}
 
@@ -201,6 +221,11 @@
         $("#iais-backend-url").on("input", function () {
             $("#iais-backend-url-save").removeClass("inactive");
             $("#iais-backend-url-save").prop("disabled", false);
+        });
+
+        $("#iais-mapserver-url").on("input", function () {
+            $("#iais-mapserver-url-save").removeClass("inactive");
+            $("#iais-mapserver-url-save").prop("disabled", false);
         });
 
         //if any of the three appearance settings is changed, enable the save button
@@ -505,9 +530,49 @@
             });
         }
 
+        function setMapserverURL() {
+            $.ajax({
+                url: "/settings/mapserver_url",
+                type: "POST",
+                data: {
+                    "url": $("#iais-mapserver-url").val()
+                },
+                success: function (data) {
+                    console.log(data);
+                    //disable the save button
+                    $("#iais-mapserver-url-save").addClass("inactive");
+                    $("#iais-mapserver-url-save").prop("disabled", true);
+                }
+            });
+        }
+
+        function fillMapserverURL() {
+            $.ajax({
+                url: "/settings/mapserver_url",
+                type: "GET",
+                success: function (data) {
+                    console.log(data);
+                    let url = data.url;
+                    console.log("URL: " + url);
+                    if (url !== "" && url !== undefined && url !== null) {
+                        console.log("Setting URL");
+                        $("#iais-mapserver-url-save").addClass("inactive");
+                        $("#iais-mapserver-url-save").prop("disabled", true);
+                        $("#iais-mapserver-url-reset").removeClass("inactive");
+                        $("#iais-mapserver-url-reset").prop("disabled", false);
+                        $("#iais-mapserver-url").val(url);
+                    }
+                    else {
+                        $("#iais-mapserver-url").val("");
+                    }
+                }
+            });
+        }
+
         updateAppearanceSettings();
         fillWeatherApiKey();
         fillBackendURL();
+        fillMapserverURL();
 
 
     </script>

@@ -1,10 +1,16 @@
 import json
 import os.path as path
 
+import shutil
 import cv2
 import time
-import rasterio
 import pyproj
+import rasterio
+from rasterio.transform import from_gcps
+from rasterio.control import GroundControlPoint
+from rasterio.transform import Affine
+from rasterio.transform import from_bounds
+import numpy as np
 
 from .map import Map
 from .gps import GPS
@@ -182,7 +188,59 @@ class ImageMapper:
             "name": "RGB" if not ir else "IR",
         }
 
+        #TODO save geo tif using rasterio
+        self.__export_geotiff(map_dict["file"], map_dict["bounds_corners"])
+
         return map_dict
+
+    def __export_geotiff(self, img_path, corners):
+        """
+        Converts a PNG image to a GeoTIFF with georeferencing.
+
+        Parameters:
+            img_path (str): Path to the PNG file.
+            corners (list): List with four tuples (lat, lon), starting at bottom-left and going counter-clockwise.
+        """
+        geotiff_path = img_path.replace('.png', '.tif')
+        print("Exporting GeoTIFF to ", geotiff_path, flush=True)
+
+        # Open the PNG image using OpenCV
+        img = cv2.imread(img_path, cv2.IMREAD_UNCHANGED)
+        if img is None:
+            raise ValueError("Error loading image. Check the file path.")
+
+        # Ensure the image has 4 channels (RGBA)
+        if img.shape[-1] == 3:
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2BGRA)
+        elif img.shape[-1] == 4:
+            img = cv2.cvtColor(img, cv2.COLOR_BGRA2RGBA)
+
+        height, width = img.shape[:2]
+
+        #get the smallest and largest lat and lon from the corners
+        min_lon = min([corner[1] for corner in corners])
+        min_lat = min([corner[0] for corner in corners])
+        max_lon = max([corner[1] for corner in corners])
+        max_lat = max([corner[0] for corner in corners])
+
+        # Compute affine transformation
+        transform = from_bounds(min_lon, min_lat, max_lon, max_lat, width, height)
+
+        # Create GeoTIFF with affine transformation
+        with rasterio.open(
+                geotiff_path, 'w', driver='GTiff',
+                height=height, width=width,
+                count=4, dtype=img.dtype.name,  # Assuming RGBA
+                crs='EPSG:4326',  # WGS84 coordinate system
+                transform=transform,  # Now using a valid affine transform
+                compress='DEFLATE',
+                tiled=True,
+        ) as dst:
+            for band in range(4):  # RGBA bands
+                dst.write(img[:, :, band], band + 1)
+
+        print(f"GeoTIFF saved at {geotiff_path}")
+
 
     def __calculate_map(self, map_scaler, map_elements, ir):
         map_size = map_scaler.map_dimensions_px
@@ -382,6 +440,7 @@ class ImageMapper:
         utm_crs = dat.crs
         print("UTM bounds: ", utm_bounds, flush=True)
         print("UTM crs: ", utm_crs, flush=True)
+        print("path of geotif from webodm: ", path.join(results_folder, map_file), flush=True)
 
 
         transformer = pyproj.Transformer.from_crs(utm_crs, "EPSG:4326")
@@ -405,7 +464,12 @@ class ImageMapper:
             "name": "RGB_ODM" if not ir else "IR_ODM",
         }
 
+        self.__move_and_rename_geotif(path.join(results_folder, map_file), path.join(self.project_manager.projects_path, str(self.report_id), filename.replace('.png', '.tif')))
+
         return map
+    def __move_and_rename_geotif(self, src, dst):
+        shutil.move(src, dst)
+        print("Moved geotif to ", dst, flush=True)
 
     def generate_map_dict_from_odm_fail(self, ir=False):
         lat1 = self.corner_gps_left_bottom.get_latitude()

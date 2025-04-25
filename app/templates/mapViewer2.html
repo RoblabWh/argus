@@ -75,8 +75,12 @@
 </head>
 
 <body>
-
+    <div style="display: flex">
+        <h2 style="width: 100%"> Map </h2>
+        <button id="shareMapFilesButton" class="big_button" style="min-width: 18%; margin: 15px" onclick="sendMapToDRZBackend()">Share Map Files</button>
+    </div>
     <div id="map-with-overlay-container">
+        
         <div id="map"></div>
         <div id="map-overlay-slider">
             <a>

@@ -256,6 +256,13 @@ class ArgusServer:
                                 view_func=self.get_weather_api_key)
         self.app.add_url_rule('/settings/weather_api_key', methods=['DELETE'],
                                 view_func=self.reset_weather_api_key)
+        self.app.add_url_rule('/send_map_to_drz_backend/<int:report_id>', methods=['POST'],
+                              view_func=self.send_map_to_IAIS_backend)
+        self.app.add_url_rule('/settings/mapserver_url', methods=['POST'],
+                                view_func=self.set_IAIS_mapserver_url)
+        self.app.add_url_rule('/settings/mapserver_url', methods=['GET'],
+                                view_func=self.get_IAIS_mapserver_url)
+
 
     def projects_overview(self):
         projects_dict_list = self.project_manager.get_projects()
@@ -1874,6 +1881,23 @@ class ArgusServer:
         print("delete_POI with", data, flush=True)
         response = self.data_share_manager.remove_poi_from_iais(data['poi_id'])
         return response
+
+    def send_map_to_IAIS_backend(self, report_id):
+        print("send_map_to_iais_backend for report", report_id, flush=True)
+        maps = self.project_manager.get_maps(report_id)
+        response = self.data_share_manager.send_map_to_iais(maps, report_id)
+        return response
+
+    def get_IAIS_mapserver_url(self):
+        return jsonify({"url": self.data_share_manager.get_geo_server_connection()})
+
+    def set_IAIS_mapserver_url(self):
+        print("setting mapserver url", flush=True)
+        print(request.form, flush=True)
+        data = request.form
+        print("set_IAIS_mapserver_token with: ", data, flush=True)
+        self.data_share_manager.update_geo_server_connection(data["url"])
+        return data
 
     def create_project_group(self):
         name = request.get_json().get('name')

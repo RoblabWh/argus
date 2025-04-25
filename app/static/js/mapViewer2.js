@@ -1026,3 +1026,25 @@ function isUsedInMap(index, displayingIR) {
     }
     return false;
 }
+
+
+
+
+
+function sendMapToDRZBackend(){
+    //just call the server to send the map to the DRZ backend
+    $.post("/send_map_to_drz_backend/" + reportID,
+        {
+        },
+        function (response) {
+            console.log("Map sent to DRZ backend, response:");
+            console.log(response);
+            if (response.success) {
+                console.log("Map sent to DRZ backend successfully");
+            }
+            else {
+                console.log("Error while sending map to DRZ backend");
+            }
+        }
+    );
+}
