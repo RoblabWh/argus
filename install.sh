@@ -3,13 +3,12 @@ set -e
 
 # get path to argus
 ARGUS_PATH="$(dirname "$(realpath "${BASH_SOURCE[0]}")")"
-ARGUS_INSTALL_PATH=/opt/argus
 
 # ask for root access
 sudo -v
 
 # build the argus containers and download the rest
-. "$ARGUS_PATH/argus.sh" build --build-arg NUM_THREADS=4
+. "$ARGUS_PATH/argus.sh" build
 . "$ARGUS_PATH/argus.sh" pull --ignore-buildable
 
 # install argus to known global path

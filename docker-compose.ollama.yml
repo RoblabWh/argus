@@ -1,0 +1,17 @@
+services:
+  ollama:
+    image: ollama/ollama
+    container_name: argus_ollama
+    ports:
+      - ${ARGUS_OLLAMA_PORT}:11434
+    volumes:
+      - ${ARGUS_OLLAMA_MODELS}:/root/.ollama:rw
+    restart: unless-stopped
+  argus:
+    links:
+      - ollama
+    depends_on:
+      - ollama
+
+volumes:
+  models:

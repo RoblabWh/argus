@@ -11,14 +11,14 @@ services:
       - nodeodm
       - detection
       - webodm
-      - stella_vslam
     depends_on:
       - detection
       - nodeodm
       - webodm
-      - stella_vslam
     environment:
       - ARGUS_WEBODM_PORT
+      - ARGUS_STELLA_VSLAM
+      - ARGUS_OLLAMA
     restart: unless-stopped
   detection:
     image: argus_detection
@@ -33,14 +33,6 @@ services:
       - ARGUS_GPU_INTEL
       - ARGUS_GPU_AMD
     restart: unless-stopped
-  stella_vslam:
-    image: stella_vslam_dense_argus
-    build: ./stella_vslam_dense_argus
-    container_name: argus_vslam
-    expose:
-      - 7000
-    volumes:
-      - ${ARGUS_PROJECTS}:/stella_vslam/static/projects:rw
-    restart: unless-stopped
+
 volumes:
   projects:
