@@ -29,3 +29,5 @@ Cython == 3.0.10
 py360convert
 numba
 geoserver-rest
+langchain-ollama
+PyExifTool

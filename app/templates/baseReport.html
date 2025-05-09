@@ -53,7 +53,7 @@
             color: var(--font-color-b);
         }
 
-        #descriptionText{
+        .descriptionTextSection{
             margin: 0px;
             padding: 8px;
             border-radius: 5px;
@@ -237,6 +237,7 @@
     <script>
         var loaded_maps = new Array(0);
         var next_map = 0;
+        var intervalID = null;
 
         {% for map in maps %}
             loaded_maps.push(true);
@@ -417,9 +418,103 @@
             });
         }
 
+        function startAutoDescription(){
+            console.log("start auto description");
+            $.post("/image_auto_descriptions/{{ id }}", function(response){
+                console.log(response);
+                if(response.success){
+                    console.log("start checking status of auto description");
+                    intervalID = window.setInterval(getStatusOfAutoDescription, 2000);
+                    showAutoDescriptionLoadingBar(true);
+
+                }else{
+                    console.error("Error while starting auto description");
+                }
+            });
+        }
+
+        function getStatusOfAutoDescription(){
+            console.log("get status of auto description");
+            $.get("/image_auto_descriptions_progress/{{ id }}", function(response){
+                console.log(response);
+                document.getElementById("autoDescriptionProgressBarText").innerHTML = response.status;
+                if(response.status != "running"){
+                    if(intervalID != null){
+                        window.clearInterval(intervalID);
+                        intervalID = null;
+                    }
+                    if (response.status == "no model"){
+                        alert("AI-Model not available. Please wait for the model to be downloaded.");
+                    }
+
+                    //after 2.5 second hide the loading bar
+                    setTimeout(function(){
+                        showAutoDescriptionLoadingBar(false);
+                        if(response.description != null){
+                            console.log("displaying auto description immediately");
+                            document.getElementById("autodescription_text").innerHTML = response.description;
+                        }else{
+                            getAutoDescription();
+                        }
+                    }, 2500);
+                    //start fading out the loading bar
+                    document.getElementById("autoDescriptionProgressBar").style.transition = "opacity 1.5s ease-in-out";
+                    document.getElementById("autoDescriptionProgressBar").style.opacity = "0";
+                    
+
+                } else{
+                    document.getElementById("autoDescriptionProgressBarMeter").style.width = response.progress + "%";
+                }
+
+            });
+
+        }
+
+        function isAutoDescriptionRunning(){
+            console.log("is auto description running");
+            $.get("/image_auto_descriptions_progress/{{ id }}", function(response){
+                console.log(response);
+                if(response.success){
+                    intervalID = window.setInterval(getStatusOfAutoDescription, 2000);
+                    showAutoDescriptionLoadingBar(true);
+                }else{
+                    intervalID = null;
+                }
+            });
+        }
+
+        function showAutoDescriptionLoadingBar(show){
+            console.log("show auto description loading bar");
+            let startButton = document.getElementById("startAutoDescription");
+            let progressBar = document.getElementById("autoDescriptionProgressBar");
+            let progressBarText = document.getElementById("autoDescriptionProgressBarText");
+            if(show){
+                progressBar.style.display = "block";
+                progressBar.style.opacity = "1";
+                progressBar.style.transition = "opacity 0.5s ease-in-out";
+                startButton.style.display = "none";
+            }else{
+                progressBar.style.display = "none";
+                startButton.style.display = "block";
+                progressBarText.innerHTML = "starting";
+                document.getElementById("autoDescriptionProgressBarMeter").style.width = "0%";
+            }
+        }
+
+        function getAutoDescription(){
+            console.log("get auto description");
+            $.get("/auto_description/{{ id }}", function(response){
+                console.log(response);
+                if(response.success){
+                    document.getElementById("autodescription_text").innerHTML = response.description;
+                }else{
+                    alert("Error while getting auto description");
+                }
+            });
+        }
 
 
-
+    isAutoDescriptionRunning();
 
 
     </script>
@@ -473,7 +568,7 @@
 
         <div style="display: inline-flex; width:100% ">
             <div style="max-width: 97%; margin-right:10px">
-                <p id="descriptionText">
+                <p id="descriptionText" class="descriptionTextSection">
                     {% for line in project.description.splitlines()[:-1] %}
                         {{line}}<br>
                     {% endfor %}
@@ -484,6 +579,32 @@
                 <span style="display: inline-block; transform: rotate(100deg); -ms-transform: rotate(100deg); -moz-transform: rotate(100deg); -webkit-transform: rotate(100deg);">&#x270E;</span>
                 <span style="display: none;">&check;</span>
             </div>
+        </div>
+        <div id="autodescription_container" style="display: flex; justify-content: space-between">
+            <div id="autodescription_textarea" style="display: flex; flex-direction: column; width: 100%; max-width: 97%;">
+                <h4 style="margin-bottom: 0px;">Auto description:</h4>
+                <p id="autodescription_text" class="descriptionTextSection">
+                    {% if project.auto_description %}
+                    {% for line in project.auto_description.splitlines()[:-1] %}
+                        {{line}}<br>
+                    {% endfor %}
+                        {{project.auto_description.splitlines()[-1]}}
+                    {% else %}
+                        No auto description available
+                    {% endif %}
+                </p>
+            </div>
+            <div style="width: 200px; margin-top: 10px;">
+                <button id="startAutoDescription" class="big_button" style=" height: 2rem; width:100%; " onclick="startAutoDescription()">Start Auto Description</button>
+                <div id="autoDescriptionProgressBar" style="display: none; width: 100%; height: 2rem;">
+                    <span  id="autoDescriptionProgressBarMeter" style="display: block; width: 0%; height:100%; background-color: var(--accent-color-green); border-radius: 4px;"> </span>
+                    <p id="autoDescriptionProgressBarText" style="position: relative; top: -1.5rem; text-align: center; margin: auto; width: 100%"> starting </p>
+
+                </div>    
+                
+                
+            </div>
+            
         </div>
 
         <div style="padding: 1rem 0;">

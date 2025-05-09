@@ -649,6 +649,13 @@ class ProjectManager:
             json.dump(project, json_file)
         return project['description']
 
+    def update_auto_description(self, id, auto_description):
+        project = self.get_project(id)
+        project['auto_description'] = auto_description
+        with open(self.projects_path + str(id) + "/project.json", "w") as json_file:
+            json.dump(project, json_file)
+        return project['auto_description']
+
     def update_title_name(self, id, title_name):
         project = self.get_project(id)
         project['name'] = title_name
@@ -779,7 +786,18 @@ class ProjectManager:
 
     def get_project_description(self, report_id):
         project = self.get_project(report_id)
-        return project['description']
+        try:
+            return project['description']
+        except:
+            return None
+
+    def get_auto_description(self, report_id):
+        project = self.get_project(report_id)
+        try:
+            return project['auto_description']
+        except:
+            print("RETURNING NONE, NO DESCRIPTION FOUND")
+            return None
 
     def get_project_creation_time(self, report_id):
         project = self.get_project(report_id)

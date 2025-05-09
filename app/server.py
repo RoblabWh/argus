@@ -8,6 +8,7 @@ from mapping.filter_thread import FilterThread
 from mapping.weather import Weather
 from data_share_manager import DataShareManager
 from export.util import popen_and_call
+from auto_describer_manager import ImageDescriberManager
 
 # from gunicorn.app.base import BaseApplication
 from flask import Flask, flash, request, redirect, url_for, render_template, jsonify, send_file
@@ -60,6 +61,7 @@ class ArgusServer:
         self.slam_manager = slam_manager
         self.thermal_analyser = ThermalAnalyser(project_manager)
         self.data_share_manager = DataShareManager("localhost", "admin", "admin")
+        self.image_describer_manager = ImageDescriberManager("argus_ollama", 11434)
 
         self.appearance_settings = {"theme": "system", "color_light": "", "color_dark": ""}
         self.appearance_settings_default = {"theme": "system", "color_light": "rgb(56, 152, 236)", "color_dark": "rgb(4, 199, 216)"}
@@ -262,6 +264,12 @@ class ArgusServer:
                                 view_func=self.set_IAIS_mapserver_url)
         self.app.add_url_rule('/settings/mapserver_url', methods=['GET'],
                                 view_func=self.get_IAIS_mapserver_url)
+        self.app.add_url_rule('/image_auto_descriptions/<int:report_id>', methods=['POST'],
+                                view_func=self.start_image_auto_descriptions)
+        self.app.add_url_rule('/image_auto_descriptions_progress/<int:report_id>', methods=['GET'],
+                                view_func=self.check_image_describer_progress)
+        self.app.add_url_rule('/auto_description/<int:report_id>', methods=['GET'],
+                                view_func=self.get_auto_description)
 
 
     def projects_overview(self):
@@ -1637,7 +1645,7 @@ class ArgusServer:
                                keyframe_folder = keyframe_folder, detections= detections, processing = processing,
                                point_cloud=point_cloud, project=project, message=message, slam_mapping_output = slam_mapping_output,
                                nerf_export=nerf_export, slam_status=slam_status,
-                               vertices = vertices, gradient_lut=gradient_lut)  #create a different render template maybe
+                               vertices=vertices, gradient_lut=gradient_lut)  #create a different render template maybe
 
     def render_standard_report(self, report_id, thread=None, template="baseReport.html"):
         data = self.project_manager.get_project(report_id)['data']
@@ -1707,6 +1715,7 @@ class ArgusServer:
 
         project = {"id": report_id, "name": self.project_manager.get_project_name(report_id),
                    "description": self.project_manager.get_project_description(report_id),
+                   'auto_description': self.project_manager.get_auto_description(report_id),
                    'creation_time': self.project_manager.get_project_creation_time(report_id),
                    'ir_settings': ir_settings}
         return render_template(template, id=report_id, file_names=file_names, file_names_ir=file_names_ir,
@@ -1971,4 +1980,32 @@ class ArgusServer:
     def reset_weather_api_key(self):
         self.weather_api_key = None
         return jsonify({"api_key": ""})
+
+    def start_image_auto_descriptions(self, report_id):
+        #start the image auto description thread
+        self.image_describer_manager.start_describer_for_images(self.project_manager.get_file_names_rgb(report_id), report_id)
+        return jsonify({"success": True})
+
+    def check_image_describer_progress(self, report_id):
+        #get the status of the image describer thread
+        status, description = self.image_describer_manager.get_progress(report_id)
+        print("check_image_describer_progress: " + str(status), type(description), flush=True)
+        if status == 1:
+            self.project_manager.update_auto_description(report_id, description)
+            response = {"success": True, "progress": 100, "status": "finished", "description": description}
+        elif status == -1:
+            response = {"success": False, "progress": 0, "status": "error"}
+        elif status == -2:
+            response = {"success": False, "progress": 0, "status": "no model"}
+        else:
+            response = {"success": True, "progress": int(status*100), "status": "running"}
+        return jsonify(response)
+
+    def get_auto_description(self, report_id):
+        #get the status of the image describer thread
+        description = self.project_manager.get_auto_description(report_id)
+        if description == None or description == "":
+            return jsonify({"success": False})
+        else:
+            return jsonify({"success": True, "description": description})
 
