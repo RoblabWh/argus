@@ -1,0 +1,51 @@
+
+############### groups.py
+
+GET     /groups                         # List all groups 
+POST    /groups                         # Create a group
+GET     /groups/{group_id}              # Get group + basic reports
+PUT     /groups/{group_id}              # Update group
+DELETE  /groups/{group_id}              # Delete group
+
+GET    /groups/{group_id}/reports  # Get all reports in group (full)
+
+
+############### reports.py
+
+
+GET    /reports                    # List all reports
+POST   /reports                    # Create a report
+GET    /reports/{report_id}        # Get specific full report
+PUT    /reports/{report_id}        # Update a report
+DELETE /reports/{report_id}        # Delete a report
+
+
+# Detail endpoints
+POST   /reports/{report_id}/mapping_report   # Create MappingReport (like start mapping)
+PUT    /reports/{report_id}/mapping_report   # Update MappingReport (like editing something/ reporcessing)
+
+
+############### images.py
+
+GET    /images/{image_id}               # Get a specific image
+PUT    /images/{image_id}               # Update image
+
+GET    /images/{image_id}/thermal_data  # Get thermal data
+PUT    /images/{image_id}/thermal_data  # Update thermal data
+
+GET    /images/{image_id}/detections    # List all detections
+POST   /images/{image_id}/detections    # Add detection
+
+
+############### weather.py
+
+GET    /weather/{weather_id}            # Get a weather entry
+PUT    /weather/{weather_id}            # Update a weather entry
+DELETE /weather/{weather_id}            # Delete a weather entry
+
+
+############### detections.py 
+
+GET    /detections/{detection_id}       # Get a detection
+PUT    /detections/{detection_id}       # Update a detection
+DELETE /detections/{detection_id}       # Delete a detection

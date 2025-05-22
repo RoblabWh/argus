@@ -1,0 +1,83 @@
+from sqlalchemy import Column, Integer, String, DateTime, Boolean, Float, ForeignKey
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.orm import relationship
+from app.database import Base
+
+# Defining the 
+# - Image, 
+# - MappingData, 
+# - ThermalData, and
+# - Detection
+# classes for the database schema
+# These classes represent the tables in the database and define their relationships
+
+
+class Image(Base):
+    __tablename__ = "images"
+
+    id = Column(Integer, primary_key=True, index=True)
+    report_id = Column(Integer, ForeignKey("mapping_reports.id"), index=True)
+    url = Column(String)
+    thumbnail_url = Column(String, nullable=True)
+    created_at = Column(DateTime)
+    uploaded_at = Column(DateTime)
+    width = Column(Integer)
+    height = Column(Integer)
+    coord = Column(JSONB, nullable=True)
+    camera_model = Column(String, nullable=True)
+    mappable = Column(Boolean, default=False)
+    panoramic = Column(Boolean, default=False)
+    thermal = Column(Boolean, default=False)
+    
+    # relationships
+    mapping_report = relationship("MappingReport", back_populates="images")
+    mapping_data = relationship("MappingData", back_populates="image", uselist=False, cascade="all, delete")
+    # pano_data = relationship("PanoData", back_populates="image", uselist=False)
+    thermal_data = relationship("ThermalData", back_populates="image", uselist=False, cascade="all, delete")
+    map_elements = relationship("MapElement", back_populates="image")
+    detections = relationship("Detection", back_populates="image", cascade="all, delete")
+
+class MappingData(Base):
+    __tablename__ = "mapping_data"
+
+    id = Column(Integer, primary_key=True, index=True)
+    image_id = Column(Integer, ForeignKey("images.id"), index=True)
+    fov = Column(Float)
+    rel_altitude = Column(Float, default=100.0)
+    cam_pitch = Column(Float)
+    cam_roll = Column(Float)
+    cam_yaw = Column(Float)
+    uav_pitch = Column(Float, nullable=True)
+    uav_roll = Column(Float, nullable=True)
+    uav_yaw = Column(Float, nullable=True)
+
+    # relationships
+    image = relationship("Image", back_populates="mapping_data")
+
+class ThermalData(Base):
+    __tablename__ = "thermal_data"
+
+    id = Column(Integer, primary_key=True, index=True)
+    image_id = Column(Integer, ForeignKey("images.id"), index=True)
+    min_temp = Column(Float)
+    max_temp = Column(Float)
+    temp_matrix = Column(JSONB)
+    temp_embedded = Column(Boolean, default=True),
+    temp_unit = Column(String, default="C")
+    lut_name = Column(String, nullable=True)
+
+    # relationships
+    image = relationship("Image", back_populates="thermal_data")
+
+
+class Detection(Base):
+    __tablename__ = "detections"
+
+    id = Column(Integer, primary_key=True, index=True)
+    image_id = Column(Integer, ForeignKey("images.id"), index=True)
+    class_name = Column(String)
+    score = Column(Float)
+    bbox = Column(JSONB)
+
+    # relationships
+    image = relationship("Image", back_populates="detections")

@@ -1,0 +1,6 @@
+# Python
+__pycache__/
+*.pyc
+
+deprecated/
+api/app/reports_data/

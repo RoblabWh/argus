@@ -1,0 +1,7 @@
+psycopg2
+SQLAlchemy
+pydantic>=2.0,<3.0
+fastapi
+uvicorn
+alembic
+
