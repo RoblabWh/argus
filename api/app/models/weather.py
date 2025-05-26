@@ -19,4 +19,4 @@ class Weather(Base):
     timestamp = Column(DateTime, nullable=True)
 
     # relationships
-    mapping_report = relationship("Report", back_populates="weather")
+    mapping_report = relationship("MappingReport", back_populates="weather")

@@ -4,11 +4,11 @@ services:
     container_name: argusII_project_db
     restart: unless-stopped
     environment:
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: mydb
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     ports:
-      - "5433:5432"
+      - "${PORT_DB}:5432"
     volumes:
       - argus_db_data:/var/lib/postgresql/data
   
@@ -18,9 +18,9 @@ services:
     container_name: argusII_backend
     restart: unless-stopped
     ports:
-      - "8000:8000"
+      - "${PORT_API}:8000"
     environment:
-      DATABASE_URL: postgresql+psycopg2://user:password@db:5432/mydb
+      DATABASE_URL: ${DATABASE_URL}
     depends_on:
       - db
     volumes:
