@@ -36,3 +36,10 @@ app.include_router(reports.router)
 @app.get("/")
 async def root():
     return {"message": "Welcome to the Report API!", "docs": "/docs"}
+
+@app.get("/db")
+async def get_db_info():
+    """Returns basic information about the database."""
+    from app.database import print_db_info
+    print_db_info()
+    return {"message": "Database information printed to console."}

@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session, joinedload
 from app import models
 from app.schemas.group import GroupCreate, GroupUpdate
 from app.schemas.report import ReportDetailOut
+from datetime import datetime
 
 
 def get_all(db: Session):
@@ -12,7 +13,8 @@ def get_all(db: Session):
 
 
 def create(db: Session, group: GroupCreate):
-    db_group = models.Group(**group.dict())
+    datetime_now = datetime.utcnow()  # Assuming you have a datetime field in your Group model
+    db_group = models.Group(**group.dict(), created_at=datetime_now)
     db.add(db_group)
     db.commit()
     db.refresh(db_group)
