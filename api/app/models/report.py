@@ -1,6 +1,7 @@
 from sqlalchemy import Column, Integer, String, DateTime, Boolean, Float, ForeignKey
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
 from app.database import Base
 
 # Define the
@@ -15,12 +16,12 @@ class Report(Base):
 
     report_id = Column(Integer, primary_key=True, index=True)
     group_id = Column(Integer, ForeignKey("groups.id"), index=True, nullable=True)
-    type = Column(String, index=True)
+    type = Column(String, index=True, default="unset")
     title = Column(String)
     description = Column(String)
     status = Column(String, default="unprocessed")
-    created_at = Column(DateTime, index=True)
-    updated_at = Column(DateTime)
+    created_at = Column(DateTime, index=True, server_default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
     processing_duration = Column(Float, nullable=True)
     requires_reprocessing = Column(Boolean, default=False)
     auto_description = Column(String, nullable=True)

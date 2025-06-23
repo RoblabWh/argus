@@ -12,8 +12,8 @@ from pydantic import BaseModel
 ##################
 
 class ReportBase(BaseModel):
-    group_id: Optional[int] = None
-    type: str
+    group_id: int 
+    type: Optional[str] = "unset"
     title: str
     description: str
     status: Optional[str] = "unprocessed"

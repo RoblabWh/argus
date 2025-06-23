@@ -12,6 +12,30 @@ async function fetchJson<T>(endpoint: string): Promise<T> {
   return res.json();
 }
 
+async function postJson<T>(
+  endpoint: string,
+  data: unknown,
+  method: "POST" | "PUT" | "PATCH" = "POST"
+): Promise<T> {
+  const res = await fetch(`${API_URL}${endpoint}`, {
+    method,
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(data),
+  });
+
+  if (!res.ok) {
+    throw new Error(`Failed to ${method} ${endpoint}: ${res.status}`);
+  }
+
+  return res.json();
+}
+
 export const getGroups = () => fetchJson<Group[]>("/groups/");
 export const getGroup = (id: number) => fetchJson<Group>(`/groups/${id}`);
 export const getGroupReports = (id: number) => fetchJson<Report[]>(`/groups/${id}/reports`);
+export const createGroup = (data: { name: string; description: string }) => postJson<Group>("/groups/", data);
+
+export const getReport = (id: number) => fetchJson<Report>(`/reports/${id}`);
+export const createReport = (data: { group_id: number; title: string; description: string }) =>  postJson<Report>(`/reports/`, data);
