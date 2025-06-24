@@ -14,8 +14,8 @@ const useCreateReport = () => {
   return useMutation({
     mutationFn: createReport,
     onSuccess: () => {
-      // Invalidate and refetch the reports query to reflect the new report
-      queryClient.invalidateQueries({ queryKey: ["reports"] });
+      // Invalidate and refetch the groups query to reflect the new report
+      queryClient.invalidateQueries({ queryKey: ["groups"] });
     },
   });
 };

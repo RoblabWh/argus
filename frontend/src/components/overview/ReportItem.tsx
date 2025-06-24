@@ -18,8 +18,13 @@ const defaultColor = "bg-gray-100 text-gray-800";
 export function ReportItem({ report }: Props) {
   const colorClass = statusColor[report.status ?? ""] ?? defaultColor;
 
+  const handleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    window.location.href = `/report/${report.report_id}`;
+  }
+
   return (
-    <div className="flex justify-between items-start border rounded-md p-3 hover:bg-muted transition-colors">
+    <div className="flex justify-between items-start border rounded-md p-3 hover:bg-muted transition-colors" onClick={(e) => handleClick(e)}>
       <div className="space-y-1">
         <p className="font-medium">{report.title}</p>
         {report.description && (

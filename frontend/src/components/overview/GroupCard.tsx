@@ -19,8 +19,15 @@ export function GroupCard({ group, handleAddReport }: Props) {
     return <div className="text-red-500">Group not found</div>;
   }
 
+  const openGroupReport = (e: React.MouseEvent) => {
+    console.log(e);
+    e.stopPropagation();
+    alert(`Opening report for group ${group.id}`);
+  }
+
   return (
-    <Card className="w-full mb-4">
+    <div className="group">
+    <Card className="w-full mb-4" onClick={() => setIsExpanded(!isExpanded)}>
       <CardHeader>
         <div className="flex justify-between items-start w-full">
           {/* Left: Name & description */}
@@ -52,15 +59,15 @@ export function GroupCard({ group, handleAddReport }: Props) {
           transition={{ duration: 0.3, ease: "easeInOut" }}
           className="overflow-hidden"
         >
-        <div className="flex px-6 pb-6">
-          <Button variant="outline" className="" onClick={() => alert(`Opening report for group ${group.id}`)}>
+        <div className="flex px-6 pb-6 " >
+          <Button variant="outline" className="" onClick={(e) => openGroupReport(e)}>
             Group Report
           </Button>
           
-          <Button variant="outline" className="ml-2" onClick={() => alert(`Editing group ${group.id}`)}>
+          <Button variant="outline" className="ml-2" onClick={(e) => { e.stopPropagation(); alert(`Editing group ${group.id}`); }}>
             <Edit className="" />  
           </Button>
-          <Button variant="destructive" className="ml-2" onClick={() => confirm(`Deleting group ${group.id}`)}>
+          <Button variant="destructive" className="ml-2" onClick={(e) => { e.stopPropagation(); confirm(`Deleting group ${group.id}`); }}>
             <Trash2 className="" />
           </Button>
         </div>
@@ -69,19 +76,20 @@ export function GroupCard({ group, handleAddReport }: Props) {
         <CardContent className="px-6 py-4 space-y-3">
           <div className="flex items-center space-x-2">
             <h3 className="text-lg font-semibold">Reports</h3>
-            <Button variant="outline" size="sm" onClick={() => handleAddReport(group.id, group.name)}>
+            <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); handleAddReport(group.id, group.name); }}>
               <Plus className="mr-2" />
               Add Report
             </Button>
           </div>
-  
-          {group.reports.length > 0 ? (
-            group.reports.map((report: Report) => (
-              <ReportItem key={report.report_id} report={report} />
-            ))
-          ) : (
-            <p className="text-sm text-muted-foreground">No reports available</p>
-          )}
+          <div onClick={(e) => { e.preventDefault(); }} className="space-y-2">
+            {group.reports.length > 0 ? (
+              group.reports.map((report: Report) => (
+                <ReportItem key={report.report_id} report={report} />
+              ))
+            ) : (
+              <p className="text-sm text-muted-foreground">No reports available</p>
+            )}
+          </div>
         </CardContent>
       </motion.div>
     )}
@@ -89,11 +97,15 @@ export function GroupCard({ group, handleAddReport }: Props) {
       <CardFooter className="">
         <div className="flex-1"></div>
         
-        
-        <Button variant="default" className="ml-2" onClick={() => setIsExpanded(!isExpanded)}>
+        <Button
+          variant="outline"
+          className="ml-2 group-hover:bg-primary/90 group-hover:text-white transition-colors"
+          onClick={(e) => { e.stopPropagation(); setIsExpanded(!isExpanded); }}
+        >
           {isExpanded ? <ChevronUp /> : <ChevronDown />}
         </Button>
       </CardFooter>
     </Card>
+    </div>
   );
 }
