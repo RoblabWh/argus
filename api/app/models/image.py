@@ -16,7 +16,8 @@ class Image(Base):
     __tablename__ = "images"
 
     id = Column(Integer, primary_key=True, index=True)
-    report_id = Column(Integer, ForeignKey("mapping_reports.id"), index=True)
+    mapping_report_id = Column(Integer, ForeignKey("mapping_reports.id"), index=True)
+    filename = Column(String)
     url = Column(String)
     thumbnail_url = Column(String, nullable=True)
     created_at = Column(DateTime)
@@ -25,6 +26,7 @@ class Image(Base):
     height = Column(Integer)
     coord = Column(JSONB, nullable=True)
     camera_model = Column(String, nullable=True)
+    preprocessed = Column(Boolean, default=False, nullable=False)
     mappable = Column(Boolean, default=False)
     panoramic = Column(Boolean, default=False)
     thermal = Column(Boolean, default=False)

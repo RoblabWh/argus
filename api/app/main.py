@@ -2,11 +2,14 @@ from fastapi import FastAPI
 from . import models, schemas
 from .database import SessionLocal, engine
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from sqlalchemy import inspect
+import os
 
 from app.routers import (
     groups,
     reports,
-    # images,
+    images,
     # weather,
     # detections,
     # processing,
@@ -29,9 +32,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+current_dir = os.path.dirname(os.path.abspath(__file__))
+static_dir = os.path.join(current_dir, "../reports_data")
+app.mount("/reports_data", StaticFiles(directory=static_dir), name="static")
+
 # Routers will be defined here
 app.include_router(groups.router)
 app.include_router(reports.router)
+app.include_router(images.router)
 
 @app.get("/")
 async def root():
@@ -43,3 +51,10 @@ async def get_db_info():
     from app.database import print_db_info
     print_db_info()
     return {"message": "Database information printed to console."}
+
+inspector = inspect(engine)
+
+for table_name in inspector.get_table_names():
+    print(f"Table: {table_name}", flush=True)
+    for column in inspector.get_columns(table_name):
+        print(f"  Column: {column['name']} - {column['type']} - Nullable: {column['nullable']} default: {column.get('default')} - Server Default: {column.get('server_default')}", flush=True)

@@ -77,12 +77,12 @@ def delete(db: Session, report_id: int):
 
 # Mapping Report Handlers
 
-def create_mapping_report(db: Session, report_id: int, data: MappingReportCreate):
+def create_mapping_report(db: Session, report_id: int):
     existing = db.query(models.MappingReport).filter(models.MappingReport.report_id == report_id).first()
     if existing:
         raise ValueError("Mapping report already exists for this report")
 
-    mapping_report = models.MappingReport(**data.dict())
+    mapping_report = models.MappingReport(report_id=report_id)
     db.add(mapping_report)
     db.commit()
     db.refresh(mapping_report)

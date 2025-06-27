@@ -32,6 +32,25 @@ async function postJson<T>(
   return res.json();
 }
 
+async function deleteRequest(
+  endpoint: string
+): Promise<void> {
+  const res = await fetch(`${API_URL}${endpoint}`, {
+    method: "DELETE",
+  });
+
+  if (!res.ok) {
+    let msg = `Failed to DELETE ${endpoint}: ${res.status}`;
+    try {
+      const json = await res.json();
+      msg += ` - ${json.detail || JSON.stringify(json)}`;
+    } catch {
+      // Ignore JSON parse error
+    }
+    throw new Error(msg);
+  }
+}
+
 export const getGroups = () => fetchJson<Group[]>("/groups/");
 export const getGroup = (id: number) => fetchJson<Group>(`/groups/${id}`);
 export const getGroupReports = (id: number) => fetchJson<Report[]>(`/groups/${id}/reports`);
@@ -39,3 +58,12 @@ export const createGroup = (data: { name: string; description: string }) => post
 
 export const getReport = (id: number) => fetchJson<Report>(`/reports/${id}`);
 export const createReport = (data: { group_id: number; title: string; description: string }) =>  postJson<Report>(`/reports/`, data);
+
+export const getImages = (report_id: number) => fetchJson<{ images: string[] }>(`/images/report/${report_id}`);
+export const getImage = (imageId: number) => fetchJson<{ image: string }>(`/images/${imageId}`);
+export const deleteImage = (imageId: number) => deleteRequest(`/images/${imageId}`);
+
+
+
+//export api Url
+export const getApiUrl = () => API_URL;

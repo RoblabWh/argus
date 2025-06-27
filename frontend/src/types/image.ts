@@ -4,7 +4,8 @@ import type { Detection } from "@/types/detection";
 
 export type Image = {
   id: number;
-  report_id: number;
+  mapping_report_id: number;
+  filename: string;
   url: string;
   thumbnail_url: string;
   created_at?: string;

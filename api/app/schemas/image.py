@@ -9,9 +9,11 @@ from pydantic import BaseModel
 ##################
 
 class ImageBase(BaseModel):
-    report_id: int
+    mapping_report_id: int
+    filename: str
     url: str
     thumbnail_url: str
+    preprocessed: Optional[bool] = False  
     created_at: Optional[datetime] = None
     uploaded_at: Optional[datetime] = None
     width: int
@@ -48,6 +50,13 @@ class ImageOut(ImageBase):
 
     class Config:
         orm_mode = True    
+
+
+class ImageUploadResult(BaseModel):
+    status: str  # "success" | "error" | "duplicate"
+    filename: Optional[str] = None
+    error: Optional[str] = None
+    image_object: Optional[ImageOut] = None
 
 
 

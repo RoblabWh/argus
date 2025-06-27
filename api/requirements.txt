@@ -4,4 +4,7 @@ pydantic>=2.0,<3.0
 fastapi
 uvicorn
 alembic
-
+Pillow
+pyexifinfo
+PyExifTool
+python-multipart
