@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
+import { useBreadcrumbs } from "@/contexts/BreadcrumbContext";
 import type { Report } from '@/types/report';
 import { useReport } from '@/hooks/reportHooks';
 import { usePollReportStatus } from '@/hooks/usePollReportStatus';
@@ -8,14 +9,23 @@ import { MappingReport } from '@/components/report/MappingReport';
 
 export default function ReportOverview() {
   const { report_id } = useParams<{ report_id: string }>();
+  const { setBreadcrumbs } = useBreadcrumbs();
   const { data: initialReport, isLoading, error } = useReport(Number(report_id));
-  
+
   const [liveReport, setLiveReport] = useState<Report | null>(null);
   const [shouldPoll, setShouldPoll] = useState(false);
   const [isEditing, setIsEditing ] = useState(false);
 
+
   // Start polling if the report is processing or preprocessing
   useEffect(() => {
+    if (initialReport) {
+      setBreadcrumbs([
+        { label: "Overview", href: "/overview" },
+        { label: "Group", href: "/group/"+initialReport.group_id },
+        { label: initialReport.title || "Unknown Report", href: `/report/${initialReport.report_id}` },
+      ]);
+    }
     if (
       initialReport &&
       (initialReport.status === "processing" || initialReport.status === "preprocessing")

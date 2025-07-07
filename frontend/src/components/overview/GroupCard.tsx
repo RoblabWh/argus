@@ -22,7 +22,8 @@ export function GroupCard({ group, handleAddReport }: Props) {
   const openGroupReport = (e: React.MouseEvent) => {
     console.log(e);
     e.stopPropagation();
-    alert(`Opening report for group ${group.id}`);
+    // link to group report page with react
+    window.location.href = `/group/${group.id}`;
   }
 
   return (

@@ -5,6 +5,8 @@ import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuIte
 import { Button } from "@/components/ui/button";
 import { ChevronDown } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
+import { useBreadcrumbs } from "@/contexts/BreadcrumbContext";
+
 
 
 // interface TopMenuBarProps {
@@ -12,19 +14,8 @@ import { Link, useLocation } from "react-router-dom";
 // }
 
 const TopMenuBar: React.FC = () => {
-
-  const location = useLocation();
-
-  // Split path into segments and build breadcrumb items
-  const segments = location.pathname.split("/").filter(Boolean);
-  const breadcrumbs = segments.map((segment, index) => {
-    const href = "/" + segments.slice(0, index + 1).join("/");
-
-    return {
-      label: segment.charAt(0).toUpperCase() + segment.slice(1), // Capitalize
-      href,
-    };
-  });
+  const { breadcrumbs } = useBreadcrumbs();
+  
   return (
     <div className="w-full flex justify-between items-center p-4 pb-2 pt-2 border-b bg-white shadow-sm">
       <Breadcrumb>
@@ -39,7 +30,7 @@ const TopMenuBar: React.FC = () => {
               <BreadcrumbSeparator />
               <BreadcrumbItem>
                 <BreadcrumbLink asChild>
-                  <Link to={crumb.href}>{crumb.label}</Link>
+                  {crumb.href ? <Link to={crumb.href}>{crumb.label}</Link> : crumb.label}
                 </BreadcrumbLink>
               </BreadcrumbItem>
             </React.Fragment>

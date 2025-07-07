@@ -3,7 +3,6 @@ import type { Report } from "@/types/report";
 import { UploadArea } from "@/components/report/UploadArea";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress"; // From shadcn
-import { usePollReportStatus } from "@/hooks/usePollReportStatus";
 import { useStartReportProcess } from "@/hooks/useStartProcessing"
 import type { ProcessingSettings } from "@/types/processing";
 import { Toaster } from "@/components/ui/sonner"
@@ -102,8 +101,8 @@ const handleStartProcessing = () => {
       
 
       <div className="text-sm text-muted-foreground mt-4">
-      {/* Print every property of the report object */}
-      <pre>{JSON.stringify(report, null, 2)}</pre>
+        {/* Print every property of the report object */}
+        <pre>{JSON.stringify(report, null, 2)}</pre>
       </div>
       
     </div>

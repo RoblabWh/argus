@@ -1,5 +1,5 @@
 import { Routes, Route } from "react-router-dom";
-import { useState } from 'react'
+import { useEffect } from 'react'
 import reactLogo from '@/assets/react.svg'
 import argusLogo from '@/assets/Argus_icon_Light_crop.png'
 import whLogo from '@/assets/Westfälische_Hochschule_Logo.svg'
@@ -12,11 +12,16 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
-import TopMenuBar from "@/components/menubar"
+import { useBreadcrumbs } from "@/contexts/BreadcrumbContext";
 
 
 
 export default function Home() {
+  const { setBreadcrumbs } = useBreadcrumbs();
+  useEffect(() => {
+    setBreadcrumbs([]);
+  }, []);
+
   return (
     <>
 
