@@ -20,7 +20,7 @@ const useDeleteImage = () => {
   return useMutation({
     mutationFn: (imageId: number) => deleteImage(imageId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["report"] });
+      //queryClient.invalidateQueries({ queryKey: ["report"] });
     },
   });
 };

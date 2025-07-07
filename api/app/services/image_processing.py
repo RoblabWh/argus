@@ -9,6 +9,8 @@ from PIL import Image
 import app.crud.images as crud_image
 import app.crud.report as crud_report
 
+import app.services.image_metadata_extraction as metadata_extraction
+
 
 router = APIRouter()
 UPLOAD_DIR = Path("reports_data")
@@ -61,7 +63,7 @@ def process_image(report_id: int, file: UploadFile, db: Session):
             shutil.copyfileobj(file.file, f)
 
 
-        metadata = extract_metadata(file_path)
+        metadata = metadata_extraction.extract_basic_image_metadata(file_path)
 
         # Create a thumbnail (placeholder logic, replace with actual thumbnail creation)
         thumbnail_path = save_thumbnail(file_path, file)
@@ -118,6 +120,7 @@ def process_image(report_id: int, file: UploadFile, db: Session):
         }
 
 
+
 def extract_metadata(file_path: Path) -> dict:
     """Extracts metadata from the image file.
     Args:
@@ -141,6 +144,8 @@ def extract_metadata(file_path: Path) -> dict:
 
     return data
 
+
+
 def save_thumbnail(file_path: Path, file: UploadFile) -> Path:
     """Saves a thumbnail for the image file.
     Args:
@@ -159,6 +164,8 @@ def save_thumbnail(file_path: Path, file: UploadFile) -> Path:
 
     return thumb_path
 
+
+
 def check_mapping_report(report_id: int, db: Session) -> int:
     """Checks if the report exists or creates it and returns its ID.
     Args:
@@ -174,6 +181,8 @@ def check_mapping_report(report_id: int, db: Session) -> int:
         mapping_report = crud_report.create_mapping_report(db, report_id)
     
     return mapping_report.id
+
+
 
 def delete_image_file(image):
     """Deletes the image file from the filesystem.
@@ -195,6 +204,8 @@ def delete_image_file(image):
     except Exception as e:
         print(f"Error deleting image file {image.url}: {e}", flush=True)
         return False
+    
+
 
 def delete_file(path):
     """Deletes a file from the filesystem.

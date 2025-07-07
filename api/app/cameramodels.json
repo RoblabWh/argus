@@ -1,0 +1,33 @@
+{
+  "default": {
+    "created_at": "EXIF:CreateDate",
+    "width": "File:ImageWidth",
+    "height": "File:ImageHeight",
+    "projection_type": "XMP:ProjectionType",
+    "gps": {
+      "lon": "Composite:GPSLongitude",
+      "lat": "Composite:GPSLatitude",
+      "rel_alt": "XMP:RelativeAltitude"
+    },
+    "ir": {
+      "ir": "XMP:ImageSource",
+      "ir_value": "InfraredCamera",
+      "ir_image_width": 0,
+      "ir_image_height": 0,
+      "ir_filename_pattern": "_T(?=\\.\\w+$)"
+    },
+    "camera_properties": {
+      "focal_length": "EXIF:FocalLength",
+      "fov": "Composite:FOV"
+    },
+    "orientation": {
+      "gimbal_roll": "XMP:GimbalRollDegree",
+      "gimbal_yaw": "XMP:GimbalYawDegree",
+      "gimbal_pitch": "XMP:GimbalPitchDegree",
+      "flight_roll": "XMP:FlightRollDegree",
+      "flight_yaw": "XMP:FlightYawDegree",
+      "flight_pitch": "XMP:FlightPitchDegree"
+    },
+    "adjust_data": false
+  }
+}

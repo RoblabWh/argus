@@ -21,8 +21,11 @@ services:
       - "${PORT_API}:8000"
     environment:
       DATABASE_URL: ${DATABASE_URL}
+      REDIS_PORT: ${PORT_REDIS}
+      REDIS_HOST: ${HOST_REDIS}
     depends_on:
       - db
+      - redis
     volumes:
       - ./api:/api
       - argus_uploaded_files:/api/reports_data
@@ -39,6 +42,28 @@ services:
     stdin_open: true
     tty: true
 
+  argus_mapping_worker:
+    build: ./api
+    working_dir: /api
+    container_name: argusII_mapping_worker
+    entrypoint: celery
+    command: -A app.services.mapping.processing_manager worker --loglevel=info
+    volumes:
+      - ./api:/api
+      - argus_uploaded_files:/api/reports_data
+    depends_on: 
+      - db
+      - redis
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_PORT: ${PORT_REDIS}
+      REDIS_HOST: ${HOST_REDIS}
+
+  redis:
+    image: redis:latest
+    container_name: argusII_redis
+    ports:
+    - "${PORT_REDIS}:6379"
 
 volumes:
   argus_db_data:

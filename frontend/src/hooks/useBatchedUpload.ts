@@ -2,7 +2,18 @@ import { useCallback } from "react";
 import { getApiUrl } from "@/api";
 
 type UploadFile = {
-  file: File;
+  file?: File;
+};
+
+type ImageUploadResult = {
+  status: string; // "success" | "error" | "duplicate"
+  filename?: string;
+  error?: string;
+  image_object?: {
+    id: number;
+    filename: string;
+    thumbnail_url: string;
+  };
 };
 
 export function useBatchedUpload(report_id: number) {
@@ -12,22 +23,27 @@ export function useBatchedUpload(report_id: number) {
     async (
       files: UploadFile[],
       onProgress: (file: File, percent: number) => void
-    ) => {
+    ):  Promise<ImageUploadResult[]> => {
       return new Promise((resolve, reject) => {
         const xhr = new XMLHttpRequest();
         const formData = new FormData();
-        files.forEach(({ file }) => formData.append("files", file));
+        files.forEach(({ file }) => file && formData.append("files", file));
 
         xhr.upload.addEventListener("progress", (e) => {
           if (e.lengthComputable) {
             const percent = Math.round((e.loaded * 100) / e.total);
-            files.forEach(({ file }) => onProgress(file, percent));
+            files.forEach(({ file }) => file && onProgress(file, percent));
           }
         });
 
         xhr.onload = () => {
           if (xhr.status < 300) {
-            resolve(xhr.response);
+            try {
+              const response = JSON.parse(xhr.response);
+              resolve(response); // Parsed response
+            } catch (e) {
+              reject("Invalid JSON response");
+            }
           } else {
             reject(xhr.response);
           }

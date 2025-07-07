@@ -5,12 +5,16 @@ from app import models
 from app.schemas.report import ReportCreate, ReportUpdate
 from app.schemas.report import MappingReportCreate, MappingReportUpdate
 
+import redis
 
 def get_all(db: Session):
     return db.query(models.Report).all()
 
 
-def get_full_report(db: Session, report_id: int):
+def get_full_report(db: Session, report_id: int, r: redis.Redis = None):
+    #check if the processing status is still valid
+    if r is not None:
+        get_process_status(db, report_id, r)
     return (
         db.query(models.Report)
         .options(
@@ -105,3 +109,67 @@ def update_mapping_report(db: Session, report_id: int, data: MappingReportUpdate
 def delete_report_files(report_id: int):
     # TODO: Implement file deletion logic
     pass
+
+def update_process(db: Session, report_id: int, status: str = "queued", progress: float = 0):
+    """Sets the (initial) processing status and progress of a report."""
+    report = db.query(models.Report).filter(models.Report.report_id == report_id).first()
+    if not report:
+        raise ValueError("Report not found")
+
+    # Update processing status
+    report.status = status
+    report.progress = progress
+    db.commit()
+    print(f"Report {report_id} status updated to {status} with progress {progress}")
+
+    return report
+
+
+
+def get_process_status(db: Session, report_id: int, r: redis.Redis):
+    
+    #first check the progress and status saved in postgresql
+    report = db.query(models.Report).filter(models.Report.report_id == report_id).first()
+    if not report:
+        raise ValueError("Report not found")
+
+    #if status is preprocessing or processing check redis if the task is still going or crahed
+    status = report.status
+
+    if status in ["preprocessing", "processing"]:
+        # check redis for the task status
+        try:
+            task_id = r.get(f"report:{report_id}:task_id")
+            if not task_id:
+                # no task found, set status to failed
+                report.status = "failed"
+                report.progress = 0.0
+                db.commit()
+                return {"status": "failed", "progress": 0.0}
+            print(f"Task ID for report {report_id}: {task_id.decode('utf-8')}")
+            task_status = r.get(f"report:{report_id}:progress")
+            print(f"Task status for report {report_id}: {task_status}")
+            if task_status is None:
+                # no progress found, set status to failed
+                report.status = "failed"
+                report.progress = 0.0
+                db.commit()
+                return {"status": "failed", "progress": 0.0}
+        except redis.RedisError as e:
+            print(f"Redis error: {e}")
+            # if redis is not available, set status to failed
+            report.status = "unprocessed"
+            report.progress = 0.0
+            db.commit()
+
+            
+
+        # # get the task status from redis
+        # task_status = r.get(f"report:{report_id}:progress")
+        # if task_status is None:
+        #     # no progress found, set status to failed
+        #     report.status = "failed"
+        #     db.commit()
+        #     return {"status": "failed", "progress": 0.0}
+
+    return report

@@ -8,3 +8,6 @@ Pillow
 pyexifinfo
 PyExifTool
 python-multipart
+pyproj
+celery
+redis

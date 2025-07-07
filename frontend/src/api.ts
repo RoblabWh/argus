@@ -1,6 +1,7 @@
 // src/api/groups.ts
 import type { Group } from "@/types/group";
 import type { Report } from "@/types/report";
+import type { ProcessingSettings } from "@/types/processing";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
@@ -63,6 +64,20 @@ export const getImages = (report_id: number) => fetchJson<{ images: string[] }>(
 export const getImage = (imageId: number) => fetchJson<{ image: string }>(`/images/${imageId}`);
 export const deleteImage = (imageId: number) => deleteRequest(`/images/${imageId}`);
 
+
+
+// POST: Start report processing
+export const startReportProcessing = (
+  reportId: number,
+  settings: ProcessingSettings
+): Promise<Report> =>
+  postJson(`/reports/${reportId}/process`, settings);
+
+// GET: Poll processing status
+export const getReportProcessStatus = (
+  reportId: number
+): Promise<Report> =>
+  fetchJson(`/reports/${reportId}/process/`);
 
 
 //export api Url

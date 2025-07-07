@@ -20,6 +20,7 @@ class Report(Base):
     title = Column(String)
     description = Column(String)
     status = Column(String, default="unprocessed")
+    progress = Column(Float, default=0.0)
     created_at = Column(DateTime, index=True, server_default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
     processing_duration = Column(Float, nullable=True)

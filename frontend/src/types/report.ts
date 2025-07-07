@@ -31,12 +31,13 @@ export interface Report {
   type: string;
   title: string;
   description: string;
-  status?: string;
+  status: string;
   processing_duration?: number;
   requires_reprocessing?: boolean;
   auto_description?: string;
   created_at: string;
   updated_at: string;
+  progress?: number;
 
   // Optional detail sub-objects
   mapping_report?: MappingReport;

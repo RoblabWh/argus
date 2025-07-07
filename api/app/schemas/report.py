@@ -17,6 +17,7 @@ class ReportBase(BaseModel):
     title: str
     description: str
     status: Optional[str] = "unprocessed"
+    progress: Optional[float] = 0.0
     processing_duration: Optional[float] = None
     requires_reprocessing: Optional[bool] = False
     auto_description: Optional[str] = None
@@ -46,6 +47,15 @@ class ReportOut(ReportCreate):
 class ReportDetailOut(ReportOut):
     mapping_report: Optional["MappingReportOut"] = None
     pano_report: Optional["PanoReportOut"] = None
+
+
+class ProcessingSettings(BaseModel):
+    preprocessing: bool = True
+    processing: bool = True
+    keep_weather: bool = False
+    odm_orthophoto: bool = False
+    odm_full: bool = False
+    reprocess_all: bool = False
 
 
 ##################
