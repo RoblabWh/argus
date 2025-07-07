@@ -1,11 +1,11 @@
 from sqlalchemy.orm import Session, joinedload
 from datetime import datetime
+import redis
 
 from app import models
 from app.schemas.report import ReportCreate, ReportUpdate
 from app.schemas.report import MappingReportCreate, MappingReportUpdate
-
-import redis
+from app.services.cleanup import cleanup_report_folder
 
 def get_all(db: Session):
     return db.query(models.Report).all()
@@ -72,10 +72,14 @@ def update(db: Session, report_id: int, update_data: ReportUpdate):
 
 def delete(db: Session, report_id: int):
     report = db.query(models.Report).filter(models.Report.report_id == report_id).first()
+    try:
+        cleanup_report_folder(report_id)
+    except Exception as e:
+        print(f"Error cleaning up report folder: {e}")
+        return {"error": str(e)}
     if report:
         db.delete(report)
         db.commit()
-    delete_report_files(report_id)
     return {"message": f"Report {report_id} deleted"}
 
 
@@ -106,9 +110,6 @@ def update_mapping_report(db: Session, report_id: int, data: MappingReportUpdate
     return mapping
 
 
-def delete_report_files(report_id: int):
-    # TODO: Implement file deletion logic
-    pass
 
 def update_process(db: Session, report_id: int, status: str = "queued", progress: float = 0):
     """Sets the (initial) processing status and progress of a report."""

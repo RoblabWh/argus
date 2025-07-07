@@ -3,9 +3,10 @@ import React from "react";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { ChevronDown } from "lucide-react";
+import { Menu } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { useBreadcrumbs } from "@/contexts/BreadcrumbContext";
+import { ModeToggle } from "./ui/mode-toggle";
 
 
 
@@ -17,7 +18,27 @@ const TopMenuBar: React.FC = () => {
   const { breadcrumbs } = useBreadcrumbs();
   
   return (
-    <div className="w-full flex justify-between items-center p-4 pb-2 pt-2 border-b bg-white shadow-sm">
+    <div className="w-full flex justify-between items-center p-4 pb-2 pt-2 border-b  shadow-sm">
+      <div className="flex items-center gap-4">
+       <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="outline" className="flex items-center gap-2">
+             <Menu className="w-4 h-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem asChild>
+            <Link to="/settings">Settings</Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link to="/about">About</Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link to="/overview">Overview</Link>
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
       <Breadcrumb>
         <BreadcrumbList>
           <BreadcrumbItem>
@@ -37,25 +58,11 @@ const TopMenuBar: React.FC = () => {
           ))}
         </BreadcrumbList>
       </Breadcrumb>
+      </div>
 
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="outline" className="flex items-center gap-2">
-            Menu <ChevronDown className="w-4 h-4" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem asChild>
-            <Link to="/settings">Settings</Link>
-          </DropdownMenuItem>
-          <DropdownMenuItem asChild>
-            <Link to="/about">About</Link>
-          </DropdownMenuItem>
-          <DropdownMenuItem asChild>
-            <Link to="/overview">Overview</Link>
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+      <ModeToggle />
+
+     
     </div>
   );
 };

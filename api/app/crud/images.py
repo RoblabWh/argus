@@ -3,7 +3,7 @@ from datetime import datetime
 
 from app import models
 from app.schemas.image import ImageCreate, ImageUpdate, ImageUploadResult
-from app.services.image_processing import delete_image_file
+from app.services.cleanup import delete_image_file
 
 def get_all(db: Session):
     return db.query(models.Image).all()

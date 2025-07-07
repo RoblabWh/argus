@@ -50,7 +50,6 @@ def update_report(report_id: int, update: ReportUpdate, db: Session = Depends(ge
 
 @router.delete("/{report_id}")
 def delete_report(report_id: int, db: Session = Depends(get_db)):
-    # TODO: Add filesystem cleanup logic
     return crud.delete(db, report_id)
 
 

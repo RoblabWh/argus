@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { useBreadcrumbs } from '@/contexts/BreadcrumbContext';
+import { ModeToggle } from '@/components/ui/mode-toggle';
 
 export default function Settings() {
   const { setBreadcrumbs } = useBreadcrumbs();

@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getReport, createReport } from "@/api"; 
+import { getReport, createReport, deleteReport } from "@/api"; 
 
 const useReport = (id: number) => 
     useQuery({
@@ -20,4 +20,17 @@ const useCreateReport = () => {
   });
 };
 
-export { useReport, useCreateReport };
+const useDeleteReport = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: deleteReport,
+    onSuccess: () => {
+      // Invalidate and refetch the reports query to reflect the deleted report
+      console.log("Report deleted successfully");
+      queryClient.invalidateQueries({ queryKey: ["groups"] });
+    },
+  });
+};
+
+export { useReport, useCreateReport, useDeleteReport };

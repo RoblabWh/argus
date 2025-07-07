@@ -2,7 +2,18 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/png" href="/Argus_icon_Light_crop.png" />
+    <link id="favicon" rel="icon" type="image/png" href="/Argus_icon_Light_crop.png" />
+    <script>
+      const darkIcon = "/Argus_icon_Dark_crop.png";
+      const lightIcon = "/Argus_icon_Light_crop.png";
+      const updateFavicon = (isDark) => {
+        const el = document.getElementById('favicon');
+        if (el) el.href = isDark ? lightIcon: darkIcon; //use the opposite icon for better contrast in small tab preview
+      };
+      const mq = window.matchMedia('(prefers-color-scheme: dark)');
+      updateFavicon(mq.matches);
+      mq.addEventListener('change', e => updateFavicon(e.matches));
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Argus</title>
   </head>

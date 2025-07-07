@@ -6,6 +6,8 @@ import shutil
 from datetime import datetime, timezone
 from PIL import Image
 
+from app.config import UPLOAD_DIR
+
 import app.crud.images as crud_image
 import app.crud.report as crud_report
 
@@ -13,7 +15,6 @@ import app.services.image_metadata_extraction as metadata_extraction
 
 
 router = APIRouter()
-UPLOAD_DIR = Path("reports_data")
 UPLOAD_DIR.mkdir(exist_ok=True)
 ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png"} #maybe later add support for tiff, bmp, webp, etc.
 
@@ -182,46 +183,3 @@ def check_mapping_report(report_id: int, db: Session) -> int:
     
     return mapping_report.id
 
-
-
-def delete_image_file(image):
-    """Deletes the image file from the filesystem.
-    Args:
-        image (models.Image): The image object containing the file path.
-    Returns:
-        bool: True if the file was deleted successfully, False otherwise.
-    """
-    try:
-        file_path = Path(image.url)
-        if not delete_file(file_path):
-            print(f"Failed to delete image file {image.url}", flush=True)
-            return False
-        thumbnail_path = Path(image.thumbnail_url)
-        if not delete_file(thumbnail_path):
-            print(f"Failed to delete thumbnail file {image.thumbnail_url}", flush=True)
-            return False
-        return True
-    except Exception as e:
-        print(f"Error deleting image file {image.url}: {e}", flush=True)
-        return False
-    
-
-
-def delete_file(path):
-    """Deletes a file from the filesystem.
-    Args:
-        path (str): The path to the file to delete.
-    Returns:
-        bool: True if the file was deleted successfully, False otherwise.
-    """
-    try:
-        file_path = Path(path)
-        if file_path.exists():
-            file_path.unlink()
-            return True
-        else:
-            print(f"File {file_path} does not exist.", flush=True)
-            return True
-    except Exception as e:
-        print(f"Error deleting file {file_path}: {e}", flush=True)
-        return False

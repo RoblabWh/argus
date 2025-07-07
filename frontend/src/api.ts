@@ -57,12 +57,13 @@ export const getGroup = (id: number) => fetchJson<Group>(`/groups/${id}`);
 export const getGroupReports = (id: number) => fetchJson<Report[]>(`/groups/${id}/reports`);
 export const createGroup = (data: { name: string; description: string }) => postJson<Group>("/groups/", data);
 
-export const getReport = (id: number) => fetchJson<Report>(`/reports/${id}`);
+export const getReport = (report_id: number) => fetchJson<Report>(`/reports/${report_id}`);
 export const createReport = (data: { group_id: number; title: string; description: string }) =>  postJson<Report>(`/reports/`, data);
+export const deleteReport = (report_id: number) => deleteRequest(`/reports/${report_id}`);
 
 export const getImages = (report_id: number) => fetchJson<{ images: string[] }>(`/images/report/${report_id}`);
-export const getImage = (imageId: number) => fetchJson<{ image: string }>(`/images/${imageId}`);
-export const deleteImage = (imageId: number) => deleteRequest(`/images/${imageId}`);
+export const getImage = (image_id: number) => fetchJson<{ image: string }>(`/images/${image_id}`);
+export const deleteImage = (image_id: number) => deleteRequest(`/images/${image_id}`);
 
 
 
