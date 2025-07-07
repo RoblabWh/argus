@@ -2,11 +2,10 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import type { Group, Report } from "@/types";
-import { ReportItem } from "@/components/overview/ReportItem";
 import { useState } from "react";
 import { Edit, Trash2, Plus, ChevronUp, ChevronDown } from "lucide-react"
 import { motion, AnimatePresence } from "motion/react";
-
+import { ReportTable } from "@/components/overview/ReportTable";
 
 interface Props {
   group: Group;
@@ -84,9 +83,7 @@ export function GroupCard({ group, handleAddReport }: Props) {
           </div>
           <div onClick={(e) => { e.preventDefault(); }} className="space-y-2">
             {group.reports.length > 0 ? (
-              group.reports.map((report: Report) => (
-                <ReportItem key={report.report_id} report={report} />
-              ))
+              <ReportTable reports={group.reports} />
             ) : (
               <p className="text-sm text-muted-foreground">No reports available</p>
             )}

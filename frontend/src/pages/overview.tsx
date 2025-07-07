@@ -33,7 +33,7 @@ export default function Overview() {
 
 
   return (
-    <div className="p-6 mx-auto min-w-800px max-w-2/3">
+    <div className="container mx-auto px-4 pt-4">
       <div className="flex">
         <h1 className="text-2xl font-bold mb-4 mr-2">Flight Report Overview</h1>
         <Button variant="outline" size="sm" onClick={() => setIsNewGroupOpen(true)}>

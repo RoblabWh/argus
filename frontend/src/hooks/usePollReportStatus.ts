@@ -8,7 +8,7 @@ export const usePollReportStatus = (reportId: number, enabled: boolean) =>
     queryKey: ["report-process", reportId],
     queryFn: () => getReportProcessStatus(reportId),
     enabled: !!reportId && enabled,
-    refetchInterval: 2000,
+    refetchInterval: 1250,
     staleTime: 1000,
   });
 

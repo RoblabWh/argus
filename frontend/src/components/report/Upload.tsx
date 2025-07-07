@@ -7,6 +7,7 @@ import { useStartReportProcess } from "@/hooks/useStartProcessing"
 import type { ProcessingSettings } from "@/types/processing";
 import { Toaster } from "@/components/ui/sonner"
 import { toast } from "sonner"; // Assuming you have sonner for notifications
+import { useQueryClient } from "@tanstack/react-query"; // Adjust the import based on your project structure
 
 interface Props {
     report: Report;
@@ -14,6 +15,7 @@ interface Props {
 }
 export function Upload({ report, onProcessingStarted }: Props) {
   const startProcessingMutation = useStartReportProcess(report.report_id);
+  const queryClient = useQueryClient();
 
 
 const handleStartProcessing = () => {
@@ -26,11 +28,13 @@ const handleStartProcessing = () => {
       reprocess_all: false,
     };
 
+    queryClient.invalidateQueries({ queryKey: ["report", report.report_id] });
 
     startProcessingMutation.mutate(settings, {
       onSuccess: () => {
         console.log("Processing started successfully");
         if (onProcessingStarted) {
+          
           onProcessingStarted(); // Call the callback if provided
           console.log("onProcessingStarted callback called");
         }
@@ -77,7 +81,8 @@ const handleStartProcessing = () => {
           disabled={
             startProcessingMutation.isPending ||
             report.status === "processing" ||
-            report.status === "preprocessing"
+            report.status === "preprocessing" ||
+            report.status === "queued" 
           }
         >
           {startProcessingMutation.isPending ? "Starting..." : "Start Processing"}
@@ -86,7 +91,8 @@ const handleStartProcessing = () => {
 
       {/* Show progress bar if processing */}
       {((report.status === "processing" ||
-        report.status === "preprocessing") && report.progress !== undefined) && (
+        report.status === "preprocessing" ||
+        report.status === "queued") && report.progress !== undefined) && (
         <div>
           <Progress value={report.progress} />
           <p className="text-sm text-muted-foreground mt-1">

@@ -105,7 +105,7 @@ export default function ReportOverview() {
   }
 
   return (
-    <div className="p-6 mx-auto min-w-800px max-w-2/3">
+    <div className="container mx-auto px-4 pt-4">
       <div className="flex mb-4">
         <h1 className="text-2xl font-bold mr-2">
           Report: {isLoading ? "Loading..." : liveReport?.title ?? "Unknown"}

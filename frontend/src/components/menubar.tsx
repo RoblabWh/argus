@@ -26,7 +26,7 @@ const TopMenuBar: React.FC = () => {
              <Menu className="w-4 h-4" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
+        <DropdownMenuContent align="start">
           <DropdownMenuItem asChild>
             <Link to="/settings">Settings</Link>
           </DropdownMenuItem>

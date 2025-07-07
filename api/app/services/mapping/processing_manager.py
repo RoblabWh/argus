@@ -21,7 +21,7 @@ def process_report(report_id: int):
         print(f"Processing report {report_id}: {report}")
         print(f"Report of group: {report.group_id}")
         for i in range(10):
-            time.sleep(1)
+            time.sleep(0.66)
             progress = (i + 1) * 10.0
             r.set(f"report:{report_id}:progress", progress)
             print(f"Processing report {report_id}: {progress}%", flush=True)

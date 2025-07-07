@@ -1,6 +1,7 @@
 import React from 'react';
 import type { Report } from '@/types/report';
 import { Button } from '../ui/button';
+import { Progress } from '../ui/progress'; // From shadcn
 
 interface Props {
   report: Report;
@@ -20,27 +21,27 @@ export function MappingReport({ report, onEditClicked }: Props) {
 
       {isProcessing && (
         <div className="mt-4">
-          <h3>Processing...</h3>
           <div className="relative pt-1">
-            <div className="flex mb-2 items-center justify-between">
+
+            </div>
+            {((report.status === "processing") && report.progress !== undefined) && (
               <div>
-                <span className="text-xs text-muted-foreground">Progress</span>
+                <Progress value={report.progress} />
+                <p className="text-sm text-muted-foreground mt-1">
+                  {report.status} — {Math.round(report.progress)}%
+                </p>
               </div>
-              <div className="text-xs font-medium">{progress}%</div>
-            </div>
-            <div className="h-2 bg-muted">
-              <div
-                className="h-2 bg-blue-500"
-                style={{ width: `${progress}%` }}
-              />
-            </div>
+            )}
+
           </div>
-        </div>
       )}
 
+      {report.status === 'completed' && (
       <Button variant="outline" className="mt-4" onClick={onEditClicked}>
         Edit
       </Button>
+      )}
+      
 
       <div className="text-sm text-muted-foreground mt-4">
         {/* Print every property of the report object */}
