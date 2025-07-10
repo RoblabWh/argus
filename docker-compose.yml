@@ -58,6 +58,7 @@ services:
       DATABASE_URL: ${DATABASE_URL}
       REDIS_PORT: ${PORT_REDIS}
       REDIS_HOST: ${HOST_REDIS}
+      OPEN_WEATHER_API_KEY: ${OPEN_WEATHER_API_KEY}
 
   redis:
     image: redis:latest

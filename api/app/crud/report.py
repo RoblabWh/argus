@@ -137,7 +137,7 @@ def get_process_status(db: Session, report_id: int, r: redis.Redis):
     #if status is preprocessing or processing check redis if the task is still going or crahed
     status = report.status
 
-    if status in ["preprocessing", "processing"]:
+    if status in ["preprocessing", "processing", "queued"]:
         # check redis for the task status
         try:
             task_id = r.get(f"report:{report_id}:task_id")
@@ -156,21 +156,30 @@ def get_process_status(db: Session, report_id: int, r: redis.Redis):
                 report.progress = 0.0
                 db.commit()
                 return {"status": "failed", "progress": 0.0}
+            elif float(task_status) >= 100.0:
+                if status == "preprocessing":
+                    report.status = "processing"
+                    report.progress = 0.0
+                else:
+                    report.status = "completed"
+                    report.progress = 100.0
+                db.commit()
+                return report
+            elif float(task_status) < 0.0:
+                report.status = "failed"
+                report.progress = 0.0
+                db.commit()
+                return {"status": "failed", "progress": 0.0}
+            # elif float(task_status) == 0.0:
+            #     report.status = "failed"
+            #     report.progress = float(task_status)
+            #     db.commit()
+            #     return {"status": "failed", "progress": float(task_status)}
         except redis.RedisError as e:
             print(f"Redis error: {e}")
             # if redis is not available, set status to failed
             report.status = "unprocessed"
             report.progress = 0.0
             db.commit()
-
-            
-
-        # # get the task status from redis
-        # task_status = r.get(f"report:{report_id}:progress")
-        # if task_status is None:
-        #     # no progress found, set status to failed
-        #     report.status = "failed"
-        #     db.commit()
-        #     return {"status": "failed", "progress": 0.0}
 
     return report

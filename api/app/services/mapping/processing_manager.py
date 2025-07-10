@@ -8,6 +8,7 @@ from app.config import REDIS_PORT, REDIS_HOST
 import app.crud.report as crud
 from app.database import get_db
 from sqlalchemy.orm import Session
+from app.services.mapping.preprocessing import preprocess_report
 
 r = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, db=0)
 
@@ -15,17 +16,9 @@ r = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, db=0)
 def process_report(report_id: int):
     db = next(get_db())
     try:
-        #first get report from database
-        report = crud.get_full_report(db, report_id)
-        #print all report information
-        print(f"Processing report {report_id}: {report}")
-        print(f"Report of group: {report.group_id}")
-        for i in range(10):
-            time.sleep(0.66)
-            progress = (i + 1) * 10.0
-            r.set(f"report:{report_id}:progress", progress)
-            print(f"Processing report {report_id}: {progress}%", flush=True)
-            crud.update_process(db, report_id, "preprocessing", progress)
+        report = crud.get_full_report(db, report_id, r)
+        images = report.mapping_report.images
+        mapping_selections = preprocess_report(images, report_id, db, update_progress_func=update_progress)
 
         for i in range(10):
             time.sleep(1)
@@ -35,6 +28,15 @@ def process_report(report_id: int):
 
         r.set(f"report:{report_id}:progress", 100.0)
         crud.update_process(db, report_id, "completed", 100.0)
+    except Exception as e:
+        print(f"Error processing report {report_id}: {e}")
+        r.set(f"report:{report_id}:progress", -1.0)  # Indicate failure
+        crud.update_process(db, report_id, "failed", 0.0)
+        raise e
 
     finally:
         db.close()
+
+def update_progress(report_id: int, stage: str, progress: float, db: Session):
+    r.set(f"report:{report_id}:progress", progress)
+    crud.update_process(db, report_id, stage, progress)

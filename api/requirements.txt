@@ -11,3 +11,5 @@ python-multipart
 pyproj
 celery
 redis
+geopy
+requests

@@ -56,6 +56,7 @@ class ProcessingSettings(BaseModel):
     odm_orthophoto: bool = False
     odm_full: bool = False
     reprocess_all: bool = False
+    default_flight_height: Optional[float] = None
 
 
 ##################

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { useBreadcrumbs } from "@/contexts/BreadcrumbContext";
 import type { Report } from '@/types/report';
@@ -10,11 +10,13 @@ import { MappingReport } from '@/components/report/MappingReport';
 export default function ReportOverview() {
   const { report_id } = useParams<{ report_id: string }>();
   const { setBreadcrumbs } = useBreadcrumbs();
-  const { data: initialReport, isLoading, error } = useReport(Number(report_id));
+  const { data: initialReport, isLoading, error, refetch: refetchFullReport } = useReport(Number(report_id));
+  const prevStatusRef = useRef<string | null>(null);
+
 
   const [liveReport, setLiveReport] = useState<Report | null>(null);
   const [shouldPoll, setShouldPoll] = useState(false);
-  const [isEditing, setIsEditing ] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
 
 
   // Start polling if the report is processing or preprocessing
@@ -22,13 +24,15 @@ export default function ReportOverview() {
     if (initialReport) {
       setBreadcrumbs([
         { label: "Overview", href: "/overview" },
-        { label: "Group", href: "/group/"+initialReport.group_id },
+        { label: "Group", href: "/group/" + initialReport.group_id },
         { label: initialReport.title || "Unknown Report", href: `/report/${initialReport.report_id}` },
       ]);
     }
     if (
       initialReport &&
-      (initialReport.status === "processing" || initialReport.status === "preprocessing")
+      (initialReport.status === "processing" ||
+        initialReport.status === "preprocessing" ||
+        initialReport.status === "queued")
     ) {
       setLiveReport(initialReport);
       setShouldPoll(true);
@@ -44,23 +48,34 @@ export default function ReportOverview() {
 
   useEffect(() => {
     if (polledData) {
+      const prevStatus = prevStatusRef.current;
+      const newStatus = polledData.status;
       setLiveReport((prev) => {
         if (!prev) return polledData;
-          return {
-            ...prev,
-            status: polledData.status,
-            progress: polledData.progress,
-          };
-        });
+        return {
+          ...prev,
+          status: polledData.status,
+          progress: polledData.progress,
+        };
+      });
+
+      if ((prevStatus === "preprocessing" || prevStatus === "queued") && newStatus === "processing") {
+        console.log("Detected preprocessing -> processing. Refetching full report...");
+        refetchFullReport();
+      }
 
       // Stop polling if status changes to completed or failed
       if (
         polledData.status !== "processing" &&
         polledData.status !== "preprocessing" &&
-        polledData.status !== "queued" 
+        polledData.status !== "queued"
       ) {
         setShouldPoll(false);
       }
+      console.log(`Polled report status: ${newStatus}, old status: ${prevStatus}`);
+
+      prevStatusRef.current = newStatus;
+
     }
   }, [polledData])
 
@@ -78,7 +93,7 @@ export default function ReportOverview() {
         />
       );
     }
-    
+
     switch (report.status) {
       case "unprocessed":
       case "preprocessing":

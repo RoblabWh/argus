@@ -9,32 +9,30 @@ from pydantic import BaseModel
 ##################
 
 class WeatherBase(BaseModel):
-    report_id: int
-    coord: Optional[dict] = None  # JSONB as dict
+    mapping_report_id: int
+    open_weather_id: Optional[str] = None  # OpenWeatherMap ID for the location
+    description: Optional[str] = None  # Weather description (e.g., "clear sky
     temperature: Optional[float] = None
     humidity: Optional[float] = None
-    air_pressure: Optional[float] = None
+    pressure: Optional[float] = None
     wind_speed: Optional[float] = None
     wind_dir_deg: Optional[float] = None
     visibility: Optional[float] = None
-    cloud_cover: Optional[float] = None
-    weather_condition: Optional[str] = None  # e.g., "Clear", "Rain", "Snow"
     timestamp: Optional[datetime] = None
 
 class WeatherCreate(WeatherBase):
     pass    
 
 class WeatherUpdate(BaseModel):
-    report_id: Optional[int] = None
-    coord: Optional[dict] = None  # JSONB as dict
+    mapping_report_id: Optional[int] = None
+    open_weather_id: Optional[str] = None
+    description: Optional[str] = None  # Weather description (e.g., "clear sky
     temperature: Optional[float] = None
     humidity: Optional[float] = None
-    air_pressure: Optional[float] = None
+    pressure: Optional[float] = None
     wind_speed: Optional[float] = None
     wind_dir_deg: Optional[float] = None
     visibility: Optional[float] = None
-    cloud_cover: Optional[float] = None
-    weather_condition: Optional[str] = None  # e.g., "Clear", "Rain", "Snow"
     timestamp: Optional[datetime] = None
 
 class WeatherOut(WeatherBase):
