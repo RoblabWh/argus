@@ -2,7 +2,7 @@ from sqlalchemy.orm import Session, joinedload
 from datetime import datetime
 
 from app import models
-from app.schemas.image import ImageCreate, ImageUpdate, ImageUploadResult
+from app.schemas.image import ImageCreate, ImageUpdate, ImageUploadResult, MappingDataCreate
 from app.services.cleanup import delete_image_file
 
 def get_all(db: Session):
@@ -16,7 +16,7 @@ def get_full_image(db: Session, image_id: int):
             joinedload(models.Image.thermal_data),
             joinedload(models.Image.detections),
         )
-        .filter(models.Image.image_id == image_id)
+        .filter(models.Image.id == image_id)
         .first()
     )
 
@@ -67,3 +67,14 @@ def delete(db: Session, image_id: int):
     db.delete(image)
     db.commit()
     return {"status": "success", "message": "Image deleted successfully"}
+
+
+def create_mapping_data(db: Session, data: MappingDataCreate):
+    mapping_data_in = MappingDataCreate(**data)
+    new_mapping_data = models.MappingData(
+        **mapping_data_in.dict(),
+    )
+    db.add(new_mapping_data)
+    db.commit()
+    db.refresh(new_mapping_data)
+    return get_full_image(db, new_mapping_data.image_id) 

@@ -1,6 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session
 from typing import List
+import time
+
 
 
 from app.database import get_db
@@ -29,8 +31,12 @@ def list_images(db: Session = Depends(get_db)):
 def create_images_batch(report_id: int, files: List[UploadFile] = File(...), db: Session = Depends(get_db)):
     if not files:
         raise HTTPException(status_code=400, detail="No images provided")
-
+    #track time to evaluate performance
+    start_time = time.time()
     responses = [process_image(report_id, file, db) for file in files]
+    end_time = time.time()
+    processing_time = end_time - start_time
+    print(f"Processed {len(files)} images in {processing_time:.2f} seconds")
     return responses
 
 @router.get("/report/{report_id}", response_model=List[ImageOut])
@@ -53,5 +59,9 @@ def update_image(image_id: int, update: ImageUpdate, db: Session = Depends(get_d
 @router.delete("/{image_id}")
 def delete_image(image_id: int, db: Session = Depends(get_db)):
     return crud_image.delete(db, image_id)
+
+
+#Performance Results
+# Per Batch: 1.35, 1.06, 1.08, 1.06, 1.07, 1.05, 1.07, 1.08, 1.09, 1.10, 1.08, 1.12, 1.09, 1.11, 1.10, 0.67
 
 

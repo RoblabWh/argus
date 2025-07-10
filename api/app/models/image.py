@@ -46,12 +46,14 @@ class MappingData(Base):
     image_id = Column(Integer, ForeignKey("images.id"), index=True)
     fov = Column(Float)
     rel_altitude = Column(Float, default=100.0)
-    cam_pitch = Column(Float)
-    cam_roll = Column(Float)
-    cam_yaw = Column(Float)
-    uav_pitch = Column(Float, nullable=True)
-    uav_roll = Column(Float, nullable=True)
-    uav_yaw = Column(Float, nullable=True)
+    rel_altitude_method = Column(String, default="exif") # alternative would be 'googleapi' or 'manual'
+    altitude = Column(Float, nullable=True)  # altitude in meters (only needed for googleapi method)
+    cam_pitch = Column(Float, nullable=True)
+    cam_roll = Column(Float, nullable=True)
+    cam_yaw = Column(Float, nullable=True)
+    uav_pitch = Column(Float)
+    uav_roll = Column(Float)
+    uav_yaw = Column(Float)
 
     # relationships
     image = relationship("Image", back_populates="mapping_data")

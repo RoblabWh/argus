@@ -68,12 +68,14 @@ class MappingDataBase(BaseModel):
     image_id: int
     fov: float
     rel_altitude: Optional[float] = 100.0
-    cam_pitch: float
-    cam_roll: float
-    cam_yaw: float
-    uav_pitch: Optional[float] = None
-    uav_roll: Optional[float] = None
-    uav_yaw: Optional[float] = None
+    altitude: Optional[float] = None  
+    rel_altitude_method: Optional[str] = "exif"  
+    cam_pitch: Optional[float] = None
+    cam_roll: Optional[float] = None
+    cam_yaw: Optional[float] = None
+    uav_pitch: float
+    uav_roll: float
+    uav_yaw: float
 
 class MappingDataCreate(MappingDataBase):
     pass
@@ -82,6 +84,8 @@ class MappingDataUpdate(BaseModel):
     image_id: Optional[int] = None
     fov: Optional[float] = None
     rel_altitude: Optional[float] = None
+    altitude: Optional[float] = None
+    rel_altitude_method: Optional[str] = None
     cam_pitch: Optional[float] = None
     cam_roll: Optional[float] = None
     cam_yaw: Optional[float] = None
@@ -91,7 +95,6 @@ class MappingDataUpdate(BaseModel):
 
 class MappingDataOut(MappingDataBase):
     id: int
-    image: Optional[ImageOut] = None
 
     class Config:
         orm_mode = True

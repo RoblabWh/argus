@@ -64,7 +64,7 @@ def process_image(report_id: int, file: UploadFile, db: Session):
             shutil.copyfileobj(file.file, f)
 
 
-        metadata = metadata_extraction.extract_basic_image_metadata(file_path)
+        metadata = metadata_extraction.extract_image_metadata(file_path)
 
         # Create a thumbnail (placeholder logic, replace with actual thumbnail creation)
         thumbnail_path = save_thumbnail(file_path, file)
@@ -94,6 +94,11 @@ def process_image(report_id: int, file: UploadFile, db: Session):
 
         # Store metadata in the database
         img = crud_image.create(db, data)
+
+        if metadata['mappable']:
+            mapping_data = metadata.get("mapping_data", {})
+            mapping_data["image_id"] = img.id
+            img = crud_image.create_mapping_data(db, mapping_data)
 
 
         return {

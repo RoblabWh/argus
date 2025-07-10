@@ -7,7 +7,8 @@
     "gps": {
       "lon": "Composite:GPSLongitude",
       "lat": "Composite:GPSLatitude",
-      "rel_alt": "XMP:RelativeAltitude"
+      "rel_alt": "XMP:RelativeAltitude",
+      "alt": "XMP:AbsoluteAltitude"
     },
     "ir": {
       "ir": "XMP:ImageSource",
@@ -21,12 +22,12 @@
       "fov": "Composite:FOV"
     },
     "orientation": {
-      "gimbal_roll": "XMP:GimbalRollDegree",
-      "gimbal_yaw": "XMP:GimbalYawDegree",
-      "gimbal_pitch": "XMP:GimbalPitchDegree",
-      "flight_roll": "XMP:FlightRollDegree",
-      "flight_yaw": "XMP:FlightYawDegree",
-      "flight_pitch": "XMP:FlightPitchDegree"
+      "cam_roll": "XMP:GimbalRollDegree",
+      "cam_yaw": "XMP:GimbalYawDegree",
+      "cam_pitch": "XMP:GimbalPitchDegree",
+      "uav_roll": "XMP:FlightRollDegree",
+      "uav_yaw": "XMP:FlightYawDegree",
+      "uav_pitch": "XMP:FlightPitchDegree"
     },
     "adjust_data": false
   }
