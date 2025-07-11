@@ -9,19 +9,23 @@ import app.crud.report as crud
 from app.database import get_db
 from sqlalchemy.orm import Session
 from app.services.mapping.preprocessing import preprocess_report
+import logging
 
 r = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, db=0)
+logger = logging.getLogger(__name__)
+
 
 @celery_app.task
 def process_report(report_id: int):
     db = next(get_db())
+    logger.info(f"Starting processing for report {report_id}")
     try:
         report = crud.get_full_report(db, report_id, r)
         images = report.mapping_report.images
         mapping_selections = preprocess_report(images, report_id, db, update_progress_func=update_progress)
 
         for i in range(10):
-            time.sleep(1)
+            time.sleep(0.5)
             progress = 100.0 if i == 9 else (i + 1) * 10.0
             r.set(f"report:{report_id}:progress", progress)
             crud.update_process(db, report_id, "processing", progress)
@@ -29,7 +33,7 @@ def process_report(report_id: int):
         r.set(f"report:{report_id}:progress", 100.0)
         crud.update_process(db, report_id, "completed", 100.0)
     except Exception as e:
-        print(f"Error processing report {report_id}: {e}")
+        logger.error(f"Error processing report {report_id}: {e}")
         r.set(f"report:{report_id}:progress", -1.0)  # Indicate failure
         crud.update_process(db, report_id, "failed", 0.0)
         raise e

@@ -48,6 +48,9 @@ class ReportDetailOut(ReportOut):
     mapping_report: Optional["MappingReportOut"] = None
     pano_report: Optional["PanoReportOut"] = None
 
+class ReportSmallDetailOut(ReportOut):
+    mapping_report: Optional["MappingReportSimpleOut"] = None
+    pano_report: Optional["PanoReportOut"] = None
 
 class ProcessingSettings(BaseModel):
     preprocessing: bool = True
@@ -88,6 +91,12 @@ class MappingReportOut(MappingReportBase):
     images: List[ImageOut] = []
     maps: List[MapOut] = []
     weather: List[WeatherOut] = []
+
+    class Config:
+        orm_mode = True
+
+class MappingReportSimpleOut(MappingReportBase):
+    id: int
 
     class Config:
         orm_mode = True

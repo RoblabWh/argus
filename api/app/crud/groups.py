@@ -4,12 +4,26 @@ from sqlalchemy.orm import Session, joinedload
 
 from app import models
 from app.schemas.group import GroupCreate, GroupUpdate
-from app.schemas.report import ReportDetailOut
+from app.schemas.report import ReportDetailOut, ReportSmallDetailOut
 from datetime import datetime
 
 
 def get_all(db: Session):
     return db.query(models.Group).all()
+
+def get_all_with_report_metadata(db: Session):
+    # Fetch all groups with their associated reports and their mapping_reports
+    print("Fetching all groups with report metadata")
+    return (
+        db.query(models.Group)
+        .options(
+            joinedload(models.Group.reports)  
+
+            # .joinedload(models.Group.reports)
+            # .joinedload(models.Report.pano_report)
+        )
+        .all()
+    )
 
 
 def create(db: Session, group: GroupCreate):
@@ -26,6 +40,7 @@ def get(db: Session, group_id: int):
         db.query(models.Group)
         .options(
             joinedload(models.Group.reports)  # only loads basic reports
+            .joinedload(models.Report.mapping_report)
         )
         .filter(models.Group.id == group_id)
         .first()

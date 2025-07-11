@@ -3,7 +3,8 @@ import type { Group } from "@/types/group";
 import type { Report } from "@/types/report";
 import type { ProcessingSettings } from "@/types/processing";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+// const API_URL = "http://" + process.env.API_URL + process.env.API_PORT;
+const API_URL = "http://localhost:8000";
 
 async function fetchJson<T>(endpoint: string): Promise<T> {
   const res = await fetch(`${API_URL}${endpoint}`);

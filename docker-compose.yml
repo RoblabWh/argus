@@ -23,6 +23,8 @@ services:
       DATABASE_URL: ${DATABASE_URL}
       REDIS_PORT: ${PORT_REDIS}
       REDIS_HOST: ${HOST_REDIS}
+      API_URL: ${API_URL}
+      API_PORT: ${API_PORT}
     depends_on:
       - db
       - redis
@@ -41,6 +43,9 @@ services:
       #- frontend_node_modules:/frontend/node_modules  # Separates Volume für node_modules
     stdin_open: true
     tty: true
+    environment:
+      API_URL: ${API_URL}
+      API_PORT: ${API_PORT}
 
   argus_mapping_worker:
     build: ./api

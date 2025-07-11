@@ -78,11 +78,12 @@ export function ReportTable({ reports }: Props) {
 
     const getStatusBadge = (status: string) => {
         const statusMap: Record<string, string> = {
-            queued: "bg-gray-200 text-gray-700",
-            preprocessing: "bg-yellow-200 text-yellow-800",
-            processing: "bg-yellow-200 text-yellow-800",
-            completed: "bg-green-200 text-green-800",
-            error: "bg-red-200 text-red-800"
+            queued: "bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-100",
+            preprocessing: "bg-yellow-200 text-yellow-800 dark:bg-yellow-500 dark:text-yellow-100",
+            processing: "bg-yellow-200 text-yellow-800 dark:bg-yellow-500 dark:text-yellow-100",
+            completed: "bg-green-200 text-green-800 dark:bg-green-600 dark:text-green-100",
+            error: "bg-red-200 text-red-800 dark:bg-red-600 dark:text-red-100",
+            failed: "bg-red-200 text-red-800 dark:bg-red-800 dark:text-red-100",
         }
         const defaultColor = "bg-gray-100 text-gray-800";
 
@@ -134,6 +135,9 @@ export function ReportTable({ reports }: Props) {
                                     Title {renderSortIcon("title")}
                                 </div>
                             </TableHead>
+                            <TableHead className="whitespace-nowrap w-0 cursor-pointer">
+                                Description
+                            </TableHead>
                             <TableHead className="whitespace-nowrap w-0 cursor-pointer" onClick={() => handleSort("flight_date")}>
                                 Flight Date {renderSortIcon("flight_date")}
                             </TableHead>
@@ -159,6 +163,13 @@ export function ReportTable({ reports }: Props) {
                                         title={report.title}
                                     >
                                         {report.title}
+                                    </span>
+                                </TableCell>
+
+                                <TableCell className="whitespace-nowrap w-0 max-w-0">
+                                    <span className="truncate block"
+                                        title={report.description || "No description"}>
+                                        {report.description || <span className="text-muted-foreground italic">No description</span>}
                                     </span>
                                 </TableCell>
 

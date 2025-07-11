@@ -56,6 +56,12 @@ export default function Overview() {
         />
       )}
 
+
+      <div className="text-sm text-muted-foreground mt-4">
+        {/* Print every property of the report object */}
+        <pre>{JSON.stringify(groups, null, 2)}</pre>
+      </div>
+
     </div>
   )
 }

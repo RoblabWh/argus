@@ -6,7 +6,7 @@ from typing import List
 from app.database import get_db
 
 # Import schemas
-from app.schemas.group import GroupCreate, GroupUpdate, GroupOut
+from app.schemas.group import GroupCreate, GroupUpdate, GroupOut, GroupOutReportMetadata
 from app.schemas.report import ReportDetailOut  
 
 # Import CRUD logic
@@ -15,9 +15,11 @@ import app.crud.groups as crud_group
 router = APIRouter(prefix="/groups", tags=["Groups"])
 
 
-@router.get("/", response_model=List[GroupOut])
+@router.get("/", response_model=List[GroupOutReportMetadata])
 def list_groups(db: Session = Depends(get_db)):
-    return crud_group.get_all(db)
+    print("Fetching all groups with report metadata")
+    return crud_group.get_all_with_report_metadata(db)
+    #return crud_group.get_all(db)
 
 
 @router.post("/", response_model=GroupOut)
