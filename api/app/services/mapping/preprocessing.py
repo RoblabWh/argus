@@ -49,7 +49,8 @@ def preprocess_report(images: list[ImageOut], report_id: int, db, update_progres
         address = _extract_location(reference_image)
         if not settings.get("keep_weather", False):
             weather_data = _get_weather_data(reference_image)
-            weather_data["mapping_report_id"] = mapping_report_id
+            if weather_data:
+                weather_data["mapping_report_id"] = mapping_report_id
 
     if update_progress_func:
         update_progress_func(report_id, "preprocessing", 10.0, db)
