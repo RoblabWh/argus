@@ -13,3 +13,6 @@ celery
 redis
 geopy
 requests
+numpy
+opencv_python
+imutils

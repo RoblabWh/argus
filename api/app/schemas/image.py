@@ -50,6 +50,7 @@ class ImageOut(ImageBase):
 
     class Config:
         orm_mode = True    
+        from_attributes=True
 
 
 class ImageUploadResult(BaseModel):
@@ -98,6 +99,7 @@ class MappingDataOut(MappingDataBase):
 
     class Config:
         orm_mode = True
+        from_attributes=True
 
 
 

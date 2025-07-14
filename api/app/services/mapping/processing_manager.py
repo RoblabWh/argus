@@ -9,6 +9,7 @@ import app.crud.report as crud
 from app.database import get_db
 from sqlalchemy.orm import Session
 from app.services.mapping.preprocessing import preprocess_report
+from app.services.mapping.fast_mapping import map_images
 import logging
 
 r = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, db=0)
@@ -23,13 +24,12 @@ def process_report(report_id: int):
         report = crud.get_full_report(db, report_id, r)
         images = report.mapping_report.images
         mapping_selections = preprocess_report(images, report_id, db, update_progress_func=update_progress)
+        for map_index, mapping_selection in enumerate(mapping_selections):
+            logger.info(f"Mapping selection for report {report_id}: {mapping_selection}")
+            map_images(report_id, mapping_selection, db, update_progress_func=update_progress, total_maps=len(mapping_selections), map_index=map_index)
 
-        for i in range(10):
-            time.sleep(0.5)
-            progress = 100.0 if i == 9 else (i + 1) * 10.0
-            r.set(f"report:{report_id}:progress", progress)
-            crud.update_process(db, report_id, "processing", progress)
 
+        
         r.set(f"report:{report_id}:progress", 100.0)
         crud.update_process(db, report_id, "completed", 100.0)
     except Exception as e:
