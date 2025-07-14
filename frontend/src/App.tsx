@@ -17,6 +17,7 @@ function App() {
     <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
       <BreadcrumbProvider>
         <TopMenuBar />
+        <div className="bg-gray-100 dark:bg-black min-h-screen p-4">
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/about" element={<About />} />
@@ -26,6 +27,7 @@ function App() {
           <Route path="/report/:report_id" element={<Report />} />
           <Route path="*" element={<div>404 Not Found</div>} />
         </Routes>
+        </div>
       </BreadcrumbProvider>
     </ThemeProvider>
   )

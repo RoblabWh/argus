@@ -64,7 +64,7 @@ export const UploadArea: React.FC<Props> = ({ report }) => {
       // Add new uploads at the end (or front if you prefer)
       setUploads((prev) => [...prev, ...newUploads]);
 
-      const batchSize = 10;
+      const batchSize = 12;
 
       const uploadInBatches = async () => {
         for (let i = 0; i < newUploads.length; i += batchSize) {

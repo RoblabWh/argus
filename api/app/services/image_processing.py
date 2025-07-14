@@ -20,7 +20,7 @@ ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png"} #maybe later add support for tiff, b
 
 
 
-def process_image(report_id: int, file: UploadFile, db: Session):
+def process_image(report_id: int, file: UploadFile, mapping_report_id: int, db: Session):
     """Processes a single image file, saving it to the filesystem and storing metadata in the database.
     Args:
         file (UploadFile): The uploaded image file.
@@ -46,9 +46,7 @@ def process_image(report_id: int, file: UploadFile, db: Session):
                 "status": "error",
                 "error": "Unsupported file type"
             }
-        
-        mapping_report_id = check_mapping_report(report_id, db)
-        
+                
         file.file.seek(0)
 
         # Save file

@@ -2,7 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session
 from typing import List
 import time
-
+from concurrent.futures import ThreadPoolExecutor
+from fastapi.concurrency import run_in_threadpool
 
 
 from app.database import get_db
@@ -13,7 +14,7 @@ from app.schemas.image import ImageOut, ImageCreate, ImageUpdate, ImageUploadRes
 # Import CRUD logic
 import app.crud.images as crud_image
 
-from app.services.image_processing import process_image
+from app.services.image_processing import process_image, check_mapping_report
 
 router = APIRouter(prefix="/images", tags=["Images"])
 
@@ -33,7 +34,31 @@ def create_images_batch(report_id: int, files: List[UploadFile] = File(...), db:
         raise HTTPException(status_code=400, detail="No images provided")
     #track time to evaluate performance
     start_time = time.time()
-    responses = [process_image(report_id, file, db) for file in files]
+    #responses = [process_image(report_id, file, db) for file in files]
+
+    mapping_report_id = check_mapping_report(report_id, db)
+
+    def _process(file: UploadFile):
+        # Create a new DB session for this thread
+        db_local = get_db()
+        db_local = next(db_local)  # Get the session from the generator
+        try:
+            result = process_image(report_id, file, mapping_report_id, db_local)
+            db_local.close()
+            return result
+        except Exception as e:
+            db_local.rollback()
+            db_local.close()
+            return {
+                "image_object": None,
+                "filename": file.filename,
+                "status": "error",
+                "error": str(e)
+            }
+
+    with ThreadPoolExecutor(max_workers=6) as executor:
+        responses = list(executor.map(_process, files))
+
     end_time = time.time()
     processing_time = end_time - start_time
     print(f"Processed {len(files)} images in {processing_time:.2f} seconds")

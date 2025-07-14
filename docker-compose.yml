@@ -23,8 +23,7 @@ services:
       DATABASE_URL: ${DATABASE_URL}
       REDIS_PORT: ${PORT_REDIS}
       REDIS_HOST: ${HOST_REDIS}
-      API_URL: ${API_URL}
-      API_PORT: ${API_PORT}
+      VITE_API_URL: ${VITE_API_URL}
     depends_on:
       - db
       - redis
@@ -44,8 +43,7 @@ services:
     stdin_open: true
     tty: true
     environment:
-      API_URL: ${API_URL}
-      API_PORT: ${API_PORT}
+      VITE_API_URL: ${VITE_API_URL}
 
   argus_mapping_worker:
     build: ./api
