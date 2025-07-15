@@ -1,6 +1,9 @@
 import os
 from pathlib import Path
 from app.config import UPLOAD_DIR
+from app.crud import report as crud
+from app.database import get_db
+from sqlalchemy.orm import Session
 
 UPLOAD_DIR.mkdir(exist_ok=True)
 
@@ -82,3 +85,4 @@ def delete_file(path):
     except Exception as e:
         print(f"Error deleting file {file_path}: {e}", flush=True)
         return False
+    

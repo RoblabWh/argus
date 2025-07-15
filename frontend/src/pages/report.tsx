@@ -125,7 +125,7 @@ export default function ReportOverview() {
   return (
     <>
       {isMappingMode ? (
-        <div className="w-full ">
+        <div className="w-full h-[calc(100vh-54px)] overflow-hidden">
           {renderReportContent(liveReport!)}
         </div>
       ) : (

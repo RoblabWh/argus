@@ -34,7 +34,6 @@ def process_report(report_id: int):
                 if not old_map.odm: # Only delete non-ODM maps
                     map_crud.delete(db, old_map.id)
         for map_index, mapping_selection in enumerate(mapping_selections):
-            logger.info(f"Mapping selection for report {report_id}: {mapping_selection}")
             map_images(report_id, mapping_report_id, mapping_selection, db, update_progress_func=update_progress, total_maps=len(mapping_selections), map_index=map_index)
 
 

@@ -74,7 +74,7 @@ export function WeatherCard({ data, onReload }: Props) {
   const windDirLabel = getWindDirectionLabel(wind_dir_deg);
 
   return (
-    <Card className="min-w-52 max-w-103 flex-1 relative overflow-hidden pb-3">
+    <Card className="min-w-54 max-w-114 flex-1 relative overflow-hidden pb-3">
       {/* Background Icon */}
       <WeatherIcon className="absolute right-2 top-2 w-24 h-24 opacity-100 text-muted-foreground dark:text-white z-0 pointer-events-none" />
 
@@ -155,8 +155,8 @@ export function WeatherCard({ data, onReload }: Props) {
             <TooltipTrigger asChild>
               <Button
                 size="icon"
-                className="w-5 h-5 rounded-full text-muted-foreground"
-                variant="ghost"
+                className="w-6 h-6 rounded-full text-muted-foreground"
+                variant="outline"
                 onClick={onReload}
               >
                 <RotateCcw className="w-3 h-3" />

@@ -4,6 +4,7 @@ from .database import SessionLocal, engine
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import inspect
+from app.services.on_startup import cleanup_lost_tasks
 import os
 import redis
 
@@ -33,6 +34,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 current_dir = os.path.dirname(os.path.abspath(__file__))
 static_dir = os.path.join(current_dir, "../reports_data")
 app.mount("/reports_data", StaticFiles(directory=static_dir), name="static")
@@ -41,6 +43,9 @@ app.mount("/reports_data", StaticFiles(directory=static_dir), name="static")
 app.include_router(groups.router)
 app.include_router(reports.router)
 app.include_router(images.router)
+
+cleanup_lost_tasks()  # Cleanup lost tasks on startup
+
 
 @app.get("/")
 async def root():

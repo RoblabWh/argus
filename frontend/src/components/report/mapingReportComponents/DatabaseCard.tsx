@@ -13,7 +13,7 @@ export function DatabaseCard({ report }: Props) {
     return (
         <Card className="w-full">
             <CardContent>
-                <div className="mt-4 max-h-80 overflow-auto text-sm text-muted-foreground bg-gray-50 dark:bg-gray-800 ">
+                <div className="mt-4 max-h-40 overflow-auto text-sm text-muted-foreground bg-gray-50 dark:bg-gray-800 ">
                     {/* Print every property of the report object */}
                     <pre>{JSON.stringify(report, null, 2)}</pre>
                 </div>

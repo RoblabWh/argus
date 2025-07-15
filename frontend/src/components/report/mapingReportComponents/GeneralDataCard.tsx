@@ -15,7 +15,7 @@ export function GeneralDataCard({ report, onEditClicked }: Props) {
 
 
     return (
-        <Card className="w-full">
+        <Card className="min-w-80 max-w-257 flex-2 ">
             <CardTitle className="text-lg font-semibold p-4">
                 {report.title}
             </CardTitle>

@@ -2,7 +2,7 @@ import type { MappingData } from "@/types/mappingData";
 import type { ThermalData } from "@/types/thermalData";
 import type { Detection } from "@/types/detection";
 
-export type Image = {
+export interface Image {
   id: number;
   mapping_report_id: number;
   filename: string;

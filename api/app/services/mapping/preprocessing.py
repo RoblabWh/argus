@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 def preprocess_report(images: list[ImageOut], report_id: int, db, update_progress_func: callable = None):
     settings = {
         "default_flight_height": 100.0,
-        "keep_weather": False,
+        "keep_weather": True,
         "accepted_gimbal_tilt_deviation": 7.5,  # degrees
     }
     

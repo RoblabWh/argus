@@ -65,7 +65,7 @@ class Map_Element:
  
 def map_images(report_id: int, mapping_report_id: int, mapping_selection: dict, db, update_progress_func=None, total_maps=1, map_index=0):
     # Simulate image mapping logic
-    logger.info(f"Mapping images for report {report_id} with selection {mapping_selection}")
+    # logger.info(f"Mapping images for report {report_id} with selection {mapping_selection}")
     start_progress = 0.0 if map_index == 0 else 100.0 * map_index / total_maps
 
     settings = {
@@ -148,16 +148,17 @@ def calculate_reference_yaw(images: list[ImageOut]) -> float:
     margin_trajectory_degrees = 5
 
     images_len = len(images)
-    if images_len > 3:
+    if images_len < 3:
         dumb_offset = calc_dumb_offset(images[0]) #uav yaw - cam yaw
-        return dumb_offset
+        logger.info(f"REFERENCE YAW, using dumb offset: {dumb_offset}")
+        return math.radians(dumb_offset)
 
 
     for i in range(len(images)-2):
         roi = images[i:i+3]
 
         time_deltas = images[i+1].created_at - images[i].created_at, images[i+2].created_at - images[i+1].created_at
-        logger.info(f"time deltas: {time_deltas}")
+        # logger.info(f"time deltas: {time_deltas}")
 
         orientation_diff_degrees = roi[0].mapping_data.cam_yaw - roi[1].mapping_data.cam_yaw
         if orientation_diff_degrees > margin_orientation_degrees:
@@ -173,18 +174,22 @@ def calculate_reference_yaw(images: list[ImageOut]) -> float:
         easting2 = float(roi[1].coord['utm']['easting'])
         northing3 = float(roi[2].coord['utm']['northing'])
         easting3 = float(roi[2].coord['utm']['easting'])
+        # logger.info(f"Coordinates: {northing1}, {easting1} | {northing2}, {easting2} | {northing3}, {easting3}")
 
-        v_diff_a = np.array((northing2, easting2)) - np.array((northing1, easting1))
-        v_diff_b = np.array((northing3, easting3)) - np.array((northing2, easting2))
+        v_diff_a = np.array((easting2, northing2)) - np.array((easting1, northing1))
+        v_diff_b = np.array((easting3, northing3)) - np.array((easting2, northing2))
+        if np.linalg.norm(v_diff_a) == 0 or  np.linalg.norm(v_diff_b) == 0: 
+            logger.warning("Zero vector encountered in trajectory calculation, skipping this set of images.")
+            continue
         angle = np.arccos(np.dot(v_diff_a, v_diff_b) / (np.linalg.norm(v_diff_a) * np.linalg.norm(v_diff_b)))
         angle = np.degrees(angle)
         if angle < margin_trajectory_degrees:
-            print("reference yaw is calculated by using images: ", i, i+1, i+2, flush=True)
             reference_yaw = np.arctan2(v_diff_b[0], v_diff_b[1])
             reference_yaw = np.degrees(reference_yaw)
             reference_yaw = reference_yaw - roi[1].mapping_data.cam_yaw
-            print("REFERENCE YAW", reference_yaw, flush=True)
-            return float(reference_yaw)
+            logger.info(f"REFERENCE YAW, with refined calculation: {reference_yaw} using images {i}, {i+1}, {i+2}")
+            # logger.info(f"images: {roi[0].filename}, {roi[1].filename}, {roi[2].filename}")
+            return math.radians(float(reference_yaw))
     return calc_dumb_offset(images[0])
 
 
@@ -199,12 +204,14 @@ def calculate_utm_corners(image: ImageOut, reference_yaw: float) -> Map_Element:
     fov = image["mapping_data"]["fov"]
     rel_altitude = image["mapping_data"]["rel_altitude"]
     uav_yaw = -1 * math.radians(image["mapping_data"]["uav_yaw"]) 
-    cam_yaw = -1 * (math.radians(image["mapping_data"]["cam_yaw"]) + math.radians(reference_yaw))
+    cam_yaw = -1 * (math.radians(image["mapping_data"]["cam_yaw"]) + reference_yaw)
     width = image["width"]
     height = image["height"]
     utm = image["coord"]["utm"]
     path = image["url"]
     creation_timestamp = image["created_at"]
+    north_divergence = _calculate_utm_grid_north_diverence(utm["zone"], image["coord"]['gps']['lat'], image["coord"]['gps']['lon'])
+    orientation = uav_yaw + north_divergence
 
     diag_length_px = (width**2 + height**2)**0.5
     diag_length_m = 2 * math.tan(math.radians(fov / 2)) * rel_altitude
@@ -223,8 +230,8 @@ def calculate_utm_corners(image: ImageOut, reference_yaw: float) -> Map_Element:
     for corner in corners:
         x, y = corner
         # Rotate around the center of the image
-        x_rotated = x * math.cos(cam_yaw) - y * math.sin(cam_yaw)
-        y_rotated = x * math.sin(cam_yaw) + y * math.cos(cam_yaw)
+        x_rotated = x * math.cos(orientation) - y * math.sin(orientation)
+        y_rotated = x * math.sin(orientation) + y * math.cos(orientation)
         rotated_corners.append((x_rotated, y_rotated))
     
     # Convert to UTM coordinates based on the image's position and orientation
@@ -236,7 +243,7 @@ def calculate_utm_corners(image: ImageOut, reference_yaw: float) -> Map_Element:
         utm_corners.append((utm_x, utm_y))
     
 
-    return Map_Element(utm, utm_corners, cam_yaw, path, width, creation_timestamp)
+    return Map_Element(utm, utm_corners, orientation, path, width, creation_timestamp)
 
 
 def calculate_px_coords(map_elements, target_image_size):
@@ -285,33 +292,57 @@ def calculate_px_coords(map_elements, target_image_size):
 
 def calc_voronoi_mask(map_elements: list[Map_Element], map_width: int, map_height: int, performance_factor: int = 8):
     fact = 1/performance_factor
-    mask = np.zeros((int(map_height*fact), int(map_width*fact), 1), dtype=np.uint8)
+    scaled_width = int(map_width * fact)
+    scaled_height = int(map_height * fact)
 
-    scaled_centers = []
+    scaled_centers_x = list()
+    scaled_centers_y = list()
     for element in map_elements:
         if element.px_center:
-            scaled_centers.append((element.px_center[0] * fact, element.px_center[1] * fact))
+            scaled_centers_x.append(element.px_center[0] * fact)
+            scaled_centers_y.append(element.px_center[1] * fact)
 
-    for y in range(int(map_height*fact)):
-        for x in range(int(map_width*fact)):
-            min_dist = float('inf')
-            closest_element_index = None
+    scaled_centers_x = np.array(scaled_centers_x)
+    scaled_centers_y = np.array(scaled_centers_y)
 
-            for i, center in enumerate(scaled_centers):
-                # Calculate the distance from the pixel to the center of the map element
-                dist = (x - center[0])**2 + (y - center[1])**2
-                if dist < min_dist:
-                    min_dist = dist
-                    closest_element_index = i
+    x, y = np.meshgrid(np.arange(0, scaled_width), np.arange(0, scaled_height))
+    squared_dist = (x[:, :, np.newaxis] - scaled_centers_x[np.newaxis, np.newaxis, :]) ** 2 + \
+                    (y[:, :, np.newaxis] - scaled_centers_y[np.newaxis, np.newaxis, :]) ** 2
 
-            # Assign color based on the closest map element
-            if closest_element_index is not None:
-                mask[y, x] = closest_element_index
+        # Find closest center to each pixel location
+    indices = np.argmin(squared_dist, axis=2) 
+
+    # for y in range(int(map_height*fact)):
+    #     for x in range(int(map_width*fact)):
+    #         min_dist = float('inf')
+    #         closest_element_index = None
+
+    #         for i, center in enumerate(scaled_centers):
+    #             # Calculate the distance from the pixel to the center of the map element
+    #             dist = (x - center[0])**2 + (y - center[1])**2
+    #             if dist < min_dist:
+    #                 min_dist = dist
+    #                 closest_element_index = i
+
+    #         # Assign color based on the closest map element
+    #         if closest_element_index is not None:
+    #             mask[y, x] = closest_element_index
 
     # Resize the mask to the original map size
-    mask = cv2.resize(mask, (map_width, map_height), interpolation=cv2.INTER_NEAREST)
+    mask = cv2.resize(indices, (map_width, map_height), interpolation=cv2.INTER_NEAREST)
 
     return mask
+
+def _calculate_utm_grid_north_diverence(utm_zone, lat, long):
+        #γ = arctan [tan (λ - λ0) × sin φ]
+        # where
+        # γ is grid convergence,
+        # λ0 is longitude of UTM zone's central meridian,
+        # φ, λ are latitude, longitude of point in question
+        zone_center_longitude = (utm_zone - 1) * 6 - 180 + 3
+        gamma = math.atan(math.tan(math.radians(long - zone_center_longitude)) * math.sin(math.radians(lat)))
+
+        return gamma
 
 def draw_and_save_voronoi_mask(voronoi_mask, file_path):
     """
@@ -347,9 +378,29 @@ def draw_map(map_elements, voronoi_mask, map_width, map_height):
 
     map_elements_batches = [map_elements[i:i + batch_size] for i in range(0, len(map_elements), batch_size)]
     logger.info(f"Processing {len(map_elements)} map elements in {len(map_elements_batches)} batches")
-    for batch in map_elements_batches:
-        with Pool(processes=8) as pool:
-            map_elements_with_images = pool.map(load_and_transform_images, batch)
+
+    for i, batch in enumerate(map_elements_batches):
+        MAX_RETRIES = 3
+        
+        # with Pool(processes=8) as pool:
+        #     map_elements_with_images = pool.map(load_and_transform_images, batch)
+        
+        
+        logger.info(f"Starting batch {i + 1}/{len(map_elements_batches)}")
+        for attempt in range(MAX_RETRIES):
+            with Pool(processes=8) as pool:
+                async_result = pool.map_async(load_and_transform_images, batch)
+                try:
+                    map_elements_with_images = async_result.get(timeout=10)
+                    break  # success
+                except TimeoutError:
+                    logger.warning(f"Timeout in batch {i + 1} attempt {attempt + 1}")
+                    pool.terminate()
+                    pool.join()
+            if attempt == MAX_RETRIES - 1:
+                logger.error(f"Batch {i + 1} failed after {MAX_RETRIES} attempts")
+                raise TimeoutError("Giving up on this batch")
+        logger.info(f"Completed batch {i + 1}")
 
         for element in map_elements_with_images:
             x1, y1, x2, y2 = element.get_bounds()

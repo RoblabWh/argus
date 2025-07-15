@@ -52,7 +52,7 @@ export function FlightCard({ data }: Props) {
 
 
     return (
-        <Card className="min-w-52 max-w-103 flex-1 relative overflow-hidden pb-3">
+        <Card className="min-w-54 max-w-114 flex-1 relative overflow-hidden pb-3">
             {/* Background UAV Icon */}
             <Drone className="absolute right-2 top-2 w-24 h-24 opacity-100 text-muted-foreground dark:text-white z-0 pointer-events-none" />
 
