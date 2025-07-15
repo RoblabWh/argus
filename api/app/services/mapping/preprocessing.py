@@ -101,7 +101,7 @@ def preprocess_report(images: list[ImageOut], report_id: int, db, update_progres
     logger.info(f"Found {len(panos)} panoramic images and {len(mapping_images_ir)} IR mapping images, {len(mapping_images_rgb)} RGB mapping images.")
 
     mapping_jobs = _split_mapping_jobs(mapping_images_rgb) + _split_mapping_jobs(mapping_images_ir)
-   
+    mapping_jobs = _set_bounds_and_corners_per_job(mapping_jobs)
 
     #return mapping_selections
     logger.info(f"Preprocessing completed for report {report_id}. Found {len(mapping_jobs)} mapping jobs.")
@@ -402,3 +402,62 @@ def _separate_sequences(images: list[ImageOut]) -> list[list[ImageOut]]:
         sequences.append(current_sequence)
 
     return sequences
+
+def _set_bounds_and_corners_per_job(mapping_jobs: list[dict]) -> list[dict]:
+    # get the min and max coordinates for each job
+    for job in mapping_jobs:
+        if not job.get("images"):
+            continue
+
+        northing_max = float('-inf')
+        northing_min = float('inf')
+        easting_max = float('-inf')
+        easting_min = float('inf')
+        longitude_max = float('-inf')
+        longitude_min = float('inf')
+        latitude_max = float('-inf')
+        latitude_min = float('inf')
+
+        for image in job["images"]:
+            if image.coord and image.coord.get("utm"):
+                utm = image.coord["utm"]
+                gps = image.coord["gps"]
+                northing_max = max(northing_max, utm["northing"])
+                northing_min = min(northing_min, utm["northing"])
+                easting_max = max(easting_max, utm["easting"])
+                easting_min = min(easting_min, utm["easting"])
+                longitude_max = max(longitude_max, gps["lon"])
+                longitude_min = min(longitude_min, gps["lon"])
+                latitude_max = max(latitude_max, gps["lat"])
+                latitude_min = min(latitude_min, gps["lat"])
+
+        bounds_coordinates = {
+            "utm": {
+                "zone": utm["zone"],
+                "crs": utm["crs"],
+                "hemisphere": utm["hemisphere"],
+                "zone_letter": utm["zone_letter"],
+                "northing_max": northing_max,
+                "northing_min": northing_min,
+                "easting_max": easting_max,
+                "easting_min": easting_min
+            },
+            "gps": {
+                "longitude_max": longitude_max,
+                "longitude_min": longitude_min,
+                "latitude_max": latitude_max,
+                "latitude_min": latitude_min
+            }
+        }
+
+        corner_coordinates = {
+            "top_left": {"northing": northing_max, "easting": easting_min},
+            "top_right": {"northing": northing_max, "easting": easting_max},
+            "bottom_left": {"northing": northing_min, "easting": easting_min},
+            "bottom_right": {"northing": northing_min, "easting": easting_max}
+        }
+
+        job["bounds"] = bounds_coordinates
+        job["corners"] = corner_coordinates
+
+    return mapping_jobs

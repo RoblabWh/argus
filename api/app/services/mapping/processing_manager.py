@@ -6,6 +6,7 @@ import os
 from app.schemas.report import ProcessingSettings
 from app.config import REDIS_PORT, REDIS_HOST
 import app.crud.report as crud
+import app.crud.map as map_crud
 from app.database import get_db
 from sqlalchemy.orm import Session
 from app.services.mapping.preprocessing import preprocess_report
@@ -23,10 +24,18 @@ def process_report(report_id: int):
     try:
         report = crud.get_full_report(db, report_id, r)
         images = report.mapping_report.images
+        mapping_report_id = report.mapping_report.id
         mapping_selections = preprocess_report(images, report_id, db, update_progress_func=update_progress)
+        if len(mapping_selections) > 0:
+            #delete old maps if they exist
+            old_maps = map_crud.get_maps_by_mapping_report(db, mapping_report_id)
+            for old_map in old_maps:
+                logger.info(f"Deleting old map {old_map.id} for report {report_id}")
+                if not old_map.odm: # Only delete non-ODM maps
+                    map_crud.delete(db, old_map.id)
         for map_index, mapping_selection in enumerate(mapping_selections):
             logger.info(f"Mapping selection for report {report_id}: {mapping_selection}")
-            map_images(report_id, mapping_selection, db, update_progress_func=update_progress, total_maps=len(mapping_selections), map_index=map_index)
+            map_images(report_id, mapping_report_id, mapping_selection, db, update_progress_func=update_progress, total_maps=len(mapping_selections), map_index=map_index)
 
 
         

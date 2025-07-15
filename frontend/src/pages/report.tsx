@@ -18,6 +18,9 @@ export default function ReportOverview() {
   const [shouldPoll, setShouldPoll] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
 
+  const isMappingMode = liveReport?.status === "processing" || liveReport?.status === "completed" && !isEditing;
+
+
 
   // Start polling if the report is processing or preprocessing
   useEffect(() => {
@@ -59,8 +62,8 @@ export default function ReportOverview() {
         };
       });
 
-      if ((prevStatus === "preprocessing" || prevStatus === "queued") && newStatus === "processing") {
-        console.log("Detected preprocessing -> processing. Refetching full report...");
+      if (prevStatus !== newStatus) {
+        console.log("Detected status change. Refetching full report...");
         refetchFullReport();
       }
 
@@ -120,19 +123,27 @@ export default function ReportOverview() {
   }
 
   return (
-    <div className="container mx-auto px-4 pt-4">
-      <div className="flex mb-4">
-        <h1 className="text-2xl font-bold mr-2">
-          Report: {isLoading ? "Loading..." : liveReport?.title ?? "Unknown"}
-        </h1>
-      </div>
+    <>
+      {isMappingMode ? (
+        <div className="w-full ">
+          {renderReportContent(liveReport!)}
+        </div>
+      ) : (
+        <div className="container mx-auto px-4 pt-4">
+          <div className="flex mb-4">
+            <h1 className="text-2xl font-bold mr-2">
+              Report: {isLoading ? "Loading..." : liveReport?.title ?? "Unknown"}
+            </h1>
+          </div>
 
-      {/* Conditional content below the always-visible header */}
-      {isLoading && <p>Loading report...</p>}
-      {error && <p className="text-red-500">Error loading report: {error.message}</p>}
-      {!isLoading && !error && !liveReport && <p>No report found</p>}
-      {!isLoading && !error && liveReport && renderReportContent(liveReport)}
-    </div>
+          {/* Conditional content below the always-visible header */}
+          {isLoading && <p>Loading report...</p>}
+          {error && <p className="text-red-500">Error loading report: {error.message}</p>}
+          {!isLoading && !error && !liveReport && <p>No report found</p>}
+          {!isLoading && !error && liveReport && renderReportContent(liveReport)}
+        </div>)
+      }
+    </>
   );
 }
 

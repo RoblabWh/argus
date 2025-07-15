@@ -114,7 +114,26 @@
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
+  }
+
+  ::-webkit-scrollbar {
+    @apply w-2 h-2;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-muted;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply rounded-full bg-muted-foreground;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-muted-foreground/80;
+  }
+  ::-webkit-scrollbar-thumb:active {
+    @apply bg-muted-foreground/60;
   }
 }

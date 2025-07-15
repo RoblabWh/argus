@@ -13,11 +13,12 @@ class Map(Base):
     __tablename__ = "maps"
 
     id = Column(Integer, primary_key=True, index=True)
-    report_id = Column(Integer, ForeignKey("mapping_reports.id"), index=True)
+    mapping_report_id = Column(Integer, ForeignKey("mapping_reports.id"), index=True)
     name = Column(String)
-    status = Column(String, default="unprocessed")
     url = Column(String, nullable=True)
     created_at = Column(DateTime, nullable=True)
+    odm = Column(Boolean, default=False)
+    bounds = Column(JSONB, nullable=True)  # JSONB for storing bounds coordinates
 
     # relationships
     mapping_report = relationship("MappingReport", back_populates="maps")

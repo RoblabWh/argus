@@ -5,6 +5,8 @@ import imutils
 import numpy as np
 from app.config import UPLOAD_DIR
 from app.schemas.image import ImageOut, MappingDataOut
+from app.schemas.map import MapCreate
+import app.crud.map as crud
 import logging
 
 import billiard as multiprocessing
@@ -61,18 +63,7 @@ class Map_Element:
 
 
  
-def map_images(report_id: int, mapping_selection: dict, db, update_progress_func=None, total_maps=1, map_index=0):
-    """
-    Maps images based on the provided mapping selection.
-    
-    Args:
-        report_id (int): The ID of the report being processed.
-        mapping_selection (dict): The mapping selection containing image data and metadata.
-        db (Session): Database session dependency.
-        update_progress_func (callable, optional): Function to update progress. Defaults to None.
-        total_maps (int, optional): Total number of maps to process. Defaults to 1.
-        map_index (int, optional): Index of the current map being processed. Defaults to 0.
-    """
+def map_images(report_id: int, mapping_report_id: int, mapping_selection: dict, db, update_progress_func=None, total_maps=1, map_index=0):
     # Simulate image mapping logic
     logger.info(f"Mapping images for report {report_id} with selection {mapping_selection}")
     start_progress = 0.0 if map_index == 0 else 100.0 * map_index / total_maps
@@ -134,8 +125,17 @@ def map_images(report_id: int, mapping_selection: dict, db, update_progress_func
     # file_path = UPLOAD_DIR / str(report_id) / f"voronoi_{map_index}.png"
     # draw_and_save_voronoi_mask(voronoi, file_path)
 
-    # the images get loaded in batches, transformed according to the map elements and added to the final map image
-    # The final map image is saved to the filesystem and metadata is stored in the database 
+    logger.info(f"Final map for report {report_id} saved as {file_path}")
+    #store data in database
+    map_data = MapCreate(
+        mapping_report_id=mapping_report_id,
+        name=f"fast_{mapping_selection['type']}_{map_index}",
+        url=str(file_path),
+        odm=False,
+        bounds=mapping_selection['bounds'],
+    )
+    logger.info(f"Creating map in database for report {report_id} with data: {map_data}")
+    crud.create(db, map_data)
 
     # Update progress if a function is provided
     if update_progress_func:
@@ -284,17 +284,6 @@ def calculate_px_coords(map_elements, target_image_size):
 
 
 def calc_voronoi_mask(map_elements: list[Map_Element], map_width: int, map_height: int, performance_factor: int = 8):
-    """
-    Generates a Voronoi mask based on the pixel corners of the map elements.
-    
-    Args:
-        map_elements (list): List of Map_Element objects containing pixel corners.
-        map_width (int): Width of the map image.
-        map_height (int): Height of the map image.
-    
-    Returns:
-        np.ndarray: A mask image with the Voronoi texture applied.
-    """
     fact = 1/performance_factor
     mask = np.zeros((int(map_height*fact), int(map_width*fact), 1), dtype=np.uint8)
 
@@ -352,19 +341,6 @@ def draw_and_save_voronoi_mask(voronoi_mask, file_path):
     save_map_image(image, file_path)
 
 def draw_map(map_elements, voronoi_mask, map_width, map_height):
-    """
-    Draws the map elements on a blank image and applies the Voronoi mask.
-    
-    Args:
-        map_elements (list): List of Map_Element objects containing pixel corners.
-        voronoi_mask (np.ndarray): The Voronoi mask to be applied.
-        map_width (int): Width of the map image.
-        map_height (int): Height of the map image.
-    
-    Returns:
-        np.ndarray: The final map image with elements drawn and Voronoi mask applied.
-    """
-    # Create a blank image with transparency
     map_img = np.zeros((map_height, map_width, 4), dtype=np.uint8)
 
     batch_size = 32
@@ -394,16 +370,6 @@ def draw_map(map_elements, voronoi_mask, map_width, map_height):
     return map_img
 
 def load_and_transform_images(element: Map_Element) -> Map_Element:
-    """
-    Loads the image for a map element, applies transformations, and calculates pixel corners.
-    
-    Args:
-        element (Map_Element): The map element containing image path and metadata.
-    
-    Returns:
-        Map_Element: The updated map element with pixel corners and transformed image.
-    """
-    # Load the image
     image = cv2.imread(element.image_path, cv2.IMREAD_UNCHANGED)
     if image is None:
         logger.error(f"Failed to load image at {element.image_path}")

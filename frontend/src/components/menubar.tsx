@@ -18,7 +18,7 @@ const TopMenuBar: React.FC = () => {
   const { breadcrumbs } = useBreadcrumbs();
   
   return (
-    <div className="w-full flex justify-between items-center p-4 pb-2 pt-2 border-b  shadow-sm">
+    <div className="w-full flex justify-between items-center p-4 pb-2 pt-2 border-b shadow-sm bg-white dark:bg-gray-800">
       <div className="flex items-center gap-4">
        <DropdownMenu>
         <DropdownMenuTrigger asChild>
