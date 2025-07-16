@@ -5,7 +5,7 @@ import { useBatchedUpload } from "@/hooks/useBatchedUpload";
 import type { Report } from "@/types/report";
 import { getApiUrl } from "@/api";
 import { useDeleteImage } from "@/hooks/useImageMutations";
-import { GalleryImage } from "./UploadGalleryImage";
+import { GalleryImage } from "@/components/report/upload/UploadGalleryImage";
 import { ImageUp } from "lucide-react";
 
 type UploadFile = {
@@ -124,7 +124,7 @@ export const UploadArea: React.FC<Props> = ({ report }) => {
   return (
     <div>
       <div
-      className="border-2 border-dashed p-4 rounded-xl text-center bg-muted cursor-pointer hover:bg-muted/50"
+      className="border-2 border-dashed p-4 rounded-xl text-center bg-white cursor-pointer hover:bg-white/50 dark:bg-gray-800 hover:dark:bg-gray-700 transition-colors"
         {...getRootProps()}
       >
         <input {...getInputProps()} />

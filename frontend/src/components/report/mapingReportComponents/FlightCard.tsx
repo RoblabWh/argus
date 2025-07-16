@@ -4,7 +4,6 @@ import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import {
-    Plane,
     Clock,
     Ruler,
     Image as ImageIcon,
@@ -13,6 +12,7 @@ import {
     Drone,
 } from "lucide-react";
 import type { MappingReport } from "@/types/report";
+import { add } from "date-fns";
 
 type Props = {
     data: MappingReport | undefined;
@@ -39,8 +39,13 @@ export function FlightCard({ data }: Props) {
         image_count = 0,
         coord = {},
     } = data;
-
-    const shortAddress = address.split(",").slice(0, 2).join(", ");
+    let shortAddress = address ?? "Unknown Location";
+    try {
+        shortAddress = address.split(",").slice(0, 2).join(", ");
+    } catch (error) {
+        //just truncate to first line
+        shortAddress = shortAddress.length > 30 ? shortAddress.slice(0, 30) + "..." : shortAddress;
+    }
     const flightDate = new Date(flight_timestamp).toLocaleString();
     const coordinates = `${coord.gps?.lat.toFixed(6)}, ${coord.gps?.lon.toFixed(6)}`;
     const flightDurationValue = `${Math.floor(flight_duration / 60)}:${flight_duration % 60} mm:ss`; //convert seconds to minutes and seconds

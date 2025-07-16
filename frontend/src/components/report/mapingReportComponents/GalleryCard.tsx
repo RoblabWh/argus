@@ -22,7 +22,7 @@ export function GalleryCard({ images }: GalleryCardProps) {
     }
 
     return (
-        <Card className="min-w-80 max-w-257 min-h-40  flex flex-col">
+        <Card className="min-w-80  min-h-40  flex flex-col">
             <CardTitle className="text-lg font-semibold p-4">
                 Gallery
             </CardTitle>

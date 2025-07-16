@@ -21,7 +21,7 @@ export const GalleryImage: React.FC<Props> = ({
 }) => {
   return (
     <Card 
-        className="relative p-2 flex flex-col justify-between items-center h-full gap-2"
+        className="relative p-0 flex flex-col justify-between items-center h-full gap-0 rounded-sm"
     >
 
       {/* Delete Button */}
@@ -29,7 +29,7 @@ export const GalleryImage: React.FC<Props> = ({
         <Button
           variant="secondary"
           size="icon"
-          className="absolute top-3 right-3 rounded-full z-10 hover:bg-red-500 hover:text-white cursor-pointer"
+          className="absolute top-2 right-3 rounded-full z-10 hover:bg-red-500 hover:text-white cursor-pointer"
           onClick={(e) => {
             e.stopPropagation(); // Prevents click from bubbling to Dropzone
             onDelete?.();
@@ -40,15 +40,15 @@ export const GalleryImage: React.FC<Props> = ({
       )}
 
       {/* Image */}
-        <div className="w-full overflow-hidden">
+        <div className="w-full overflow-hidden p-1">
         <img
             src={src}
             alt={filename}
-            className="w-full h-full object-contain"
+            className="w-full h-full object-contain rounded-xs"
         />
         </div>
 
-        <div className="mt-2 w-full">
+        <div className="mt-0 w-full p-2">
             {children} {/* typically the Progress */}
             {filename && (
             <Tooltip>

@@ -1,6 +1,7 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Report } from "@/types/report";
 import { getApiUrl } from "@/api";
+import { MapTab } from "./MapTab";
 
 interface Props {
   report: Report;
@@ -21,7 +22,11 @@ export function TabArea({ report }: Props) {
         </TabsList>
       </div>
       <TabsContent value="mapping">
-        {/* Mapping content goes here */}
+        <div className="text-sm mt-4 h-[calc(85vh)] overflow-auto">
+          <MapTab report={report} />
+        </div>
+      </TabsContent>
+      <TabsContent value="slideshow">
         <div className="p-4">
           {/* Placeholder for mapping content */}
           <p>Mapping content for report ID: {report.report_id}</p>
@@ -33,13 +38,6 @@ export function TabArea({ report }: Props) {
               </div>
             ))}
           </div>
-        </div>
-      </TabsContent>
-      <TabsContent value="slideshow">
-        {/* Slideshow content goes here */}
-        <div className="p-4">
-          {/* Placeholder for slideshow content */}
-          <p>Slideshow content for report ID: {report.report_id}</p>
         </div>
       </TabsContent>
       <TabsContent value="data">
