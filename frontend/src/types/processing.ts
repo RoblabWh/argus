@@ -1,8 +1,9 @@
 export interface ProcessingSettings {
-  preprocessing: boolean;
-  processing: boolean;
   keep_weather: boolean;
-  odm_orthophoto: boolean;
+  fast_mapping: boolean;
+  target_map_resolution: number;
+  accepted_gimbal_tilt_deviation: number;
+  default_flight_height: number;
+  odm_processing: boolean;
   odm_full: boolean;
-  reprocess_all: boolean;
 }

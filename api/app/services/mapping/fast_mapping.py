@@ -6,6 +6,7 @@ import numpy as np
 from app.config import UPLOAD_DIR
 from app.schemas.image import ImageOut, MappingDataOut
 from app.schemas.map import MapCreate
+from app.schemas.report import ProcessingSettings
 import app.crud.map as crud
 import logging
 
@@ -63,17 +64,12 @@ class Map_Element:
 
 
  
-def map_images(report_id: int, mapping_report_id: int, mapping_selection: dict, db, update_progress_func=None, total_maps=1, map_index=0):
+def map_images(report_id: int, mapping_report_id: int, mapping_selection: dict, settings: dict, db, update_progress_func=None, total_maps=1, map_index=0):
     # Simulate image mapping logic
     # logger.info(f"Mapping images for report {report_id} with selection {mapping_selection}")
     start_progress = 0.0 if map_index == 0 else 100.0 * map_index / total_maps
 
-    settings = {
-        "default_flight_height": 100.0,
-        "keep_weather": False,
-        "accepted_gimbal_tilt_deviation": 7.5,  # degrees
-        "target_image_size": 6144,  # px
-    }
+    settings = settings.dict() if isinstance(settings, ProcessingSettings) else settings
 
     # generate a map element for very image in mapping_selection 
     # calculate the utm corners of the image based on the mapping selection in parallel using multiprocessing pool
@@ -102,7 +98,7 @@ def map_images(report_id: int, mapping_report_id: int, mapping_selection: dict, 
         progress = (20.0 / total_maps) + start_progress
         update_progress_func(report_id, "processing", progress, db)
 
-    map_width, map_height = calculate_px_coords(map_elements, settings['target_image_size'])
+    map_width, map_height = calculate_px_coords(map_elements, settings['target_map_resolution'])
 
     if update_progress_func:
         progress = (40.0 / total_maps) + start_progress
@@ -246,7 +242,7 @@ def calculate_utm_corners(image: ImageOut, reference_yaw: float) -> Map_Element:
     return Map_Element(utm, utm_corners, orientation, path, width, creation_timestamp)
 
 
-def calculate_px_coords(map_elements, target_image_size):
+def calculate_px_coords(map_elements, target_map_resolution):
     all_corners = []
     for element in map_elements:
         all_corners.extend(element.utm_corners)
@@ -260,7 +256,7 @@ def calculate_px_coords(map_elements, target_image_size):
     total_width = max_easting - min_easting
     total_height = max_northing - min_northing
 
-    scale = target_image_size / max(total_width, total_height)
+    scale = target_map_resolution / max(total_width, total_height)
 
     total_width = int(total_width * scale + 10)
     total_height = int(total_height * scale + 10)
@@ -397,10 +393,14 @@ def draw_map(map_elements, voronoi_mask, map_width, map_height):
                     logger.warning(f"Timeout in batch {i + 1} attempt {attempt + 1}")
                     pool.terminate()
                     pool.join()
+                except Exception as e:
+                    logger.error(f"Error in batch {i + 1} attempt {attempt + 1}: {e}")
+                    pool.terminate()
+                    pool.join()
             if attempt == MAX_RETRIES - 1:
                 logger.error(f"Batch {i + 1} failed after {MAX_RETRIES} attempts")
                 raise TimeoutError("Giving up on this batch")
-        logger.info(f"Completed batch {i + 1}")
+        logger.info(f"Completed loading batch {i + 1}")
 
         for element in map_elements_with_images:
             x1, y1, x2, y2 = element.get_bounds()

@@ -21,3 +21,12 @@ export interface Image {
   thermal_data?: ThermalData;
   detections: Detection[];
 };
+
+
+export interface UploadFile {
+  file?: File;
+  preview?: string;
+  progress?: number;
+  isExisting?: boolean;
+  imageObject?: Partial<Image>; // Assuming Image type has id, filename, thumbnail_url
+};

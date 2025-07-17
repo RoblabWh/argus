@@ -16,13 +16,8 @@ import app.crud.weather as crud_weather
 
 logger = logging.getLogger(__name__)
 
-# def preprocess_report(images: list[ImageOut], report_id: int, settings: ProcessingSettings, db):
-def preprocess_report(images: list[ImageOut], report_id: int, db, update_progress_func: callable = None):
-    settings = {
-        "default_flight_height": 100.0,
-        "keep_weather": True,
-        "accepted_gimbal_tilt_deviation": 7.5,  # degrees
-    }
+def preprocess_report(report_id: int, images: list[ImageOut], settings: ProcessingSettings, db, update_progress_func: callable = None):
+    settings = settings.dict() if isinstance(settings, ProcessingSettings) else settings
     
     if not images or len(images) == 0:
         raise ValueError("No images provided for preprocessing.")
@@ -73,7 +68,7 @@ def preprocess_report(images: list[ImageOut], report_id: int, db, update_progres
     }
     mapping_report_update = MappingReportUpdate(**mapping_report_data)
     # save extracted data to the database
-    crud_report.update_mapping_report(db, report_id, mapping_report_update)
+    updated_report = crud_report.update_mapping_report(db, report_id, mapping_report_update)
 
     if weather_data:
         if weather_id:
@@ -107,8 +102,7 @@ def preprocess_report(images: list[ImageOut], report_id: int, db, update_progres
     logger.info(f"Preprocessing completed for report {report_id}. Found {len(mapping_jobs)} mapping jobs.")
     for job in mapping_jobs:
         logger.info(f"Mapping job type: {job['type']}, images count: {len(job['images'])}")
-    if update_progress_func:
-        update_progress_func(report_id, "preprocessing", 100.0, db)
+    
 
     return mapping_jobs
 
@@ -345,7 +339,7 @@ def _split_mapping_jobs(images: list[ImageOut]) -> list:
 
     if not images:
         return []
-    if len(images) < 3:
+    if len(images) <= 3:
         return []
 
     # make sure both lists are sorted by created_at

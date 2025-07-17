@@ -68,9 +68,10 @@ def update_mapping_report(report_id: int, data: MappingReportUpdate, db: Session
 def process_report(report_id: int, processing_settings: ProcessingSettings, db: Session = Depends(get_db)):
     returnval = crud.update_process(db, report_id, "queued", 0.0)
     settings_json = processing_settings.json()
+    processing_settings_dict = processing_settings.dict()
     print(f"Starting processing for report {report_id} with settings: {processing_settings}")
     print(f"Settings JSON: {settings_json}")
-    task = process_report_service.process_report.delay(report_id)
+    task = process_report_service.process_report.delay(report_id, processing_settings_dict)
     r.set(f"report:{report_id}:task_id", task.id)
     r.set(f"report:{report_id}:progress", 0)
     return returnval

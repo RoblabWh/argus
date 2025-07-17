@@ -53,13 +53,13 @@ class ReportSmallDetailOut(ReportOut):
     pano_report: Optional["PanoReportOut"] = None
 
 class ProcessingSettings(BaseModel):
-    preprocessing: bool = True
-    processing: bool = True
-    keep_weather: bool = False
-    odm_orthophoto: bool = False
-    odm_full: bool = False
-    reprocess_all: bool = False
+    keep_weather: Optional[bool] = False
+    fast_mapping: bool = True
+    target_map_resolution: Optional[int] = None
+    accepted_gimbal_tilt_deviation: Optional[float] = None
     default_flight_height: Optional[float] = None
+    odm_processing: bool = False
+    odm_full: bool = False
 
 
 ##################
@@ -72,7 +72,7 @@ class MappingReportBase(BaseModel):
     coord: Optional[dict] = None  # JSONB as dict
     address: Optional[str] = None
     flight_duration: Optional[float] = None
-    flight_height: Optional[float] = None
+    default_flight_height: Optional[float] = None
     covered_area: Optional[float] = None
     uav: Optional[str] = "Unknown"
     image_count: Optional[int] = 0

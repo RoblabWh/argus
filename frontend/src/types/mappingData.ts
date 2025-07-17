@@ -5,6 +5,7 @@ export type MappingData = {
   image_id: number;
   fov: number;
   rel_altitude?: number;
+  rel_altitude_method: "manual" | "googleelevationapi" | "exif";
   cam_pitch: number;
   cam_roll: number;
   cam_yaw: number;

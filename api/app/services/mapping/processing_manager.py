@@ -18,37 +18,48 @@ logger = logging.getLogger(__name__)
 
 
 @celery_app.task
-def process_report(report_id: int):
+def process_report(report_id: int, settings: dict = None):
     db = next(get_db())
     logger.info(f"Starting processing for report {report_id}")
+    logger.info(f"Settings of type {type(settings)}: {settings}")
     try:
         report = crud.get_full_report(db, report_id, r)
         images = report.mapping_report.images
         mapping_report_id = report.mapping_report.id
-        mapping_selections = preprocess_report(images, report_id, db, update_progress_func=update_progress)
-        if len(mapping_selections) > 0:
+        mapping_selections = preprocess_report(report_id, images, settings, db, update_progress_func=update_progress)
+        
+        
+        if settings['fast_mapping'] and len(mapping_selections) > 0:
             #delete old maps if they exist
             old_maps = map_crud.get_maps_by_mapping_report(db, mapping_report_id)
             for old_map in old_maps:
                 logger.info(f"Deleting old map {old_map.id} for report {report_id}")
                 if not old_map.odm: # Only delete non-ODM maps
                     map_crud.delete(db, old_map.id)
-        for map_index, mapping_selection in enumerate(mapping_selections):
-            map_images(report_id, mapping_report_id, mapping_selection, db, update_progress_func=update_progress, total_maps=len(mapping_selections), map_index=map_index)
+
+        update_progress(report_id, "preprocessing", 100.0, db)
+
+        if settings['fast_mapping'] and len(mapping_selections) > 0:
+            for map_index, mapping_selection in enumerate(mapping_selections):
+                    map_images(report_id, mapping_report_id, mapping_selection, settings, db, update_progress_func=update_progress, total_maps=len(mapping_selections), map_index=map_index)
+        else:
+            logger.info(f"Skipping fast mapping for report {report_id} as fast_mapping is set to False")
 
 
-        
-        r.set(f"report:{report_id}:progress", 100.0)
-        crud.update_process(db, report_id, "completed", 100.0)
+        # r.set(f"report:{report_id}:progress", 100.0)
+        # crud.update_process(db, report_id, "completed", 100.0)
+        update_progress(report_id, "completed", 100.0, db)
     except Exception as e:
         logger.error(f"Error processing report {report_id}: {e}")
-        r.set(f"report:{report_id}:progress", -1.0)  # Indicate failure
-        crud.update_process(db, report_id, "failed", 0.0)
+        # r.set(f"report:{report_id}:progress", -1.0)  # Indicate failure
+        # crud.update_process(db, report_id, "failed", 0.0)
+        update_progress(report_id, "failed", 0.0, db)
+        logger.error(f"Report {report_id} processing failed with error: {e}")
         raise e
 
     finally:
         db.close()
 
 def update_progress(report_id: int, stage: str, progress: float, db: Session):
-    r.set(f"report:{report_id}:progress", progress)
     crud.update_process(db, report_id, stage, progress)
+    r.set(f"report:{report_id}:progress", progress)

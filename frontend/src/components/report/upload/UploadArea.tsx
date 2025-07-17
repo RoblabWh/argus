@@ -7,29 +7,18 @@ import { getApiUrl } from "@/api";
 import { useDeleteImage } from "@/hooks/useImageMutations";
 import { GalleryImage } from "@/components/report/upload/UploadGalleryImage";
 import { ImageUp } from "lucide-react";
-
-type UploadFile = {
-  file?: File;
-  preview?: string;
-  progress?: number;
-  isExisting?: boolean;
-  imageObject?: {
-    id: number;
-    filename: string;
-    thumbnail_url: string;
-  };
-};
-
-type Props = {
+import type { UploadFile } from "@/types/image"; // Assuming you have an Image type defined
+type UploadAreaProps = {
   report: Report;
+  uploads: UploadFile[];
+  setUploads: React.Dispatch<React.SetStateAction<UploadFile[]>>;
 };
 
-export const UploadArea: React.FC<Props> = ({ report }) => {
+export const UploadArea: React.FC<UploadAreaProps> = ({ report, uploads, setUploads }) => {
   const apiUrl = getApiUrl();
   const { uploadBatch } = useBatchedUpload(report.report_id);
   const deleteImageMutation = useDeleteImage();
 
-  const [uploads, setUploads] = useState<UploadFile[]>([]);
 
     // Load existing images into unified list to show them with new uploads
   useEffect(() => {

@@ -32,11 +32,12 @@ import { cn } from "@/lib/utils";
 import { useState, useEffect } from "react";
 import { Info, Blocks, Drone } from "lucide-react";
 import { MappingTile } from "@/components/report/upload/SettingsTile";
+import type { ProcessingSettings } from "@/types/processing";
 
 type MappingSettingsProps = {
     weatherAvailable: boolean;
-    imagesContainAltitude: boolean;
-    handleStartProcessing: () => void;
+    showManualAltitudeField: boolean;
+    handleStartProcessing: (settings: ProcessingSettings) => void;
     processButtonActive: boolean;
     status: string;
     progress?: number;
@@ -45,24 +46,37 @@ type MappingSettingsProps = {
 
 export function MappingSettingsCard({
     weatherAvailable,
-    imagesContainAltitude,
+    showManualAltitudeField,
     handleStartProcessing,
     processButtonActive,
     status,
     progress
 }: MappingSettingsProps) {
-    const [keepWeather, setKeepWeather] = useState(false);
+    const [keepWeather, setKeepWeather] = useState(weatherAvailable);
     const [fastMapping, setFastMapping] = useState(true);
     const [tiltDeviation, setTiltDeviation] = useState("7.5");
-    const [mapSize, setMapSize] = useState("medium");
-    const [defaultAltitude, setDefaultAltitude] = useState("");
-    const [useDefaultAltitude, setUseDefaultAltitude] = useState(!imagesContainAltitude);
+    const [mapSize, setMapSize] = useState("6144");
+    const [defaultAltitude, setDefaultAltitude] = useState("100.0");
+    const [useDefaultAltitude, setUseDefaultAltitude] = useState(showManualAltitudeField);
     const [useODM, setUseODM] = useState(false);
     const [odmMode, setOdmMode] = useState("fast");
 
     useEffect(() => {
-        setUseDefaultAltitude(!imagesContainAltitude);
-    }, [imagesContainAltitude]);
+        setUseDefaultAltitude(showManualAltitudeField);
+    }, [showManualAltitudeField]);
+
+    const handleStartProcessingWithSettings = () => {
+        const settings = {
+            keep_weather: keepWeather,
+            fast_mapping: fastMapping,
+            target_map_resolution: parseInt(mapSize, 10),
+            accepted_gimbal_tilt_deviation: parseFloat(tiltDeviation),
+            default_flight_height: useDefaultAltitude ? parseFloat(defaultAltitude) : 100.0, 
+            odm_processing: useODM,
+            odm_full: odmMode === "full",
+        };
+        handleStartProcessing(settings);
+    };
 
     const tileBaseClasses = "rounded-2xl border-2 border-primary p-4"// bg-muted bg-gradient-to-tl from-primary/15 via-white/0 to-white/0 dark:from-gray-700/70 dark:via-gray-900/0 dark:to-gray-900/0";
 
@@ -74,7 +88,7 @@ export function MappingSettingsCard({
             <CardContent className="space-y-6">
 
                 <div className="flex flex-row gap-4 flex-wrap">
-                    
+
                     {/* Always-open General Settings Tile */}
                     <div className={cn(tileBaseClasses, "space-y-4 transition-all duration-300")}>
 
@@ -115,27 +129,47 @@ export function MappingSettingsCard({
 
                         <div className="relative grid md:grid-cols-2 gap-4 z-10">
                             <div className="relative flex flex-col space-y-1">
-                                <Label htmlFor="map-size">Map Size</Label>
+                                <div className="flex items-center gap-2">
+                                    <Label htmlFor="map-size">Map Size</Label>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <Info className="w-4 h-4 text-muted-foreground cursor-help" />
+                                        </TooltipTrigger>
+                                        <TooltipContent side="right">
+                                            Target size for widest side of final orthophoto.
+                                        </TooltipContent>
+                                    </Tooltip>
+                                </div>
                                 <Select value={mapSize} onValueChange={setMapSize}>
                                     <SelectTrigger id="map-size" className="bg-white/70 dark:bg-gray-800/70 cursor-pointer">
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent className="bg-white dark:bg-gray-900">
-                                        <SelectItem value="small">Small (2048×2048)</SelectItem>
-                                        <SelectItem value="medium">Medium (4096×4096)</SelectItem>
-                                        <SelectItem value="large">Large (8192×8192)</SelectItem>
-                                        <SelectItem value="huge">Huge (16384×16384)</SelectItem>
+                                        <SelectItem value="2048">Small (2048px)</SelectItem>
+                                        <SelectItem value="4096">Medium (4096px)</SelectItem>
+                                        <SelectItem value="6144">Large (6144px)</SelectItem>
+                                        <SelectItem value="8192">Huge (8192px)</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
 
                             <div className="flex flex-col space-y-1">
-                                <Label htmlFor="tilt-deviation">Tilt Deviation (°)</Label>
+                                <div className="flex items-center gap-2">
+                                    <Label htmlFor="tilt-deviation">Tilt Deviation (°)</Label>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <Info className="w-4 h-4 text-muted-foreground cursor-help" />
+                                        </TooltipTrigger>
+                                        <TooltipContent side="right">
+                                            Camera/ gimbal threshold for images used in mapping (deviation of 0° would be images looking straight down).
+                                        </TooltipContent>
+                                    </Tooltip>
+                                </div>
                                 <Input
                                     id="tilt-deviation"
                                     type="number"
-                                    min={1}
-                                    max={45}
+                                    min={1.0}
+                                    max={50.0}
                                     step={0.1}
                                     value={tiltDeviation}
                                     onChange={(e) => setTiltDeviation(e.target.value)}
@@ -144,9 +178,20 @@ export function MappingSettingsCard({
                             </div>
                         </div>
 
-                        {!imagesContainAltitude && (
+                        {showManualAltitudeField && (
                             <div className="relative z-10 flex flex-col space-y-1">
-                                <Label htmlFor="default-altitude">Default Altitude (m)</Label>
+                                <div className="flex items-center gap-2">
+
+                                    <Label htmlFor="default-altitude">Default Altitude (m)</Label>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <Info className="w-4 h-4 text-muted-foreground cursor-help" />
+                                        </TooltipTrigger>
+                                        <TooltipContent side="right">
+                                            Used to map images without exif data about the relative altitude above ground level.
+                                        </TooltipContent>
+                                    </Tooltip>
+                                </div>
                                 <Input
                                     id="default-altitude"
                                     type="number"
@@ -154,8 +199,8 @@ export function MappingSettingsCard({
                                     max={9999}
                                     step={0.1}
                                     value={defaultAltitude}
-                                    className="bg-white/70 dark:bg-gray-800/70"
                                     onChange={(e) => setDefaultAltitude(e.target.value)}
+                                    className="bg-white/70 dark:bg-gray-800/70"
                                 />
                             </div>
                         )}
@@ -189,30 +234,30 @@ export function MappingSettingsCard({
                 {((status === "processing" ||
                     status === "preprocessing" ||
                     status === "queued") && progress !== undefined) ? (
-                        <div className="w-full ">
-                            <p className="text-sm text-muted-foreground mt-1 opacity-0">
-                                {status} — {Math.round(progress)}%
-                            </p>
-                            <Progress value={progress} />
-                            <p className="text-sm text-muted-foreground mt-1">
-                                {status} — {Math.round(progress)}%
-                            </p>
-                        </div>
-                    ) : (
-                        <div className="w-full ">
-                            <p className="text-sm text-muted-foreground mt-1 opacity-0">
-                                not running
-                            </p>
-                            <Progress value={0} className="opacity-0" />
-                            <p className="text-sm text-muted-foreground mt-1 opacity-0">
-                                {status} — {Math.round(0)}%
-                            </p>
-                        </div>
-                    )
-                    }
+                    <div className="w-full ">
+                        <p className="text-sm text-muted-foreground mt-1 opacity-0">
+                            {status} — {Math.round(progress)}%
+                        </p>
+                        <Progress value={progress} />
+                        <p className="text-sm text-muted-foreground mt-1">
+                            {status} — {Math.round(progress)}%
+                        </p>
+                    </div>
+                ) : (
+                    <div className="w-full ">
+                        <p className="text-sm text-muted-foreground mt-1 opacity-0">
+                            not running
+                        </p>
+                        <Progress value={0} className="opacity-0" />
+                        <p className="text-sm text-muted-foreground mt-1 opacity-0">
+                            {status} — {Math.round(0)}%
+                        </p>
+                    </div>
+                )
+                }
                 <Button
                     className=""
-                    onClick={handleStartProcessing}
+                    onClick={handleStartProcessingWithSettings}
                     disabled={processButtonActive}
                 >
                     Start Processing

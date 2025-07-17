@@ -268,9 +268,10 @@ def _extract_mapping_data(metadata: dict, datakeys: dict, coord: dict) -> tuple:
     mapping_data["rel_altitude"] = coord.get("rel_alt", None)
     mapping_data["altitude"] = coord.get("alt", None)
 
-    if mapping_data["rel_altitude"] is None and mapping_data["altitude"] is None:
-        return False, None
-    elif mapping_data["rel_altitude"] is None:
+    # if mapping_data["rel_altitude"] is None and mapping_data["altitude"] is None:
+    #     return False, None
+    # elif mapping_data["rel_altitude"] is None:
+    if mapping_data["rel_altitude"] is None:
         #TODO check for google API key and set the method to googleelevationapi or similar
         mapping_data["rel_altitude_method"] = "manual"
     else:
