@@ -24,7 +24,7 @@ export function AutoDescriptionCard({ description }: Props) {
 
 
     return (
-        <Card className="min-w-80 flex-1 relative overflow-hidden pb-3">
+        <Card className="min-w-55 flex-1 relative overflow-hidden pb-3">
             {/* Background UAV Icon */}
             <Bot className="absolute right-2 top-2 w-24 h-24 opacity-100 text-muted-foreground dark:text-white z-0 pointer-events-none" />
 
