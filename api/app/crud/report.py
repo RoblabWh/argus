@@ -1,4 +1,4 @@
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session, joinedload, selectinload
 from datetime import datetime
 import redis
 
@@ -12,32 +12,26 @@ def get_all(db: Session):
 
 
 def get_full_report(db: Session, report_id: int, r: redis.Redis = None):
-    #check if the processing status is still valid
-    if r is not None:
+    if r:
         get_process_status(db, report_id, r)
+
     return (
         db.query(models.Report)
         .options(
-            joinedload(models.Report.mapping_report)
-            .joinedload(models.MappingReport.images)
-            .joinedload(models.Image.mapping_data),
-
-            # joinedload(models.Report.mapping_report)
-            # .joinedload(models.MappingReport.images)
-            # .joinedload(models.Image.thermal_data),
-
-            joinedload(models.Report.mapping_report)
-            .joinedload(models.MappingReport.images)
-            .joinedload(models.Image.detections),
-
-            joinedload(models.Report.mapping_report)
-            .joinedload(models.MappingReport.maps)
-            .joinedload(models.Map.map_elements),
-
-            joinedload(models.Report.mapping_report)
-            .joinedload(models.MappingReport.weather),
-            
-            #joinedload(models.Report.pano_report)  # Future use
+            selectinload(models.Report.mapping_report)
+                .selectinload(models.MappingReport.images)
+                .selectinload(models.Image.mapping_data),
+                
+            selectinload(models.Report.mapping_report)
+                .selectinload(models.MappingReport.images)
+                .selectinload(models.Image.detections),
+                
+            selectinload(models.Report.mapping_report)
+                .selectinload(models.MappingReport.maps)
+                .selectinload(models.Map.map_elements),
+                
+            selectinload(models.Report.mapping_report)
+                .selectinload(models.MappingReport.weather),
         )
         .filter(models.Report.report_id == report_id)
         .first()

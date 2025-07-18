@@ -31,7 +31,7 @@ class MapElement(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     map_id = Column(Integer, ForeignKey("maps.id"), index=True)
-    image_id = Column(Integer, ForeignKey("images.id"))
+    image_id = Column(Integer, ForeignKey("images.id"), index=True)
     index = Column(Integer)
     coord = Column(JSONB)
     corners = Column(JSONB)

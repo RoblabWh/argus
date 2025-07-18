@@ -34,7 +34,8 @@ export function TabArea({ report }: Props) {
             {/* show every image under report.mapping_report.maps */}
             {report.mapping_report?.maps.map((map, index) => (
               <div key={index} className="mb-2">
-                <img src={api_url + '/' + map.url} alt={`Map ${index + 1}`} className="w-full h-auto" />
+                <p onClick={() => window.open(api_url + '/' + map.url, '_blank')}> image {map.name} </p>
+                {/* <img src={api_url + '/' + map.url} alt={`Map ${index + 1}`} className="w-full h-auto" /> */}
               </div>
             ))}
           </div>

@@ -60,7 +60,11 @@ async def get_db_info():
 
 inspector = inspect(engine)
 
-for table_name in inspector.get_table_names():
-    print(f"Table: {table_name}", flush=True)
-    for column in inspector.get_columns(table_name):
-        print(f"  Column: {column['name']} - {column['type']} - Nullable: {column['nullable']} default: {column.get('default')} - Server Default: {column.get('server_default')}", flush=True)
+
+for table in inspector.get_table_names():
+    print(f"Table: {table}")
+    for idx in inspector.get_indexes(table):
+        print(f"  Index: {idx['name']} on columns {idx['column_names']}")
+    for column in inspector.get_columns(table):
+        print(f"  Column: {column['name']} — Indexed?" +
+              (" Yes" if any(column['name'] in idx['column_names'] for idx in inspector.get_indexes(table)) else " No"))
