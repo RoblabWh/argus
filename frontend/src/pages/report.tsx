@@ -19,6 +19,8 @@ export default function ReportOverview() {
   const [liveReport, setLiveReport] = useState<Report | null>(null);
   const [shouldPoll, setShouldPoll] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [hasRefetchedAfterStatusChange, setHasRefetchedAfterStatusChange] = useState(true);
+
 
   const isMappingMode = liveReport?.status === "processing" || liveReport?.status === "completed" && !isEditing;
 
@@ -55,6 +57,7 @@ export default function ReportOverview() {
     if (polledData) {
       const prevStatus = prevStatusRef.current;
       const newStatus = polledData.status;
+
       setLiveReport((prev) => {
         if (!prev) return polledData;
         return {
@@ -64,15 +67,24 @@ export default function ReportOverview() {
         };
       });
 
-      if (prevStatus !== newStatus) {
-        console.log("Detected status change. Refetching full report...");
-        refetchFullReport();
+      const statusChanged = prevStatus !== newStatus;
+
+      if (statusChanged) {
+        if (prevStatus === "preprocessing" || (prevStatus === "queued" && newStatus === "processing")) {
+          console.log("========> Status changed to processing or preprocessing, refetching full report...");
+          setHasRefetchedAfterStatusChange(false); // Block until we refetch
+          refetchFullReport().then(() => {
+            setHasRefetchedAfterStatusChange(true); // Allow rendering
+          });
+        }
       }
+
+
       if (prevStatus === "processing" && newStatus === "processing") {
         if (polledData.progress !== undefined && prevStatusRef.current !== undefined) {
           if (polledData.progress !== prevStatusRef.current.progress) {
             console.log("Detected progress change. Refetching maps...");
-            //replace maps with the new data
+            //in the future only replace maps with the new data
             refetchFullReport();
           }
         }
@@ -96,7 +108,7 @@ export default function ReportOverview() {
 
 
   const renderReportContent = (report: Report) => {
-    if (isEditing) {
+    if (isEditing || !hasRefetchedAfterStatusChange) {
       console.log("Rendering Upload component for editing: isEditing " + isEditing);
       return (
         <Upload
@@ -105,6 +117,8 @@ export default function ReportOverview() {
             setShouldPoll(true);
             setIsEditing(false); // exit editing once processing starts
           }}
+          isEditing={isEditing} // Pass isEditing prop to Upload
+          setIsEditing={setIsEditing} // Pass setIsEditing prop to Upload
         />
       );
     }
@@ -118,7 +132,7 @@ export default function ReportOverview() {
         return (
           <Upload
             report={report}
-            onProcessingStarted={() => setShouldPoll(true)}
+            onProcessingStarted={() => { setShouldPoll(true); }}
           />
         );
       case "processing":

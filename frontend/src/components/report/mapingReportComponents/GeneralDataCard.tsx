@@ -13,12 +13,17 @@ import type { Report } from '@/types/report';
 
 interface Props {
     report: Report;
-    onEditClicked: () => void;
+    onReprocessClicked: () => void;
 }
 
-export function GeneralDataCard({ report, onEditClicked }: Props) {
+export function GeneralDataCard({ report, onReprocessClicked }: Props) {
     const isProcessing = report.status === 'processing' || report.status === 'preprocessing';
 
+    const onEditDetailsClick = () => {
+        // Handle edit details click
+        console.log("Edit details clicked");
+    };
+    
     return (
         <Card className="min-w-70 max-w-257 w-full flex-2 px-4 py-3">
             <CardContent className="p-0 flex flex-col justify-between h-full">
@@ -88,7 +93,8 @@ export function GeneralDataCard({ report, onEditClicked }: Props) {
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={onEditClicked}>Edit/ Reprocess</DropdownMenuItem>
+                                <DropdownMenuItem onClick={onEditDetailsClick}> Edit details</DropdownMenuItem>
+                                <DropdownMenuItem onClick={onReprocessClicked}>Reprocess</DropdownMenuItem>
                                 <DropdownMenuItem>Export</DropdownMenuItem>
                                 <DropdownMenuItem className="text-red-600">Delete</DropdownMenuItem>
                             </DropdownMenuContent>

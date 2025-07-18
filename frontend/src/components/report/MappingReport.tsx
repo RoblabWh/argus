@@ -33,7 +33,7 @@ export function MappingReport({ report, onEditClicked }: Props) {
         left={
           <div className="flex flex-col gap-4 h-[calc(100vh-90px)]">
             <div className='flex flex-wrap gap-4'>
-              <GeneralDataCard report={report} onEditClicked={onEditClicked} />
+              <GeneralDataCard report={report} onReprocessClicked={onEditClicked} />
               <WeatherCard data={report.mapping_report?.weather[0]} onReload={() => { alert("Reload Weather Data"); }} />
               <FlightCard data={report.mapping_report} />
               <AutoDescriptionCard description={report.auto_description} />

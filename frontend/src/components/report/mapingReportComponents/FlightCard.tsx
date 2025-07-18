@@ -37,17 +37,23 @@ export function FlightCard({ data }: Props) {
         covered_area = 0,
         uav = "Unknown UAV",
         image_count = 0,
-        coord = {},
+        coord = null,
     } = data;
     let shortAddress = address ?? "Unknown Location";
+    
     try {
         shortAddress = address.split(",").slice(0, 2).join(", ");
     } catch (error) {
         //just truncate to first line
         shortAddress = shortAddress.length > 30 ? shortAddress.slice(0, 30) + "..." : shortAddress;
     }
+
+    let coordinates = "No GPS Data";
+    if (coord !== undefined && coord !== null) {
+        coordinates = `${coord.gps?.lat.toFixed(6)}, ${coord.gps?.lon.toFixed(6)}`;
+
+    }
     const flightDate = new Date(flight_timestamp).toLocaleString();
-    const coordinates = `${coord.gps?.lat.toFixed(6)}, ${coord.gps?.lon.toFixed(6)}`;
     const flightDurationValue = `${Math.floor(flight_duration / 60)}:${flight_duration % 60} mm:ss`; //convert seconds to minutes and seconds
 
     const handleCopy = async () => {

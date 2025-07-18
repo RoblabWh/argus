@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import type { Report } from "@/types/report";
+import type { Image } from "@/types/image";
 import { getApiUrl } from "@/api";
 import {
     MapContainer,
@@ -10,6 +11,7 @@ import {
     Popup,
     Rectangle,
     Polygon,
+    Polyline,
     LayerGroup,
     Circle
 } from 'react-leaflet';
@@ -27,6 +29,18 @@ interface Props {
 
 const { BaseLayer, Overlay } = LayersControl;
 
+function extractFlightTrajectory(images: Image[]) {
+    //sort all images by created_at
+    images.sort((a, b) => (a.created_at ? new Date(a.created_at).getTime() : 0) - (b.created_at ? new Date(b.created_at).getTime() : 0));
+    //collect gps coordinates from images and put them in a list of [lat, lon] pairs
+    const flightPath = images.map((image) => {
+        if (!image.coord || !image.coord.gps || image.coord.gps === undefined) return null;
+        return [image.coord.gps.lat, image.coord.gps.lon];
+    }).filter(Boolean) as LatLngBoundsExpression;
+
+    return flightPath;
+}
+
 
 export function MapTab({ report }: Props) {
     const [overlayOpacity, setOverlayOpacity] = useState(1.0);
@@ -39,9 +53,10 @@ export function MapTab({ report }: Props) {
         : theme;    //Check if report has maps, If not show overlay over map (that can be closed by clicking, but since no gps data is available the map will start ata default location (in fututre editable in settins))
 
     const first_image_with_gps = report.mapping_report?.images?.find((image) => image.coord);
-    const center = first_image_with_gps
-        ? [first_image_with_gps.coord.gps.lat, first_image_with_gps.coord.gps.lon]
-        : [51.574, 7.027];
+    const first_map = report.mapping_report?.maps?.[0] || null;
+    const center = first_map
+        ? [(first_map.bounds.gps.latitude_min + first_map.bounds.gps.latitude_max) / 2, (first_map.bounds.gps.longitude_min + first_map.bounds.gps.longitude_max) / 2]
+        : (first_image_with_gps ? [first_image_with_gps.coord.gps.lat, first_image_with_gps.coord.gps.lon] : [51.574, 7.027]);
 
     const overlayRefs = useRef<Record<string, L.ImageOverlay | null>>({});
     useEffect(() => {
@@ -94,6 +109,17 @@ export function MapTab({ report }: Props) {
                         maxZoom={23}
                     />
                 </BaseLayer>
+
+                {report.mapping_report?.images && report.mapping_report?.images.length > 0 && (
+                    <Overlay name="Flight Trajectory" checked>
+                        <LayerGroup>
+                            <Polyline
+                                positions={extractFlightTrajectory(report.mapping_report.images)}
+                                pathOptions={{ color: 'magenta', weight: 2, opacity: 1 }}
+                            />
+                        </LayerGroup>
+                    </Overlay>
+                )}
 
                 {report.mapping_report?.maps?.map((map) => {
                     const { latitude_min, latitude_max, longitude_min, longitude_max } = map.bounds.gps;

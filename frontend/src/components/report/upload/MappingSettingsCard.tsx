@@ -41,6 +41,8 @@ type MappingSettingsProps = {
     processButtonActive: boolean;
     status: string;
     progress?: number;
+    onCancelEditing?: () => void; // Optional callback for canceling editing
+    isEditing?: boolean; // Optional prop to control editing state
 };
 // ...imports remain the same
 
@@ -50,7 +52,9 @@ export function MappingSettingsCard({
     handleStartProcessing,
     processButtonActive,
     status,
-    progress
+    progress,
+    onCancelEditing,
+    isEditing
 }: MappingSettingsProps) {
     const [keepWeather, setKeepWeather] = useState(weatherAvailable);
     const [fastMapping, setFastMapping] = useState(true);
@@ -60,6 +64,7 @@ export function MappingSettingsCard({
     const [useDefaultAltitude, setUseDefaultAltitude] = useState(showManualAltitudeField);
     const [useODM, setUseODM] = useState(false);
     const [odmMode, setOdmMode] = useState("fast");
+    const processingButtonLabel = isEditing ? "Reprocess" : "Start Processing";
 
     useEffect(() => {
         setUseDefaultAltitude(showManualAltitudeField);
@@ -77,6 +82,7 @@ export function MappingSettingsCard({
         };
         handleStartProcessing(settings);
     };
+
 
     const tileBaseClasses = "rounded-2xl border-2 border-primary p-4"// bg-muted bg-gradient-to-tl from-primary/15 via-white/0 to-white/0 dark:from-gray-700/70 dark:via-gray-900/0 dark:to-gray-900/0";
 
@@ -255,12 +261,21 @@ export function MappingSettingsCard({
                     </div>
                 )
                 }
+                {isEditing && (
+                    <Button
+                        variant="secondary"
+                        onClick={onCancelEditing}
+                        className="mr-2"
+                    >
+                        Cancel Editing
+                    </Button>
+                )}
                 <Button
                     className=""
                     onClick={handleStartProcessingWithSettings}
                     disabled={processButtonActive}
                 >
-                    Start Processing
+                    {processButtonActive ? "Processing..." : processingButtonLabel}
                 </Button>
             </CardFooter>
         </Card>

@@ -17,6 +17,8 @@ import { Separator } from "@/components/ui/separator";
 interface Props {
   report: Report;
   onProcessingStarted?: () => void; // Optional callback when processing starts
+  isEditing?: boolean; // Optional prop to control editing state
+  setIsEditing?: (isEditing: boolean) => void; // Optional setter for editing state
 }
 
 
@@ -52,7 +54,7 @@ function checkShowManualAltitudeField(report: Report): boolean {
   return false;
 }
 
-export function Upload({ report, onProcessingStarted }: Props) {
+export function Upload({ report, onProcessingStarted, isEditing, setIsEditing }: Props) {
   const startProcessingMutation = useStartReportProcess(report.report_id);
   const queryClient = useQueryClient();
   const weatherAvailable = checkWeatherAvailability(report); // Replace with actual logic to determine if weather data is available
@@ -101,6 +103,12 @@ export function Upload({ report, onProcessingStarted }: Props) {
     });
 
   };
+
+  const cancelEditing = () => {
+    setIsEditing(false);
+    console.log("Editing cancelled, isEditing set to false");
+  };
+
   console.log("Upload component rendered with report:", report);
 
   return (
@@ -114,6 +122,8 @@ export function Upload({ report, onProcessingStarted }: Props) {
         processButtonActive={startProcessingMutation.isPending || report.status === "processing" || report.status === "preprocessing" || report.status === "queued"}
         status={report.status}
         progress={report.progress}
+        onCancelEditing={cancelEditing}
+        isEditing={isEditing}
       />
 
       <div className="mt-4">
