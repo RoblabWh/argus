@@ -5,7 +5,7 @@ import imutils
 import numpy as np
 from app.config import UPLOAD_DIR
 from app.schemas.image import ImageOut, MappingDataOut
-from app.schemas.map import MapCreate
+from app.schemas.map import MapCreate, MapElementCreate
 from app.schemas.report import ProcessingSettings
 import app.crud.map as crud
 import logging
@@ -16,7 +16,7 @@ from billiard import Pool
 logger = logging.getLogger(__name__)
 
 class Map_Element:
-    def __init__(self, utm, utm_corners, rotation, image_path, image_width, creation_timestamp):
+    def __init__(self, utm, utm_corners, rotation, image_path, image_width, creation_timestamp, image_id):
         """
         Initializes a Map_Element with the given parameters.
         """
@@ -26,6 +26,7 @@ class Map_Element:
         self.image_path = image_path
         self.image_width = image_width
         self.creation_timestamp = creation_timestamp
+        self.image_id = image_id
         self.px_corners = None  # Placeholder for pixel corners calculation
         self.px_center = None  # Placeholder for pixel center calculation
         self.scale = None  # Placeholder for scale calculation
@@ -61,6 +62,32 @@ class Map_Element:
         self.image_matrix = None
         logger.debug(f"Cleared image matrix for element with UTM: {self.utm}")
 
+    def generate_database_map_element(self, utm_conversion_callable, map_id) -> MapElementCreate:
+        """
+        Generates a MapElementCreate schema instance for database storage.
+        Returns:
+            MapElementCreate: An instance of MapElementCreate with the current element's data.
+        """
+
+        corners_gps = []
+        zone = self.utm['zone']
+        hemisphere = self.utm['hemisphere']
+        for corner in self.utm_corners:
+            gps_lon, gps_lat = utm_conversion_callable(corner[0], corner[1], zone, hemisphere)
+            corners_gps.append(( gps_lat, gps_lon))
+
+        coord_gps = utm_conversion_callable(self.utm['easting'], self.utm['northing'], zone, hemisphere)
+
+        return MapElementCreate(
+            map_id=map_id,
+            image_id=self.image_id,
+            index=self.index,
+            coord={"utm": self.utm, "gps": coord_gps},
+            corners={"utm": self.utm_corners, "gps": corners_gps},
+            px_coord={"px": self.px_center},
+            px_corners={"px": self.px_corners}
+        )
+
 
 
  
@@ -93,6 +120,8 @@ def map_images(report_id: int, mapping_report_id: int, mapping_selection: dict, 
 
     for i, element in enumerate(map_elements):
         element.index = i
+    
+    bounds = _find_map_bounds(map_elements)
 
     if update_progress_func:
         progress = (20.0 / total_maps) + start_progress
@@ -115,6 +144,7 @@ def map_images(report_id: int, mapping_report_id: int, mapping_selection: dict, 
     voronoi = calc_voronoi_mask(map_elements, map_width, map_height, performance_factor=8)
 
     map = draw_map(map_elements, voronoi, map_width, map_height)
+    # map = rotate_to_north(map, bounds)
     file_path = UPLOAD_DIR / str(report_id) / f"final_map_{map_index}.png"
     save_map_image(map, file_path)
 
@@ -128,10 +158,14 @@ def map_images(report_id: int, mapping_report_id: int, mapping_selection: dict, 
         name=f"fast_{mapping_selection['type']}_{map_index}",
         url=str(file_path),
         odm=False,
-        bounds=mapping_selection['bounds'],
+        bounds=bounds
     )
     logger.info(f"Creating map in database for report {report_id} with data: {map_data}")
-    crud.create(db, map_data)
+    map = crud.create(db, map_data)
+
+    map_elements_to_store = [element.generate_database_map_element(_utm_to_lat_lon, map.id) for element in map_elements]
+    logger.info(f"Storing {len(map_elements_to_store)} map elements in database for map {map.id}")
+    crud.create_multiple_map_elements(db, map.id, map_elements_to_store)
 
     # Update progress if a function is provided
     if update_progress_func:
@@ -239,7 +273,7 @@ def calculate_utm_corners(image: ImageOut, reference_yaw: float) -> Map_Element:
         utm_corners.append((utm_x, utm_y))
     
 
-    return Map_Element(utm, utm_corners, orientation, path, width, creation_timestamp)
+    return Map_Element(utm, utm_corners, orientation, path, width, creation_timestamp, image["id"])
 
 
 def calculate_px_coords(map_elements, target_map_resolution):
@@ -308,23 +342,6 @@ def calc_voronoi_mask(map_elements: list[Map_Element], map_width: int, map_heigh
         # Find closest center to each pixel location
     indices = np.argmin(squared_dist, axis=2) 
 
-    # for y in range(int(map_height*fact)):
-    #     for x in range(int(map_width*fact)):
-    #         min_dist = float('inf')
-    #         closest_element_index = None
-
-    #         for i, center in enumerate(scaled_centers):
-    #             # Calculate the distance from the pixel to the center of the map element
-    #             dist = (x - center[0])**2 + (y - center[1])**2
-    #             if dist < min_dist:
-    #                 min_dist = dist
-    #                 closest_element_index = i
-
-    #         # Assign color based on the closest map element
-    #         if closest_element_index is not None:
-    #             mask[y, x] = closest_element_index
-
-    # Resize the mask to the original map size
     mask = cv2.resize(indices, (map_width, map_height), interpolation=cv2.INTER_NEAREST)
 
     return mask
@@ -385,16 +402,11 @@ def draw_map(map_elements, voronoi_mask, map_width, map_height):
         logger.info(f"Starting batch {i + 1}/{len(map_elements_batches)}")
         for attempt in range(MAX_RETRIES):
             with Pool(processes=8) as pool:
-                async_result = pool.map_async(load_and_transform_images, batch)
                 try:
-                    map_elements_with_images = async_result.get(timeout=10)
+                    map_elements_with_images = process_batch_with_timeouts(pool, batch)
                     break  # success
-                except TimeoutError:
-                    logger.warning(f"Timeout in batch {i + 1} attempt {attempt + 1}")
-                    pool.terminate()
-                    pool.join()
                 except Exception as e:
-                    logger.error(f"Error in batch {i + 1} attempt {attempt + 1}: {e}")
+                    logger.error(f"Unexpected failure in batch {i + 1} attempt {attempt + 1}: {e}")
                     pool.terminate()
                     pool.join()
             if attempt == MAX_RETRIES - 1:
@@ -419,6 +431,26 @@ def draw_map(map_elements, voronoi_mask, map_width, map_height):
             element.clear_image_matrix()  # Clear the image matrix to free memory
 
     return map_img
+
+def process_batch_with_timeouts(pool, batch, timeout_per_item=5):
+    results = []
+    async_results = []
+
+    for element in batch:
+        res = pool.apply_async(load_and_transform_images, args=(element,))
+        async_results.append(res)
+
+    for i, res in enumerate(async_results):
+        try:
+            result = res.get(timeout=timeout_per_item)
+            results.append(result)
+        except TimeoutError:
+            logger.warning(f"Timeout processing element {i} in batch")
+            results.append(batch[i])  # optionally mark as failed
+        except Exception as e:
+            logger.error(f"Error processing element {i} in batch: {e}")
+            results.append(batch[i])
+    return results
 
 def load_and_transform_images(element: Map_Element) -> Map_Element:
     image = cv2.imread(element.image_path, cv2.IMREAD_UNCHANGED)
@@ -463,3 +495,94 @@ def save_map_image(map_img, file_path):
     cv2.imwrite(str(file_path), map_img)
     logger.info(f"Map image saved to {file_path}")
 
+
+def _find_map_bounds(map_elements: list[Map_Element]) -> tuple:
+    """
+    Finds the bounding box of all map elements.
+    
+    Args:
+        map_elements (list[Map_Element]): List of map elements.
+    
+    Returns:
+        tuple: (min_x, min_y, max_x, max_y) coordinates of the bounding box.
+    """
+    if not map_elements:
+        return (0, 0, 0, 0)
+
+    all_corners = []
+    for element in map_elements:
+        all_corners.extend(element.utm_corners)
+
+    eastings, northings = zip(*all_corners)
+    
+    min_easting = min(eastings)
+    max_easting = max(eastings)
+    min_northing = min(northings)
+    max_northing = max(northings)
+
+    #convert all four corner individual utm coordinates to lat lon, corner northwest, northeast, southeast, southwest
+    corner_nw = (min_easting, max_northing)
+    corner_ne = (max_easting, max_northing)
+    corner_se = (max_easting, min_northing)
+    corner_sw = (min_easting, min_northing)
+
+    corners_utm = [corner_nw, corner_ne, corner_se, corner_sw]
+    corners_gps = []
+
+    for corner in corners_utm:
+        gps_lon, gps_lat = _utm_to_lat_lon(corner[0], corner[1], element.utm['zone'], element.utm['hemisphere'])
+        corners_gps.append((gps_lon, gps_lat))
+
+    min_corner_lat_lon = _utm_to_lat_lon(min_easting, min_northing, element.utm['zone'], element.utm['hemisphere'])
+    max_corner_lat_lon = _utm_to_lat_lon(max_easting, max_northing, element.utm['zone'], element.utm['hemisphere'])
+
+    bounds = {
+        "gps": {
+            "latitude_min": min_corner_lat_lon[1],
+            "latitude_max": max_corner_lat_lon[1],
+            "longitude_min": min_corner_lat_lon[0],
+            "longitude_max": max_corner_lat_lon[0],
+        },
+        "utm": {
+            "northing_min": min_northing,
+            "northing_max": max_northing,
+            "easting_min": min_easting,
+            "easting_max": max_easting,
+            "zone": element.utm['zone'],
+            "hemisphere": element.utm['hemisphere']
+        },
+        "corners": {
+            "utm": corners_utm,
+            "gps": corners_gps
+        }
+    }
+    return bounds
+
+def rotate_to_north(map: np.ndarray, bounds: dict) -> np.ndarray:
+    # get the grid north divergence at the center of the map
+    center_lat = (bounds['gps']['latitude_min'] + bounds['gps']['latitude_max']) / 2
+    center_lon = (bounds['gps']['longitude_min'] + bounds['gps']['longitude_max']) / 2
+    utm_zone = bounds['utm']['zone']
+    north_divergence = _calculate_utm_grid_north_diverence(utm_zone, center_lat, center_lon)
+    # rotate the map to north
+    logger.info(f"Rotating map to north with a divergence of {math.degrees(north_divergence)} degrees")
+    rotation_angle =  -1* math.degrees(north_divergence)
+    rotated_map = imutils.rotate_bound(map, rotation_angle)
+    return rotated_map
+
+
+
+
+
+def _utm_to_lat_lon(easting: float, northing: float, zone: int, hemisphere: str) -> tuple:
+    """
+    Converts UTM coordinates to latitude and longitude.
+  
+    Returns:
+        tuple: (latitude, longitude).
+    """
+    import pyproj
+    wgs84_crs = "EPSG:4326"
+    utm_crs = f"EPSG:326{zone:02d}" if hemisphere == "N" else f"EPSG:327{zone:02d}"
+    transformer = pyproj.Transformer.from_crs(utm_crs, wgs84_crs, always_xy=True)
+    return transformer.transform(easting, northing)

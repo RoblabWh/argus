@@ -4,6 +4,7 @@ import { useBreadcrumbs } from "@/contexts/BreadcrumbContext";
 import type { Report } from '@/types/report';
 import { useReport } from '@/hooks/reportHooks';
 import { usePollReportStatus } from '@/hooks/usePollReportStatus';
+import { useMaps } from '@/hooks/useMaps';
 import { Upload } from '@/components/report/Upload';
 import { MappingReport } from '@/components/report/MappingReport';
 
@@ -11,6 +12,7 @@ export default function ReportOverview() {
   const { report_id } = useParams<{ report_id: string }>();
   const { setBreadcrumbs } = useBreadcrumbs();
   const { data: initialReport, isLoading, error, refetch: refetchFullReport } = useReport(Number(report_id));
+  // const { data: maps, refetch: refetchMaps } = useMaps(Number(report_id));
   const prevStatusRef = useRef<string | null>(null);
 
 
@@ -66,6 +68,15 @@ export default function ReportOverview() {
         console.log("Detected status change. Refetching full report...");
         refetchFullReport();
       }
+      if (prevStatus === "processing" && newStatus === "processing") {
+        if (polledData.progress !== undefined && prevStatusRef.current !== undefined) {
+          if (polledData.progress !== prevStatusRef.current.progress) {
+            console.log("Detected progress change. Refetching maps...");
+            //replace maps with the new data
+            refetchFullReport();
+          }
+        }
+      }
 
       // Stop polling if status changes to completed or failed
       if (
@@ -81,6 +92,7 @@ export default function ReportOverview() {
 
     }
   }, [polledData])
+
 
 
   const renderReportContent = (report: Report) => {

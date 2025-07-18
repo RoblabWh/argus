@@ -17,6 +17,8 @@ from app.schemas.report import (
     ProcessingSettings
 )
 
+from app.schemas.map import MapOut
+
 import app.services.mapping.processing_manager as process_report_service
 from app.config import REDIS_HOST, REDIS_PORT
 import redis
@@ -62,6 +64,10 @@ def create_mapping_report(report_id: int, data: MappingReportCreate, db: Session
 @router.put("/{report_id}/mapping_report", response_model=MappingReportOut)
 def update_mapping_report(report_id: int, data: MappingReportUpdate, db: Session = Depends(get_db)):
     return crud.update_mapping_report(db, report_id, data)
+
+@router.get("/{report_id}/mapping_report/maps", response_model=list[MapOut])
+def get_mapping_report_maps(report_id: int, db: Session = Depends(get_db)):
+    return crud.get_mapping_report_maps(db, report_id)
 
 
 @router.post("/{report_id}/process", response_model=ReportOut)

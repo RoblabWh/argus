@@ -40,3 +40,9 @@ def delete(db: Session, map_id: int):
         db.commit()
         return True
     return False
+
+def create_multiple_map_elements(db: Session, map_id: int, elements: list[MapElementCreate]):
+    map_elements = [models.MapElement(**element.dict()) for element in elements]
+    db.add_all(map_elements)
+    db.commit()
+    return map_elements

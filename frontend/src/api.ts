@@ -63,6 +63,8 @@ export const getReport = (report_id: number) => fetchJson<Report>(`/reports/${re
 export const createReport = (data: { group_id: number; title: string; description: string }) =>  postJson<Report>(`/reports/`, data);
 export const deleteReport = (report_id: number) => deleteRequest(`/reports/${report_id}`);
 
+export const getMaps = (report_id: number) => fetchJson<{ maps: string[] }>(`/reports/${report_id}/mapping_report/maps`);
+
 export const getImages = (report_id: number) => fetchJson<{ images: string[] }>(`/images/report/${report_id}`);
 export const getImage = (image_id: number) => fetchJson<{ image: string }>(`/images/${image_id}`);
 export const deleteImage = (image_id: number) => deleteRequest(`/images/${image_id}`);

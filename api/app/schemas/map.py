@@ -61,7 +61,6 @@ class MapElementUpdate(BaseModel):
 
 class MapElementOut(MapElementBase):
     id: int
-    map: Optional[MapOut] = None
     # image: Optional["ImageOut"] = None
 
     class Config:
