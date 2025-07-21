@@ -6,7 +6,7 @@ import type { Report } from "@/types/report";
 import { getApiUrl } from "@/api";
 import { useDeleteImage } from "@/hooks/useImageMutations";
 import { GalleryImage } from "@/components/report/upload/UploadGalleryImage";
-import { ImageUp } from "lucide-react";
+import { ImageUp, ImagePlus, Upload, CloudUpload } from "lucide-react";
 import type { UploadFile } from "@/types/image"; // Assuming you have an Image type defined
 type UploadAreaProps = {
   report: Report;
@@ -117,7 +117,7 @@ export const UploadArea: React.FC<UploadAreaProps> = ({ report, uploads, setUplo
         {...getRootProps()}
       >
         <input {...getInputProps()} />
-        <ImageUp className="mx-auto mb-2 w-8 h-8 text-muted-foreground" />
+        <ImagePlus className="mx-auto mb-2 w-8 h-8 text-muted-foreground" />
         <p className="text-sm text-muted-foreground">
           {isDragActive
             ? "Drop images here..."
@@ -142,7 +142,12 @@ export const UploadArea: React.FC<UploadAreaProps> = ({ report, uploads, setUplo
             src={
               upload.imageObject
                 ? `${apiUrl}/${upload.imageObject.thumbnail_url}`
-                : upload.preview!
+                : undefined
+            }
+            previewNode={
+              !upload.imageObject && (
+                <ImageUp className="text-muted-foreground w-12 h-12" />
+              )
             }
             filename={upload.imageObject?.filename}
             onDelete={

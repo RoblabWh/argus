@@ -5,7 +5,8 @@ import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip
 import { X } from "lucide-react";
 
 type Props = {
-  src: string;
+  src: string | undefined; // URL of the image or undefined if using previewNode
+  previewNode?: React.ReactNode;
   filename?: string;
   onDelete?: () => void;
   showDelete?: boolean;
@@ -14,14 +15,15 @@ type Props = {
 
 export const GalleryImage: React.FC<Props> = ({
   src,
+  previewNode,
   filename,
   onDelete,
   showDelete = true,
   children,
 }) => {
   return (
-    <Card 
-        className="relative p-0 flex flex-col justify-between items-center h-full gap-0 rounded-sm"
+    <Card
+      className="relative p-0 flex flex-col justify-between items-center h-full gap-0 rounded-sm"
     >
 
       {/* Delete Button */}
@@ -33,34 +35,47 @@ export const GalleryImage: React.FC<Props> = ({
           onClick={(e) => {
             e.stopPropagation(); // Prevents click from bubbling to Dropzone
             onDelete?.();
-            }}
+          }}
         >
           <X />
         </Button>
       )}
 
       {/* Image */}
-        <div className="w-full overflow-hidden p-1">
+      {/* <div className="w-full overflow-hidden p-1">
         <img
             src={src}
             alt={filename}
             className="w-full h-full object-contain rounded-xs"
-        />
-        </div>
+        /> 
+        </div> */}
+      <div className="w-full overflow-hidden p-1 ">
+        {(previewNode && src === undefined) ? (
+          <div className="flex items-center justify-center bg-muted rounded aspect-[4/3]">
+            {previewNode}
+          </div>
+        ) : src ? (
+          <img
+            src={src}
+            alt={filename}
+            className="w-full h-full object-contain rounded-xs"
+          />
+        ) : null}
+      </div>
 
-        <div className="mt-0 w-full p-2">
-            {children} {/* typically the Progress */}
-            {filename && (
-            <Tooltip>
-                <TooltipTrigger asChild>
-                <p className="text-sm mt-1 w-full truncate text-center">{filename}</p>
-                </TooltipTrigger>
-                <TooltipContent>
-                <p>{filename}</p>
-                </TooltipContent>
-            </Tooltip>
-            )}
-        </div>
+      <div className="mt-0 w-full p-2">
+        {children} {/* typically the Progress */}
+        {filename && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <p className="text-sm mt-1 w-full truncate text-center">{filename}</p>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>{filename}</p>
+            </TooltipContent>
+          </Tooltip>
+        )}
+      </div>
     </Card>
   );
 };

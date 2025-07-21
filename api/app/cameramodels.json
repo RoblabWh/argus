@@ -15,7 +15,8 @@
       "ir_value": "InfraredCamera",
       "ir_image_width": 0,
       "ir_image_height": 0,
-      "ir_filename_pattern": "_T(?=\\.\\w+$)"
+      "ir_filename_pattern": "_T(?=\\.\\w+$)",
+      "ir_scale": 0.4
     },
     "camera_properties": {
       "focal_length": "EXIF:FocalLength",

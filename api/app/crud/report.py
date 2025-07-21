@@ -21,6 +21,10 @@ def get_full_report(db: Session, report_id: int, r: redis.Redis = None):
             selectinload(models.Report.mapping_report)
                 .selectinload(models.MappingReport.images)
                 .selectinload(models.Image.mapping_data),
+
+            selectinload(models.Report.mapping_report)
+                .selectinload(models.MappingReport.images)
+                .selectinload(models.Image.thermal_data),
                 
             selectinload(models.Report.mapping_report)
                 .selectinload(models.MappingReport.images)

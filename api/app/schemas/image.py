@@ -109,9 +109,11 @@ class MappingDataOut(MappingDataBase):
 
 class ThermalDataBase(BaseModel):
     image_id: int
-    min_temp: float
-    max_temp: float
-    temp_matrix: List[List[float]]  # Stored as JSONB in the database
+    counterpart_id: Optional[int] = None  # For fitting rgb image from the same moment
+    counterpart_scale: Optional[float] = 1.1
+    min_temp: Optional[float] = None
+    max_temp: Optional[float] = None
+    temp_matrix: Optional[List[List[float]]] = None  # Stored as JSONB in the database
     temp_embedded: Optional[bool] = True
     temp_unit: Optional[str] = "C"
     lut_name: Optional[str] = None
@@ -121,19 +123,22 @@ class ThermalDataCreate(ThermalDataBase):
 
 class ThermalDataUpdate(BaseModel):
     image_id: Optional[int] = None
+    counterpart_id: Optional[int] = None  # For fitting rgb image from the same moment
+    counterpart_scale: Optional[float] = None
     min_temp: Optional[float] = None
     max_temp: Optional[float] = None
     temp_matrix: Optional[List[List[float]]] = None  # Stored as JSONB in the database
-    temp_embedded: Optional[bool] = None
+    temp_embedded: Optional[bool] = True
     temp_unit: Optional[str] = None
     lut_name: Optional[str] = None
 
 class ThermalDataOut(ThermalDataBase):
     id: int
-    image: Optional[ImageOut] = None
+    #image: Optional[ImageOut] = None
 
     class Config:
         orm_mode = True
+        from_attributes=True
 
 ##################
 ## Detection

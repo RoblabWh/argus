@@ -241,7 +241,7 @@ def calculate_utm_corners(image: ImageOut, reference_yaw: float) -> Map_Element:
     path = image["url"]
     creation_timestamp = image["created_at"]
     north_divergence = _calculate_utm_grid_north_diverence(utm["zone"], image["coord"]['gps']['lat'], image["coord"]['gps']['lon'])
-    orientation = uav_yaw + north_divergence
+    orientation = cam_yaw + north_divergence
 
     diag_length_px = (width**2 + height**2)**0.5
     diag_length_m = 2 * math.tan(math.radians(fov / 2)) * rel_altitude

@@ -2,7 +2,7 @@ from sqlalchemy.orm import Session, joinedload
 from datetime import datetime
 
 from app import models
-from app.schemas.image import ImageCreate, ImageUpdate, ImageUploadResult, MappingDataCreate
+from app.schemas.image import ImageCreate, ImageUpdate, ImageUploadResult, MappingDataCreate, ThermalDataCreate
 from app.services.cleanup import delete_image_file
 
 def get_all(db: Session):
@@ -78,3 +78,30 @@ def create_mapping_data(db: Session, data: MappingDataCreate):
     db.commit()
     db.refresh(new_mapping_data)
     return get_full_image(db, new_mapping_data.image_id) 
+
+def create_multiple_thermal_data(db: Session, data: list[ThermalDataCreate]):
+    image_ids = [td.image_id for td in data]
+    db.query(models.ThermalData).filter(models.ThermalData.image_id.in_(image_ids)).delete(synchronize_session=False)
+    db.commit()
+
+    new_thermal_data_list = [models.ThermalData(**thermal_data.dict()) for thermal_data in data]
+    db.add_all(new_thermal_data_list)
+    db.commit()
+    return new_thermal_data_list
+
+def get_all_thermal_data(db: Session):
+    return db.query(models.ThermalData).all()
+
+def delete_thermal_data(db: Session, thermal_data_id: int):
+    thermal_data = db.query(models.ThermalData).filter(models.ThermalData.id == thermal_data_id).first()
+    if not thermal_data:
+        raise ValueError("Thermal data not found")
+    
+    db.delete(thermal_data)
+    db.commit()
+    return {"status": "success", "message": "Thermal data deleted successfully"}
+
+def delete_all_thermal_data(db: Session):
+    db.query(models.ThermalData).delete()
+    db.commit()
+    return {"status": "success", "message": "All thermal data deleted successfully"}

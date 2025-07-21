@@ -7,20 +7,24 @@ from sqlalchemy.orm import Session
 import logging
 
 from app.schemas.report import ProcessingSettings, MappingReportUpdate
-from app.schemas.image import ImageOut
+from app.schemas.image import ImageOut, ThermalDataCreate
 from app.schemas.weather import WeatherUpdate, WeatherCreate
 from app.config import OPEN_WEATHER_API_KEY
 import app.crud.report as crud_report
 import app.crud.weather as crud_weather
+import app.crud.images as crud_image
 
 
 logger = logging.getLogger(__name__)
 
 def preprocess_report(report_id: int, images: list[ImageOut], settings: ProcessingSettings, db, update_progress_func: callable = None):
     settings = settings.dict() if isinstance(settings, ProcessingSettings) else settings
-    
+    # crud_image.delete_all_thermal_data(db)  # Clear old thermal data before processing new images
     if not images or len(images) == 0:
         raise ValueError("No images provided for preprocessing.")
+    
+    images = _process_thermal_images(images, report_id, db)
+
 
     images.sort(key=lambda x: x.created_at)
     logger.info(f"Preprocessing report {report_id} with {len(images)} images.")
@@ -83,6 +87,7 @@ def preprocess_report(report_id: int, images: list[ImageOut], settings: Processi
 
     if update_progress_func:
         update_progress_func(report_id, "preprocessing", 20.0, db)
+
 
     panos, rest = _filter_pano_images(images)
     if update_progress_func:
@@ -351,7 +356,7 @@ def _split_mapping_jobs(images: list[ImageOut]) -> list:
     mapping_jobs = []
     for seq in image_sequences:
         if len(seq) > 3:
-            type = "ir" if seq[0].thermal == "ir" else "rgb"
+            type = "ir" if seq[0].thermal else "rgb"
             mapping_jobs.append({"type": type, "images": seq})
 
     return mapping_jobs
@@ -455,3 +460,57 @@ def _set_bounds_and_corners_per_job(mapping_jobs: list[dict]) -> list[dict]:
         job["corners"] = corner_coordinates
 
     return mapping_jobs
+
+
+def _process_thermal_images(images: list[ImageOut], report_id: int, db: Session):
+    #find couples of thermal and RGB images, based on the time difference. all images taken within 2 seconds are considered a couple
+    thermal_images = [img for img in images if img.thermal]
+    rgb_images = [img for img in images if not img.thermal]
+
+    couples = []
+    while True:
+        if not thermal_images or not rgb_images:
+            break
+
+        thermal_image = thermal_images.pop(0)
+        for i, rgb_image in enumerate(rgb_images):
+            time_diff = abs((thermal_image.created_at - rgb_image.created_at).total_seconds())
+            if time_diff <= 2.0:
+                couples.append((thermal_image, rgb_image))
+                rgb_images.pop(i)
+                break
+    
+    camera_specific_keys = None
+    with open("app/cameramodels.json", "r") as file:
+        camera_specific_keys = json.load(file)
+
+    thermal_data_list = []
+    
+    for thermal_image, rgb_image in couples:
+        camera_model = thermal_image.camera_model
+        if camera_model in camera_specific_keys and "ir_scale" in camera_specific_keys[camera_model]:
+            scale = camera_specific_keys[camera_model]["ir_scale"]
+        else:
+            scale = camera_specific_keys.get("default", {}).get("ir_scale", 0.4)
+        # create ThermalData object for the thermal image
+        thermal_data = ThermalDataCreate(
+            image_id=thermal_image.id,
+            counterpart_id=rgb_image.id,  # link to the RGB image
+            counterpart_scale=scale,  # default value, can be adjusted later
+            min_temp=0,
+            max_temp=100,
+            # temp_matrix=None,
+            temp_embedded=True,
+            # temp_unit="C",
+            lut_name="white_hot"
+        )
+        thermal_data_list.append(thermal_data)
+
+    # bulk insert thermal data
+    thermal_data_objects = crud_image.create_multiple_thermal_data(db, thermal_data_list)
+    
+    
+    #refetch images with thermal data
+    report_data = crud_report.get_full_report(db, report_id)
+    images = report_data.mapping_report.images
+    return images

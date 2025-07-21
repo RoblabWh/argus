@@ -35,7 +35,8 @@ class Image(Base):
     mapping_report = relationship("MappingReport", back_populates="images")
     mapping_data = relationship("MappingData", back_populates="image", uselist=False, cascade="all, delete")
     # pano_data = relationship("PanoData", back_populates="image", uselist=False)
-    thermal_data = relationship("ThermalData", back_populates="image", uselist=False, cascade="all, delete")
+    thermal_data = relationship("ThermalData", back_populates="image", uselist=False, cascade="all, delete", foreign_keys="[ThermalData.image_id]")
+    counterpart_thermal_data = relationship("ThermalData", back_populates="counterpart", foreign_keys="[ThermalData.counterpart_id]")
     map_elements = relationship("MapElement", back_populates="image")
     detections = relationship("Detection", back_populates="image", cascade="all, delete")
 
@@ -63,15 +64,18 @@ class ThermalData(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     image_id = Column(Integer, ForeignKey("images.id"), index=True)
+    counterpart_id = Column(Integer, ForeignKey("images.id"), nullable=True)  # For fitting rgb image from the same moment
+    counterpart_scale = Column(Float, default=1.1)
     min_temp = Column(Float)
     max_temp = Column(Float)
     temp_matrix = Column(JSONB)
-    temp_embedded = Column(Boolean, default=True),
+    temp_embedded = Column(Boolean, default=True)
     temp_unit = Column(String, default="C")
     lut_name = Column(String, nullable=True)
 
     # relationships
-    image = relationship("Image", back_populates="thermal_data")
+    image = relationship("Image", foreign_keys=[image_id], back_populates="thermal_data")
+    counterpart = relationship("Image", foreign_keys=[counterpart_id], back_populates="counterpart_thermal_data")
 
 
 class Detection(Base):
