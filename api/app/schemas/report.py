@@ -72,6 +72,7 @@ class MappingReportBase(BaseModel):
     coord: Optional[dict] = None  # JSONB as dict
     address: Optional[str] = None
     flight_duration: Optional[float] = None
+    flight_height: Optional[float] = None
     default_flight_height: Optional[float] = None
     covered_area: Optional[float] = None
     uav: Optional[str] = "Unknown"

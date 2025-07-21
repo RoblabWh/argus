@@ -6,6 +6,15 @@ import { Plus } from 'lucide-react';
 import { GroupCard } from '@/components/overview/GroupCard';
 import { NewGroupPopup } from '@/components/overview/NewGroupPopup';
 import { NewReportPopup } from '@/components/overview/NewReportPopup';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { ArrowDown, ArrowUp } from "lucide-react";
+import type { Group } from '@/types/group';
 
 export default function Overview() {
   const { setBreadcrumbs } = useBreadcrumbs();
@@ -16,11 +25,33 @@ export default function Overview() {
   const [selectedGroupId, setSelectedGroupId] = useState<number | null>(null);
   const [isNewGroupOpen, setIsNewGroupOpen] = useState(false)
   const [isNewReportOpen, setIsNewReportOpen] = useState(false);
+  const [showRawData, setShowRawData] = useState(false);
   const { data: groups, isLoading, error } = useGroups();
+  const [sortBy, setSortBy] = useState<"created_at" | "name" | "id">("created_at");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+
+
 
   if (isLoading) return <p>Loading...</p>;
   if (error) return <p>Error loading groups</p>;
   if (!groups || groups.length === 0) return <p>No groups found yet</p>;
+
+  const sortedGroups = [...groups].sort((a, b) => {
+    const aVal = a[sortBy];
+    const bVal = b[sortBy];
+
+    if (typeof aVal === "string" && typeof bVal === "string") {
+      return sortOrder === "asc"
+        ? aVal.localeCompare(bVal)
+        : bVal.localeCompare(aVal);
+    }
+
+    if (typeof aVal === "number" && typeof bVal === "number") {
+      return sortOrder === "asc" ? aVal - bVal : bVal - aVal;
+    }
+
+    return 0;
+  });
 
   const handleAddReport = (groupId: number, groupName: string) => {
     setSelectedGroupId(groupId);
@@ -42,7 +73,30 @@ export default function Overview() {
         </Button>
       </div>
 
-      {groups.map((group) => (
+      <div className="flex items-center justify-end gap-0 mb-4">
+
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"))}
+        >
+          {sortOrder === "asc" ? <ArrowUp className="h-5 w-5" /> : <ArrowDown className="h-5 w-5" />}
+
+        </Button>
+
+        <Select value={sortBy} onValueChange={(val) => setSortBy(val as any)}>
+          <SelectTrigger className="w-[150px]">
+            <SelectValue placeholder="Sort by" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="created_at">Date (creation)</SelectItem>
+            <SelectItem value="name">Name</SelectItem>
+            <SelectItem value="id">ID</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {sortedGroups.map((group) => (
         <GroupCard key={group.id} group={group} handleAddReport={handleAddReport} />
       ))}
 
@@ -56,11 +110,15 @@ export default function Overview() {
         />
       )}
 
-
-      <div className="text-sm text-muted-foreground mt-4">
-        {/* Print every property of the report object */}
-        <pre>{JSON.stringify(groups, null, 2)}</pre>
-      </div>
+      <Button variant="outline" size="sm" className="mt-4" onClick={() => setShowRawData(!showRawData)}>
+        {showRawData ? "Hide Raw Data" : "Show Raw Data"}
+      </Button>
+      {showRawData && (
+        <div className="text-sm text-muted-foreground mt-4">
+          {/* Print every property of the report object */}
+          <pre>{JSON.stringify(groups, null, 2)}</pre>
+        </div>
+      )}
 
     </div>
   )

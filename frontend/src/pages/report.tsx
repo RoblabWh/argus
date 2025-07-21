@@ -70,7 +70,9 @@ export default function ReportOverview() {
       const statusChanged = prevStatus !== newStatus;
 
       if (statusChanged) {
-        if (prevStatus === "preprocessing" || (prevStatus === "queued" && newStatus === "processing")) {
+        if (newStatus == "completed") {
+          refetchFullReport()
+        } else if (prevStatus === "preprocessing" || (prevStatus === "queued" && newStatus === "processing")) {
           console.log("========> Status changed to processing or preprocessing, refetching full report...");
           setHasRefetchedAfterStatusChange(false); // Block until we refetch
           refetchFullReport().then(() => {

@@ -151,7 +151,7 @@ export function WeatherCard({ data, onReload }: Props) {
         {/* Footer */}
         <div className="w-full text-right mt-1 flex justify-end items-center text-xs text-muted-foreground">
           <span className="text-[10px] text-muted-foreground pr-2">{lastUpdated}</span>
-          <Tooltip>
+          {/* <Tooltip>
             <TooltipTrigger asChild>
               <Button
                 size="icon"
@@ -165,7 +165,7 @@ export function WeatherCard({ data, onReload }: Props) {
             <TooltipContent>
               <p>Reload</p>
             </TooltipContent>
-          </Tooltip>
+          </Tooltip> */}
         </div>
       </CardContent>
     </Card>

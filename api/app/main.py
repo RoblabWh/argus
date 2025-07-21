@@ -47,6 +47,16 @@ app.include_router(images.router)
 cleanup_lost_tasks()  # Cleanup lost tasks on startup
 
 
+inspector = inspect(engine)
+
+for table in inspector.get_table_names():
+    print(f"Table: {table}")
+    #print one line for each table with its columns and types
+    columns = inspector.get_columns(table)
+    for column in columns:
+        print(f"  Column: {column['name']} - Type: {column['type']}")   
+
+        
 @app.get("/")
 async def root():
     return {"message": "Welcome to the Report API!", "docs": "/docs"}
@@ -58,13 +68,10 @@ async def get_db_info():
     print_db_info()
     return {"message": "Database information printed to console."}
 
-inspector = inspect(engine)
 
 
-for table in inspector.get_table_names():
-    print(f"Table: {table}")
-    for idx in inspector.get_indexes(table):
-        print(f"  Index: {idx['name']} on columns {idx['column_names']}")
-    for column in inspector.get_columns(table):
-        print(f"  Column: {column['name']} — Indexed?" +
-              (" Yes" if any(column['name'] in idx['column_names'] for idx in inspector.get_indexes(table)) else " No"))
+    # for idx in inspector.get_indexes(table):
+    #     print(f"  Index: {idx['name']} on columns {idx['column_names']}")
+    # for column in inspector.get_columns(table):
+    #     print(f"  Column: {column['name']} — Indexed?" +
+    #           (" Yes" if any(column['name'] in idx['column_names'] for idx in inspector.get_indexes(table)) else " No"))
