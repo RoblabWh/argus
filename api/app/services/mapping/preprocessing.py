@@ -464,6 +464,7 @@ def _set_bounds_and_corners_per_job(mapping_jobs: list[dict]) -> list[dict]:
 
 def _process_thermal_images(images: list[ImageOut], report_id: int, db: Session):
     #find couples of thermal and RGB images, based on the time difference. all images taken within 2 seconds are considered a couple
+    images.sort(key=lambda x: x.created_at)
     thermal_images = [img for img in images if img.thermal]
     rgb_images = [img for img in images if not img.thermal]
 
@@ -472,12 +473,23 @@ def _process_thermal_images(images: list[ImageOut], report_id: int, db: Session)
         if not thermal_images or not rgb_images:
             break
 
+        smallest_diff = float('inf')
+        closest_rgb_image_index = -1
         thermal_image = thermal_images.pop(0)
+        
         for i, rgb_image in enumerate(rgb_images):
+            
             time_diff = abs((thermal_image.created_at - rgb_image.created_at).total_seconds())
-            if time_diff <= 2.0:
-                couples.append((thermal_image, rgb_image))
-                rgb_images.pop(i)
+            
+            if time_diff <= 2: #Threshold of 2 seconds
+                
+                if time_diff < smallest_diff:
+                    smallest_diff = time_diff
+                    closest_rgb_image_index = i
+
+            elif closest_rgb_image_index != -1:
+                couples.append((thermal_image, rgb_images[closest_rgb_image_index]))
+                rgb_images.pop(closest_rgb_image_index)
                 break
     
     camera_specific_keys = None
@@ -491,7 +503,7 @@ def _process_thermal_images(images: list[ImageOut], report_id: int, db: Session)
         if camera_model in camera_specific_keys and "ir_scale" in camera_specific_keys[camera_model]:
             scale = camera_specific_keys[camera_model]["ir_scale"]
         else:
-            scale = camera_specific_keys.get("default", {}).get("ir_scale", 0.4)
+            scale = camera_specific_keys.get("default", {})['ir'].get("ir_scale", 0.4)
         # create ThermalData object for the thermal image
         thermal_data = ThermalDataCreate(
             image_id=thermal_image.id,

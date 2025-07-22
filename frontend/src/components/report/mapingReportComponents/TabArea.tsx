@@ -1,35 +1,49 @@
 import { useEffect, useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Report } from "@/types/report";
+import type { Image } from "@/types/image";
 import { getApiUrl } from "@/api";
 import { MapTab } from "./MapTab";
 import { SlideshowTab } from "@/components/report/mapingReportComponents/SlidehowTab";
 
 interface Props {
   report: Report;
+  filteredImages?: Image[];
+  selectedImage: Image | null;
+  setSelectedImage: (image: Image | null) => void;
+  tab: string;
+  setTab: (value: string) => void;
 }
 
-export function TabArea({ report }: Props) {
-  const [selectedImage, setSelectedImage] = useState<Image | null>(null);
-
+export function TabArea({ report, filteredImages , selectedImage, setSelectedImage, tab, setTab }: Props) {
   const api_url = getApiUrl();
-  
-  const selectImageOnMap = (image: Image) => {
-    setSelectedImage(image);
+
+  const onTabChange = (value: string) => {
+    setTab(value);
+  }
+
+
+  const selectImageOnMap = (image_id: number) => {
+    setSelectedImage(report.mapping_report?.images?.find(img => img.id === image_id) || null);
+    setTab("slideshow");
   }
 
   const changeImage = (direction: 'next' | 'previous') => {
-    if (!report.mapping_report?.images || report.mapping_report.images.length === 0) return;
-    const currentIndex = report.mapping_report.images.findIndex(img => img.url === selectedImage?.url);
+    if (!filteredImages || filteredImages.length === 0) return;
+    const currentIndex = filteredImages.findIndex(img => img.url === selectedImage?.url);
+    if (currentIndex === -1) {
+      setSelectedImage(filteredImages[0]);
+      return;
+    }
     if (currentIndex === -1) return;
 
     const newIndex = direction === 'next' ? currentIndex + 1 : currentIndex - 1;
     if (newIndex < 0)
-      setSelectedImage(report.mapping_report.images[report.mapping_report.images.length - 1]);
-    else if (newIndex >= report.mapping_report.images.length)
-      setSelectedImage(report.mapping_report.images[0]);
-    else 
-      setSelectedImage(report.mapping_report.images[newIndex]);
+      setSelectedImage(filteredImages[filteredImages.length - 1]);
+    else if (newIndex >= filteredImages.length)
+      setSelectedImage(filteredImages[0]);
+    else
+      setSelectedImage(filteredImages[newIndex]);
   }
 
   useEffect(() => {
@@ -40,19 +54,20 @@ export function TabArea({ report }: Props) {
 
   return (
     <Tabs
-      defaultValue="mapping"
+      onValueChange={onTabChange}
+      value={tab}
       className="w-full relative h-full "
     >
       <div className="absolute left-[50%] -translate-x-[50%] top-2 z-10">
         <TabsList className="">
-          <TabsTrigger value="mapping">Map</TabsTrigger>
+          <TabsTrigger value="map">Map</TabsTrigger>
           <TabsTrigger value="slideshow">Images</TabsTrigger>
           <TabsTrigger value="data">Data</TabsTrigger>
         </TabsList>
       </div>
-      <TabsContent value="mapping">
+      <TabsContent value="map">
         <div className="text-sm h-[calc(100%)] overflow-auto">
-          <MapTab report={report} />
+          <MapTab report={report} selectImageOnMap={selectImageOnMap} />
         </div>
       </TabsContent>
       <TabsContent value="slideshow">

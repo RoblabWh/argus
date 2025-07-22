@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, use } from "react";
 import type { Report } from "@/types/report";
 import type { Image } from "@/types/image";
 import { getApiUrl } from "@/api";
@@ -13,18 +13,20 @@ import {
     Polygon,
     Polyline,
     LayerGroup,
-    Circle
+    Circle,
+    useMap
 } from 'react-leaflet';
 import { useTheme } from "@/components/ui/theme-provider";
-import type { LatLngBoundsExpression } from 'leaflet';
+import type { LatLngBoundsExpression, Map as LeafletMap } from 'leaflet';
+import L, { bounds, } from "leaflet";
 import 'leaflet/dist/leaflet.css';
 import { Slider } from "@/components/ui/slider";
 import "@/lib/Leaflet.ImageOverlay.Rotated";
-import L from "leaflet";
 import { RotatedImageOverlay } from "@/components/report/mapingReportComponents/RotatedImageOverlay";
 
 interface Props {
     report: Report;
+    selectImageOnMap: (image_id: number) => void;
 }
 
 const { BaseLayer, Overlay } = LayersControl;
@@ -42,8 +44,10 @@ function extractFlightTrajectory(images: Image[]) {
 }
 
 
-export function MapTab({ report }: Props) {
+export function MapTab({ report, selectImageOnMap }: Props) {
     const [overlayOpacity, setOverlayOpacity] = useState(1.0);
+    const [map, setMap] = useState<LeafletMap | null>(null);
+
     const api_url = getApiUrl();
     const { theme } = useTheme();
     const current = theme === "system"
@@ -68,13 +72,33 @@ export function MapTab({ report }: Props) {
     }, [overlayOpacity]);
 
     const handleOverlayClick = (mapId: number, elementId: string, image_id: string) => {
-        console.log(`Clicked overlay from map ${mapId}, element ${elementId}, with image ${image_id}`);
+        selectImageOnMap(image_id)
     };
 
-    return (
-        <MapContainer center={center} zoom={18} style={{ zIndex: 0, flex: 1, height: '100%' }}>
-            <LayersControl position="topright">
+    const bounds: LatLngBoundsExpression | null = report?.mapping_report?.maps?.length
+        ? [
+            [
+                report.mapping_report.maps[0].bounds.gps.latitude_min,
+                report.mapping_report.maps[0].bounds.gps.longitude_min
+            ],
+            [
+                report.mapping_report.maps[0].bounds.gps.latitude_max,
+                report.mapping_report.maps[0].bounds.gps.longitude_max
+            ]
+        ]
+        : null;
 
+    useEffect(() => {
+        if (map !== null && bounds) {
+            console.log("Map created, bounds are:", bounds);
+            map.fitBounds(bounds);
+        }
+    }, [map, bounds]);
+
+
+    return (
+        <MapContainer center={center} zoom={18.5} ref={setMap} style={{ zIndex: 0, flex: 1, height: '100%' }}>
+            <LayersControl position="topright">
                 <BaseLayer checked name="Mapbox Streets">
                     <TileLayer
                         id={current === "dark" ? 'mapbox/dark-v11' : 'mapbox/streets-v11'}
@@ -110,6 +134,7 @@ export function MapTab({ report }: Props) {
                     />
                 </BaseLayer>
 
+
                 {report.mapping_report?.images && report.mapping_report?.images.length > 0 && (
                     <Overlay name="Flight Trajectory" checked>
                         <LayerGroup>
@@ -141,7 +166,7 @@ export function MapTab({ report }: Props) {
                     if (!map.bounds.corners || map.bounds.corners.gps.length < 4) {
                         console.warn(`Map ${map.name} does not have enough corners defined, using default bounds.`);
                         useRotatedOverlay = false;
-                        
+
                     } else {
                         useRotatedOverlay = true;
                         gps_corners = map.bounds.corners.gps.map((corner: LatLngBoundsExpression) => ([corner[1], corner[0]]));
@@ -150,16 +175,17 @@ export function MapTab({ report }: Props) {
                     return (
                         <Overlay key={map.name} name={`Map: ${map.name}`} checked>
                             <LayerGroup>
-                                { useRotatedOverlay ? (
-                                <RotatedImageOverlay
-                                    url={`${api_url}/${map.url}`}
-                                    corners={[
-                                        gps_corners[0], // top-left
-                                        gps_corners[1], // top-right
-                                        gps_corners[3], // bottom-left
-                                    ]}
-                                    opacity={overlayOpacity}
-                                />) : (
+
+                                {useRotatedOverlay ? (
+                                    <RotatedImageOverlay
+                                        url={`${api_url}/${map.url}`}
+                                        corners={[
+                                            gps_corners[0], // top-left
+                                            gps_corners[1], // top-right
+                                            gps_corners[3], // bottom-left
+                                        ]}
+                                        opacity={overlayOpacity}
+                                    />) : (
                                     <ImageOverlay
                                         url={`${api_url}/${map.url}`}
                                         bounds={bounds}
@@ -167,7 +193,7 @@ export function MapTab({ report }: Props) {
                                     />
                                 )}
 
-                                {bounds_corners.map((corner, index) => (
+                                {/* {bounds_corners.map((corner, index) => (
                                     <Circle
                                         key={`map-${map.id}_corner-${index}`}
                                         center={corner}
@@ -183,7 +209,7 @@ export function MapTab({ report }: Props) {
                                         radius={1}
                                         color="green"
                                     />
-                                ))}
+                                ))} */}
 
                                 {map.map_elements?.map((element) => {
                                     const corners = element.corners.gps;
@@ -226,29 +252,70 @@ export function MapTab({ report }: Props) {
                     );
                 })}
             </LayersControl>
+
+            {(bounds || center) && (
+                <HomeButton bounds={bounds} center={center} />
+            )}
             {(report.mapping_report?.maps && report.mapping_report.maps.length !== 0) && (
-            <div style={{
-                position: 'absolute',
-                bottom: '1rem',
-                left: '50%',
-                transform: 'translateX(-50%)',
-                zIndex: 1000,
-                padding: '0.5rem 1rem',
-                backgroundColor: theme === "dark" ? '#123' : '#fff',
-                borderRadius: '0.5rem'
-            }}>
-                <label className="text-sm font-medium mb-1 block text-center">Overlay Opacity</label>
-                <Slider
-                    defaultValue={[overlayOpacity]}
-                    min={0}
-                    max={1}
-                    step={0.02}
-                    onValueChange={(value) => setOverlayOpacity(value[0])}
-                />
-            </div>
+                <div style={{
+                    position: 'absolute',
+                    bottom: '1rem',
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    zIndex: 1000,
+                    padding: '0.5rem 1rem',
+                    backgroundColor: theme === "dark" ? '#123' : '#fff',
+                    borderRadius: '0.5rem'
+                }}>
+                    <label className="text-sm font-medium mb-1 block text-center">Overlay Opacity</label>
+                    <Slider
+                        defaultValue={[overlayOpacity]}
+                        min={0}
+                        max={1}
+                        step={0.02}
+                        onValueChange={(value) => setOverlayOpacity(value[0])}
+                    />
+                </div>
             )}
         </MapContainer>
 
 
+    );
+}
+
+
+// import { useMap } from 'react-leaflet';
+import { Home } from 'lucide-react'; // optional icon lib
+
+function HomeButton({ bounds, center }: { bounds: LatLngBoundsExpression | null, center: LatLngBoundsExpression }) {
+    const map = useMap();
+    if (!map && !bounds) return null;
+
+    const homeMap = () => {
+        if (bounds) {
+            map.fitBounds(bounds);
+        } else if (center) {
+            map.setView(center, 18.5);
+        }
+    };
+
+    return (
+        <div
+            style={{
+                position: 'absolute',
+                top: '84px',
+                left: '12px',
+                zIndex: 1000,
+                backgroundColor: 'white',
+                padding: '4px',
+                borderRadius: '2px',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.8)',
+                cursor: 'pointer'
+            }}
+            title="Reset View"
+            onClick={() => homeMap()}
+        >
+            <Home size={22} />
+        </div>
     );
 }

@@ -4,15 +4,18 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { getApiUrl } from "@/api";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 
 interface GalleryCardProps {
     images: Image[] | undefined;
+    setFilteredImages: (images: Image[]) => void;
+    filteredImages?: Image[];
+    setSelectedImage: (image: Image | null) => void;
 }
 
 type FilterTag = "thermal" | "panoramic" | "regular";
 
-export function GalleryCard({ images }: GalleryCardProps) {
+export function GalleryCard({ images, setFilteredImages, filteredImages, setSelectedImage }: GalleryCardProps) {
     const apiUrl = getApiUrl();
     const [search, setSearch] = useState("");
     const [activeTags, setActiveTags] = useState<FilterTag[]>([]);
@@ -37,7 +40,7 @@ export function GalleryCard({ images }: GalleryCardProps) {
         );
     };
 
-    const filteredImages = useMemo(() => {
+    const onFilterChange = () => {
         if (!images) return [];
 
         const filtered = images.filter((image) => {
@@ -55,12 +58,41 @@ export function GalleryCard({ images }: GalleryCardProps) {
             return matchesSearch && matchesTag;
         });
 
-        return filtered.sort((a, b) => {
+        setFilteredImages(filtered.sort((a, b) => {
             const aTime = new Date(a.created_at ?? 0).getTime();
             const bTime = new Date(b.created_at ?? 0).getTime();
             return aTime - bTime;
-        });
-    }, [images, search, activeTags]);
+        }))
+    };
+
+    // const filteredImages = useMemo(() => {
+    //     if (!images) return [];
+
+    //     const filtered = images.filter((image) => {
+    //         const matchesSearch = image.filename.toLowerCase().includes(search.toLowerCase());
+
+    //         const matchesTag =
+    //             activeTags.length === 0 ||
+    //             activeTags.some((tag) => {
+    //                 if (tag === "thermal") return image.thermal;
+    //                 if (tag === "panoramic") return image.panoramic;
+    //                 if (tag === "regular") return !image.thermal && !image.panoramic;
+    //                 return false;
+    //             });
+
+    //         return matchesSearch && matchesTag;
+    //     });
+
+    //     return filtered.sort((a, b) => {
+    //         const aTime = new Date(a.created_at ?? 0).getTime();
+    //         const bTime = new Date(b.created_at ?? 0).getTime();
+    //         return aTime - bTime;
+    //     });
+    // }, [images, search, activeTags]);
+
+    useEffect(() => {
+        onFilterChange();
+    }, [search, activeTags, images]);
 
     if (!images || images.length === 0) {
         return (
@@ -71,6 +103,10 @@ export function GalleryCard({ images }: GalleryCardProps) {
             </Card>
         );
     }
+
+    const onImageClick = (image: Image) => {
+        setSelectedImage(image);
+    };
 
     return (
         <Card className="min-w-80 min-h-40 flex flex-col px-4 py-3 gap-2">
@@ -113,10 +149,10 @@ export function GalleryCard({ images }: GalleryCardProps) {
                                         key={tag}
                                         onClick={() => toggleTag(tag)}
                                         className={`flex items-center gap-1 px-3 py-1.5 text-sm rounded-full border transition
-                                ${isActive
+                                            ${isActive
                                                 ? "bg-primary text-primary-foreground border-primary"
                                                 : "bg-muted text-muted-foreground border border-input hover:bg-accent hover:text-accent-foreground"}
-                            `}
+                                            `}
                                     >
                                         <span className="capitalize">{tag}</span>
                                         {isActive && (
@@ -142,6 +178,7 @@ export function GalleryCard({ images }: GalleryCardProps) {
                     <Card
                         key={"gallery-img-" + image.id}
                         className="relative p-0 flex flex-col justify-between items-center h-full gap-0 rounded-sm"
+                        onClick={() => onImageClick(image)}
                     >
                         <div className="w-full overflow-hidden p-1">
                             <img

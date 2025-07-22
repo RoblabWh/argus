@@ -244,8 +244,8 @@ def calculate_utm_corners(image: ImageOut, reference_yaw: float) -> Map_Element:
     orientation = cam_yaw + north_divergence
 
     diag_length_px = (width**2 + height**2)**0.5
-    diag_length_m = 2 * math.tan(math.radians(fov / 2)) * rel_altitude
-    scale = diag_length_m / diag_length_px
+    diag_length_m = 2 * math.tan(math.radians(fov / 2)) * rel_altitude 
+    scale = diag_length_m / diag_length_px 
     
     #rotate all corners of the image by the uav orientation
     w_half = width / 2

@@ -1,12 +1,15 @@
 import React, { useRef, useEffect, useState } from "react";
 import { Stage, Layer, Image as KonvaImage } from "react-konva";
+import type { Image } from "@/types/image";
 import useImage from "use-image";
+import { getApiUrl } from "@/api";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
-import { ArrowLeft, ArrowRight } from "lucide-react";
-import { getApiUrl } from "@/api";
+import { Separator } from "@/components/ui/separator";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+import { ChevronLeft, ChevronRight, Thermometer, Scan, Locate, MousePointer2, Wand } from "lucide-react";
 import { useAspectRatio } from "@/hooks/useAspectRatio";
-import type { Image } from "@/types/image";
+import { set } from "date-fns";
 
 interface SlideshowTabProps {
     selectedImage: Image | null;
@@ -34,12 +37,35 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
     const [position, setPosition] = useState({ x: 0, y: 0 });
 
     const [backgroundImageUrl, setBackgroundImageUrl] = useState<string | null>(null);
+    const [backgroundImageName, setBackgroundImageName] = useState<string | null>(null);
     const [backgroundImage] = useImage(backgroundImageUrl || "");
     const [opacity, setOpacity] = useState(1);
 
-    const dummy_scale = 0.44; // Default scale for thermal images
+    const [showOpacityPanel, setShowOpacityPanel] = useState(false);
 
-    // Resize canvas to fit container
+
+    const dummy_scale = 0.475; // Default scale for thermal images
+
+
+    const resetView = () => {
+        if (!image || !containerSize.width || !containerSize.height) return;
+
+        const scaleX = containerSize.width / image.width;
+        const scaleY = containerSize.height / image.height;
+        const fitScale = Math.min(scaleX, scaleY);
+
+        const offsetX = (containerSize.width - image.width * fitScale) / 2;
+        const offsetY = (containerSize.height - image.height * fitScale) / 2;
+
+        setScale(fitScale);
+        setMinScale(fitScale);
+        setPosition({ x: offsetX, y: offsetY });
+    };
+
+
+
+
+    // Resize canvas to fit container make it responsive
     useEffect(() => {
         if (!containerRef.current) return;
 
@@ -48,7 +74,7 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
             const observer = new ResizeObserver(([entry]) => {
                 const { width, height } = entry.contentRect;
                 // leave some space for controls
-                const adjustedHeight = height - 100; // tweak as needed
+                const adjustedHeight = height - 90; // tweak as needed
                 const size = Math.min(width, adjustedHeight); // keep square canvas
                 setContainerSize({ width: width, height: size });
             });
@@ -60,6 +86,9 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
         return observeResize();
     }, []);
 
+
+
+
     // When a new image is selected, update image URL and reset scale/position
     useEffect(() => {
         // if (selectedImage) {
@@ -68,34 +97,36 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
         if (!selectedImage) return;
 
         setImageUrl(`${apiUrl}/${selectedImage.url}`);
-        setOpacity(1);
+        
 
         if (selectedImage.thermal && selectedImage.thermal_data?.counterpart_id) {
             const rgbImage = images.find(img => img.id === selectedImage.thermal_data?.counterpart_id);
             if (rgbImage) {
                 console.log("Setting background image for thermal counterpart:", rgbImage.filename);
                 setBackgroundImageUrl(`${apiUrl}/${rgbImage.url}`);
+                setBackgroundImageName(rgbImage.filename);
             } else {
                 setBackgroundImageUrl(null); // fallback
+                setBackgroundImageName(null);
             }
         } else {
             setBackgroundImageUrl(null);
+            setBackgroundImageName(null);
+            setOpacity(1.0);
         }
     }, [selectedImage, images]);
+
+
+
 
     // Fit and center image when loaded or canvas size changes
     useEffect(() => {
         if (!image || !containerSize.width || !containerSize.height) return;
-
-        const scaleX = containerSize.width / image.width;
-        const scaleY = containerSize.height / image.height;
-        const fitScale = Math.min(scaleX, scaleY);
-
-        const offsetX = (containerSize.width - image.width * fitScale) / 2;
-        const offsetY = (containerSize.height - image.height * fitScale) / 2;
-
         resetView();
     }, [image, containerSize]);
+
+
+
 
     // Handle zoom (wheel)
     const handleWheel = (e: any) => {
@@ -147,6 +178,9 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
     };
 
 
+
+
+
     // Clamp dragging so image stays inside canvas
     const handleDragMove = (e: any) => {
         if (!image || !containerSize.width || !containerSize.height) return;
@@ -173,20 +207,8 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
         setPosition({ x: clampedX, y: clampedY });
     };
 
-    const resetView = () => {
-        if (!image || !containerSize.width || !containerSize.height) return;
 
-        const scaleX = containerSize.width / image.width;
-        const scaleY = containerSize.height / image.height;
-        const fitScale = Math.min(scaleX, scaleY);
 
-        const offsetX = (containerSize.width - image.width * fitScale) / 2;
-        const offsetY = (containerSize.height - image.height * fitScale) / 2;
-
-        setScale(fitScale);
-        setMinScale(fitScale);
-        setPosition({ x: offsetX, y: offsetY });
-    };
 
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -221,11 +243,11 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
                                     <KonvaImage
                                         image={backgroundImage}
                                         scale={{
-                                            x: dummy_scale,
-                                            y: dummy_scale,
+                                            x: image ? selectedImage.thermal_data.counterpart_scale : dummy_scale,
+                                            y: image ? selectedImage.thermal_data.counterpart_scale : dummy_scale,
                                         }}
-                                        x={image ? -(backgroundImage.width * dummy_scale - image.width)  : 0}
-                                        y={image ? -(backgroundImage.height * dummy_scale - image.height) : 0}
+                                        x={image ? -((backgroundImage.width * selectedImage.thermal_data.counterpart_scale - image.width)) / 2 : 0}
+                                        y={image ? -((backgroundImage.height * selectedImage.thermal_data.counterpart_scale - image.height)) / 2 : 0}
                                         opacity={1}
                                     />
                                 )}
@@ -240,15 +262,54 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
                             </Layer>
                         </Stage>
                         {selectedImage?.thermal && selectedImage.thermal_data?.counterpart_id && (
-                            <div className="absolute translate-y-[-100%] left-1/2 transform -translate-x-1/2 w-48 z-50">
-                                <Slider
-                                    defaultValue={[100]}
-                                    max={100}
-                                    min={0}
-                                    step={1}
-                                    onValueChange={([val]) => setOpacity(val / 100)}
-                                />
-                                <p className="text-xs text-center mt-1 text-muted-foreground">Thermal Opacity</p>
+                            <div
+                                className={`absolute  z-50 left-1/2 -translate-x-1/2 transition-all duration-300 ${showOpacityPanel ? 'translate-y-[-120%]' : 'translate-y-[-24px]'} opacity-60 hover:opacity-100`}
+                            >
+                                <div className="flex flex-col items-center justify-center">
+                                    {/* Toggle Button */}
+                                    <button
+                                        onClick={() => setShowOpacityPanel(!showOpacityPanel)}
+                                        className={`w-8 ${showOpacityPanel ? 'h-5' : 'h-6'} bg-white dark:bg-gray-800  rounded-t-md flex items-center justify-center text-xs `}
+                                    >
+                                        {showOpacityPanel ? "▼" : "▲"}
+                                    </button>
+                                </div>
+                                <div
+                                    className={`flex flex-row bg-white dark:bg-gray-800 rounded-lg px-2 py-2 shadow-lg relative gap-2 h-10 w.full ${showOpacityPanel ? 'display-block' : 'hidden'} transition-opacity duration-300 `}
+                                >
+                                    <div className="flex flex-row items-center justify-center gap-2">
+                                        {/* <Button variant="outline" onClick={() => console.log("Locate clicked")} className="w-8 h-8 p-0 m-0">
+                                            <div className="p-0 m-0 w-full h-full flex items-center justify-center relative">
+                                                <Locate className="size-8 stroke-1" />
+                                                <Thermometer className="size4 absolute translate-y-[0%] translate-x-[0%] stroke-2" />
+                                            </div>
+                                        </Button> */}
+                                        <Button variant="default" onClick={() => console.log("Locate clicked")} className="w-7 h-7 p-0 m-0 hover:cursor-pointer">
+                                            <div className="p-0 m-0 w-full h-full flex items-center justify-center relative">
+                                                {/* <MousePointer2 className="size-4 stroke-2 translate-y-[30%]  translate-x-[30%]" /> */}
+                                                <Wand className="size-5 stroke-2 translate-y-[5%]  translate-x-[15%]" />
+                                                <Thermometer className="size-[48%] absolute translate-y-[-26%] translate-x-[-50%] stroke-2" />
+                                            </div>
+                                        </Button>
+                                        <span className="text-xs whitespace-nowrap">Temp-Probe</span>
+                                    </div>
+
+                                    <Separator orientation="vertical" className="mx-2 bg-black dark:bg-white" />
+
+                                    <div className="flex flex-row items-center justify-center w-full gap-2">
+
+                                        <Slider
+                                            defaultValue={[100]}
+                                            max={100}
+                                            min={0}
+                                            step={1}
+                                            onValueChange={([val]) => setOpacity(val / 100)}
+                                            className="min-w-[100px] hover:cursor-pointer"
+                                        />
+                                        <p className="text-xs text-center mt-1 opacity-80 whitespace-nowrap">Thermal Opacity</p>
+                                    </div>
+                                </div>
+
                             </div>
                         )}
                     </>
@@ -258,17 +319,24 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
                 )}
             </div>
 
-            <div className="grid grid-cols-3 items-center justify-between my-4 p-4 w-full bg-white dark:bg-gray-800">
-                <div className="text-sm text-muted-foreground">
-                    {selectedImage?.filename ?? ""}
-                </div>
+            <div className="grid grid-cols-3 items-center justify-between mt-4 p-4 w-full bg-white dark:bg-gray-800">
+                    <Tooltip className="flex justify-start">
+                        <TooltipTrigger className="flex justify-start">
+                            <div className="text-sm text-muted-foreground whitespace-nowrap overflow-hidden text-ellipsis">
+                                {selectedImage?.filename ?? ""} {backgroundImageName ? `(${backgroundImageName})` : ""}
+                            </div>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                            <p>{selectedImage?.filename ?? ""} {backgroundImageName ? `(${backgroundImageName})` : ""}</p>
+                        </TooltipContent>
+                    </Tooltip>
 
                 <div className="flex items-center gap-4 w-full justify-center">
-                    <Button variant="default" onClick={previousImage}>
-                        <ArrowLeft />
+                    <Button variant="default" onClick={previousImage} className="aspect-square">
+                        <ChevronLeft />
                     </Button>
-                    <Button variant="default" onClick={nextImage}>
-                        <ArrowRight />
+                    <Button variant="default" onClick={nextImage} className="aspect-square">
+                        <ChevronRight />
                     </Button>
                 </div>
 
