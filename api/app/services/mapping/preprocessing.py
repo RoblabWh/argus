@@ -467,8 +467,12 @@ def _process_thermal_images(images: list[ImageOut], report_id: int, db: Session)
     images.sort(key=lambda x: x.created_at)
     thermal_images = [img for img in images if img.thermal]
     rgb_images = [img for img in images if not img.thermal]
+        
+    camera_specific_keys = None
+    with open("app/cameramodels.json", "r") as file:
+        camera_specific_keys = json.load(file)
 
-    couples = []
+    thermal_data_list = []
     while True:
         if not thermal_images or not rgb_images:
             break
@@ -476,6 +480,7 @@ def _process_thermal_images(images: list[ImageOut], report_id: int, db: Session)
         smallest_diff = float('inf')
         closest_rgb_image_index = -1
         thermal_image = thermal_images.pop(0)
+        counterpart = None
         
         for i, rgb_image in enumerate(rgb_images):
             
@@ -487,27 +492,22 @@ def _process_thermal_images(images: list[ImageOut], report_id: int, db: Session)
                     smallest_diff = time_diff
                     closest_rgb_image_index = i
 
-            elif closest_rgb_image_index != -1:
-                couples.append((thermal_image, rgb_images[closest_rgb_image_index]))
-                rgb_images.pop(closest_rgb_image_index)
+            elif closest_rgb_image_index != -1: # If we already found a close RGB image, we can break the loop, since the list is sorted by created_at the difference will only increase
                 break
-    
-    camera_specific_keys = None
-    with open("app/cameramodels.json", "r") as file:
-        camera_specific_keys = json.load(file)
 
-    thermal_data_list = []
-    
-    for thermal_image, rgb_image in couples:
+        if closest_rgb_image_index != -1:
+            counterpart = rgb_images[closest_rgb_image_index]
+            rgb_images.pop(closest_rgb_image_index)
+
         camera_model = thermal_image.camera_model
         if camera_model in camera_specific_keys and "ir_scale" in camera_specific_keys[camera_model]:
             scale = camera_specific_keys[camera_model]["ir_scale"]
         else:
             scale = camera_specific_keys.get("default", {})['ir'].get("ir_scale", 0.4)
-        # create ThermalData object for the thermal image
+        
         thermal_data = ThermalDataCreate(
             image_id=thermal_image.id,
-            counterpart_id=rgb_image.id,  # link to the RGB image
+            counterpart_id=counterpart.id if counterpart else None,  # link to the RGB image
             counterpart_scale=scale,  # default value, can be adjusted later
             min_temp=0,
             max_temp=100,
@@ -517,6 +517,8 @@ def _process_thermal_images(images: list[ImageOut], report_id: int, db: Session)
             lut_name="white_hot"
         )
         thermal_data_list.append(thermal_data)
+
+        
 
     # bulk insert thermal data
     thermal_data_objects = crud_image.create_multiple_thermal_data(db, thermal_data_list)

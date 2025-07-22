@@ -52,7 +52,7 @@ export function MappingReport({ report, onEditClicked }: Props) {
       <Toaster />
       <ResponsiveResizableLayout
         left={
-          <div className="flex flex-col gap-4 h-[calc(100vh-90px)]">
+          <div className="flex flex-col gap-4 h-full">
             <div className='flex flex-wrap gap-4'>
               <GeneralDataCard report={report} onReprocessClicked={onEditClicked} />
               <WeatherCard data={report.mapping_report?.weather[0]} onReload={() => { alert("Reload Weather Data"); }} />

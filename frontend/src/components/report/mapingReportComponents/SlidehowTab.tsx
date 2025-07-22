@@ -6,10 +6,13 @@ import { getApiUrl } from "@/api";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { ChevronLeft, ChevronRight, Thermometer, Scan, Locate, MousePointer2, Wand } from "lucide-react";
 import { useAspectRatio } from "@/hooks/useAspectRatio";
 import { set } from "date-fns";
+// import { useTempMatrix } from "@/hooks/useTempMatrix"; // adjust path
+
 
 interface SlideshowTabProps {
     selectedImage: Image | null;
@@ -42,6 +45,16 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
     const [opacity, setOpacity] = useState(1);
 
     const [showOpacityPanel, setShowOpacityPanel] = useState(false);
+
+    const [tempMode, setTempMode] = useState(false);
+    // const { data: tempMatrix, refetch: loadTempMatrix, isFetching: tempLoading } = useTempMatrix(selectedImage?.id ?? null, {
+    //     enabled: false, // manual fetch only
+    // });
+    const [probeResult, setProbeResult] = useState<{
+        x: number;
+        y: number;
+        temperature: number;
+    } | null>(null);
 
 
     const dummy_scale = 0.475; // Default scale for thermal images
@@ -96,8 +109,10 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
         // }
         if (!selectedImage) return;
 
+        setProbeResult(null); // reset probe result on new image selection
+        setTempMode(false); // reset temp mode
         setImageUrl(`${apiUrl}/${selectedImage.url}`);
-        
+
 
         if (selectedImage.thermal && selectedImage.thermal_data?.counterpart_id) {
             const rgbImage = images.find(img => img.id === selectedImage.thermal_data?.counterpart_id);
@@ -175,6 +190,7 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
 
         setScale(newScale);
         setPosition({ x: newX, y: newY });
+        setProbeResult(null); // reset probe result on zoom
     };
 
 
@@ -205,9 +221,49 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
 
         node.position({ x: clampedX, y: clampedY });
         setPosition({ x: clampedX, y: clampedY });
+        setProbeResult(null); // reset probe result on drag
     };
 
 
+    const handleMouseClick = (e: any) => {
+
+        var stage = e.currentTarget;
+        const stageScale = stage.scaleX();
+        const pointer = stage.getPointerPosition();
+        if (!pointer || !image) return;
+
+        // (Pointer position + image position) * 1/scale
+        const posiOnImageX = (pointer.x - position.x) * (1 / stageScale);
+        const posiOnImageY = (pointer.y - position.y) * (1 / stageScale);
+
+        const imageWidth = image ? image.width : 0;
+        const imageHeight = image ? image.height : 0;
+
+        if (posiOnImageX < 0 || posiOnImageX > imageWidth || posiOnImageY < 0 || posiOnImageY > imageHeight) return;
+
+        if (tempMode) {//&& tempMatrix) {
+            const ix = Math.floor(posiOnImageX);
+            const iy = Math.floor(posiOnImageY);
+
+            const temperature = 22;// tempMatrix[ix]?.[iy];
+
+            if (typeof temperature === "number") {
+                setProbeResult({
+                    x: pointer.x,
+                    y: pointer.y,
+                    temperature,
+                });
+            }
+        }
+
+
+    }
+
+    useEffect(() => {
+        if (!probeResult) return;
+        const timer = setTimeout(() => setProbeResult(null), 3000);
+        return () => clearTimeout(timer);
+    }, [probeResult]);
 
 
     useEffect(() => {
@@ -236,6 +292,7 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
                             onWheel={handleWheel}
                             draggable
                             onDragMove={handleDragMove}
+                            onMouseUp={handleMouseClick}
                         >
                             <Layer>
                                 {/* Background RGB image (if exists) */}
@@ -261,6 +318,28 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
                                 )}
                             </Layer>
                         </Stage>
+                        {probeResult && (
+                            <>
+                            <Locate className="absolute z-50 stroke-3 w-6 h-6"
+                                style={{
+                                    left: probeResult.x - 12,
+                                    top: probeResult.y - 12,
+                                    pointerEvents: "none",
+                                }}
+                            />
+                            <Badge
+                                variant="default"
+                                className="absolute z-60 font-semibold text-md"
+                                style={{
+                                    left: probeResult.x + 10,
+                                    top: probeResult.y - 32,
+                                }}
+                                
+                            >
+                                {probeResult.temperature.toFixed(1)}°C
+                            </Badge>
+                            </>
+                        )}
                         {selectedImage?.thermal && selectedImage.thermal_data?.counterpart_id && (
                             <div
                                 className={`absolute  z-50 left-1/2 -translate-x-1/2 transition-all duration-300 ${showOpacityPanel ? 'translate-y-[-120%]' : 'translate-y-[-24px]'} opacity-60 hover:opacity-100`}
@@ -284,7 +363,15 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
                                                 <Thermometer className="size4 absolute translate-y-[0%] translate-x-[0%] stroke-2" />
                                             </div>
                                         </Button> */}
-                                        <Button variant="default" onClick={() => console.log("Locate clicked")} className="w-7 h-7 p-0 m-0 hover:cursor-pointer">
+                                        <Button
+                                            variant={tempMode ? "outline" : "default"}
+                                            onClick={() => {
+                                                setTempMode(!tempMode);
+                                                if (!tempMatrix) loadTempMatrix();
+                                                if (tempMode) setProbeResult(null); // hide popup when disabling
+                                            }}
+                                            className="w-7 h-7 p-0 m-0 hover:cursor-pointer"
+                                        >
                                             <div className="p-0 m-0 w-full h-full flex items-center justify-center relative">
                                                 {/* <MousePointer2 className="size-4 stroke-2 translate-y-[30%]  translate-x-[30%]" /> */}
                                                 <Wand className="size-5 stroke-2 translate-y-[5%]  translate-x-[15%]" />
@@ -320,16 +407,16 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
             </div>
 
             <div className="grid grid-cols-3 items-center justify-between mt-4 p-4 w-full bg-white dark:bg-gray-800">
-                    <Tooltip className="flex justify-start">
-                        <TooltipTrigger className="flex justify-start">
-                            <div className="text-sm text-muted-foreground whitespace-nowrap overflow-hidden text-ellipsis">
-                                {selectedImage?.filename ?? ""} {backgroundImageName ? `(${backgroundImageName})` : ""}
-                            </div>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                            <p>{selectedImage?.filename ?? ""} {backgroundImageName ? `(${backgroundImageName})` : ""}</p>
-                        </TooltipContent>
-                    </Tooltip>
+                <Tooltip className="flex justify-start">
+                    <TooltipTrigger className="flex justify-start">
+                        <div className="text-sm text-muted-foreground whitespace-nowrap overflow-hidden text-ellipsis">
+                            {selectedImage?.filename ?? ""} {backgroundImageName ? `(${backgroundImageName})` : ""}
+                        </div>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                        <p>{selectedImage?.filename ?? ""} {backgroundImageName ? `(${backgroundImageName})` : ""}</p>
+                    </TooltipContent>
+                </Tooltip>
 
                 <div className="flex items-center gap-4 w-full justify-center">
                     <Button variant="default" onClick={previousImage} className="aspect-square">

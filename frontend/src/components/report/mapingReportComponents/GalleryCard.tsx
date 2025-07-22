@@ -109,7 +109,7 @@ export function GalleryCard({ images, setFilteredImages, filteredImages, setSele
     };
 
     return (
-        <Card className="min-w-80 min-h-40 flex flex-col px-4 py-3 gap-2">
+        <Card className="min-w-80 min-h-69 max-h-350 flex flex-col px-4 py-3 gap-2">
             <div className="text-lg font-semibold py-2">
                 Images
             </div>
@@ -173,7 +173,7 @@ export function GalleryCard({ images, setFilteredImages, filteredImages, setSele
             </div>
 
             {/* Gallery Grid */}
-            <div className="overflow-auto grow grid grid-cols-[repeat(auto-fit,minmax(130px,1fr))] gap-4 flex-1">
+            <div className="overflow-auto grow grid grid-cols-[repeat(auto-fit,minmax(130px,1fr))] gap-2 flex-1">
                 {filteredImages.map((image) => (
                     <Card
                         key={"gallery-img-" + image.id}
