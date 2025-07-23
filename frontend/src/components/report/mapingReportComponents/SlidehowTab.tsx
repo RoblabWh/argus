@@ -2,6 +2,7 @@ import React, { useRef, useEffect, useState } from "react";
 import { Stage, Layer, Image as KonvaImage } from "react-konva";
 import type { Image } from "@/types/image";
 import useImage from "use-image";
+import { useThermalMatrix } from "@/hooks/useThermalMatrix";
 import { getApiUrl } from "@/api";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
@@ -11,7 +12,6 @@ import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip
 import { ChevronLeft, ChevronRight, Thermometer, Scan, Locate, MousePointer2, Wand } from "lucide-react";
 import { useAspectRatio } from "@/hooks/useAspectRatio";
 import { set } from "date-fns";
-// import { useTempMatrix } from "@/hooks/useTempMatrix"; // adjust path
 
 
 interface SlideshowTabProps {
@@ -47,9 +47,26 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
     const [showOpacityPanel, setShowOpacityPanel] = useState(false);
 
     const [tempMode, setTempMode] = useState(false);
-    // const { data: tempMatrix, refetch: loadTempMatrix, isFetching: tempLoading } = useTempMatrix(selectedImage?.id ?? null, {
-    //     enabled: false, // manual fetch only
-    // });
+    const [tempMatrix, setTempMatrix] = useState<number[][] | null>(null);
+
+    const { data, isLoading, error } = useThermalMatrix(selectedImage?.id, selectedImage?.thermal);
+
+    useEffect(() => {
+        if (data && selectedImage?.id === data.image_id) {
+            setTempMatrix(data.matrix);
+        } else {
+            setTempMatrix(null);
+        }
+    }, [data, selectedImage?.id]);
+
+    useEffect(() => {
+        if (!tempMode || !selectedImage?.thermal) {
+            setTempMatrix(null);
+        } else {
+            //refetch with new image
+        }
+    }, [tempMode, selectedImage]);
+
     const [probeResult, setProbeResult] = useState<{
         x: number;
         y: number;
@@ -74,8 +91,6 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
         setMinScale(fitScale);
         setPosition({ x: offsetX, y: offsetY });
     };
-
-
 
 
     // Resize canvas to fit container make it responsive
@@ -242,18 +257,24 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
         if (posiOnImageX < 0 || posiOnImageX > imageWidth || posiOnImageY < 0 || posiOnImageY > imageHeight) return;
 
         if (tempMode) {//&& tempMatrix) {
-            const ix = Math.floor(posiOnImageX);
-            const iy = Math.floor(posiOnImageY);
+            const ix = Math.floor(posiOnImageX/2);
+            const iy = Math.floor(posiOnImageY/2);
+            
 
-            const temperature = 22;// tempMatrix[ix]?.[iy];
 
-            if (typeof temperature === "number") {
+            // if (!tempMatrix || ix < 0 || ix >= tempMatrix.length || iy < 0 || iy >= tempMatrix[ix].length) {
+            //     setProbeResult(null);
+            //     return;
+            // }
+            console.log("Probe clicked at:", posiOnImageX, posiOnImageY, "Matrix size:", tempMatrix.length, "x", tempMatrix[0].length, "trying to get:", ix, iy);
+            const temperature = tempMatrix[iy]?.[ix];
+
                 setProbeResult({
                     x: pointer.x,
                     y: pointer.y,
                     temperature,
                 });
-            }
+            
         }
 
 
@@ -320,24 +341,24 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
                         </Stage>
                         {probeResult && (
                             <>
-                            <Locate className="absolute z-50 stroke-3 w-6 h-6"
-                                style={{
-                                    left: probeResult.x - 12,
-                                    top: probeResult.y - 12,
-                                    pointerEvents: "none",
-                                }}
-                            />
-                            <Badge
-                                variant="default"
-                                className="absolute z-60 font-semibold text-md"
-                                style={{
-                                    left: probeResult.x + 10,
-                                    top: probeResult.y - 32,
-                                }}
-                                
-                            >
-                                {probeResult.temperature.toFixed(1)}°C
-                            </Badge>
+                                <Locate className="absolute z-50 stroke-3 w-6 h-6"
+                                    style={{
+                                        left: probeResult.x - 12,
+                                        top: probeResult.y - 12,
+                                        pointerEvents: "none",
+                                    }}
+                                />
+                                <Badge
+                                    variant="default"
+                                    className="absolute z-60 font-semibold text-md"
+                                    style={{
+                                        left: probeResult.x + 10,
+                                        top: probeResult.y - 32,
+                                    }}
+
+                                >
+                                    {probeResult.temperature}°C
+                                </Badge>
                             </>
                         )}
                         {selectedImage?.thermal && selectedImage.thermal_data?.counterpart_id && (
@@ -367,7 +388,7 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
                                             variant={tempMode ? "outline" : "default"}
                                             onClick={() => {
                                                 setTempMode(!tempMode);
-                                                if (!tempMatrix) loadTempMatrix();
+                                                if (!tempMatrix) setTempMode(false); // disable temp mode if no matrix
                                                 if (tempMode) setProbeResult(null); // hide popup when disabling
                                             }}
                                             className="w-7 h-7 p-0 m-0 hover:cursor-pointer"

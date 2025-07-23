@@ -140,6 +140,11 @@ class ThermalDataOut(ThermalDataBase):
         orm_mode = True
         from_attributes=True
 
+
+class ThermalMatrixResponse(BaseModel):
+    image_id: int
+    matrix: List[List[float]]  # or int if they're integers
+
 ##################
 ## Detection
 ##################
@@ -165,3 +170,6 @@ class DetectionOut(DetectionBase):
 
     class Config:
         orm_mode = True
+
+
+

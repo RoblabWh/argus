@@ -4,12 +4,13 @@ from typing import List
 import time
 from concurrent.futures import ThreadPoolExecutor
 from fastapi.concurrency import run_in_threadpool
+from app.services.thermal.thermal_processing import parse_thermal_image
 
 
 from app.database import get_db
 
 # Import schemas
-from app.schemas.image import ImageOut, ImageCreate, ImageUpdate, ImageUploadResult
+from app.schemas.image import ImageOut, ImageCreate, ImageUpdate, ImageUploadResult, ThermalMatrixResponse
 
 # Import CRUD logic
 import app.crud.images as crud_image
@@ -86,7 +87,21 @@ def delete_image(image_id: int, db: Session = Depends(get_db)):
     return crud_image.delete(db, image_id)
 
 
-#Performance Results
-# Per Batch: 1.35, 1.06, 1.08, 1.06, 1.07, 1.05, 1.07, 1.08, 1.09, 1.10, 1.08, 1.12, 1.09, 1.11, 1.10, 0.67
+@router.get("/{image_id}/thermal_matrix", response_model=ThermalMatrixResponse)
+def get_thermal_matrix(image_id: int, db: Session = Depends(get_db)):
+    """
+    Returns the thermal matrix for a given image ID.
+    """
+    image = crud_image.get_full_image(db, image_id)
+    if not image:
+        raise HTTPException(status_code=404, detail="Image not found")
+    if not image.thermal:
+        raise HTTPException(status_code=404, detail="Thermal data not available for this image")
 
+    #np array
+    thermal_matrix = parse_thermal_image(image.url)
 
+    if hasattr(thermal_matrix, "tolist"):
+        thermal_matrix = thermal_matrix.tolist()
+
+    return ThermalMatrixResponse(image_id=image_id, matrix=thermal_matrix)
