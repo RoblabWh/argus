@@ -143,6 +143,8 @@ class ThermalDataOut(ThermalDataBase):
 
 class ThermalMatrixResponse(BaseModel):
     image_id: int
+    min_temp: float
+    max_temp: float
     matrix: List[List[float]]  # or int if they're integers
 
 ##################

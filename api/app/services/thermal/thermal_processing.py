@@ -11,5 +11,9 @@ def parse_thermal_image(filepath_image: str) -> np.ndarray:
     """
     print(f"Parsing thermal image from {filepath_image}")
     thermal = Thermal(dtype=np.float32)
-    return thermal.parse(filepath_image=filepath_image)
-    
+    temp = thermal.parse(filepath_image=filepath_image)
+    min_temp = temp.min()
+    max_temp = temp.max()
+    print(f"Parsed thermal image with min_temp: {min_temp}, max_temp: {max_temp}")
+
+    return temp, min_temp, max_temp

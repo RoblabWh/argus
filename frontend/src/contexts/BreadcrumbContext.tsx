@@ -1,4 +1,3 @@
-// src/contexts/BreadcrumbContext.tsx
 import React, { createContext, useContext, useState } from "react";
 
 type Crumb = { label: string; href?: string };

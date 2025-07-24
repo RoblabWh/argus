@@ -95,6 +95,22 @@ export function MapTab({ report, selectImageOnMap }: Props) {
         }
     }, [map, bounds]);
 
+    useEffect(() => {
+        if (map !== null) {
+            //new resize Observer to handle map resizing
+            const resizeObserver = new ResizeObserver(() => {
+                if (!map) return;
+                try {
+                    map.invalidateSize();
+                    map.flyTo(map.getCenter(), map.getZoom());
+                } catch (error) {
+                    return
+                }
+            });
+            resizeObserver.observe(map.getContainer());
+        }
+    }, [map]);
+
 
     return (
         <MapContainer center={center} zoom={18.5} ref={setMap} style={{ zIndex: 0, flex: 1, height: '100%' }}>
@@ -306,16 +322,16 @@ function HomeButton({ bounds, center }: { bounds: LatLngBoundsExpression | null,
                 top: '84px',
                 left: '12px',
                 zIndex: 1000,
-                backgroundColor: 'white',
                 padding: '4px',
                 borderRadius: '2px',
                 boxShadow: '0 1px 3px rgba(0,0,0,0.8)',
                 cursor: 'pointer'
             }}
+            className="hover:bg-gray-100 bg-white transition-colors duration-200"
             title="Reset View"
             onClick={() => homeMap()}
         >
-            <Home size={22} />
+            <Home size={22} className="dark:text-black" />
         </div>
     );
 }

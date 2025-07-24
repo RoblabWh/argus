@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useState } from "react";
-import { Stage, Layer, Image as KonvaImage } from "react-konva";
+import { Stage, Layer, Image as KonvaImage, Rect } from "react-konva";
 import type { Image } from "@/types/image";
+import { ThermalSettingsPopup } from "./thermalSettingsPopup";
 import useImage from "use-image";
 import { useThermalMatrix } from "@/hooks/useThermalMatrix";
 import { getApiUrl } from "@/api";
@@ -12,6 +13,9 @@ import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip
 import { ChevronLeft, ChevronRight, Thermometer, Scan, Locate, MousePointer2, Wand } from "lucide-react";
 import { useAspectRatio } from "@/hooks/useAspectRatio";
 import { set } from "date-fns";
+import { m } from "motion/react";
+
+
 
 
 interface SlideshowTabProps {
@@ -38,6 +42,8 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
     const [scale, setScale] = useState(1);
     const [minScale, setMinScale] = useState(1);
     const [position, setPosition] = useState({ x: 0, y: 0 });
+    const fallbackScale = 0.475; // Default scale for thermal images
+
 
     const [backgroundImageUrl, setBackgroundImageUrl] = useState<string | null>(null);
     const [backgroundImageName, setBackgroundImageName] = useState<string | null>(null);
@@ -48,52 +54,56 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
 
     const [tempMode, setTempMode] = useState(false);
     const [tempMatrix, setTempMatrix] = useState<number[][] | null>(null);
+    const [minmaxTemp, setMinMaxTemp] = useState<{ min: number; max: number }>({ min: 20, max: 100 });
 
-    const { data, isLoading, error } = useThermalMatrix(selectedImage?.id, selectedImage?.thermal);
+    const [thermalSettingsPopupOpen, setThermalSettingsPopupOpen] = useState(false);
+    const [thermalSettings, setThermalSettings] = useState({
+        probeRadius: 4,
+        recolor: true,
+        autoTempLimits: true,
+        minTemp: 20,
+        maxTemp: 100,
+        colorMap: "whiteHot",
+    });
+
+    const { data, isLoading, error, refetch } = useThermalMatrix(selectedImage?.id, selectedImage?.thermal);
+
+    const [probeResult, setProbeResult] = useState<{
+        x: number;
+        y: number;
+        probeMessage: string;
+    } | null>(null);
+
 
     useEffect(() => {
         if (data && selectedImage?.id === data.image_id) {
             setTempMatrix(data.matrix);
+            let minTemp = data.min_temp || 20.0;
+            let maxTemp = data.max_temp || 100.0;
+            console.log("Thermal matrix loaded for image:", selectedImage.id, "Min Temp:", minTemp, "Max Temp:", maxTemp);
+            // Optionally, you can set min/max
+            setMinMaxTemp({ min: minTemp, max: maxTemp });
         } else {
             setTempMatrix(null);
         }
     }, [data, selectedImage?.id]);
 
+
     useEffect(() => {
-        if (!tempMode || !selectedImage?.thermal) {
-            setTempMatrix(null);
-        } else {
-            //refetch with new image
+        if (!selectedImage) return;
+        if (tempMode && selectedImage.thermal) {
+            if (!data) return;
+
+            setTempMatrix(data.matrix);
+            let minTemp = data.min_temp || 20.0;
+            let maxTemp = data.max_temp || 100.0;
+            console.log("Thermal matrix loaded for image:", selectedImage.id, "Min Temp:", minTemp, "Max Temp:", maxTemp);
+            // Optionally, you can set min/max
+            setMinMaxTemp({ min: minTemp, max: maxTemp });
         }
-    }, [tempMode, selectedImage]);
-
-    const [probeResult, setProbeResult] = useState<{
-        x: number;
-        y: number;
-        temperature: number;
-    } | null>(null);
+    }, [tempMode]);
 
 
-    const dummy_scale = 0.475; // Default scale for thermal images
-
-
-    const resetView = () => {
-        if (!image || !containerSize.width || !containerSize.height) return;
-
-        const scaleX = containerSize.width / image.width;
-        const scaleY = containerSize.height / image.height;
-        const fitScale = Math.min(scaleX, scaleY);
-
-        const offsetX = (containerSize.width - image.width * fitScale) / 2;
-        const offsetY = (containerSize.height - image.height * fitScale) / 2;
-
-        setScale(fitScale);
-        setMinScale(fitScale);
-        setPosition({ x: offsetX, y: offsetY });
-    };
-
-
-    // Resize canvas to fit container make it responsive
     useEffect(() => {
         if (!containerRef.current) return;
 
@@ -115,8 +125,6 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
     }, []);
 
 
-
-
     // When a new image is selected, update image URL and reset scale/position
     useEffect(() => {
         // if (selectedImage) {
@@ -125,7 +133,6 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
         if (!selectedImage) return;
 
         setProbeResult(null); // reset probe result on new image selection
-        setTempMode(false); // reset temp mode
         setImageUrl(`${apiUrl}/${selectedImage.url}`);
 
 
@@ -139,7 +146,19 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
                 setBackgroundImageUrl(null); // fallback
                 setBackgroundImageName(null);
             }
+            //refetch(); // refetch thermal matrix for new image
+            if (data && selectedImage?.id === data.image_id && tempMode) {
+                setTempMatrix(data.matrix);
+                let minTemp = data.min_temp || 20.0;
+                let maxTemp = data.max_temp || 100.0;
+                console.log("Thermal matrix loaded for image:", selectedImage.id, "Min Temp:", minTemp, "Max Temp:", maxTemp);
+                // Optionally, you can set min/max
+                setMinMaxTemp({ min: minTemp, max: maxTemp });
+            } else {
+                setTempMatrix(null);
+            }
         } else {
+            setTempMode(false); // reset temp mode
             setBackgroundImageUrl(null);
             setBackgroundImageName(null);
             setOpacity(1.0);
@@ -156,7 +175,26 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
     }, [image, containerSize]);
 
 
+    const resetView = () => {
+        if (!image || !containerSize.width || !containerSize.height) return;
 
+        const scaleX = containerSize.width / image.width;
+        const scaleY = containerSize.height / image.height;
+        const fitScale = Math.min(scaleX, scaleY);
+
+        const offsetX = (containerSize.width - image.width * fitScale) / 2;
+        const offsetY = (containerSize.height - image.height * fitScale) / 2;
+
+        setScale(fitScale);
+        setMinScale(fitScale);
+        setPosition({ x: offsetX, y: offsetY });
+    };
+
+
+    const handleSettingsSave = (settings: any) => {
+        if (!settings) return;
+        setThermalSettings(settings);
+    };
 
     // Handle zoom (wheel)
     const handleWheel = (e: any) => {
@@ -257,24 +295,43 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
         if (posiOnImageX < 0 || posiOnImageX > imageWidth || posiOnImageY < 0 || posiOnImageY > imageHeight) return;
 
         if (tempMode) {//&& tempMatrix) {
-            const ix = Math.floor(posiOnImageX/2);
-            const iy = Math.floor(posiOnImageY/2);
-            
+            const ix = Math.floor(posiOnImageX / 2);
+            const iy = Math.floor(posiOnImageY / 2);
+
 
 
             // if (!tempMatrix || ix < 0 || ix >= tempMatrix.length || iy < 0 || iy >= tempMatrix[ix].length) {
             //     setProbeResult(null);
             //     return;
             // }
-            console.log("Probe clicked at:", posiOnImageX, posiOnImageY, "Matrix size:", tempMatrix.length, "x", tempMatrix[0].length, "trying to get:", ix, iy);
-            const temperature = tempMatrix[iy]?.[ix];
+            let probeMessage = "";
+            if (!tempMatrix) {
+                probeMessage = "No reading available";
+            } else {
 
-                setProbeResult({
-                    x: pointer.x,
-                    y: pointer.y,
-                    temperature,
-                });
-            
+                const sampleRadius = thermalSettings.probeRadius; // sample radius of 4 pixels
+                const minX = Math.max(0, ix - sampleRadius);
+                const maxX = Math.min(tempMatrix[0].length - 1, ix + sampleRadius);
+                const minY = Math.max(0, iy - sampleRadius);
+                const maxY = Math.min(tempMatrix.length - 1, iy + sampleRadius);
+
+                const roi = tempMatrix.slice(minY, maxY + 1).map(row => row.slice(minX, maxX + 1));
+
+                let maxTemp = Math.round(10 * Math.max(...roi.flat()) / 10);
+                let minTemp = Math.round(10 * Math.min(...roi.flat()) / 10);
+
+                probeMessage = `Max: ${maxTemp}°C, Min: ${minTemp}°C`;
+
+                console.log("Probe clicked at:", posiOnImageX, posiOnImageY, "Matrix size:", tempMatrix.length, "x", tempMatrix[0].length, "trying to get:", ix, iy);
+                // const temperature = tempMatrix[iy]?.[ix];
+            }
+
+            setProbeResult({
+                x: pointer.x,
+                y: pointer.y,
+                probeMessage: probeMessage,
+            });
+
         }
 
 
@@ -321,8 +378,8 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
                                     <KonvaImage
                                         image={backgroundImage}
                                         scale={{
-                                            x: image ? selectedImage.thermal_data.counterpart_scale : dummy_scale,
-                                            y: image ? selectedImage.thermal_data.counterpart_scale : dummy_scale,
+                                            x: image ? selectedImage.thermal_data.counterpart_scale : fallbackScale,
+                                            y: image ? selectedImage.thermal_data.counterpart_scale : fallbackScale,
                                         }}
                                         x={image ? -((backgroundImage.width * selectedImage.thermal_data.counterpart_scale - image.width)) / 2 : 0}
                                         y={image ? -((backgroundImage.height * selectedImage.thermal_data.counterpart_scale - image.height)) / 2 : 0}
@@ -331,17 +388,44 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
                                 )}
 
                                 {/* Foreground thermal image */}
-                                {image && (
+                                {(image && (!tempMode || (!tempMatrix && tempMode)) || (!thermalSettings.recolor)) && (
                                     <KonvaImage
                                         image={image}
                                         opacity={opacity}
                                     />
                                 )}
+
+
+                                {(tempMatrix && tempMode && thermalSettings.recolor) && (
+                                    <MatrixOverlayImage
+                                        matrix={tempMatrix}
+                                        width={image?.width || containerSize.width}
+                                        height={image?.height || containerSize.height}
+                                        minTemp={thermalSettings.autoTempLimits ? minmaxTemp.min : thermalSettings.minTemp}
+                                        maxTemp={thermalSettings.autoTempLimits ? minmaxTemp.max : thermalSettings.maxTemp}
+                                        colorMap={thermalSettings.colorMap}
+                                        opacity={opacity} // or whatever makes sense
+                                    />
+                                )}
+
+                                {/* {probeResult && (
+                                    <Rect
+                                        x={probeResult.x - 10}
+                                        y={probeResult.y - 10}
+                                        width={8}
+                                        height={8}
+                                        stroke="red"
+                                        strokeWidth={2}
+                                        fill="transparent"
+                                    />
+                                )} */}
+
                             </Layer>
                         </Stage>
+
                         {probeResult && (
                             <>
-                                <Locate className="absolute z-50 stroke-3 w-6 h-6"
+                                <Scan className="absolute z-50 stroke-3 w-6 h-6"
                                     style={{
                                         left: probeResult.x - 12,
                                         top: probeResult.y - 12,
@@ -352,12 +436,12 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
                                     variant="default"
                                     className="absolute z-60 font-semibold text-md"
                                     style={{
-                                        left: probeResult.x + 10,
-                                        top: probeResult.y - 32,
+                                        left: probeResult.x - 84,
+                                        top: probeResult.y + 16,
                                     }}
 
                                 >
-                                    {probeResult.temperature}°C
+                                    {probeResult.probeMessage}
                                 </Badge>
                             </>
                         )}
@@ -385,13 +469,12 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
                                             </div>
                                         </Button> */}
                                         <Button
-                                            variant={tempMode ? "outline" : "default"}
+                                            variant={tempMode ? "active" : "default"}
                                             onClick={() => {
-                                                setTempMode(!tempMode);
-                                                if (!tempMatrix) setTempMode(false); // disable temp mode if no matrix
+                                                setTempMode(!tempMode); // disable temp mode if no matrix
                                                 if (tempMode) setProbeResult(null); // hide popup when disabling
                                             }}
-                                            className="w-7 h-7 p-0 m-0 hover:cursor-pointer"
+                                            className={`w-7 h-7 p-2 m-0 hover:cursor-pointer`}
                                         >
                                             <div className="p-0 m-0 w-full h-full flex items-center justify-center relative">
                                                 {/* <MousePointer2 className="size-4 stroke-2 translate-y-[30%]  translate-x-[30%]" /> */}
@@ -449,11 +532,183 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
                 </div>
 
                 <div className="flex items-center justify-end gap-2">
+                    {selectedImage?.thermal && (
+                    <Button
+                        variant={tempMode ? "active" : "default"}
+                        onClick={() => {
+                            setTempMode(!tempMode); // disable temp mode if no matrix
+                            if (tempMode) setProbeResult(null); // hide popup when disabling
+                        }}
+                        className={`aspect-square w-10 hover:cursor-pointer ${tempMode ? '' : ''}`}
+                    >
+                        <div className="aspect-square p-0 m-0 flex items-center justify-center relative">
+                            {/* <MousePointer2 className="size-4 stroke-2 translate-y-[30%]  translate-x-[30%]" /> */}
+                            <Wand className="size-5 stroke-2 translate-y-[5%]  translate-x-[15%]" />
+                            <Thermometer className="size-[48%] absolute translate-y-[-26%] translate-x-[-50%] stroke-2" />
+                        </div>
+                    </Button> )}
+                    {selectedImage?.thermal && (
+                        <Button variant="outline" onClick={() => setThermalSettingsPopupOpen(true)}>
+                            <Thermometer className="w-4 h-4 mr-2" />
+                            Thermal Settings
+                        </Button>
+                    )}
                     <Button variant="outline" onClick={resetView}>
                         Reset View
                     </Button>
                 </div>
             </div>
+            <ThermalSettingsPopup
+                open={thermalSettingsPopupOpen}
+                onOpenChange={setThermalSettingsPopupOpen}
+                settings={thermalSettings}
+                onSave={handleSettingsSave}
+            />
         </div>
+
     );
 };
+
+
+
+interface MatrixOverlayImageProps {
+    matrix: number[][];
+    width: number;
+    height: number;
+    minTemp: number;
+    maxTemp: number;
+    y?: number;
+    opacity?: number;
+    scale?: { x: number; y: number };
+    colorMap?: string;
+}
+
+function normalizeMatrix(matrix: number[][], minTemp: number, maxTemp: number): number[][] {
+    const min = minTemp;
+    const max = maxTemp;
+    const range = max - min || 1;
+
+    let factor = 255 / range;
+    return matrix.map(row =>
+        row.map(value => Math.round(((value - min) * factor)))
+    );
+}
+
+function matrixToCanvasImage(
+    matrix: number[][],
+    minTemp: number,
+    maxTemp: number,
+    colorMap: string
+): Promise<HTMLImageElement> {
+    const normalized = normalizeMatrix(matrix, minTemp, maxTemp);
+    const canvas = document.createElement("canvas");
+    canvas.width = matrix[0].length;
+    canvas.height = matrix.length;
+    const ctx = canvas.getContext("2d");
+
+    if (!ctx) throw new Error("2D context not available");
+
+    const imageData = ctx.createImageData(canvas.width, canvas.height);
+    let calcColors: (gray: number) => number[];
+    switch (colorMap) {
+
+        case "blackHot":
+            calcColors = (gray) => [255 - gray, 255 - gray, 255 - gray];
+            break;
+        case "ironbow":
+            calcColors = (gray) => [
+                gray,
+                (1 / 256) * gray ** 2,
+                256 * (Math.sin(3 * ((gray / 256) - 1 / 6) * Math.PI) + 1)
+            ];
+            break;
+        case "rainbow":
+            calcColors = (gray) => [
+                256 * (Math.sin(3 * ((gray / 256) - 2 / 6) * Math.PI) + 1),
+                256 * (Math.sin(3 * ((gray / 256)) * Math.PI) + 1),
+                256 * (Math.sin(3 * ((gray / 256) + 1 / 6) * Math.PI) + 1),
+            ];
+            break;
+
+        case "whspecial":
+            calcColors = (gray) => [
+                gray * 2.25,
+                (gray < 100 ? 90 - gray * 2.25 : (gray < 200 ? gray * 2 - 200 : gray)),
+                (gray < 100 ? 90 - gray * 1.75 : (gray < 200 ? gray * 2 - 200 : gray)),
+            ];
+            break;
+        case "whiteHot":
+        default:
+            calcColors = (gray) => [gray, gray, gray];
+            break;
+
+    }
+
+    for (let y = 0; y < canvas.height; y++) {
+        for (let x = 0; x < canvas.width; x++) {
+            const index = (y * canvas.width + x) * 4;
+            const gray = normalized[y][x];
+            const [r, g, b] = calcColors(gray);
+            imageData.data[index] = r;
+            imageData.data[index + 1] = g;
+            imageData.data[index + 2] = b;
+            imageData.data[index + 3] = 255;
+        }
+    }
+
+    ctx.putImageData(imageData, 0, 0);
+
+    return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.src = canvas.toDataURL();
+    });
+}
+
+const MatrixOverlayImage: React.FC<MatrixOverlayImageProps> = ({
+    matrix,
+    width,
+    height,
+    minTemp = 20.0,
+    maxTemp = 100.0,
+    opacity = 1.0,
+    colorMap = "whiteHot",
+}) => {
+    const [image, setImage] = useState<HTMLImageElement | null>(null);
+
+    useEffect(() => {
+        matrixToCanvasImage(matrix, minTemp, maxTemp, colorMap).then(setImage);
+    }, [matrix, matrix[0].length, matrix.length, minTemp, maxTemp, colorMap]);
+
+    if (!image) return null;
+    let scaleX = width / matrix[0].length;
+    let scaleY = height / matrix.length;
+
+    return (
+        <KonvaImage
+            image={image}
+            opacity={opacity}
+            scale={{ x: scaleX, y: scaleY }}
+        />
+    );
+};
+
+export default MatrixOverlayImage;
+
+
+const inMemoryCache: Record<string, number[][]> = {};
+
+export function getCachedMatrix(id: string): number[][] | null {
+    return inMemoryCache[id] || null;
+}
+
+export function setCachedMatrix(id: string, matrix: number[][]) {
+    inMemoryCache[id] = matrix;
+    // Optional: persist to localStorage
+    localStorage.setItem(`tempMatrix:${id}`, JSON.stringify(matrix));
+}
+
+export function getMatrixFromLocalStorage(id: string): number[][] | null {
+    const stored = localStorage.getItem(`tempMatrix:${id}`);
+    return stored ? JSON.parse(stored) : null;
+}

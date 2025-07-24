@@ -68,7 +68,7 @@ export const getMaps = (report_id: number) => fetchJson<{ maps: string[] }>(`/re
 export const getImages = (report_id: number) => fetchJson<{ images: string[] }>(`/images/report/${report_id}`);
 export const getImage = (image_id: number) => fetchJson<{ image: string }>(`/images/${image_id}`);
 export const deleteImage = (image_id: number) => deleteRequest(`/images/${image_id}`);
-export const getThermalMatrix = (image_id: number) => fetchJson<{ image_id: number; matrix: number[][] }>(`/images/${image_id}/thermal_matrix`);
+export const getThermalMatrix = (image_id: number) => fetchJson<{ image_id: number; matrix: number[][]; min_temp: number; max_temp: number }>(`/images/${image_id}/thermal_matrix`);
 
 
 

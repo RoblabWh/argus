@@ -99,9 +99,9 @@ def get_thermal_matrix(image_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Thermal data not available for this image")
 
     #np array
-    thermal_matrix = parse_thermal_image(image.url)
+    thermal_matrix, min_temp, max_temp = parse_thermal_image(image.url)
 
     if hasattr(thermal_matrix, "tolist"):
         thermal_matrix = thermal_matrix.tolist()
 
-    return ThermalMatrixResponse(image_id=image_id, matrix=thermal_matrix)
+    return ThermalMatrixResponse(image_id=image_id, matrix=thermal_matrix, min_temp=min_temp, max_temp=max_temp)

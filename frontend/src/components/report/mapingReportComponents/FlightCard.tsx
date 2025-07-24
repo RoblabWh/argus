@@ -70,7 +70,7 @@ export function FlightCard({ data }: Props) {
             {/* Gradient Overlay */}
             <div className="absolute inset-0 z-10 pointer-events-none bg-gradient-to-l from-white/90 via-white/60 to-white/0 dark:from-gray-900/100 dark:via-gray-900/70 dark:to-gray-900/0" />
 
-            <CardContent className="px-4 py-3 flex flex-col items-start space-y-1 relative z-10">
+            <CardContent className="px-4 pt-3 flex flex-col items-start space-y-1 relative z-10">
                 {/* Header */}
                 <div className="flex justify-between items-start w-full">
                     <div className="text-xl font-semibold">{uav}</div>
