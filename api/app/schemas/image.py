@@ -113,7 +113,7 @@ class ThermalDataBase(BaseModel):
     counterpart_scale: Optional[float] = 1.1
     min_temp: Optional[float] = None
     max_temp: Optional[float] = None
-    temp_matrix: Optional[List[List[float]]] = None  # Stored as JSONB in the database
+    temp_matrix_path: Optional[str] = None  # Path to the .npy file containing the thermal matrix
     temp_embedded: Optional[bool] = True
     temp_unit: Optional[str] = "C"
     lut_name: Optional[str] = None
@@ -127,7 +127,7 @@ class ThermalDataUpdate(BaseModel):
     counterpart_scale: Optional[float] = None
     min_temp: Optional[float] = None
     max_temp: Optional[float] = None
-    temp_matrix: Optional[List[List[float]]] = None  # Stored as JSONB in the database
+    temp_matrix_path: Optional[str] = None  # Path to the .npy file containing the thermal matrix
     temp_embedded: Optional[bool] = True
     temp_unit: Optional[str] = None
     lut_name: Optional[str] = None

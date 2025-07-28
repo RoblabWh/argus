@@ -451,18 +451,18 @@ class Thermal:
             self._filepath_iirp,
             self._filepath_exiftool,
         ) = get_default_filepaths()
-        print(f'loaded DJI SDK: {self._filepath_dirp}, {self._filepath_dirp_sub}, {self._filepath_iirp}, {self._filepath_exiftool}')
+        # print(f'loaded DJI SDK: {self._filepath_dirp}, {self._filepath_dirp_sub}, {self._filepath_iirp}, {self._filepath_exiftool}')
         # self._filepath_dirp = "./plugins/dji_thermal_sdk_v1.7_20241205/linux/release_x64/libdirp.so" 
         # self._filepath_dirp_sub = "./plugins/dji_thermal_sdk_v1.7_20241205/linux/release_x64/libdirp_sub.so"
         # self._filepath_iirp = "./plugins/dji_thermal_sdk_v1.7_20241205/linux/release_x64/libiirp.so"
         # self._filepath_exiftool = "./plugins/dji_thermal_sdk_v1.7_20241205/linux/release_x64/libexiftool.so"
 
         try:
-            print(self._filepath_dirp)
+            # print(self._filepath_dirp)
             self._dll_dirp = CDLL(self._filepath_dirp)
-            print(self._filepath_dirp_sub)
+            # print(self._filepath_dirp_sub)
             self._dll_dirp_sub = CDLL(self._filepath_dirp_sub)
-            print(self._filepath_iirp)
+            # print(self._filepath_iirp)
             self._dll_iirp = CDLL(self._filepath_iirp)
         except OSError:
             print('Unable to load the system C library')
@@ -804,8 +804,8 @@ class Thermal:
         rjpeg_resolotion = dirp_resolotion_t()
 
         return_status = self._dirp_create_from_rjpeg(raw_c_uint8, raw_size, handle)
-        print(f'dirp_create_from_rjpeg: {return_status}')
-        print(filepath_image, os.path.exists(filepath_image))
+        # print(f'dirp_create_from_rjpeg: {return_status}')
+        # print(filepath_image, os.path.exists(filepath_image))
         assert return_status == Thermal.DIRP_SUCCESS, f'dirp_create_from_rjpeg error {filepath_image}:{return_status}'
         assert self._dirp_get_rjpeg_version(handle, rjpeg_version) == Thermal.DIRP_SUCCESS
         assert self._dirp_get_rjpeg_resolution(handle, rjpeg_resolotion) == Thermal.DIRP_SUCCESS

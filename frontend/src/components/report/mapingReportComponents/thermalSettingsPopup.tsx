@@ -109,9 +109,11 @@ export function ThermalSettingsPopup({ open, onOpenChange, settings, onSave }: T
                                     <SelectContent>
                                         <SelectItem value="whiteHot">White Hot</SelectItem>
                                         <SelectItem value="blackHot">Black Hot</SelectItem>
-                                        <SelectItem value="ironbow">Ironhot</SelectItem>
+                                        <SelectItem value="ironRed">Iron Red</SelectItem>
                                         <SelectItem value="rainbow">Rainbow</SelectItem>
+                                        <SelectItem value="rainbowIsh">Rainbow-ish</SelectItem>
                                         <SelectItem value="whspecial">WHspecial</SelectItem>
+                                        <SelectItem value="minmax">Highlight Min-Max</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>

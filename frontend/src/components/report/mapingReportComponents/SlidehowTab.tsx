@@ -5,12 +5,13 @@ import { ThermalSettingsPopup } from "./thermalSettingsPopup";
 import useImage from "use-image";
 import { useThermalMatrix } from "@/hooks/useThermalMatrix";
 import { getApiUrl } from "@/api";
-import { Button } from "@/components/ui/button";
-import { Slider } from "@/components/ui/slider";
 import { Separator } from "@/components/ui/separator";
+import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { ButtonToggle } from "@/components/ui/button-toggle";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
-import { ChevronLeft, ChevronRight, Thermometer, Scan, Locate, MousePointer2, Wand } from "lucide-react";
+import { ChevronLeft, ChevronRight, Thermometer, Scan, Locate, MousePointer2, Wand, Settings } from "lucide-react";
 import { useAspectRatio } from "@/hooks/useAspectRatio";
 import { set } from "date-fns";
 import { m } from "motion/react";
@@ -77,12 +78,18 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
 
     useEffect(() => {
         if (data && selectedImage?.id === data.image_id) {
-            setTempMatrix(data.matrix);
-            let minTemp = data.min_temp || 20.0;
-            let maxTemp = data.max_temp || 100.0;
-            console.log("Thermal matrix loaded for image:", selectedImage.id, "Min Temp:", minTemp, "Max Temp:", maxTemp);
-            // Optionally, you can set min/max
-            setMinMaxTemp({ min: minTemp, max: maxTemp });
+            if (error) {
+                // console.error("Error loading thermal matrix:", error);
+                setTempMatrix(null);
+                setMinMaxTemp({ min: 20, max: 100 });
+            } else if (data.matrix) {
+                setTempMatrix(data.matrix);
+                let minTemp = data.min_temp || 20.0;
+                let maxTemp = data.max_temp || 100.0;
+                console.log("Thermal matrix loaded for image:", selectedImage.id, "Min Temp:", minTemp, "Max Temp:", maxTemp);
+                // Optionally, you can set min/max
+                setMinMaxTemp({ min: minTemp, max: maxTemp });
+            }
         } else {
             setTempMatrix(null);
         }
@@ -158,7 +165,6 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
                 setTempMatrix(null);
             }
         } else {
-            setTempMode(false); // reset temp mode
             setBackgroundImageUrl(null);
             setBackgroundImageName(null);
             setOpacity(1.0);
@@ -294,7 +300,7 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
 
         if (posiOnImageX < 0 || posiOnImageX > imageWidth || posiOnImageY < 0 || posiOnImageY > imageHeight) return;
 
-        if (tempMode) {//&& tempMatrix) {
+        if (tempMode && selectedImage?.thermal) {//&& tempMatrix) {
             const ix = Math.floor(posiOnImageX / 2);
             const iy = Math.floor(posiOnImageY / 2);
 
@@ -425,11 +431,13 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
 
                         {probeResult && (
                             <>
-                                <Scan className="absolute z-50 stroke-3 w-6 h-6"
+                                <Scan className="absolute z-50 stroke-3 w-6 h-6 text-teal-400"
                                     style={{
                                         left: probeResult.x - 12,
                                         top: probeResult.y - 12,
                                         pointerEvents: "none",
+                                        mixBlendMode: "plus-darker",
+
                                     }}
                                 />
                                 <Badge
@@ -453,7 +461,7 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
                                     {/* Toggle Button */}
                                     <button
                                         onClick={() => setShowOpacityPanel(!showOpacityPanel)}
-                                        className={`w-8 ${showOpacityPanel ? 'h-5' : 'h-6'} bg-white dark:bg-gray-800  rounded-t-md flex items-center justify-center text-xs `}
+                                        className={`w-8 ${showOpacityPanel ? 'h-5 hover:h-6' : 'h-6'} bg-white dark:bg-gray-800 rounded-t-md flex items-center justify-center text-xs hover:cursor-pointer duration-300`}
                                     >
                                         {showOpacityPanel ? "▼" : "▲"}
                                     </button>
@@ -461,31 +469,7 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
                                 <div
                                     className={`flex flex-row bg-white dark:bg-gray-800 rounded-lg px-2 py-2 shadow-lg relative gap-2 h-10 w.full ${showOpacityPanel ? 'display-block' : 'hidden'} transition-opacity duration-300 `}
                                 >
-                                    <div className="flex flex-row items-center justify-center gap-2">
-                                        {/* <Button variant="outline" onClick={() => console.log("Locate clicked")} className="w-8 h-8 p-0 m-0">
-                                            <div className="p-0 m-0 w-full h-full flex items-center justify-center relative">
-                                                <Locate className="size-8 stroke-1" />
-                                                <Thermometer className="size4 absolute translate-y-[0%] translate-x-[0%] stroke-2" />
-                                            </div>
-                                        </Button> */}
-                                        <Button
-                                            variant={tempMode ? "active" : "default"}
-                                            onClick={() => {
-                                                setTempMode(!tempMode); // disable temp mode if no matrix
-                                                if (tempMode) setProbeResult(null); // hide popup when disabling
-                                            }}
-                                            className={`w-7 h-7 p-2 m-0 hover:cursor-pointer`}
-                                        >
-                                            <div className="p-0 m-0 w-full h-full flex items-center justify-center relative">
-                                                {/* <MousePointer2 className="size-4 stroke-2 translate-y-[30%]  translate-x-[30%]" /> */}
-                                                <Wand className="size-5 stroke-2 translate-y-[5%]  translate-x-[15%]" />
-                                                <Thermometer className="size-[48%] absolute translate-y-[-26%] translate-x-[-50%] stroke-2" />
-                                            </div>
-                                        </Button>
-                                        <span className="text-xs whitespace-nowrap">Temp-Probe</span>
-                                    </div>
 
-                                    <Separator orientation="vertical" className="mx-2 bg-black dark:bg-white" />
 
                                     <div className="flex flex-row items-center justify-center w-full gap-2">
 
@@ -511,7 +495,7 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
             </div>
 
             <div className="grid grid-cols-3 items-center justify-between mt-4 p-4 w-full bg-white dark:bg-gray-800">
-                <Tooltip className="flex justify-start">
+                <Tooltip>
                     <TooltipTrigger className="flex justify-start">
                         <div className="text-sm text-muted-foreground whitespace-nowrap overflow-hidden text-ellipsis">
                             {selectedImage?.filename ?? ""} {backgroundImageName ? `(${backgroundImageName})` : ""}
@@ -522,7 +506,7 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
                     </TooltipContent>
                 </Tooltip>
 
-                <div className="flex items-center gap-4 w-full justify-center">
+                <div className="flex items-center gap-2 w-full justify-center">
                     <Button variant="default" onClick={previousImage} className="aspect-square">
                         <ChevronLeft />
                     </Button>
@@ -531,28 +515,29 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
                     </Button>
                 </div>
 
-                <div className="flex items-center justify-end gap-2">
-                    {selectedImage?.thermal && (
-                    <Button
-                        variant={tempMode ? "active" : "default"}
-                        onClick={() => {
-                            setTempMode(!tempMode); // disable temp mode if no matrix
-                            if (tempMode) setProbeResult(null); // hide popup when disabling
-                        }}
-                        className={`aspect-square w-10 hover:cursor-pointer ${tempMode ? '' : ''}`}
-                    >
-                        <div className="aspect-square p-0 m-0 flex items-center justify-center relative">
-                            {/* <MousePointer2 className="size-4 stroke-2 translate-y-[30%]  translate-x-[30%]" /> */}
-                            <Wand className="size-5 stroke-2 translate-y-[5%]  translate-x-[15%]" />
-                            <Thermometer className="size-[48%] absolute translate-y-[-26%] translate-x-[-50%] stroke-2" />
-                        </div>
-                    </Button> )}
-                    {selectedImage?.thermal && (
-                        <Button variant="outline" onClick={() => setThermalSettingsPopupOpen(true)}>
-                            <Thermometer className="w-4 h-4 mr-2" />
-                            Thermal Settings
+                <div className="flex items-center justify-end gap-2 h-6">
+                    <div className={`flex items-center gap-2 ${!selectedImage?.thermal ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                        <ButtonToggle
+                            isDisabled={!selectedImage?.thermal}
+                            icon={Thermometer}
+                            label="Analysis"
+                            isToggled={tempMode}
+                            setIsToggled={() => {
+                                setTempMode(!tempMode); // disable temp mode if no matrix
+                                if (tempMode) setProbeResult(null); // hide popup when disabling
+                            }}
+                        />
+
+                        <Button variant="outline" onClick={() => setThermalSettingsPopupOpen(true)}
+                            className={`gap-0 ${!selectedImage?.thermal ? 'opacity-50 cursor-not-allowed' : ''}`} disabled={!selectedImage?.thermal}
+                        >
+                            <Thermometer className="w-4 h-4 pr-0 mr-0" />
+                            <Settings className="w-4 h-4 z-10" />
                         </Button>
-                    )}
+                        <Separator orientation="vertical" className="h-6" />
+
+                    </div>
+
                     <Button variant="outline" onClick={resetView}>
                         Reset View
                     </Button>
@@ -608,6 +593,8 @@ function matrixToCanvasImage(
 
     if (!ctx) throw new Error("2D context not available");
 
+    console.log(normalized)
+
     const imageData = ctx.createImageData(canvas.width, canvas.height);
     let calcColors: (gray: number) => number[];
     switch (colorMap) {
@@ -622,12 +609,71 @@ function matrixToCanvasImage(
                 256 * (Math.sin(3 * ((gray / 256) - 1 / 6) * Math.PI) + 1)
             ];
             break;
+        case "ironRed":
+            calcColors = (gray) => {
+                //based und hsv going from 0(hue of blue) to 1(hue of  yellow), with 100% saturation and constant rising value
+                var h = gray / 256 / 1.25 + 0.55; // hue from 0 to 1
+                if (h > 1) h -= 1; // wrap around
+                var s = 1.0;
+                var l = gray / 256;
+                var r, g, b;
+
+                function hue2rgb(p, q, t) {
+                    if (t < 0) t += 1;
+                    if (t > 1) t -= 1;
+                    if (t < 1 / 6) return p + (q - p) * 6 * t;
+                    if (t < 1 / 2) return q;
+                    if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+                    return p;
+                }
+
+                var q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+                var p = 2 * l - q;
+
+                r = hue2rgb(p, q, h + 1 / 3);
+                g = hue2rgb(p, q, h);
+                b = hue2rgb(p, q, h - 1 / 3);
+                return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
+            }
+            break;
+        case "rainbowIsh":
+            calcColors = (gray) => {
+                gray = (gray < 0) ? 0 : (gray > 255) ? 255 : gray;
+                //clip grey to 0-1.0 range
+                return [
+                    128 * (Math.sin(((gray / 256) - 1 / 2) * Math.PI) + 1),
+                    128 * (Math.sin(((gray / 256)) * Math.PI) + 1),
+                    128 * (Math.sin(((gray / 256) + 1 / 2) * Math.PI) + 1),
+                ];
+            };
+            break;
         case "rainbow":
-            calcColors = (gray) => [
-                256 * (Math.sin(3 * ((gray / 256) - 2 / 6) * Math.PI) + 1),
-                256 * (Math.sin(3 * ((gray / 256)) * Math.PI) + 1),
-                256 * (Math.sin(3 * ((gray / 256) + 1 / 6) * Math.PI) + 1),
-            ];
+            calcColors = (gray) => {
+                gray = (gray < 0) ? 0 : (gray > 255) ? 255 : gray;
+                //clip grey to 0-1.0 range
+                gray /= 256;
+                var h, l, s, r, g, b;
+                l = gray < 0.1 ? 0.25 + gray * 2.5 : 0.5; // value (brightness) clamped to 0.1-1.0
+                s = 1.0;
+                h = 1 - gray; //
+
+                function hue2rgb(p, q, t) {
+                    if (t < 0) t += 1;
+                    if (t > 1) t -= 1;
+                    if (t < 1 / 6) return p + (q - p) * 6 * t;
+                    if (t < 1 / 2) return q;
+                    if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+                    return p;
+                }
+
+                var q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+                var p = 2 * l - q;
+
+                r = hue2rgb(p, q, h + 1 / 3);
+                g = hue2rgb(p, q, h);
+                b = hue2rgb(p, q, h - 1 / 3);
+                return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
+            }
             break;
 
         case "whspecial":
@@ -636,6 +682,31 @@ function matrixToCanvasImage(
                 (gray < 100 ? 90 - gray * 2.25 : (gray < 200 ? gray * 2 - 200 : gray)),
                 (gray < 100 ? 90 - gray * 1.75 : (gray < 200 ? gray * 2 - 200 : gray)),
             ];
+            break;
+        case "minmax":
+            calcColors = (gray) => {
+                gray = (gray < 0) ? 0 : (gray > 255) ? 255 : gray;
+                //clip grey to 0-1.0 range
+                gray /= 256;
+                if (gray > 0.95) {
+                    return [
+                        255 * gray,
+                        0,
+                        0,
+                    ];
+                } else if (gray < 0.05) {
+                    return [
+                        0,
+                        0,
+                        255 * gray * 10,
+                    ];
+                }
+                return [
+                    255 * gray * 0.2,
+                    255 * gray * 0.2,
+                    255 * gray * 0.2,
+                ];
+            };
             break;
         case "whiteHot":
         default:
@@ -652,7 +723,8 @@ function matrixToCanvasImage(
             imageData.data[index] = r;
             imageData.data[index + 1] = g;
             imageData.data[index + 2] = b;
-            imageData.data[index + 3] = 255;
+            let alpha = gray > 1.0 ? 255 : Math.round((1) * 255);
+            imageData.data[index + 3] = alpha;
         }
     }
 

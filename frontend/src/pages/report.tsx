@@ -87,7 +87,7 @@ export default function ReportOverview() {
           if (polledData.progress !== prevStatusRef.current.progress) {
             console.log("Detected progress change. Refetching maps...");
             //in the future only replace maps with the new data
-            refetchFullReport();
+            //refetchFullReport();
           }
         }
       }

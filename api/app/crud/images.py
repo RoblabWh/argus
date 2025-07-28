@@ -105,3 +105,13 @@ def delete_all_thermal_data(db: Session):
     db.query(models.ThermalData).delete()
     db.commit()
     return {"status": "success", "message": "All thermal data deleted successfully"}
+
+def update_thermal_matrix_path(db: Session, image_id: int, new_path: str):
+    thermal_data = db.query(models.ThermalData).filter(models.ThermalData.image_id == image_id).first()
+    if not thermal_data:
+        raise ValueError("Thermal data not found for this image")
+
+    thermal_data.temp_matrix_path = new_path
+    db.commit()
+    db.refresh(thermal_data)
+    return thermal_data

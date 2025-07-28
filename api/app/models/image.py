@@ -68,7 +68,7 @@ class ThermalData(Base):
     counterpart_scale = Column(Float, default=1.1)
     min_temp = Column(Float)
     max_temp = Column(Float)
-    temp_matrix = Column(JSONB)
+    temp_matrix_path = Column(String, nullable=True)  # Path to the .npy file containing the thermal matrix
     temp_embedded = Column(Boolean, default=True)
     temp_unit = Column(String, default="C")
     lut_name = Column(String, nullable=True)

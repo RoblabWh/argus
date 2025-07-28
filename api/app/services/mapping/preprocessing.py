@@ -6,6 +6,8 @@ from sqlalchemy.orm import Session
 
 import logging
 
+from app.config import UPLOAD_DIR
+
 from app.schemas.report import ProcessingSettings, MappingReportUpdate
 from app.schemas.image import ImageOut, ThermalDataCreate
 from app.schemas.weather import WeatherUpdate, WeatherCreate
@@ -13,19 +15,24 @@ from app.config import OPEN_WEATHER_API_KEY
 import app.crud.report as crud_report
 import app.crud.weather as crud_weather
 import app.crud.images as crud_image
-
+import app.services.thermal.thermal_processing as thermal_processing
+from app.services.mapping.progress_updater import ProgressUpdater
 
 logger = logging.getLogger(__name__)
 
-def preprocess_report(report_id: int, images: list[ImageOut], settings: ProcessingSettings, db, update_progress_func: callable = None):
+def preprocess_report(report_id: int, images: list[ImageOut], settings: ProcessingSettings, db, progress_updater: ProgressUpdater):
     settings = settings.dict() if isinstance(settings, ProcessingSettings) else settings
     # crud_image.delete_all_thermal_data(db)  # Clear old thermal data before processing new images
     if not images or len(images) == 0:
         raise ValueError("No images provided for preprocessing.")
+
+    # Step 1 process thermal images (30%)
+    images = _process_thermal_images(images, report_id, db, progress_updater)
+    progress_updater.update_progress("preprocessing", 33.0)
     
-    images = _process_thermal_images(images, report_id, db)
 
 
+    # Step 2 extract Flight Data (33-50%)
     images.sort(key=lambda x: x.created_at)
     logger.info(f"Preprocessing report {report_id} with {len(images)} images.")
     reference_image = _find_first_image_with_gps(images)
@@ -39,7 +46,6 @@ def preprocess_report(report_id: int, images: list[ImageOut], settings: Processi
     else:
         settings["keep_weather"] = False
 
-
     coord = None
     address = "Unknown Location"
     weather_data = None
@@ -50,9 +56,8 @@ def preprocess_report(report_id: int, images: list[ImageOut], settings: Processi
             weather_data = _get_weather_data(reference_image)
             if weather_data:
                 weather_data["mapping_report_id"] = mapping_report_id
+    progress_updater.update_progress("preprocessing", 40.0)
 
-    if update_progress_func:
-        update_progress_func(report_id, "preprocessing", 10.0, db)
 
     flight_timestamp = images[0].created_at
     flight_duration = _calculate_flight_duration(images)
@@ -73,6 +78,8 @@ def preprocess_report(report_id: int, images: list[ImageOut], settings: Processi
     mapping_report_update = MappingReportUpdate(**mapping_report_data)
     # save extracted data to the database
     updated_report = crud_report.update_mapping_report(db, report_id, mapping_report_update)
+    progress_updater.update_progress("preprocessing", 46.0)
+
 
     if weather_data:
         if weather_id:
@@ -83,25 +90,26 @@ def preprocess_report(report_id: int, images: list[ImageOut], settings: Processi
             # if no weather data exists, create new one
             weather_data = WeatherCreate(**weather_data)
             weather_data = crud_weather.create_weather_data(db, mapping_report_id, weather_data)
+    progress_updater.update_progress("preprocessing", 55.0)
 
 
-    if update_progress_func:
-        update_progress_func(report_id, "preprocessing", 20.0, db)
 
-
+    # Step 3 extract UAV/ Flight Data (55-70%)
     panos, rest = _filter_pano_images(images)
-    if update_progress_func:
-        update_progress_func(report_id, "preprocessing", 30.0, db)
+    progress_updater.update_progress("preprocessing", 66.0)
 
 
+
+    # Step 4 filter mapping images and build mapping jobs (70-96%)
     mapping_images_ir, mapping_images_rgb = _filter_mapping_images(rest, settings)
-    if update_progress_func:
-        update_progress_func(report_id, "preprocessing", 50.0, db)
-
     logger.info(f"Found {len(panos)} panoramic images and {len(mapping_images_ir)} IR mapping images, {len(mapping_images_rgb)} RGB mapping images.")
+    progress_updater.update_progress("preprocessing", 80.0)
+    
 
     mapping_jobs = _split_mapping_jobs(mapping_images_rgb) + _split_mapping_jobs(mapping_images_ir)
     mapping_jobs = _set_bounds_and_corners_per_job(mapping_jobs)
+    progress_updater.update_progress("preprocessing", 96.0)
+
 
     #return mapping_selections
     logger.info(f"Preprocessing completed for report {report_id}. Found {len(mapping_jobs)} mapping jobs.")
@@ -462,7 +470,7 @@ def _set_bounds_and_corners_per_job(mapping_jobs: list[dict]) -> list[dict]:
     return mapping_jobs
 
 
-def _process_thermal_images(images: list[ImageOut], report_id: int, db: Session):
+def _process_thermal_images(images: list[ImageOut], report_id: int, db: Session, progress_updater: ProgressUpdater):
     #find couples of thermal and RGB images, based on the time difference. all images taken within 2 seconds are considered a couple
     images.sort(key=lambda x: x.created_at)
     thermal_images = [img for img in images if img.thermal]
@@ -472,9 +480,10 @@ def _process_thermal_images(images: list[ImageOut], report_id: int, db: Session)
     with open("app/cameramodels.json", "r") as file:
         camera_specific_keys = json.load(file)
 
+    total_ir_images = len(thermal_images)
     thermal_data_list = []
     while True:
-        if not thermal_images or not rgb_images:
+        if not thermal_images:
             break
 
         smallest_diff = float('inf')
@@ -482,18 +491,19 @@ def _process_thermal_images(images: list[ImageOut], report_id: int, db: Session)
         thermal_image = thermal_images.pop(0)
         counterpart = None
         
-        for i, rgb_image in enumerate(rgb_images):
-            
-            time_diff = abs((thermal_image.created_at - rgb_image.created_at).total_seconds())
-            
-            if time_diff <= 2: #Threshold of 2 seconds
+        if rgb_images and len(rgb_images) > 0:
+            for i, rgb_image in enumerate(rgb_images):
                 
-                if time_diff < smallest_diff:
-                    smallest_diff = time_diff
-                    closest_rgb_image_index = i
+                time_diff = abs((thermal_image.created_at - rgb_image.created_at).total_seconds())
 
-            elif closest_rgb_image_index != -1: # If we already found a close RGB image, we can break the loop, since the list is sorted by created_at the difference will only increase
-                break
+                if time_diff <= 2:  # Threshold of 2 seconds
+
+                    if time_diff < smallest_diff:
+                        smallest_diff = time_diff
+                        closest_rgb_image_index = i
+
+                elif closest_rgb_image_index != -1: # If we already found a close RGB image, we can break the loop, since the list is sorted by created_at the difference will only increase
+                    break
 
         if closest_rgb_image_index != -1:
             counterpart = rgb_images[closest_rgb_image_index]
@@ -504,20 +514,31 @@ def _process_thermal_images(images: list[ImageOut], report_id: int, db: Session)
             scale = camera_specific_keys[camera_model]["ir_scale"]
         else:
             scale = camera_specific_keys.get("default", {})['ir'].get("ir_scale", 0.4)
-        
+
+        # process thermal matrix
+        target_path = UPLOAD_DIR / str(report_id) / "thermal" / f"{thermal_image.id}.npy"
+        # check if the target file already exist from past processing
+        if target_path.exists():
+            thermal_matrix = thermal_processing.load_temperature_matrix(target_path)
+            min_temp, max_temp = thermal_processing.get_temperature_range(thermal_matrix)
+        else:
+            min_temp, max_temp = thermal_processing.process_thermal_image(thermal_image.url, target_path)
+
         thermal_data = ThermalDataCreate(
             image_id=thermal_image.id,
             counterpart_id=counterpart.id if counterpart else None,  # link to the RGB image
             counterpart_scale=scale,  # default value, can be adjusted later
-            min_temp=0,
-            max_temp=100,
-            # temp_matrix=None,
+            min_temp=min_temp,
+            max_temp=max_temp,
+            temp_matrix_path=str(target_path),
             temp_embedded=True,
             # temp_unit="C",
             lut_name="white_hot"
         )
         thermal_data_list.append(thermal_data)
 
+        if len(thermal_images) % 10 == 0:
+            progress_updater.update_partial_progress("preprocessing", 5.0, 30.0, total_ir_images, len(thermal_data_list)) 
         
 
     # bulk insert thermal data

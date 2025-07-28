@@ -153,9 +153,9 @@ def get_process_status(db: Session, report_id: int, r: redis.Redis):
                 report.progress = 0.0
                 db.commit()
                 return {"status": "failed", "progress": 0.0}
-            print(f"Task ID for report {report_id}: {task_id.decode('utf-8')}")
+            # print(f"Task ID for report {report_id}: {task_id.decode('utf-8')}")
             task_status = r.get(f"report:{report_id}:progress")
-            print(f"Task status for report {report_id}: {task_status}")
+            # print(f"Task status for report {report_id}: {task_status}")
             if task_status is None:
                 # no progress found, set status to failed
                 report.status = "failed"

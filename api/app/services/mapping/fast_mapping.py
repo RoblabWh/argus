@@ -7,6 +7,7 @@ from app.config import UPLOAD_DIR
 from app.schemas.image import ImageOut, MappingDataOut
 from app.schemas.map import MapCreate, MapElementCreate
 from app.schemas.report import ProcessingSettings
+from app.services.mapping.progress_updater import ProgressUpdater
 import app.crud.map as crud
 import logging
 
@@ -90,17 +91,12 @@ class Map_Element:
 
 
 
- 
-def map_images(report_id: int, mapping_report_id: int, mapping_selection: dict, settings: dict, db, update_progress_func=None, total_maps=1, map_index=0):
-    # Simulate image mapping logic
-    # logger.info(f"Mapping images for report {report_id} with selection {mapping_selection}")
-    start_progress = 0.0 if map_index == 0 else 100.0 * map_index / total_maps
 
+def map_images(report_id: int, mapping_report_id: int, mapping_selection: dict, settings: dict, db, progress_updater: ProgressUpdater, map_index=0):
     settings = settings.dict() if isinstance(settings, ProcessingSettings) else settings
+    progress_updater.update_progress_of_map("processing", 1.0)
 
-    # generate a map element for very image in mapping_selection 
-    # calculate the utm corners of the image based on the mapping selection in parallel using multiprocessing pool
-    # with Pool(processes=int(os.cpu_count()/2)) as pool:
+    # loading all mapping data for the images
     dicts = []
     for image in mapping_selection['images']:
         if image.mapping_data:
@@ -111,48 +107,52 @@ def map_images(report_id: int, mapping_report_id: int, mapping_selection: dict, 
         image_dict = ImageOut.from_orm(image).dict()
         image_dict["mapping_data"] = mapping_data_out.dict() if mapping_data_out else None
         dicts.append(image_dict)
+    progress_updater.update_progress_of_map("processing", 3.0)
 
+
+    # Calculate the reference yaw based on the images in the mapping selection 
     reference_yaw = calculate_reference_yaw(mapping_selection['images'])
-    params = [(image, reference_yaw) for image in dicts]
 
+    # generating map elements from the images
+    params = [(image, reference_yaw) for image in dicts]
     with Pool(processes=8) as pool:
         map_elements = pool.starmap(calculate_utm_corners, params)
-
+    
     for i, element in enumerate(map_elements):
         element.index = i
+    progress_updater.update_progress_of_map("processing", 20.0)
+
     
+    # determine the bounds of the map based on the map elements (based on utm image corners)
     bounds = _find_map_bounds(map_elements)
+    progress_updater.update_progress_of_map("processing", 25.0)
 
-    if update_progress_func:
-        progress = (20.0 / total_maps) + start_progress
-        update_progress_func(report_id, "processing", progress, db)
-
+    # convert the map elements to pixel coordinates based the target resolution
     map_width, map_height = calculate_px_coords(map_elements, settings['target_map_resolution'])
+    progress_updater.update_progress_of_map("processing", 30.0)
 
-    if update_progress_func:
-        progress = (40.0 / total_maps) + start_progress
-        update_progress_func(report_id, "processing", progress, db)
+    # testing cv and file saving
+    # map_img = draw_test_map(map_elements, map_width, map_height)
+    # file_path = UPLOAD_DIR / str(report_id) / f"map_{map_index}.png"
+    # save_map_image(map_img, file_path)
+    # logger.info(f"Map image for report {report_id} saved as {file_path}")
 
-    # The map elements should contain the utm corners and px corners of each image based on the orientation, position, pov and image size
-    # based on the map elements, a mask layer similar to a voronoi texture is created
-
-    map_img = draw_test_map(map_elements, map_width, map_height)
-    file_path = UPLOAD_DIR / str(report_id) / f"map_{map_index}.png"
-    save_map_image(map_img, file_path)
-    logger.info(f"Map image for report {report_id} saved as {file_path}")
-
+    # calculating images masks with the voronoi algorithm on a downscaled version of the map
     voronoi = calc_voronoi_mask(map_elements, map_width, map_height, performance_factor=8)
-
-    map = draw_map(map_elements, voronoi, map_width, map_height)
-    # map = rotate_to_north(map, bounds)
-    file_path = UPLOAD_DIR / str(report_id) / f"final_map_{map_index}.png"
-    save_map_image(map, file_path)
-
     # file_path = UPLOAD_DIR / str(report_id) / f"voronoi_{map_index}.png"
     # draw_and_save_voronoi_mask(voronoi, file_path)
+    progress_updater.update_progress_of_map("processing", 50.0)
 
+
+
+    # draw map in batches combining map elements and voronoi mask
+    map = draw_map(map_elements, voronoi, map_width, map_height, progress_updater)
+    file_path = UPLOAD_DIR / str(report_id) / f"final_map_{map_index}.png"
+    save_map_image(map, file_path)
     logger.info(f"Final map for report {report_id} saved as {file_path}")
-    #store data in database
+
+
+    #store map data in database
     map_data = MapCreate(
         mapping_report_id=mapping_report_id,
         name=f"fast_{mapping_selection['type']}_{map_index}",
@@ -163,14 +163,14 @@ def map_images(report_id: int, mapping_report_id: int, mapping_selection: dict, 
     logger.info(f"Creating map in database for report {report_id} with data: {map_data}")
     map = crud.create(db, map_data)
 
+
+    # store map elements in database
     map_elements_to_store = [element.generate_database_map_element(_utm_to_lat_lon, map.id) for element in map_elements]
     logger.info(f"Storing {len(map_elements_to_store)} map elements in database for map {map.id}")
     crud.create_multiple_map_elements(db, map.id, map_elements_to_store)
 
-    # Update progress if a function is provided
-    if update_progress_func:
-        progress = (100.0 / total_maps) + start_progress
-        update_progress_func(report_id, "processing", progress, db)
+    progress_updater.update_progress_of_map("processing", 100.0)
+    
 
 
 def calculate_reference_yaw(images: list[ImageOut]) -> float:
@@ -384,7 +384,7 @@ def draw_and_save_voronoi_mask(voronoi_mask, file_path):
     # Save the image
     save_map_image(image, file_path)
 
-def draw_map(map_elements, voronoi_mask, map_width, map_height):
+def draw_map(map_elements, voronoi_mask, map_width, map_height, progress_updater):
     map_img = np.zeros((map_height, map_width, 4), dtype=np.uint8)
 
     batch_size = 32
@@ -397,7 +397,6 @@ def draw_map(map_elements, voronoi_mask, map_width, map_height):
         
         # with Pool(processes=8) as pool:
         #     map_elements_with_images = pool.map(load_and_transform_images, batch)
-        
         
         logger.info(f"Starting batch {i + 1}/{len(map_elements_batches)}")
         for attempt in range(MAX_RETRIES):
@@ -413,6 +412,8 @@ def draw_map(map_elements, voronoi_mask, map_width, map_height):
                 logger.error(f"Batch {i + 1} failed after {MAX_RETRIES} attempts")
                 raise TimeoutError("Giving up on this batch")
         logger.info(f"Completed loading batch {i + 1}")
+        progress_updater.update_progress_of_map("processing", 50 + (i+1 / len(map_elements_batches)*40))
+
 
         for element in map_elements_with_images:
             x1, y1, x2, y2 = element.get_bounds()
@@ -429,6 +430,8 @@ def draw_map(map_elements, voronoi_mask, map_width, map_height):
             merged_roi = np.where(voronoi_roi == index, image, map_img[y1:y2, x1:x2])
             map_img[y1:y2, x1:x2] = merged_roi
             element.clear_image_matrix()  # Clear the image matrix to free memory
+        progress_updater.update_progress_of_map("processing", 50 + (i+1 / len(map_elements_batches)*45))
+
 
     return map_img
 

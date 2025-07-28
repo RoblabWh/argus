@@ -32,7 +32,23 @@ export function TabArea({ report, filteredImages , selectedImage, setSelectedIma
     if (!filteredImages || filteredImages.length === 0) return;
     const currentIndex = filteredImages.findIndex(img => img.url === selectedImage?.url);
     if (currentIndex === -1) {
-      setSelectedImage(filteredImages[0]);
+      //try finding the closest image in the selection
+      // calc date time difference between selectedImage and each image in filteredImages
+      const closestImage = filteredImages.reduce((prev, curr) => {
+        const prevDate = new Date(prev.created_at);
+        const currDate = new Date(curr.created_at);
+        const selectedDate = new Date(selectedImage?.created_at || 0);
+        const prevDiff = Math.abs(prevDate.getTime() - selectedDate.getTime());
+        const currDiff = Math.abs(currDate.getTime() - selectedDate.getTime());
+        return currDiff < prevDiff ? curr : prev;
+      });
+      setSelectedImage(closestImage);
+      if (!closestImage) {
+        setSelectedImage(filteredImages[0]);
+        console.error("No closest image found");
+        return;
+      }
+      
       return;
     }
     if (currentIndex === -1) return;

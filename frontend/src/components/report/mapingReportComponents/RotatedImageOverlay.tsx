@@ -13,22 +13,30 @@ type Props = {
 export function RotatedImageOverlay({ url, corners, opacity = 1.0 }: Props) {
     const context = useLeafletContext();
     const overlayRef = useRef<L.ImageOverlay | null>(null);
-    
-    
+
+
 
     useEffect(() => {
-        const overlay = new L.ImageOverlay.Rotated(url, corners[0], corners[1], corners[2], {
-            opacity,
-        });
+        if (context.layerContainer) {
+            const overlay = new L.ImageOverlay.Rotated(url, corners[0], corners[1], corners[2], {
+                opacity,
+            });
 
-       context.layerContainer.addLayer(overlay);
-        overlayRef.current = overlay;
+            context.layerContainer.addLayer(overlay);
+            overlayRef.current = overlay;
 
 
-        return () => {
-            context.layerContainer.removeLayer(overlayRef.current);
-        };
-    }, [context, url, corners, opacity]);
+            return () => {
+                context.layerContainer.removeLayer(overlayRef.current);
+            };
+        }
+    }, [context]);
+
+    useEffect(() => {
+        if (overlayRef.current) {
+            overlayRef.current.setOpacity(opacity);
+        }
+    }, [opacity]);
 
     return null;
 }

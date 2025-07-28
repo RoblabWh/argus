@@ -4,7 +4,8 @@ from typing import List
 import time
 from concurrent.futures import ThreadPoolExecutor
 from fastapi.concurrency import run_in_threadpool
-from app.services.thermal.thermal_processing import parse_thermal_image
+import app.services.thermal.thermal_processing as thermal_processing
+from app.config import UPLOAD_DIR
 
 
 from app.database import get_db
@@ -98,10 +99,24 @@ def get_thermal_matrix(image_id: int, db: Session = Depends(get_db)):
     if not image.thermal:
         raise HTTPException(status_code=404, detail="Thermal data not available for this image")
 
-    #np array
-    thermal_matrix, min_temp, max_temp = parse_thermal_image(image.url)
-
-    if hasattr(thermal_matrix, "tolist"):
-        thermal_matrix = thermal_matrix.tolist()
+    #TODO check under image.thermal_data if there is already a temp_matrix_path, if so load it, other wise try parsing the image and save it
+    if image.thermal_data and image.thermal_data.temp_matrix_path:
+        # Load the temperature matrix from the saved file
+        thermal_matrix = thermal_processing.load_temperature_matrix(image.thermal_data.temp_matrix_path)
+        min_temp, max_temp = thermal_processing.get_temperature_range(thermal_matrix)
+    elif image.thermal_data:
+        # Parse the thermal image to get the temperature matrix
+        if not image.url:
+            raise HTTPException(status_code=400, detail="Image URL is not available for parsing")
+        
+        # Parse the thermal image and get the temperature matrix, min_temp, and max_temp
+        # This will also save the matrix to a file if needed
+        target_path = UPLOAD_DIR / str(image.mapping_report_id) / "thermal" / f"{image.id}.npy"
+        thermal_matrix, min_temp, max_temp = thermal_processing.parse_thermal_image(image.url)
+        thermal_processing.save_as_temperature_matrix(thermal_matrix, target_path)
+        # update database with the path
+        crud_image.update_thermal_matrix_path(db, image_id, str(target_path))
+    else:
+        raise HTTPException(status_code=404, detail="Thermal data not available for this image")
 
     return ThermalMatrixResponse(image_id=image_id, matrix=thermal_matrix, min_temp=min_temp, max_temp=max_temp)
