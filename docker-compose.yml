@@ -39,9 +39,10 @@ services:
       - "${PORT_FRONTEND}:5173"
     volumes:
       - ./frontend:/frontend
-      #- frontend_node_modules:/frontend/node_modules  # Separates Volume für node_modules
+      - frontend_node_modules:/frontend/node_modules  # Separates Volume für node_modules
     stdin_open: true
     tty: true
+    network_mode: host
     environment:
       VITE_API_URL: ${VITE_API_URL}
 
@@ -72,4 +73,4 @@ services:
 volumes:
   argus_db_data:
   argus_uploaded_files:
- # frontend_node_modules:
+  frontend_node_modules:

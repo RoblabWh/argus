@@ -21,7 +21,7 @@ depends_on: Union[str, Sequence[str], None] = None
 def upgrade() -> None:
     """Upgrade schema."""
     # Add 'preprocessed' column with server-side default
-    op.add_column('images', sa.Column('preprocessed', sa.Boolean(), server_default=sa.false(), nullable=True))
+    # op.add_column('images', sa.Column('preprocessed', sa.Boolean(), server_default=sa.false(), nullable=True))
     
     # Set default value for existing rows
     op.execute("UPDATE images SET preprocessed = FALSE")

@@ -34,7 +34,7 @@ export default function Overview() {
 
   if (isLoading) return <p>Loading...</p>;
   if (error) return <p>Error loading groups</p>;
-  if (!groups || groups.length === 0) return <p>No groups found yet</p>;
+  if (!groups) return <p>No groups found yet</p>;
 
   const sortedGroups = [...groups].sort((a, b) => {
     const aVal = a[sortBy];
