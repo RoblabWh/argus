@@ -6,6 +6,7 @@ interface ButtonToggleProps {
     label: string;
     isToggled: boolean;
     isDisabled?: boolean;
+    showLabel?: boolean;
     setIsToggled: (value: boolean) => void;
 }
 
@@ -14,6 +15,7 @@ export function ButtonToggle({
     label,
     isToggled,
     isDisabled,
+    showLabel = true,
     setIsToggled,
 }: ButtonToggleProps) {
     return (
@@ -26,7 +28,7 @@ export function ButtonToggle({
                 }`}
         >
             <Icon className="w-4 h-4" />
-            <span>{label}</span>
+            {showLabel ? (<span>{label}</span>) : null}
         </Button>
     );
 }

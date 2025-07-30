@@ -21,8 +21,8 @@ export default function ResponsiveResizableLayout({
       <ResizablePanel defaultSize={33} minSize={20}>
         <div className="h-full w-full overflow-auto p-4">{left}</div>
       </ResizablePanel>
-      <ResizableHandle className="bg-gray-300 hover:bg-gray-400 w-1 cursor-col-resize" />
-      <ResizablePanel defaultSize={67} minSize={20}>
+      <ResizableHandle className="cursor-col-resize" withHandle={true} />
+      <ResizablePanel defaultSize={62} minSize={20}>
         <div className="h-full w-full overflow-auto p-4">{right}</div>
       </ResizablePanel>
     </ResizablePanelGroup>
@@ -34,7 +34,7 @@ export default function ResponsiveResizableLayout({
       <ResizablePanel defaultSize={26} minSize={10}>
         <div className="h-full w-full overflow-auto p-2 pr-4">{left}</div>
       </ResizablePanel>
-      <ResizableHandle className="bg-gray-300 hover:bg-gray-400 w-1 cursor-col-resize" />
+      <ResizableHandle className=" cursor-col-resize" withHandle={true} />
       <ResizablePanel defaultSize={74} minSize={10} className=" h-[calc(100vh-54px)]">
         <div className="h-full w-full p-2 pl-4">{right}</div>
       </ResizablePanel>

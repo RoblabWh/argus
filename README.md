@@ -18,3 +18,15 @@ The goal is to build a more robust and professional codebase, making Argus a fut
   
 
 *Until this branch is pushed to main, please use the current main branch version*
+
+
+**installation and setup**
+
+1. Docker nneds to be installed
+2. clone complete repo (branch)
+3. setup env
+    1. copy env.example and rename to .env 
+    2. set a openweatherapi key (or weather data can not be retireved) 
+    3. If you want to access ARGUS from your network set the VITE_API_URL to your loacl ip adress "http://[ip_adress]:8000"
+4. run  ```./argus.sh up --build```
+5. open in Browser (port 5173)

@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ButtonToggle } from "@/components/ui/button-toggle";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
-import { ChevronLeft, ChevronRight, Thermometer, Scan, Locate, MousePointer2, Wand, Settings } from "lucide-react";
+import { ChevronLeft, ChevronRight, Thermometer, Scan, Locate, MousePointer2, Wand, Settings, RotateCcw } from "lucide-react";
 import { useAspectRatio } from "@/hooks/useAspectRatio";
 import { set } from "date-fns";
 import { m } from "motion/react";
@@ -38,13 +38,16 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
 
     const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
     const [imageUrl, setImageUrl] = useState<string | null>(null);
-    const [image] = useImage(imageUrl || "");
+    const [image] = useImage(imageUrl || "");//TODO check if image is loading
 
     const [scale, setScale] = useState(1);
     const [minScale, setMinScale] = useState(1);
     const [position, setPosition] = useState({ x: 0, y: 0 });
     const fallbackScale = 0.475; // Default scale for thermal images
 
+    const [lastTouchDistance, setLastTouchDistance] = useState<number | null>(null);
+    const [touch1, setTouch1] = useState<any>(null);
+    const [touch2, setTouch2] = useState<any>(null);
 
     const [backgroundImageUrl, setBackgroundImageUrl] = useState<string | null>(null);
     const [backgroundImageName, setBackgroundImageName] = useState<string | null>(null);
@@ -253,12 +256,105 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
     };
 
 
+    const handleTouchMove = (e: any) => {
+        e.evt.preventDefault(); // prevent browser zoom
+
+        const stage = stageRef.current;
+        if (!stage || !image) return;
+
+        const touch1 = e.evt.touches[0] || null;
+        const touch2 = e.evt.touches[1] || null;
+        setTouch1(touch1);
+        setTouch2(touch2);
+
+        // Stop stage from dragging
+
+        // Pinch zoom
+        if (touch1 && touch2) {
+            //stage.stopDrag();
+            if (stage.draggable){
+                stage.draggable(false);
+            }
+            if(stage.isDragging()) {
+                stage.stopDrag();
+            }
+            const dx = touch1.clientX - touch2.clientX;
+            const dy = touch1.clientY - touch2.clientY;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+
+            if (lastTouchDistance !== null) {
+                const scaleBy = dist / lastTouchDistance;
+                var newScale = scale * scaleBy; //Math.max(minScale, scale * scaleBy);
+                if (newScale < minScale) newScale = minScale; // prevent zooming out too much
+
+                const center = {
+                    x: (touch1.clientX + touch2.clientX) / 2,
+                    y: (touch1.clientY + touch2.clientY) / 2,
+                };
+
+                const stagePoint = {
+                    x: (center.x - stage.x()) / scale,
+                    y: (center.y - stage.y()) / scale,
+                };
+
+                const newPos = {
+                    x: center.x - stagePoint.x * newScale,
+                    y: center.y - stagePoint.y * newScale,
+                };
+
+                setScale(newScale);
+                setPosition(clampPosition(newPos, newScale));
+                setProbeResult(null);
+            }
+
+            setLastTouchDistance(dist);
+        } else if (touch1 && !touch2) {
+            if (!stage.draggable) {
+                stage.draggable(true); // enable dragging if not already
+            } else {
+            // One finger pan
+                handleDragMove(e);
+            }
+        }
+    };
+
+    const handleTouchEnd = () => {
+        setLastTouchDistance(null);
+        setTouch1(null);
+        setTouch2(null);
+        stageRef.current?.draggable(true); // re-enable dragging
+    };
+
+    const clampPosition = (pos: { x: number, y: number }, currentScale: number) => {
+        const scaledWidth = image.width * currentScale;
+        const scaledHeight = image.height * currentScale;
+
+        let clampedX = pos.x;
+        let clampedY = pos.y;
+
+        if (scaledWidth <= containerSize.width) {
+            clampedX = (containerSize.width - scaledWidth) / 2;
+        } else {
+            clampedX = Math.min(0, Math.max(containerSize.width - scaledWidth, pos.x));
+        }
+
+        if (scaledHeight <= containerSize.height) {
+            clampedY = (containerSize.height - scaledHeight) / 2;
+        } else {
+            clampedY = Math.min(0, Math.max(containerSize.height - scaledHeight, pos.y));
+        }
+
+        return { x: clampedX, y: clampedY };
+    };
+
+
 
 
 
     // Clamp dragging so image stays inside canvas
     const handleDragMove = (e: any) => {
         if (!image || !containerSize.width || !containerSize.height) return;
+        if (e.evt.touches && e.evt.touches.length > 1) return; // ignore multi-touch
 
         const node = e.target;
         const scaledWidth = image.width * scale;
@@ -277,6 +373,8 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
         const clampedY = scaledHeight > containerSize.height
             ? Math.min(maxY, Math.max(minY, node.y()))
             : (containerSize.height - scaledHeight) / 2;
+
+        if (clampedX === node.x() && clampedY === node.y()) return; // no change
 
         node.position({ x: clampedX, y: clampedY });
         setPosition({ x: clampedX, y: clampedY });
@@ -376,7 +474,10 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
                             onWheel={handleWheel}
                             draggable
                             onDragMove={handleDragMove}
+                            onTouchMove={handleTouchMove}
+                            onTouchEnd={handleTouchEnd}
                             onMouseUp={handleMouseClick}
+                            onTap={handleMouseClick}
                         >
                             <Layer>
                                 {/* Background RGB image (if exists) */}
@@ -437,7 +538,6 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
                                         top: probeResult.y - 12,
                                         pointerEvents: "none",
                                         mixBlendMode: "plus-darker",
-
                                     }}
                                 />
                                 <Badge
@@ -494,9 +594,13 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
                 )}
             </div>
 
-            <div className="grid grid-cols-3 items-center justify-between mt-4 p-4 w-full bg-white dark:bg-gray-800">
+
+            <div
+                className={containerSize.width < 720 ? "flex flex-row items-center justify-between gap-2 p-2 mt-4 w-full bg-white dark:bg-gray-800" :
+                    "grid grid-cols-3 items-center justify-between mt-4 p-4 w-full bg-white dark:bg-gray-800"}
+            >
                 <Tooltip>
-                    <TooltipTrigger className="flex justify-start">
+                    <TooltipTrigger className={`flex justify-start ${containerSize.width < 720 ? 'w-20' : 'w-auto'}`}>
                         <div className="text-sm text-muted-foreground whitespace-nowrap overflow-hidden text-ellipsis">
                             {selectedImage?.filename ?? ""} {backgroundImageName ? `(${backgroundImageName})` : ""}
                         </div>
@@ -526,6 +630,7 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
                                 setTempMode(!tempMode); // disable temp mode if no matrix
                                 if (tempMode) setProbeResult(null); // hide popup when disabling
                             }}
+                            showLabel={containerSize.width < 720 ? false : true}                            
                         />
 
                         <Button variant="outline" onClick={() => setThermalSettingsPopupOpen(true)}
@@ -539,7 +644,12 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
                     </div>
 
                     <Button variant="outline" onClick={resetView}>
-                        Reset View
+                        {/* depending on screen width */}
+                        {containerSize.width < 720 ? (
+                            <RotateCcw className="w-4 h-4 mr-1" />
+                        ) : (
+                            <>Reset View</>
+                        )}
                     </Button>
                 </div>
             </div>

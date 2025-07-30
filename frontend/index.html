@@ -1,24 +1,39 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link id="favicon" rel="icon" type="image/png" href="/Argus_icon_Light_crop.png" />
-    <script>
-      const darkIcon = "/Argus_icon_Dark_crop.png";
-      const lightIcon = "/Argus_icon_Light_crop.png";
-      const updateFavicon = (isDark) => {
-        const el = document.getElementById('favicon');
-        if (el) el.href = isDark ? lightIcon: darkIcon; //use the opposite icon for better contrast in small tab preview
-      };
-      const mq = window.matchMedia('(prefers-color-scheme: dark)');
-      updateFavicon(mq.matches);
-      mq.addEventListener('change', e => updateFavicon(e.matches));
-    </script>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Argus</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+
+<head>
+  <meta charset="UTF-8" />
+  <link id="favicon" rel="icon" type="image/png" href="/Argus_icon_Light_crop.png" />
+  <script>
+    const darkIcon = "/Argus_icon_Dark_crop.png";
+    const lightIcon = "/Argus_icon_Light_crop.png";
+    const updateFavicon = (isDark) => {
+      const el = document.getElementById('favicon');
+      if (el) el.href = isDark ? lightIcon : darkIcon; //use the opposite icon for better contrast in small tab preview
+    };
+    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+    updateFavicon(mq.matches);
+    mq.addEventListener('change', e => updateFavicon(e.matches));
+  </script>
+  <style>
+    @media (max-width: 480px) {
+
+      #root {
+        
+      }
+
+      html {
+        font-size: 90%;
+      }
+    }
+  </style>
+  <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, maximum-scale=1" />
+  <title>Argus</title>
+</head>
+
+<body>
+  <div id="root"></div>
+  <script type="module" src="/src/main.tsx"></script>
+</body>
+
 </html>
