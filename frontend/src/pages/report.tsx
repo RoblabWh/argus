@@ -7,12 +7,14 @@ import { usePollReportStatus } from '@/hooks/usePollReportStatus';
 import { useMaps } from '@/hooks/useMaps';
 import { Upload } from '@/components/report/Upload';
 import { MappingReport } from '@/components/report/MappingReport';
+import { m } from 'motion/react';
 
 export default function ReportOverview() {
   const { report_id } = useParams<{ report_id: string }>();
   const { setBreadcrumbs } = useBreadcrumbs();
   const { data: initialReport, isLoading, error, refetch: refetchFullReport } = useReport(Number(report_id));
-  // const { data: maps, refetch: refetchMaps } = useMaps(Number(report_id));
+  const { data: mapsData, refetch: refetchMaps } = useMaps(Number(report_id), false);
+
   const prevStatusRef = useRef<string | null>(null);
 
 
@@ -54,6 +56,32 @@ export default function ReportOverview() {
   );
 
   useEffect(() => {
+    console.log("Polled data:", mapsData);
+    if (mapsData && liveReport?.mapping_report) {
+      //check if length op maps is different
+      if (liveReport === null) {
+        console.log("Live report is null, setting it to maps data...");
+        return;
+      }
+
+      if (mapsData.length !== liveReport.mapping_report.maps.length) {
+        console.log("Maps length changed, updating live report...");
+        setLiveReport((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            mapping_report: {
+              ...prev.mapping_report,
+              maps: mapsData,
+            },
+          };
+        });
+        console.log(liveReport?.mapping_report.maps);
+      }
+    }
+  }, [mapsData]);
+
+  useEffect(() => {
     if (polledData) {
       const prevStatus = prevStatusRef.current;
       const newStatus = polledData.status;
@@ -85,9 +113,11 @@ export default function ReportOverview() {
       if (prevStatus === "processing" && newStatus === "processing") {
         if (polledData.progress !== undefined && prevStatusRef.current !== undefined) {
           if (polledData.progress !== prevStatusRef.current.progress) {
-            console.log("Detected progress change. Refetching maps...");
-            //in the future only replace maps with the new data
-            //refetchFullReport();
+            if (polledData.progress > (liveReport?.progress ?? 0)) {
+              setLiveReport((prev) => ({ ...prev!, progress: polledData.progress }));
+              console.log("Progress increased, refetching maps...");
+              refetchMaps();  // or throttle this if needed
+            }
           }
         }
       }

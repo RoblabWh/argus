@@ -127,7 +127,7 @@ def update_process(db: Session, report_id: int, status: str = "queued", progress
     report.status = status
     report.progress = progress
     db.commit()
-    print(f"Report {report_id} status updated to {status} with progress {progress}")
+    #print(f"Report {report_id} status updated to {status} with progress {progress}")
 
     return report
 

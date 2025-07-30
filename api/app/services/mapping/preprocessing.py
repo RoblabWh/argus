@@ -3,6 +3,10 @@ import json
 from datetime import datetime
 from geopy.geocoders import Nominatim
 from sqlalchemy.orm import Session
+from billiard import Pool, Manager
+from typing import List
+
+import threading
 
 import logging
 
@@ -470,82 +474,123 @@ def _set_bounds_and_corners_per_job(mapping_jobs: list[dict]) -> list[dict]:
     return mapping_jobs
 
 
-def _process_thermal_images(images: list[ImageOut], report_id: int, db: Session, progress_updater: ProgressUpdater):
-    #find couples of thermal and RGB images, based on the time difference. all images taken within 2 seconds are considered a couple
+
+def process_thermal_wrapper(data, progress_queue):
+    from pathlib import Path
+
+    path = Path(data["target_path"])
+    if path.exists():
+        thermal_matrix = thermal_processing.load_temperature_matrix(path)
+        min_temp, max_temp = thermal_processing.get_temperature_range(thermal_matrix)
+    else:
+        min_temp, max_temp = thermal_processing.process_thermal_image(data["url"], path)
+
+    # Report progress
+    progress_queue.put(1)
+
+    return {
+        "image_id": data["image_id"],
+        "counterpart_id": data["counterpart_id"],
+        "counterpart_scale": data["counterpart_scale"],
+        "min_temp": min_temp,
+        "max_temp": max_temp,
+        "temp_matrix_path": str(path)
+    }
+
+
+def progress_listener(queue, updater, total):
+    completed = 0
+    while completed < total:
+        try:
+            _ = queue.get(timeout=1)
+            completed += 1
+            if completed % 5 == 0 or completed == total:
+                updater.update_partial_progress("preprocessing", 10.0, 30.0, total, completed)
+        except:
+            pass
+
+
+def _process_thermal_images(images: List[ImageOut], report_id: int, db: Session, progress_updater):
     images.sort(key=lambda x: x.created_at)
     thermal_images = [img for img in images if img.thermal]
     rgb_images = [img for img in images if not img.thermal]
-        
-    camera_specific_keys = None
+
     with open("app/cameramodels.json", "r") as file:
         camera_specific_keys = json.load(file)
 
     total_ir_images = len(thermal_images)
-    thermal_data_list = []
-    while True:
-        if not thermal_images:
-            break
+    thermal_metadata_list = []
 
-        smallest_diff = float('inf')
-        closest_rgb_image_index = -1
+    while thermal_images:
         thermal_image = thermal_images.pop(0)
+        closest_rgb_image_index = -1
+        smallest_diff = float("inf")
         counterpart = None
-        
-        if rgb_images and len(rgb_images) > 0:
-            for i, rgb_image in enumerate(rgb_images):
-                
-                time_diff = abs((thermal_image.created_at - rgb_image.created_at).total_seconds())
 
-                if time_diff <= 2:  # Threshold of 2 seconds
-
-                    if time_diff < smallest_diff:
-                        smallest_diff = time_diff
-                        closest_rgb_image_index = i
-
-                elif closest_rgb_image_index != -1: # If we already found a close RGB image, we can break the loop, since the list is sorted by created_at the difference will only increase
-                    break
+        for i, rgb_image in enumerate(rgb_images):
+            time_diff = abs((thermal_image.created_at - rgb_image.created_at).total_seconds())
+            if time_diff <= 2:
+                if time_diff < smallest_diff:
+                    smallest_diff = time_diff
+                    closest_rgb_image_index = i
+            elif closest_rgb_image_index != -1:
+                break
 
         if closest_rgb_image_index != -1:
-            counterpart = rgb_images[closest_rgb_image_index]
-            rgb_images.pop(closest_rgb_image_index)
+            counterpart = rgb_images.pop(closest_rgb_image_index)
 
         camera_model = thermal_image.camera_model
-        if camera_model in camera_specific_keys and "ir_scale" in camera_specific_keys[camera_model]:
-            scale = camera_specific_keys[camera_model]["ir_scale"]
-        else:
-            scale = camera_specific_keys.get("default", {})['ir'].get("ir_scale", 0.4)
+        scale = camera_specific_keys.get(camera_model, {}).get("ir_scale") or \
+                camera_specific_keys.get("default", {}).get("ir", {}).get("ir_scale", 0.4)
 
-        # process thermal matrix
         target_path = UPLOAD_DIR / str(report_id) / "thermal" / f"{thermal_image.id}.npy"
-        # check if the target file already exist from past processing
-        if target_path.exists():
-            thermal_matrix = thermal_processing.load_temperature_matrix(target_path)
-            min_temp, max_temp = thermal_processing.get_temperature_range(thermal_matrix)
-        else:
-            min_temp, max_temp = thermal_processing.process_thermal_image(thermal_image.url, target_path)
 
-        thermal_data = ThermalDataCreate(
-            image_id=thermal_image.id,
-            counterpart_id=counterpart.id if counterpart else None,  # link to the RGB image
-            counterpart_scale=scale,  # default value, can be adjusted later
-            min_temp=min_temp,
-            max_temp=max_temp,
-            temp_matrix_path=str(target_path),
+        thermal_metadata_list.append({
+            "url": thermal_image.url,
+            "target_path": str(target_path),
+            "image_id": thermal_image.id,
+            "counterpart_id": counterpart.id if counterpart else None,
+            "counterpart_scale": scale
+        })
+
+        if len(thermal_metadata_list) % 10 == 0:
+            progress_updater.update_partial_progress("preprocessing", 5.0, 10.0, total_ir_images, len(thermal_metadata_list))
+
+    # -- PARALLEL PROCESSING --
+    manager = Manager()
+    progress_queue = manager.Queue()
+
+    progress_thread = threading.Thread(
+        target=progress_listener,
+        args=(progress_queue, progress_updater, len(thermal_metadata_list)),
+    )
+    progress_thread.start()
+
+    with Pool(processes=6) as pool:
+        results = pool.starmap(
+            process_thermal_wrapper,
+            [(data, progress_queue) for data in thermal_metadata_list]
+        )
+
+    progress_thread.join()
+
+    # -- INSERT TO DB --
+    thermal_data_list = [
+        ThermalDataCreate(
+            image_id=item["image_id"],
+            counterpart_id=item["counterpart_id"],
+            counterpart_scale=item["counterpart_scale"],
+            min_temp=item["min_temp"],
+            max_temp=item["max_temp"],
+            temp_matrix_path=item["temp_matrix_path"],
             temp_embedded=True,
-            # temp_unit="C",
             lut_name="white_hot"
         )
-        thermal_data_list.append(thermal_data)
+        for item in results
+    ]
 
-        if len(thermal_images) % 10 == 0:
-            progress_updater.update_partial_progress("preprocessing", 5.0, 30.0, total_ir_images, len(thermal_data_list)) 
-        
+    crud_image.create_multiple_thermal_data(db, thermal_data_list)
 
-    # bulk insert thermal data
-    thermal_data_objects = crud_image.create_multiple_thermal_data(db, thermal_data_list)
-    
-    
-    #refetch images with thermal data
     report_data = crud_report.get_full_report(db, report_id)
-    images = report_data.mapping_report.images
-    return images
+    return report_data.mapping_report.images
+

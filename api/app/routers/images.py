@@ -58,7 +58,7 @@ def create_images_batch(report_id: int, files: List[UploadFile] = File(...), db:
                 "error": str(e)
             }
 
-    with ThreadPoolExecutor(max_workers=6) as executor:
+    with ThreadPoolExecutor(max_workers=12) as executor:
         responses = list(executor.map(_process, files))
 
     end_time = time.time()
