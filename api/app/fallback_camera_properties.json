@@ -1,0 +1,12 @@
+{
+    "MAVIC2-ENTERPRISE-ADVANCED": {
+        "thermal": {
+            "fov": 60.5
+        }    
+    },
+    "FC2403" : {
+        "thermal": {
+            "fov": 60.5
+        }
+    }
+}

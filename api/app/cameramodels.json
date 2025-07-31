@@ -31,5 +31,98 @@
       "uav_pitch": "XMP:FlightPitchDegree"
     },
     "adjust_data": false
+  },
+  "M30T": {
+    "created_at": "EXIF:CreateDate",
+    "width": "File:ImageWidth",
+    "height": "File:ImageHeight",
+    "projection_type": "XMP:ProjectionType",
+    "gps": {
+      "lon": "Composite:GPSLongitude",
+      "lat": "Composite:GPSLatitude",
+      "rel_alt": "XMP:RelativeAltitude",
+      "alt": "XMP:AbsoluteAltitude"
+    },
+    "ir": {
+      "ir": "XMP:ImageSource",
+      "ir_value": "InfraredCamera",
+      "ir_image_width": 0,
+      "ir_image_height": 0,
+      "ir_filename_pattern": "_T(?=\\.\\w+$)",
+      "ir_scale": 0.475
+    },
+    "camera_properties": {
+      "focal_length": "EXIF:FocalLength",
+      "fov": "Composite:FOV"
+    },
+    "orientation": {
+      "cam_roll": "XMP:GimbalRollDegree",
+      "cam_yaw": "XMP:GimbalYawDegree",
+      "cam_pitch": "XMP:GimbalPitchDegree",
+      "uav_roll": "XMP:FlightRollDegree",
+      "uav_yaw": "XMP:FlightYawDegree",
+      "uav_pitch": "XMP:FlightPitchDegree"
+    },
+    "adjust_data": false
+  },
+  "MAVIC2-ENTERPRISE-ADVANCED": {
+    "created_at": "EXIF:CreateDate",
+    "width": "File:ImageWidth",
+    "height": "File:ImageHeight",
+    "gps": {
+      "lon": "Composite:GPSLongitude",
+      "lat": "Composite:GPSLatitude",
+      "rel_alt": "XMP:RelativeAltitude",
+      "alt": "XMP:AbsoluteAltitude"
+    },
+    "ir": {
+      "ir_image_width": 640,
+      "ir_image_height": 512,
+      "ir_filename_pattern": "_T(?=\\.\\w+$)",
+      "ir_scale": 0.115
+    },
+    "camera_properties": {
+      "focal_length": "EXIF:FocalLength",
+      "fov": "Composite:FOV"
+    },
+    "orientation": {
+      "cam_roll": "XMP:GimbalRollDegree",
+      "cam_yaw": "XMP:GimbalYawDegree",
+      "cam_pitch": "XMP:GimbalPitchDegree",
+      "uav_roll": "XMP:FlightRollDegree",
+      "uav_yaw": "XMP:FlightYawDegree",
+      "uav_pitch": "XMP:FlightPitchDegree"
+    },
+    "adjust_data": false
+  },
+  "FC2403": {
+    "created_at": "EXIF:CreateDate",
+    "width": "File:ImageWidth",
+    "height": "File:ImageHeight",
+    "gps": {
+      "lon": "Composite:GPSLongitude",
+      "lat": "Composite:GPSLatitude",
+      "rel_alt": "XMP:RelativeAltitude",
+      "alt": "XMP:AbsoluteAltitude"
+    },
+    "ir": {
+      "ir_image_width": 640,
+      "ir_image_height": 480,
+      "ir_filename_pattern": "_T(?=\\.\\w+$)",
+      "ir_scale": 0.205
+    },
+    "camera_properties": {
+      "focal_length": "EXIF:FocalLength",
+      "fov": "Composite:FOV"
+    },
+    "orientation": {
+      "cam_roll": "XMP:GimbalRollDegree",
+      "cam_yaw": "XMP:GimbalYawDegree",
+      "cam_pitch": "XMP:GimbalPitchDegree",
+      "uav_roll": "XMP:FlightRollDegree",
+      "uav_yaw": "XMP:FlightYawDegree",
+      "uav_pitch": "XMP:FlightPitchDegree"
+    },
+    "adjust_data": false
   }
 }

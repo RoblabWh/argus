@@ -113,10 +113,26 @@ def map_images(report_id: int, mapping_report_id: int, mapping_selection: dict, 
     # Calculate the reference yaw based on the images in the mapping selection 
     reference_yaw = calculate_reference_yaw(mapping_selection['images'])
 
-    # generating map elements from the images
+    # generating map elements from the images (with a safer parallel pool)
+    MAX_RETRIES = 3
+    TIMEOUT_PER_ITEM = 2  # seconds
     params = [(image, reference_yaw) for image in dicts]
-    with Pool(processes=8) as pool:
-        map_elements = pool.starmap(calculate_utm_corners, params)
+    
+    for attempt in range(MAX_RETRIES):
+        logger.info(f"Attempt {attempt + 1} to calculate UTM corners")
+        with Pool(processes=8) as pool:
+            try:
+                map_elements = process_with_timeouts_starmap(pool, calculate_utm_corners, params, TIMEOUT_PER_ITEM)
+                break  # success
+            except Exception as e:
+                logger.error(f"Failure in starmap attempt {attempt + 1}: {e}")
+                pool.terminate()
+                pool.join()
+
+        if attempt == MAX_RETRIES - 1:
+            logger.error("Failed to generate map elements after all retries")
+            raise TimeoutError("Giving up on calculate_utm_corners")
+
     
     for i, element in enumerate(map_elements):
         element.index = i
@@ -170,6 +186,28 @@ def map_images(report_id: int, mapping_report_id: int, mapping_selection: dict, 
     crud.create_multiple_map_elements(db, map.id, map_elements_to_store)
 
     progress_updater.update_progress_of_map("processing", 100.0)
+
+
+def process_with_timeouts_starmap(pool, func, params, timeout_per_item=5):
+    results = []
+    async_results = []
+
+    for param in params:
+        res = pool.apply_async(func, args=param)
+        async_results.append(res)
+
+    for i, res in enumerate(async_results):
+        try:
+            result = res.get(timeout=timeout_per_item)
+            results.append(result)
+        except TimeoutError:
+            logger.warning(f"Timeout processing item {i} with params {params[i]}")
+            results.append(None)  # or use params[i] or a custom error placeholder
+        except Exception as e:
+            logger.error(f"Error processing item {i} with params {params[i]}: {e}")
+            results.append(None)  # or log/handle differently
+    return results
+
     
 
 

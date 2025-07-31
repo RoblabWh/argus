@@ -39,7 +39,7 @@ export function MappingReport({ report, onEditClicked }: Props) {
     useEffect(() => {
       let sorted_images = report.mapping_report?.images || [];
       //sort by created_at descending
-      sorted_images = sorted_images.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      sorted_images = sorted_images.sort((a, b) =>  new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
       //filter
       if (report.mapping_report?.images && report.mapping_report.images.length > 0) {
         setFilteredImages(report.mapping_report.images);

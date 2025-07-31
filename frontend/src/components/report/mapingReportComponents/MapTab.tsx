@@ -23,6 +23,7 @@ import 'leaflet/dist/leaflet.css';
 import { Slider } from "@/components/ui/slider";
 import "@/lib/Leaflet.ImageOverlay.Rotated";
 import { RotatedImageOverlay } from "@/components/report/mapingReportComponents/RotatedImageOverlay";
+import panoPinSVG from '@/assets/panorama.svg'
 
 interface Props {
     report: Report;
@@ -36,7 +37,7 @@ function extractFlightTrajectory(images: Image[]) {
     images.sort((a, b) => (a.created_at ? new Date(a.created_at).getTime() : 0) - (b.created_at ? new Date(b.created_at).getTime() : 0));
     //collect gps coordinates from images and put them in a list of [lat, lon] pairs
     const flightPath = images.map((image) => {
-        if (!image.coord || !image.coord.gps || image.coord.gps === undefined) return null;
+        if (!image.coord || !image.coord.gps || image.coord.gps === undefined || image.panoramic) return null;
         return [image.coord.gps.lat, image.coord.gps.lon];
     }).filter(Boolean) as LatLngBoundsExpression;
 
@@ -166,6 +167,35 @@ export function MapTab({ report, selectImageOnMap }: Props) {
                                     positions={extractFlightTrajectory(report.mapping_report.images)}
                                     pathOptions={{ color: 'magenta', weight: 2, opacity: 1 }}
                                 />
+                            </LayerGroup>
+                        </Overlay>
+                    )}
+                    { report.mapping_report?.images && report.mapping_report?.images.length > 0 && (
+                        //for each panoramic image, add a marker with a popup
+                        <Overlay name="Panoramic Images" checked>
+                            <LayerGroup>
+                                {report.mapping_report.images.map((image) => {
+                                    if (!image.coord || !image.coord.gps || image.coord.gps === undefined || !image.panoramic) return null;
+                                    return (
+                                        <Marker
+                                            key={image.id}
+                                            position={[image.coord.gps.lat, image.coord.gps.lon]}
+                                            eventHandlers={{
+                                                click: () => {
+                                                    selectImageOnMap(image.id);
+                                                },
+                                            }}
+                                            icon={L.icon({
+                                                iconUrl: panoPinSVG,
+                                                iconSize: [24, 24],
+                                                iconAnchor: [12, 12],
+                                                popupAnchor: [0, -12],
+                                            })}
+                                        >
+
+                                        </Marker>
+                                    );
+                                })}
                             </LayerGroup>
                         </Overlay>
                     )}

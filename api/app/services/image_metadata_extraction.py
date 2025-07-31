@@ -38,15 +38,11 @@ def extract_image_metadata(image_path: str) -> dict:
     #print(f"keys for {model_name}: {datakeys}", flush=True)
 
 
+
     creation_date = _extract_creation_date(metadata, datakeys)
     width, height = _extract_dimensions(metadata, datakeys)
     coord = _extract_coordinates(metadata, datakeys)
-    try:
-        mappable, mapping_data = _extract_mapping_data(metadata, datakeys, coord)
-    except ValueError as e:
-        print(f"Error extracting mapping data: {e}", flush=True)
-        mappable = False
-        mapping_data = None
+
 
     data = {
         "created_at": creation_date,
@@ -56,16 +52,24 @@ def extract_image_metadata(image_path: str) -> dict:
         "coord": coord,
         "panoramic": _check_panoramic(metadata, datakeys),
         "thermal": False,  # will be set later
-        "mappable": mappable,
+        "mappable": False,  # will be set later
     }
     
-    if mapping_data:
-        data["mapping_data"] = mapping_data
-
-    # data["mappable"] = _check_mappable(data)
     data["thermal"] = _check_thermal(
         metadata, datakeys, data, os.path.basename(image_path)
     )
+
+    try:
+        mappable, mapping_data = _extract_mapping_data(metadata, datakeys, data)
+        if mapping_data:
+            data["mappable"] = mappable
+            data["mapping_data"] = mapping_data
+    except ValueError as e:
+        print(f"Error extracting mapping data: {e}", flush=True)
+        mapping_data = None
+    
+
+
 
     # check if some values need adjustment
     if datakeys.get("adjust_data", False):
@@ -150,6 +154,8 @@ def _check_mappable(data: dict) -> bool:
 
 
 def _check_panoramic(metadata: dict, datakeys: dict) -> bool:
+    if "projection_type" not in datakeys:
+        return False
     projection_type = metadata.get(datakeys["projection_type"], None)
     if projection_type:
         if projection_type.lower() in ["equirectangular", "spherical"]:
@@ -158,14 +164,13 @@ def _check_panoramic(metadata: dict, datakeys: dict) -> bool:
 
 
 def _check_thermal(metadata: dict, datakeys: dict, data: dict, filename: str) -> bool:
-    image_source = metadata.get(datakeys["ir"]["ir"], None)
-    if image_source:
-        if image_source.lower() == datakeys["ir"]["ir_value"].lower():
-            return True
-    elif (
-        datakeys["ir"].get("ir_image_width", 0) == data["width"]
-        and datakeys["ir"].get("ir_image_height", 0) == data["height"]
-    ):
+    if "ir_value" in datakeys:
+        image_source = metadata.get(datakeys["ir"]["ir"], None)
+        if image_source:
+            if image_source.lower() == datakeys["ir"]["ir_value"].lower():
+                return True
+    elif datakeys["ir"].get("ir_image_width", 0) == data["width"] \
+        and datakeys["ir"].get("ir_image_height", 0) == data["height"]:
         return True
     elif re.search(datakeys["ir"]["ir_filename_pattern"], filename) is not None:
         return True
@@ -261,9 +266,10 @@ def _latitude_to_utm_band_letter(lat: float) -> str:
     return bands[index]
 
 
-def _extract_mapping_data(metadata: dict, datakeys: dict, coord: dict) -> tuple:
+def _extract_mapping_data(metadata: dict, datakeys: dict, data: dict) -> tuple:
     mapping_data = {}
-
+    coord = data["coord"]
+    thermal = data["thermal"]
 
     mapping_data["rel_altitude"] = coord.get("rel_alt", None)
     mapping_data["altitude"] = coord.get("alt", None)
@@ -277,10 +283,15 @@ def _extract_mapping_data(metadata: dict, datakeys: dict, coord: dict) -> tuple:
     else:
         mapping_data["rel_altitude_method"] = "exif"
 
-
+    
     fov = metadata.get(datakeys["camera_properties"]["fov"], None)
     if fov is None:
-        return False, None
+        if thermal:
+            fov = _load_fallback('fov', data['camera_model'], thermal)
+            print(f"FOV not found in metadata, using fallback value: {fov}", flush=True)
+        if fov is None:
+            return False, None
+        mapping_data["fov"] = fov
     else:
         fov = fov.split()[0]
         try:
@@ -312,3 +323,19 @@ def _extract_mapping_data(metadata: dict, datakeys: dict, coord: dict) -> tuple:
 
 
     return True, mapping_data
+
+def _load_fallback(key: str, model_name: str, thermal: bool) -> float:
+    # Load fallback values from a JSON file
+    with open("app/fallback_camera_properties.json", "r") as file:
+        fallbacks = json.load(file)
+        print(f"Fallbacks loaded for {model_name}: {fallbacks.get(model_name, {})}", flush=True)
+    
+    if model_name in fallbacks:
+        values = fallbacks[model_name].get("thermal" if thermal else "optical", {})
+    else:
+        return None
+
+    if key in values:
+        return values[key]
+    else:
+        return None

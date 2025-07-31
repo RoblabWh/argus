@@ -92,11 +92,15 @@ def process_image(report_id: int, file: UploadFile, mapping_report_id: int, db: 
 
         # Store metadata in the database
         img = crud_image.create(db, data)
-
+        print(f"DEBUGGING: Image {img.id} processed and saved with filename {filename}, with type {type(img)}", flush=True)
         if metadata['mappable']:
+            print(f"DEBUGGING: Image {img.id} is mappable, extracting mapping data", flush=True)
             mapping_data = metadata.get("mapping_data", {})
             mapping_data["image_id"] = img.id
             img = crud_image.create_mapping_data(db, mapping_data)
+        else:
+            img = crud_image.get_full_image(db, img.id)
+            
 
 
         return {

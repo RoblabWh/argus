@@ -39,16 +39,20 @@ def create_images_batch(report_id: int, files: List[UploadFile] = File(...), db:
     #responses = [process_image(report_id, file, db) for file in files]
 
     mapping_report_id = check_mapping_report(report_id, db)
+    print(f"DEBUGGING: creating new images for mapping report {mapping_report_id} with {len(files)} files")
 
     def _process(file: UploadFile):
         # Create a new DB session for this thread
         db_local = get_db()
         db_local = next(db_local)  # Get the session from the generator
+        print(f"DEBUGGING: Processing file {file.filename} for report {report_id}" )
         try:
             result = process_image(report_id, file, mapping_report_id, db_local)
             db_local.close()
+            print(f"DEBUGGING: Finished processing file {file.filename} for report {report_id}" )
             return result
         except Exception as e:
+            print(f"DEBUGGING: Error processing file {file.filename} for report {report_id}: {e}")
             db_local.rollback()
             db_local.close()
             return {
@@ -88,7 +92,7 @@ def delete_image(image_id: int, db: Session = Depends(get_db)):
     return crud_image.delete(db, image_id)
 
 
-@router.get("/{image_id}/thermal_matrix", response_model=ThermalMatrixResponse)
+@router.get("/{image_id}/thermal_matrix", response_model=ThermalMatrixResponse | None)
 def get_thermal_matrix(image_id: int, db: Session = Depends(get_db)):
     """
     Returns the thermal matrix for a given image ID.
@@ -109,13 +113,13 @@ def get_thermal_matrix(image_id: int, db: Session = Depends(get_db)):
         if not image.url:
             raise HTTPException(status_code=400, detail="Image URL is not available for parsing")
         
-        # Parse the thermal image and get the temperature matrix, min_temp, and max_temp
-        # This will also save the matrix to a file if needed
-        target_path = UPLOAD_DIR / str(image.mapping_report_id) / "thermal" / f"{image.id}.npy"
-        thermal_matrix, min_temp, max_temp = thermal_processing.parse_thermal_image(image.url)
-        thermal_processing.save_as_temperature_matrix(thermal_matrix, target_path)
-        # update database with the path
-        crud_image.update_thermal_matrix_path(db, image_id, str(target_path))
+        # :
+        # target_path = UPLOAD_DIR / str(image.mapping_report_id) / "thermal" / f"{image.id}.npy"
+        # thermal_matrix, min_temp, max_temp = thermal_processing.parse_thermal_image(image.url)
+        # thermal_processing.save_as_temperature_matrix(thermal_matrix, target_path)
+        # # update database with the path
+        # crud_image.update_thermal_matrix_path(db, image_id, str(target_path))
+        return None
     else:
         raise HTTPException(status_code=404, detail="Thermal data not available for this image")
 

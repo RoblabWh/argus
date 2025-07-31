@@ -483,7 +483,19 @@ def process_thermal_wrapper(data, progress_queue):
         thermal_matrix = thermal_processing.load_temperature_matrix(path)
         min_temp, max_temp = thermal_processing.get_temperature_range(thermal_matrix)
     else:
-        min_temp, max_temp = thermal_processing.process_thermal_image(data["url"], path)
+        try:
+            min_temp, max_temp = thermal_processing.process_thermal_image(data["url"], path)
+        except Exception as e:
+            print(f"Error processing thermal image {data['image_id']}: {e}")
+            progress_queue.put(1)
+            return {
+                "image_id": data["image_id"],
+                "counterpart_id": data["counterpart_id"],
+                "counterpart_scale": data["counterpart_scale"],
+                "min_temp": None,
+                "max_temp": None,
+                "temp_matrix_path": None
+            }
 
     # Report progress
     progress_queue.put(1)
@@ -521,6 +533,10 @@ def _process_thermal_images(images: List[ImageOut], report_id: int, db: Session,
     total_ir_images = len(thermal_images)
     thermal_metadata_list = []
 
+    if total_ir_images == 0:
+        print("No thermal images found, skipping thermal processing.", flush=True)
+        return images
+    
     while thermal_images:
         thermal_image = thermal_images.pop(0)
         closest_rgb_image_index = -1
@@ -540,7 +556,7 @@ def _process_thermal_images(images: List[ImageOut], report_id: int, db: Session,
             counterpart = rgb_images.pop(closest_rgb_image_index)
 
         camera_model = thermal_image.camera_model
-        scale = camera_specific_keys.get(camera_model, {}).get("ir_scale") or \
+        scale = camera_specific_keys.get(camera_model, {}).get("ir", {}).get("ir_scale") or \
                 camera_specific_keys.get("default", {}).get("ir", {}).get("ir_scale", 0.4)
 
         target_path = UPLOAD_DIR / str(report_id) / "thermal" / f"{thermal_image.id}.npy"
