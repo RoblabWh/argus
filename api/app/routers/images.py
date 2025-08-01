@@ -39,20 +39,16 @@ def create_images_batch(report_id: int, files: List[UploadFile] = File(...), db:
     #responses = [process_image(report_id, file, db) for file in files]
 
     mapping_report_id = check_mapping_report(report_id, db)
-    print(f"DEBUGGING: creating new images for mapping report {mapping_report_id} with {len(files)} files")
 
     def _process(file: UploadFile):
         # Create a new DB session for this thread
         db_local = get_db()
         db_local = next(db_local)  # Get the session from the generator
-        print(f"DEBUGGING: Processing file {file.filename} for report {report_id}" )
         try:
             result = process_image(report_id, file, mapping_report_id, db_local)
             db_local.close()
-            print(f"DEBUGGING: Finished processing file {file.filename} for report {report_id}" )
             return result
         except Exception as e:
-            print(f"DEBUGGING: Error processing file {file.filename} for report {report_id}: {e}")
             db_local.rollback()
             db_local.close()
             return {

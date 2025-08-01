@@ -12,6 +12,7 @@ from app.routers import (
     groups,
     reports,
     images,
+    odm,
     # weather,
     # detections,
     # processing,
@@ -43,6 +44,7 @@ app.mount("/reports_data", StaticFiles(directory=static_dir), name="static")
 app.include_router(groups.router)
 app.include_router(reports.router)
 app.include_router(images.router)
+app.include_router(odm.router)
 
 cleanup_lost_tasks()  # Cleanup lost tasks on startup
 
