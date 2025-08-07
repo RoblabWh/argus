@@ -35,7 +35,7 @@ def extract_image_metadata(image_path: str) -> dict:
     model_name = metadata.get("EXIF:Model", "Unknown Camera")
     datakeys = _get_keys(model_name)
 
-    #print(f"keys for {model_name}: {datakeys}", flush=True)
+    print(f"keys for {model_name}: {datakeys}", flush=True)
 
 
 
@@ -164,8 +164,10 @@ def _check_panoramic(metadata: dict, datakeys: dict) -> bool:
 
 
 def _check_thermal(metadata: dict, datakeys: dict, data: dict, filename: str) -> bool:
-    if "ir_value" in datakeys:
+    if "ir_value" in datakeys['ir']:
+        print(f"Checking if image {filename} is thermal based on ir_value", flush=True)
         image_source = metadata.get(datakeys["ir"]["ir"], None)
+        print(f"Image source: {image_source}", flush=True)
         if image_source:
             if image_source.lower() == datakeys["ir"]["ir_value"].lower():
                 return True
