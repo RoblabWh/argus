@@ -69,6 +69,9 @@ def update_mapping_report(report_id: int, data: MappingReportUpdate, db: Session
 def get_mapping_report_maps(report_id: int, db: Session = Depends(get_db)):
     return crud.get_mapping_report_maps(db, report_id)
 
+@router.get("/{report_id}/mapping_report/webodm_project_id", response_model=int | None)
+def get_mapping_report_webodm_project_id(report_id: int, db: Session = Depends(get_db)):
+    return crud.get_mapping_report_webodm_project_id(db, report_id)
 
 @router.post("/{report_id}/process", response_model=ReportOut)
 def process_report(report_id: int, processing_settings: ProcessingSettings, db: Session = Depends(get_db)):

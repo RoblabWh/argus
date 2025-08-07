@@ -17,3 +17,4 @@ numpy
 opencv_python
 imutils
 rasterio
+psutil

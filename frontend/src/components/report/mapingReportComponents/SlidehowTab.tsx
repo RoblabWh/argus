@@ -696,8 +696,14 @@ function normalizeMatrix(matrix: number[][], minTemp: number, maxTemp: number): 
     const range = max - min || 1;
 
     let factor = 255 / range;
+
+    // let testa = Math.round((max - min) * factor);
+    // if (testa > 255) {
+    //     testa = 255;
+    // }
+
     return matrix.map(row =>
-        row.map(value => Math.round(((value - min) * factor)))
+        row.map(value => ((value - min) * factor))
     );
 }
 
@@ -845,7 +851,7 @@ function matrixToCanvasImage(
             imageData.data[index] = r;
             imageData.data[index + 1] = g;
             imageData.data[index + 2] = b;
-            let alpha = gray > 1.0 ? 255 : Math.round((1) * 255);
+            let alpha = gray > 255 ? Math.round((0.3) * 255) : (gray < 0.0 ?  Math.round((0.3) * 255): 255);
             imageData.data[index + 3] = alpha;
         }
     }

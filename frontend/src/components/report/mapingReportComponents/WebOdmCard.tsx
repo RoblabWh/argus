@@ -1,10 +1,11 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ExternalLink } from "lucide-react";
 import { useWebODMTasks } from "@/hooks/useODMTasks";
+import { useODMProjectID } from "@/hooks/useODMProjectID";
 import { createLucideIcon } from 'lucide-react';
 import type { IconNode } from 'lucide-react';
 
@@ -30,10 +31,39 @@ type Props = {
 };
 
 export function WebOdmCard({ isWebODMAvailable, webODMURL, webODMProjectID, reportID, progress }: Props) {
-    const { data: odmTasks, isLoading, error, refetch } = useWebODMTasks(webODMProjectID, isWebODMAvailable);
+    const [activeProjectID, setActiveProjectID] = useState<string | null | undefined>(webODMProjectID);
+
+    // Step 1: Try to fetch project ID from server if missing
+    const { data: webODMProjectIDData, refetch: refetchProjectID } = useODMProjectID(reportID, {
+        enabled: !webODMProjectID && reportID !== undefined,
+    });
+
+    // Step 2: Update state when fetched
     useEffect(() => {
-        if (progress !== undefined) {
-            refetch();
+        if (webODMProjectIDData) {
+            setActiveProjectID(webODMProjectIDData);
+        }
+    }, [webODMProjectIDData]);
+
+    // Step 3: Fetch tasks using final project ID
+    const {
+        data: odmTasks,
+        isLoading,
+        error,
+        refetch: refetchTasks,
+    } = useWebODMTasks(activeProjectID, isWebODMAvailable);
+
+    // Step 4: Re-fetch project ID on progress change, if needed
+    useEffect(() => {
+        if (!activeProjectID && progress !== undefined) {
+            refetchProjectID();
+        }
+    }, [progress]);
+
+    // Step 5: Optional - re-fetch tasks if progress updates while project ID is valid
+    useEffect(() => {
+        if (activeProjectID && progress !== undefined) {
+            refetchTasks();
         }
     }, [progress]);
 

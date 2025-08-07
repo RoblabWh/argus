@@ -164,6 +164,8 @@ def _check_panoramic(metadata: dict, datakeys: dict) -> bool:
 
 
 def _check_thermal(metadata: dict, datakeys: dict, data: dict, filename: str) -> bool:
+    if "ir" not in datakeys:
+        return False
     if "ir_value" in datakeys['ir']:
         print(f"Checking if image {filename} is thermal based on ir_value", flush=True)
         image_source = metadata.get(datakeys["ir"]["ir"], None)

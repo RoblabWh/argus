@@ -135,6 +135,13 @@ def get_mapping_report_maps(db: Session, report_id: int):
     maps = db.query(models.Map).filter(models.Map.mapping_report_id == mapping_report.id).all()
     return maps
 
+def get_mapping_report_webodm_project_id(db: Session, report_id: int):
+    mapping_report = db.query(models.MappingReport).filter(models.MappingReport.report_id == report_id).first()
+    if not mapping_report:
+        return None
+
+    return mapping_report.webodm_project_id
+
 
 
 def update_process(db: Session, report_id: int, status: str = "queued", progress: float = 0):

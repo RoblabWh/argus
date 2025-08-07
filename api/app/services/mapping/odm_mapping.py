@@ -14,6 +14,7 @@ import logging
 import billiard as multiprocessing
 from billiard import Pool
 from rasterio.transform import from_bounds
+import psutil
 
 
 import pyproj
@@ -55,6 +56,9 @@ def process_webODM(
     if not webODM_project_id:
         webODM_project_id = create_odm_project(report_id, db, odm_manager)
     elif not odm_manager.check_project_exists(webODM_project_id):
+        if not odm_manager.check_connection():
+            logger.error("WebODM is not reachable.")
+            return
         logger.error(f"WebODM project {webODM_project_id} does not exist.")
         webODM_project_id = create_odm_project(report_id, db, odm_manager)
 
@@ -150,6 +154,7 @@ def process_webODM(
             map = map_crud.create(db, map_data)
 
         progress_updater.update_progress_of_map(status="processing", progress=100.0)
+        return webODM_project_id
 
 
 def summon_webODM_mapping_selections(mapping_selections):
@@ -190,6 +195,13 @@ def create_odm_project(report_id: int, db: Session, odm_manager: WebodmManager):
         report.description if report.description else "No description provided"
     )
 
+    mapping_report = report.mapping_report
+    if not mapping_report:
+        logger.error(f"Mapping report for report {report_id} not found")
+        raise HTTPException(
+            status_code=404, detail=f"Mapping report for report {report_id} not found"
+        )
+
     # Create a new project
     project_name = f"Argus report: {report_title}"
     project_id = odm_manager.create_project(
@@ -200,12 +212,7 @@ def create_odm_project(report_id: int, db: Session, odm_manager: WebodmManager):
         logger.error(f"Failed to create WebODM project for report {report_id}")
         raise HTTPException(status_code=500, detail="Failed to create WebODM project")
 
-    mapping_report = report.mapping_report
-    if not mapping_report:
-        logger.error(f"Mapping report for report {report_id} not found")
-        raise HTTPException(
-            status_code=404, detail=f"Mapping report for report {report_id} not found"
-        )
+   
 
     crud_report.set_webODM_project_id(db, report.mapping_report.id, project_id)
 
@@ -218,7 +225,7 @@ def scale_images(images, report_id, proxy_size):
         os.mkdir(proxy_path)
 
     scaled_image_paths = []
-    nmbr_of_processes = 8
+    nmbr_of_processes = calculate_number_of_safely_usable_processes(images[0].url)
     if nmbr_of_processes < len(images):
         nmbr_of_processes = len(images)
 
@@ -245,6 +252,35 @@ def scale_images(images, report_id, proxy_size):
 
     print("scaling done")
     return scaled_image_paths
+
+def calculate_number_of_safely_usable_processes(example_image_path):
+    example_memory_usage = get_image_memory_usage(example_image_path)
+    print('example_memory_usage: ', example_memory_usage, 'of image: ', example_image_path)
+    available_memory = psutil.virtual_memory().available
+
+    # Calculate the number of processes based on memory usage
+    max_processes = multiprocessing.cpu_count()
+    if max_processes > 8:
+        max_processes = max_processes - 2
+    elif max_processes > 2:
+        max_processes -= 1
+    #len(os.sched_getaffinity(0))
+    if example_memory_usage == 0:
+        print("Example memory usage is 0, cannot calculate safely usable processes.")
+        return max_processes
+    safely_usable_processes = min(max_processes, int(available_memory / example_memory_usage))
+    print('safely_usable_processes: ', safely_usable_processes, 'with max_processes: ', max_processes, 'and available_memory: ', available_memory)
+    return safely_usable_processes
+
+def get_image_memory_usage(image_path):
+    initial_memory = psutil.virtual_memory().used
+    loaded_image = cv2.imread(image_path)
+    final_memory = psutil.virtual_memory().used
+
+    image_memory_usage = final_memory - initial_memory
+    loaded_image = None
+
+    return image_memory_usage
 
 
 def process_with_timeouts_starmap(pool, func, params, timeout_per_item=5):

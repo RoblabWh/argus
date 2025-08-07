@@ -65,6 +65,7 @@ export const createReport = (data: { group_id: number; title: string; descriptio
 export const deleteReport = (report_id: number) => deleteRequest(`/reports/${report_id}`);
 
 export const getMaps = (report_id: number) => fetchJson<Map[]>(`/reports/${report_id}/mapping_report/maps`);
+export const getODMProjectID = (report_id: number) => fetchJson<{ webodm_project_id: string }>(`/reports/${report_id}/mapping_report/webodm_project_id`);
 
 export const getImages = (report_id: number) => fetchJson<{ images: string[] }>(`/images/report/${report_id}`);
 export const getImage = (image_id: number) => fetchJson<{ image: string }>(`/images/${image_id}`);

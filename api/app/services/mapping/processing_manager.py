@@ -56,12 +56,14 @@ def process_report(report_id: int, settings: dict = None):
 
 
         if settings['odm_processing'] and len(odm_mapping_selections) > 0:
-            webODM_project_id = report.mapping_report.webodm_project_id if report.mapping_report else None
+            webODM_project_id = crud.get_mapping_report_webodm_project_id(db, report_id)
             for map_index, odm_mapping_selection in enumerate(odm_mapping_selections):
                 # Process each ODM mapping task
                 logger.info(f"Processing ODM mapping task {odm_mapping_selection['type']} for report {report_id}")
                 progress_updater.set_map_index(map_index + len(mapping_selections), len(odm_mapping_selections) + len(mapping_selections))
-                process_webODM(report_id, mapping_report_id, webODM_project_id, odm_mapping_selection, settings, db, progress_updater, map_index)
+                new_project_id = process_webODM(report_id, mapping_report_id, webODM_project_id, odm_mapping_selection, settings, db, progress_updater, map_index)
+                if new_project_id is not None:
+                    webODM_project_id = new_project_id
 
         progress_updater.update_progress("completed", 100.0)
     except Exception as e:

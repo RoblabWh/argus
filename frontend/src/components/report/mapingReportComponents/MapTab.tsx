@@ -170,7 +170,7 @@ export function MapTab({ report, selectImageOnMap }: Props) {
                             </LayerGroup>
                         </Overlay>
                     )}
-                    { report.mapping_report?.images && report.mapping_report?.images.length > 0 && (
+                    { (report.mapping_report?.images && report.mapping_report?.images.length > 0 && report.mapping_report?.images.some(image => image.panoramic)) && (
                         //for each panoramic image, add a marker with a popup
                         <Overlay name="Panoramic Images" checked>
                             <LayerGroup>

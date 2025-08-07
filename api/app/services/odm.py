@@ -135,6 +135,9 @@ class WebodmManager:
     def upload_and_process_images(
         self, project_id, images, odm_full=False, image_type="color"
     ):
+        logger.info(f"Uploading and processing images for project {project_id} with odm_full={odm_full} and image_type={image_type}")
+        logger.info(f"uploading a total of {len(images)} images, with first image {images[0] if images else 'None'}")
+
         files = []
 
         for image in images:
