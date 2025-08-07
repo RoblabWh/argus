@@ -77,6 +77,7 @@ class MappingReportBase(BaseModel):
     covered_area: Optional[float] = None
     uav: Optional[str] = "Unknown"
     image_count: Optional[int] = 0
+    webodm_project_id: Optional[str] = None
 
 
 class MappingReportCreate(MappingReportBase):

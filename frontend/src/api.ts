@@ -71,8 +71,8 @@ export const getImage = (image_id: number) => fetchJson<{ image: string }>(`/ima
 export const deleteImage = (image_id: number) => deleteRequest(`/images/${image_id}`);
 export const getThermalMatrix = (image_id: number) => fetchJson<{ image_id: number; matrix: number[][]; min_temp: number; max_temp: number }>(`/images/${image_id}/thermal_matrix`);
 
-
-
+export const getWebODMAvailable = () => fetchJson<{ is_available: boolean, url: string }>("/odm/");
+export const getWebODMTasks = (project_id: string) => fetchJson<any[]>(`/odm/projects/${project_id}/tasks`);
 // POST: Start report processing
 export const startReportProcessing = (
   reportId: number,

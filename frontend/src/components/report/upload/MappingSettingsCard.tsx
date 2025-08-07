@@ -31,6 +31,7 @@ import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { useState, useEffect } from "react";
 import { Info, Blocks, Drone } from "lucide-react";
+import { WebODMLogo } from "@/components/report/mapingReportComponents/WebOdmCard";
 import { MappingTile } from "@/components/report/upload/SettingsTile";
 import type { ProcessingSettings } from "@/types/processing";
 
@@ -215,7 +216,7 @@ export function MappingSettingsCard({
                     {/* ODM Mapping */}
                     <MappingTile
                         title="ODM Mapping"
-                        icon={<Drone className="w-28 h-28" />}
+                        icon={<WebODMLogo className="w-28 h-28" />}
                         enabled={useODM}
                         onToggle={setUseODM}
                     >

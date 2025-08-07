@@ -24,20 +24,22 @@ export function AutoDescriptionCard({ description }: Props) {
 
 
     return (
-        <Card className="min-w-55 flex-1 relative overflow-hidden pb-3">
+        <Card className="min-w-55 flex-2 relative overflow-hidden pb-3">
             {/* Background UAV Icon */}
-            <Bot className="absolute right-2 top-2 w-24 h-24 opacity-100 text-muted-foreground dark:text-white z-0 pointer-events-none" />
+            <Bot className="absolute right-2 top-1 w-24 h-24 opacity-100 text-muted-foreground dark:text-white z-0 pointer-events-none" />
 
             {/* Gradient Overlay */}
-            <div className="absolute inset-0 z-10 pointer-events-none bg-gradient-to-l from-white/90 via-white/60 to-white/0 dark:from-gray-900/100 dark:via-gray-900/70 dark:to-gray-900/0" />
+            {/* <div className="absolute inset-0 z-10 pointer-events-none bg-gradient-to-l from-white/90 via-white/60 to-white/0 dark:from-gray-900/100 dark:via-gray-900/70 dark:to-gray-900/0" /> */}
+            <div className="absolute w-40 h-30 right-0 top-0 z-10 pointer-events-none bg-gradient-to-l from-white/90 via-white/75 to-white/55 dark:from-gray-900/100 dark:via-gray-900/85 dark:to-gray-900/60" />
 
-            <CardContent className="px-4 py-3 flex flex-col items-start space-y-1 relative z-10">
+
+            <CardContent className="px-4 pt-1 flex flex-col items-start space-y-1 relative z-10">
                 {/* Header */}
                 <div className="flex justify-between items-start w-full">
-                    <div className="text-xl font-semibold">AI Description</div>
+                     <div className="text-xl font-bold leading-none">AI Description</div>
                 </div>
 
-                <div className="text-[10px] text-muted-foreground">{description}</div>
+                <div className="text-xs text-muted-foreground">{description}</div>
                 {/* (re) generate description button */}
                 <Button
                     variant="outline"

@@ -27,6 +27,7 @@ The goal is to build a more robust and professional codebase, making Argus a fut
     - the ip adress of the backend will be set automatically (needed acess over the network) - the ip can be updated autoamtically on start by setting ```--refresh-ip```
     - if you want to load weather data, set OPEN_WEATHER_API_KEY with your own API key from [openweathermap](https://openweathermap.org/)
     - if you made manual changes to the .env, restart the containers
+    - to use WebODM clone the official webodm container and adjust the webodm path and username + password in the argus env (and set ENABLE_WEBODM to true) 
 5. open in Browser (port 5173)
 
 

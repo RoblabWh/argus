@@ -17,6 +17,7 @@ export interface MappingReport {
   images: Image[];
   maps: Map[];
   weather: Weather[];
+  webodm_project_id?: string | null;
 }
 
 export interface PanoReport {

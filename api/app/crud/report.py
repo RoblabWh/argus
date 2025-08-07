@@ -41,6 +41,16 @@ def get_full_report(db: Session, report_id: int, r: redis.Redis = None):
         .first()
     )
 
+def get_short_report(db: Session, report_id: int):
+    return (
+        db.query(models.Report)
+        .options(
+            joinedload(models.Report.mapping_report),
+        )
+        .filter(models.Report.report_id == report_id)
+        .first()
+    )
+
 
 def create(db: Session, data: ReportCreate):
     new_report = models.Report(
@@ -106,6 +116,16 @@ def update_mapping_report(db: Session, report_id: int, data: MappingReportUpdate
     db.commit()
     db.refresh(mapping)
     return mapping
+
+def set_webODM_project_id(db: Session, mapping_report_id: int, project_id: str):
+    mapping_report = db.query(models.MappingReport).filter(models.MappingReport.id == mapping_report_id).first()
+    if not mapping_report:
+        raise ValueError("Mapping report not found")
+
+    mapping_report.webodm_project_id = project_id
+    db.commit()
+    db.refresh(mapping_report)
+    return mapping_report
 
 def get_mapping_report_maps(db: Session, report_id: int):
     mapping_report = db.query(models.MappingReport).filter(models.MappingReport.report_id == report_id).first()

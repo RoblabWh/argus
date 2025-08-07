@@ -74,18 +74,19 @@ export function WeatherCard({ data, onReload }: Props) {
   const windDirLabel = getWindDirectionLabel(wind_dir_deg);
 
   return (
-    <Card className="min-w-54 max-w-114 flex-1 relative overflow-hidden pb-3">
+    <Card className="min-w-52 max-w-114 flex-1 relative overflow-hidden pb-3">
       {/* Background Icon */}
-      <WeatherIcon className="absolute right-2 top-2 w-24 h-24 opacity-100 text-muted-foreground dark:text-white z-0 pointer-events-none" />
+      <WeatherIcon className="absolute right-2 top-1 w-24 h-24 opacity-100 text-muted-foreground dark:text-white z-0 pointer-events-none" />
 
       {/* Gradient Fade Overlay */}
-      <div className="absolute inset-0 z-10 pointer-events-none bg-gradient-to-l from-white/90 via-white/60 to-white/0 dark:from-gray-900/100 dark:via-gray-900/70 dark:to-gray-900/0" />
+      {/* <div className="absolute inset-0 z-10 pointer-events-none bg-gradient-to-l from-white/90 via-white/60 to-white/0 dark:from-gray-900/100 dark:via-gray-900/70 dark:to-gray-900/0" /> */}
+      <div className="absolute w-40 h-30 right-0 top-0 z-10 pointer-events-none bg-gradient-to-l from-white/90 via-white/75 to-white/55 dark:from-gray-900/100 dark:via-gray-900/85 dark:to-gray-900/60" />
 
-      <CardContent className="px-4 pt-3 flex flex-col items-start space-y-1 relative z-10">
+      <CardContent className="px-4 pt-1 flex flex-col items-start space-y-1 relative z-10">
         {/* Top Row: Temp & Reload */}
         <div className="flex justify-between items-start w-full">
-          <div className="text-3xl font-bold leading-none">{temperatureValue}°C</div>
-          
+          <div className="text-xl font-bold leading-none">{temperatureValue}°C</div>
+
         </div>
 
         {/* Description */}
@@ -96,11 +97,11 @@ export function WeatherCard({ data, onReload }: Props) {
           <TooltipTrigger asChild>
             <div className="flex items-center gap-0 text-xs mt-1">
               <Wind className="w-3 h-3 mr-1" />
-              {wind_speed} m/s   
+              {wind_speed} m/s
               <ArrowDown
                 className="w-3 h-3 ml-1"
                 style={{ transform: `rotate(${wind_dir_deg}deg)` }}
-              /> 
+              />
               ({windDirLabel})
             </div>
           </TooltipTrigger>
@@ -149,8 +150,8 @@ export function WeatherCard({ data, onReload }: Props) {
         </div>
 
         {/* Footer */}
-        <div className="w-full text-right mt-1 flex justify-end items-center text-xs text-muted-foreground">
-          <span className="text-[10px] text-muted-foreground pr-2">{lastUpdated}</span>
+        <div className="w-full text-right mt-0 flex justify-end items-center text-xs text-muted-foreground">
+          <span className="text-[10px] text-muted-foreground">{lastUpdated}</span>
           {/* <Tooltip>
             <TooltipTrigger asChild>
               <Button

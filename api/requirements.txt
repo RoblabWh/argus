@@ -16,3 +16,4 @@ requests
 numpy
 opencv_python
 imutils
+rasterio

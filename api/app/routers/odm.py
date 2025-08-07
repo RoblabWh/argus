@@ -17,12 +17,12 @@ from app.services.odm import WebodmManager
 
 router = APIRouter(prefix="/odm", tags=["OpenDroneMap"])
 
-odm_manager = WebodmManager(WEBODM_ENABLED, WEBODM_URL, WEBODM_USERNAME, WEBODM_PASSWORD)
+odm_manager = WebodmManager()
 
-@router.get("/", response_model=bool)
+@router.get("/", response_model=dict)
 def is_odm_available(db: Session = Depends(get_db)):
     #check if WebODM is enabled and if it is reachable
-    return odm_manager.check_connection()
+    return {"is_available": odm_manager.check_connection(), "url": odm_manager.url}
 
 
 @router.get("/projects", response_model=List[dict])
@@ -43,3 +43,15 @@ def check_project_exists(project_id: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Project not found")
 
     return exists
+
+@router.get("/projects/{project_id}/tasks", response_model=List[dict])
+def get_project_tasks(project_id: str, db: Session = Depends(get_db)):
+    if not odm_manager.check_connection():
+        raise HTTPException(status_code=503, detail="WebODM is not available")
+
+    tasks = odm_manager.get_project_tasks(project_id)
+    if tasks is None:
+        raise HTTPException(status_code=404, detail="Tasks not found")
+
+    return tasks
+

@@ -26,12 +26,12 @@ export function GeneralDataCard({ report, onReprocessClicked }: Props) {
     
     return (
         <Card className="min-w-70 max-w-257 w-full flex-2 px-4 py-3">
-            <CardContent className="p-0 flex flex-col justify-between h-full">
+            <CardContent className="px-0 py-2 flex flex-col justify-between h-full">
                 {/* Title */}
                 <div className="flex justify-between items-start w-full">
                     <Tooltip>
                         <TooltipTrigger asChild>
-                            <div className="text-xl font-semibold truncate max-w-[28rem]">
+                            <div className="text-2xl font-bold leading-nonetruncate max-w-[28rem]">
                                 {report.title}
                             </div>
                         </TooltipTrigger>
@@ -42,7 +42,7 @@ export function GeneralDataCard({ report, onReprocessClicked }: Props) {
                 </div>
 
                 {/* Description */}
-                <div className="flex items-center justify-start w-full gap-1 mt-2">
+                <div className="flex items-center justify-start w-full gap-1 mt-0">
                     <Tooltip>
                         <TooltipTrigger asChild>
                             <div className="text-sm text-muted-foreground line-clamp-3 max-w-[28rem] cursor-help">
@@ -77,7 +77,7 @@ export function GeneralDataCard({ report, onReprocessClicked }: Props) {
                                     Created: {new Date(report.created_at).toLocaleDateString()} at{" "}
                                     {new Date(report.created_at).toLocaleTimeString()}
                                 </p>
-                                <p className="text-sm text-muted-foreground mt-1">
+                                <p className="text-[10px] text-muted-foreground mt-0">
                                     Status: {report.status}
                                 </p>
                             </>

@@ -122,7 +122,7 @@ export function MapTab({ report, selectImageOnMap }: Props) {
 
     return (
         <div className="w-full h-full relative">
-            <MapContainer center={center} zoom={18.5} ref={setMap} style={{ zIndex: 0, flex: 1, height: '100%' }}>
+            <MapContainer center={center} zoom={18.5} ref={setMap} style={{ zIndex: 0, flex: 1, height: '100%', cursor: 'default' }}>
                 <LayersControl position="topright">
                     <BaseLayer checked name="Mapbox Streets">
                         <TileLayer

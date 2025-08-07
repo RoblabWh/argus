@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { use, useEffect, useState } from 'react';
 import type { Report } from '@/types/report';
 import type { Image } from '@/types/image';
 import { Button } from '../ui/button';
@@ -9,8 +9,10 @@ import { TabArea } from './mapingReportComponents/TabArea';
 import { WeatherCard } from './mapingReportComponents/WeatherCard';
 import { FlightCard } from './mapingReportComponents/FlightCard';
 import { AutoDescriptionCard } from './mapingReportComponents/AutoDescriptionCard';
+import { WebOdmCard } from './mapingReportComponents/WebOdmCard';
 import { GalleryCard } from './mapingReportComponents/GalleryCard';
 import { Toaster } from '@/components/ui/sonner';
+import { useWebODM } from '@/hooks/useWebODM';
 
 import ResponsiveResizableLayout from "@/components/report/mapingReportComponents/MappingReportLayout";
 import { Card, CardContent, CardTitle } from "@/components/ui/card";
@@ -28,11 +30,14 @@ export function MappingReport({ report, onEditClicked }: Props) {
   const [filteredImages, setFilteredImages] = useState<Image[]>([]);
   const [selectedImage, setSelectedImage] = useState<Image | null>(null);
   const [tab, setTab] = useState("map");
+  const { data: webODMData } = useWebODM();
 
   const selectImageFromGallery = (image: Image | null) => {
     setSelectedImage(image);
     setTab("slideshow");
   };
+
+  console.log("webODMData:", webODMData);
   
 
   
@@ -58,6 +63,7 @@ export function MappingReport({ report, onEditClicked }: Props) {
               <WeatherCard data={report.mapping_report?.weather[0]} onReload={() => { alert("Reload Weather Data"); }} />
               <FlightCard data={report.mapping_report} />
               <AutoDescriptionCard description={report.auto_description} />
+              <WebOdmCard isWebODMAvailable={webODMData?.is_available} webODMURL={webODMData?.url} webODMProjectID={report.mapping_report?.webodm_project_id} reportID={report.report_id} progress={report.progress} />
             </div>
             <GalleryCard images={report.mapping_report?.images} setFilteredImages={setFilteredImages} filteredImages={filteredImages} setSelectedImage={selectImageFromGallery} />
             {/* Add more cards as needed */}
