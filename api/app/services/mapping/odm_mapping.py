@@ -300,7 +300,7 @@ def process_with_timeouts_starmap(pool, func, params, timeout_per_item=5):
             results.append(None)  # or use params[i] or a custom error placeholder
         except Exception as e:
             logger.error(f"Error processing item {i} with params {params[i]}: {e}")
-            results.append(None)  # or log/handle differently
+            #results.append(None)  # or log/handle differently
     return results
 
 
