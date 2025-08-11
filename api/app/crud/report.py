@@ -125,7 +125,7 @@ def set_webODM_project_id(db: Session, mapping_report_id: int, project_id: str):
     mapping_report.webodm_project_id = project_id
     db.commit()
     db.refresh(mapping_report)
-    return mapping_report
+    return mapping_report.webodm_project_id
 
 def get_mapping_report_maps(db: Session, report_id: int):
     mapping_report = db.query(models.MappingReport).filter(models.MappingReport.report_id == report_id).first()

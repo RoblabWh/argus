@@ -214,7 +214,7 @@ def create_odm_project(report_id: int, db: Session, odm_manager: WebodmManager):
 
    
 
-    crud_report.set_webODM_project_id(db, report.mapping_report.id, project_id)
+    project_id = crud_report.set_webODM_project_id(db, report.mapping_report.id, project_id)
 
     return project_id
 

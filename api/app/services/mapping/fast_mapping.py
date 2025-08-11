@@ -154,9 +154,8 @@ def map_images(report_id: int, mapping_report_id: int, mapping_selection: dict, 
     # logger.info(f"Map image for report {report_id} saved as {file_path}")
 
     # calculating images masks with the voronoi algorithm on a downscaled version of the map
-    voronoi = calc_voronoi_mask(map_elements, map_width, map_height, performance_factor=8)
-    # file_path = UPLOAD_DIR / str(report_id) / f"voronoi_{map_index}.png"
-    # draw_and_save_voronoi_mask(voronoi, file_path)
+    file_path = UPLOAD_DIR / str(report_id) / f"voronoi_{map_index}.png"
+    voronoi = calc_voronoi_mask(map_elements, map_width, map_height, performance_factor=8)#, debug_save_path=file_path)
     progress_updater.update_progress_of_map("processing", 50.0)
 
 
@@ -358,7 +357,7 @@ def calculate_px_coords(map_elements, target_map_resolution):
     return (total_width, total_height)
 
 
-def calc_voronoi_mask(map_elements: list[Map_Element], map_width: int, map_height: int, performance_factor: int = 8):
+def calc_voronoi_mask(map_elements: list[Map_Element], map_width: int, map_height: int, performance_factor: int = 8, debug_save_path = None):
     fact = 1/performance_factor
     scaled_width = int(map_width * fact)
     scaled_height = int(map_height * fact)
@@ -380,7 +379,12 @@ def calc_voronoi_mask(map_elements: list[Map_Element], map_width: int, map_heigh
         # Find closest center to each pixel location
     indices = np.argmin(squared_dist, axis=2) 
 
+    if debug_save_path:
+        draw_and_save_voronoi_mask(indices, debug_save_path)
+
+    logger.info(f"Shape of Voronoi mask: {indices.shape}")
     mask = cv2.resize(indices, (map_width, map_height), interpolation=cv2.INTER_NEAREST)
+    logger.info(f"Shape of resized Voronoi mask: {mask.shape}")
 
     return mask
 
@@ -406,6 +410,8 @@ def draw_and_save_voronoi_mask(voronoi_mask, file_path):
     image = np.zeros((voronoi_mask.shape[0], voronoi_mask.shape[1], 3), dtype=np.uint8)
     unique_indices = np.unique(voronoi_mask)
     hues = [int((i * (360 / len(unique_indices))) * 255/360) for i in range(len(unique_indices))]
+    #shuffle the hues to get random colors
+    np.random.shuffle(hues)
     colors = np.array([cv2.cvtColor(np.uint8([[[hue, 255, 255]]]), cv2.COLOR_HSV2BGR)[0][0] for hue in hues], dtype=np.uint8)
     
     #fill the image with colors based on the voronoi mask indices
@@ -416,7 +422,7 @@ def draw_and_save_voronoi_mask(voronoi_mask, file_path):
                 image[i, j] = colors[index]
 
     #resize the image to the original size with factor 8
-    image = cv2.resize(image, (voronoi_mask.shape[1] * 8, voronoi_mask.shape[0] * 8), interpolation=cv2.INTER_NEAREST)
+    logger.info(f"Saving Voronoi mask with dimensions {image.shape} to {file_path}")
 
 
     # Save the image
