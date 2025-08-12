@@ -1,0 +1,27 @@
+.truncate-col {
+    max-width: 200px;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.description-col {
+    max-width: 300px;
+}
+
+.slim-col {
+    width: 60px;
+    text-align: center;
+}
+
+.compact-table .description-col {
+    max-width: 150px;
+}
+
+.compact-table .truncate-col {
+    max-width: 150px;
+}
+
+.compact-table .slim-col {
+    width: 40px;
+}

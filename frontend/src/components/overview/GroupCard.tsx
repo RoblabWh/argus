@@ -60,7 +60,7 @@ export function GroupCard({ group, handleAddReport }: Props) {
           className="overflow-hidden"
         >
         <div className="flex px-6 pb-6 " >
-          <Button variant="outline" className="" onClick={(e) => openGroupReport(e)}>
+          <Button variant="outline" className="cursor-pointer" onClick={(e) => openGroupReport(e)}>
             Group Report
           </Button>
           

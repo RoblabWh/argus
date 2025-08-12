@@ -14,7 +14,7 @@ import { GalleryCard } from './mapingReportComponents/GalleryCard';
 import { Toaster } from '@/components/ui/sonner';
 import { useWebODM } from '@/hooks/useWebODM';
 
-import ResponsiveResizableLayout from "@/components/report/mapingReportComponents/MappingReportLayout";
+import {ResponsiveResizableLayout} from "@/components/ResponsiveResizableLayout";
 import { Card, CardContent, CardTitle } from "@/components/ui/card";
 
 

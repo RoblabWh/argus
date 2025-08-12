@@ -44,3 +44,18 @@ export interface Report {
   mapping_report?: MappingReport;
   pano_report?: PanoReport;
 }
+
+
+export interface ReportSummary {
+  report_id: number;
+  title: string;
+  description: string;
+  type: string;
+  status: string;
+  created_at: string;
+  flight_timestamp?: string;
+  image_count: number;
+  thermal_count: number;
+  pano_count: number;
+  maps: Map[];
+}

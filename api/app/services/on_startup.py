@@ -23,3 +23,9 @@ def cleanup_lost_tasks():
                 crud.update_process(db, report.report_id, "failed", 0.0)
                 r.delete(f"report:{report.report_id}:task_id")
                 r.delete(f"report:{report.report_id}:progress")
+        
+        if report.type == "unset":
+            report_short = crud.get_short_report(db, report.report_id)
+            if report_short.mapping_report:
+                #if it has a mapping report object, set the type to "mapping"
+                crud.update_report_type(db, report.report_id, "mapping")

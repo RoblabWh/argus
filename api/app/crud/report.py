@@ -1,10 +1,12 @@
-from sqlalchemy.orm import Session, joinedload, selectinload
+from sqlalchemy.orm import Session, joinedload, selectinload, aliased
+from sqlalchemy import select, func, case
 from datetime import datetime
 import redis
 
 from app import models
 from app.schemas.report import ReportCreate, ReportUpdate
 from app.schemas.report import MappingReportCreate, MappingReportUpdate
+from app.schemas.map import MapOutSlim
 from app.services.cleanup import cleanup_report_folder
 
 def get_all(db: Session):
@@ -13,7 +15,11 @@ def get_all(db: Session):
 
 def get_full_report(db: Session, report_id: int, r: redis.Redis = None):
     if r:
-        get_process_status(db, report_id, r)
+        try:
+            get_process_status(db, report_id, r)
+        except Exception as e:
+            print(f"Error getting process status: {e}")
+            return None
 
     return (
         db.query(models.Report)
@@ -91,18 +97,110 @@ def delete(db: Session, report_id: int):
     return {"message": f"Report {report_id} deleted"}
 
 
+
+def get_summaries(db: Session, group_id: int):
+    """
+    Returns lightweight report summary rows for a specific group_id.
+    Counts are aggregated per mapping_report for each report.
+    """
+
+    mr = aliased(models.MappingReport)
+    img = aliased(models.Image)
+
+    stmt = (
+        select(
+            models.Report.report_id,
+            models.Report.title,
+            models.Report.description,
+            models.Report.type,
+            models.Report.status,
+            models.Report.created_at,
+            mr.flight_timestamp,
+
+            # Total images
+            func.count(func.nullif(img.id, None)).label("image_count"),
+
+            # Thermal image count
+            func.count(
+                func.nullif(
+                    case((img.thermal == True, img.id)),
+                    None
+                )
+            ).label("thermal_count"),
+
+            # Pano image count
+            func.count(
+                func.nullif(
+                    case((img.panoramic == True, img.id)),
+                    None
+                )
+            ).label("pano_count"),
+        )
+        .join(mr, models.Report.mapping_report, isouter=True)
+        .join(img, mr.images, isouter=True)
+        .where(models.Report.group_id == group_id) 
+        .group_by(models.Report.report_id, mr.flight_timestamp)
+        .order_by(models.Report.created_at.desc())
+    )
+
+    summaries = {r.report_id: {
+        "report_id": r.report_id,
+        "title": r.title,
+        "description": r.description,
+        "type": r.type,
+        "status": r.status,
+        "created_at": r.created_at,
+        "flight_timestamp": r.flight_timestamp,
+        "image_count": r.image_count or 0,
+        "thermal_count": r.thermal_count or 0,
+        "pano_count": r.pano_count or 0,
+        "maps": []  # placeholder
+    } for r in db.execute(stmt).all()}
+
+    if not summaries:
+        return []
+
+    map_results = (
+        db.query(models.Map)
+        .join(models.MappingReport)
+        .join(models.Report)
+        .filter(models.Report.report_id.in_(summaries.keys()))
+        .options(joinedload(models.Map.mapping_report))
+        .all()
+    )
+
+    for mp in map_results:
+        # Attach MapOutSlim
+        slim = MapOutSlim.from_orm(mp)
+        summaries[mp.mapping_report.report_id]["maps"].append(slim)
+
+    return list(summaries.values())
+
+
 # Mapping Report Handlers
 
 def create_mapping_report(db: Session, report_id: int):
     existing = db.query(models.MappingReport).filter(models.MappingReport.report_id == report_id).first()
     if existing:
         raise ValueError("Mapping report already exists for this report")
+    
+    update_report_type(db, report_id, "mapping")
 
     mapping_report = models.MappingReport(report_id=report_id)
     db.add(mapping_report)
     db.commit()
     db.refresh(mapping_report)
     return mapping_report
+
+def update_report_type(db: Session, report_id: int, new_type: str):
+    report = db.query(models.Report).filter(models.Report.report_id == report_id).first()
+    if not report:
+        raise ValueError("Report not found")
+    
+    report.type = new_type
+    db.commit()
+    db.refresh(report)
+    return report
 
 
 def update_mapping_report(db: Session, report_id: int, data: MappingReportUpdate):

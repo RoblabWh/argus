@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import List, Optional
 from .image import ImageOut
-from .map import MapOut
+from .map import MapOut, MapOutSlim
 from .weather import WeatherOut
 
 from pydantic import BaseModel
@@ -125,3 +125,22 @@ class PanoReportOut(PanoReportBase):
 
     class Config:
         orm_mode = True
+
+
+
+##################
+## aggregated Report Data
+##################
+
+class ReportSummary(BaseModel):
+    report_id: int
+    title: str
+    description: Optional[str]
+    type: str
+    status: str
+    created_at: datetime
+    flight_timestamp: Optional[datetime]
+    image_count: int
+    pano_count: int
+    thermal_count: int
+    maps: List[MapOutSlim] = []

@@ -32,6 +32,14 @@ class MapOut(MapBase):
     class Config:
         orm_mode = True
 
+class MapOutSlim(MapBase):
+    id: int
+    created_at: datetime
+
+    class Config:
+        orm_mode = True
+        from_attributes = True
+
 
 
 ##################

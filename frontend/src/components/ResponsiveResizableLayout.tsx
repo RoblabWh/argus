@@ -6,7 +6,7 @@ import {
 } from "@/components/ui/resizable";
 import { useAspectRatio } from "@/hooks/useAspectRatio";
 
-export default function ResponsiveResizableLayout({
+export function ResponsiveResizableLayout({
   left,
   right,
 }: {

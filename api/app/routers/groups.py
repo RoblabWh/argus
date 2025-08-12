@@ -7,10 +7,11 @@ from app.database import get_db
 
 # Import schemas
 from app.schemas.group import GroupCreate, GroupUpdate, GroupOut, GroupOutReportMetadata
-from app.schemas.report import ReportDetailOut  
+from app.schemas.report import ReportDetailOut, ReportSummary
 
 # Import CRUD logic
 import app.crud.groups as crud_group
+import app.crud.report as crud_report
 
 router = APIRouter(prefix="/groups", tags=["Groups"])
 
@@ -45,3 +46,8 @@ def delete_group(group_id: int, db: Session = Depends(get_db)):
 @router.get("/{group_id}/reports", response_model=List[ReportDetailOut])
 def get_group_reports(group_id: int, db: Session = Depends(get_db)):
     return crud_group.get_reports_by_group_full(db, group_id)
+
+@router.get("/{group_id}/summary", response_model=list[ReportSummary])
+def get_group_report_table(group_id: int, db: Session = Depends(get_db)):
+    return crud_report.get_summaries(db, group_id)
+

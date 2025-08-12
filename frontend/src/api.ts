@@ -1,6 +1,6 @@
 // src/api/groups.ts
 import type { Group } from "@/types/group";
-import type { Report } from "@/types/report";
+import type { Report, ReportSummary } from "@/types/report";
 import type { Map } from "@/types/map";
 import type { ProcessingSettings } from "@/types/processing";
 
@@ -59,6 +59,7 @@ export const getGroups = () => fetchJson<Group[]>("/groups/");
 export const getGroup = (id: number) => fetchJson<Group>(`/groups/${id}`);
 export const getGroupReports = (id: number) => fetchJson<Report[]>(`/groups/${id}/reports`);
 export const createGroup = (data: { name: string; description: string }) => postJson<Group>("/groups/", data);
+export const getSummaryReports = (group_id: number) => fetchJson<ReportSummary[]>(`/groups/${group_id}/summary`);
 
 export const getReport = (report_id: number) => fetchJson<Report>(`/reports/${report_id}`);
 export const createReport = (data: { group_id: number; title: string; description: string }) =>  postJson<Report>(`/reports/`, data);
