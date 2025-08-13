@@ -17,7 +17,7 @@ from billiard import Pool
 logger = logging.getLogger(__name__)
 
 class Map_Element:
-    def __init__(self, utm, utm_corners, rotation, image_path, image_width, creation_timestamp, image_id):
+    def __init__(self, utm, utm_corners, rotation, image_path, image_width, creation_timestamp, image_id, matrix_contains_temperature):
         """
         Initializes a Map_Element with the given parameters.
         """
@@ -33,6 +33,7 @@ class Map_Element:
         self.scale = None  # Placeholder for scale calculation
         self.index = None  # Placeholder for index in the map
         self.image_matrix = None  # Placeholder for image matrix calculation
+        self.matrix_contains_temperature = matrix_contains_temperature  # Placeholder for temperature data presence
 
     def get_bounds(self):
         """
@@ -268,6 +269,8 @@ def calc_dumb_offset(image: ImageOut) -> float:
 
 
 def calculate_utm_corners(image: ImageOut, reference_yaw: float) -> Map_Element:
+    thermal = image["thermal"]
+    matrix_contains_temperature = False
     fov = image["mapping_data"]["fov"]
     rel_altitude = image["mapping_data"]["rel_altitude"]
     uav_yaw = -1 * math.radians(image["mapping_data"]["uav_yaw"]) 
@@ -279,6 +282,7 @@ def calculate_utm_corners(image: ImageOut, reference_yaw: float) -> Map_Element:
     creation_timestamp = image["created_at"]
     north_divergence = _calculate_utm_grid_north_diverence(utm["zone"], image["coord"]['gps']['lat'], image["coord"]['gps']['lon'])
     orientation = cam_yaw + north_divergence
+
 
     diag_length_px = (width**2 + height**2)**0.5
     diag_length_m = 2 * math.tan(math.radians(fov / 2)) * rel_altitude 
@@ -308,9 +312,22 @@ def calculate_utm_corners(image: ImageOut, reference_yaw: float) -> Map_Element:
         utm_x = utm['easting'] + x * scale
         utm_y = utm['northing'] + y * scale
         utm_corners.append((utm_x, utm_y))
-    
 
-    return Map_Element(utm, utm_corners, orientation, path, width, creation_timestamp, image["id"])
+    if thermal:
+        try:
+            if "thermal_data" not in image.keys():
+                raise KeyError("Temperature matrix path is missing in thermal data.")
+            if "temp_matrix_path" not in image["thermal_data"].keys():
+                raise KeyError("Temperature matrix path is missing in thermal data.")
+            temp_matrix_path = image["thermal_data"]["temp_matrix_path"]
+            if temp_matrix_path is None or not os.path.exists(temp_matrix_path):
+                raise FileNotFoundError(f"Temperature matrix file not found at {temp_matrix_path}")
+            matrix_contains_temperature = True
+            path = temp_matrix_path
+        except Exception as e:
+            logger.error(f"Error processing thermal data for image {image['id']}: {e} - Using image path instead.")
+
+    return Map_Element(utm, utm_corners, orientation, path, width, creation_timestamp, image["id"], matrix_contains_temperature)
 
 
 def calculate_px_coords(map_elements, target_map_resolution):
@@ -429,6 +446,8 @@ def draw_and_save_voronoi_mask(voronoi_mask, file_path):
     save_map_image(image, file_path)
 
 def draw_map(map_elements, voronoi_mask, map_width, map_height, progress_updater):
+
+    thermal_map = True if map_elements[0].matrix_contains_temperature else False
     map_img = np.zeros((map_height, map_width, 4), dtype=np.uint8)
 
     batch_size = 32
@@ -476,6 +495,20 @@ def draw_map(map_elements, voronoi_mask, map_width, map_height, progress_updater
             element.clear_image_matrix()  # Clear the image matrix to free memory
         progress_updater.update_progress_of_map("processing", 50 + (i+1 / len(map_elements_batches)*45))
 
+    if thermal_map:
+        #convert the temperature map into a colored map
+        alpha_channel = map_img[:, :, 3]
+        temperature_channel = map_img[:, :, 0]  # Assuming the temperature data is in the first channel
+        max_temp = np.max(temperature_channel)
+        min_temp = np.min(temperature_channel)
+        logger.info(f"Max temperature: {max_temp}, Min temperature: {min_temp}")
+        factor = 255 / (max_temp - min_temp) if max_temp != min_temp else 0
+        temperature_channel = (temperature_channel - min_temp) * factor
+        temperature_channel = temperature_channel.astype(np.uint8)
+
+        map_img = cv2.cvtColor(temperature_channel, cv2.COLOR_GRAY2BGR)
+        map_img = cv2.cvtColor(map_img, cv2.COLOR_BGR2BGRA)
+        map_img[:, :, 3] = (alpha_channel*255).astype(np.uint8)  # Restore the alpha channel
 
     return map_img
 
@@ -500,15 +533,27 @@ def process_batch_with_timeouts(pool, batch, timeout_per_item=5):
     return results
 
 def load_and_transform_images(element: Map_Element) -> Map_Element:
-    image = cv2.imread(element.image_path, cv2.IMREAD_UNCHANGED)
+    image = None
+
+    if element.image_path[-4:] == ".npy":
+        # Load the image matrix from a numpy file
+        try:
+            image = np.load(element.image_path)
+            if image.ndim == 2:  # If it's a single channel image, convert to 3 channels
+                image = np.dstack((image,)*3)
+        except Exception as e:
+            logger.error(f"Failed to load image matrix from {element.image_path}: {e}")
+
     if image is None:
-        logger.error(f"Failed to load image at {element.image_path}")
-        return element
+        image = cv2.imread(element.image_path, cv2.IMREAD_UNCHANGED)
+        if image is None:
+            logger.error(f"Failed to load image at {element.image_path}")
+            return element
     
 
     # Resize the image to the target size
     target_size = (int(image.shape[1] * element.scale), int(image.shape[0] * element.scale))
-    image = cv2.resize(image, target_size, interpolation=cv2.INTER_LINEAR)
+    image = cv2.resize(image, target_size, interpolation=cv2.INTER_NEAREST)
 
     #add alpha channel if not present
     if image.shape[2] == 3:
