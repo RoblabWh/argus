@@ -35,7 +35,7 @@ def extract_image_metadata(image_path: str) -> dict:
     model_name = metadata.get("EXIF:Model", "Unknown Camera")
     datakeys = _get_keys(model_name)
 
-    print(f"keys for {model_name}: {datakeys}", flush=True)
+    #print(f"keys for {model_name}: {datakeys}", flush=True)
 
 
 
@@ -303,6 +303,9 @@ def _extract_mapping_data(metadata: dict, datakeys: dict, data: dict) -> tuple:
         except ValueError:
             raise ValueError(f"FOV value '{fov}' is not a valid float.")
         mapping_data["fov"] = fov
+
+        if datakeys.get("fov_correction", 1.0) != 1.0:
+            mapping_data["fov"] *= datakeys["fov_correction"]
 
     mapping_data["uav_roll"] = metadata.get(datakeys["orientation"]["uav_roll"], None)
     mapping_data["uav_yaw"] = metadata.get(datakeys["orientation"]["uav_yaw"], None)

@@ -3,6 +3,7 @@ import type { Group } from "@/types/group";
 import type { Report, ReportSummary } from "@/types/report";
 import type { Map } from "@/types/map";
 import type { ProcessingSettings } from "@/types/processing";
+import { data } from "react-router-dom";
 
 // const API_URL = "http://" + process.env.VITE_API_URL + ":" + process.env.VITE_API_PORT;
 // const API_URL = "http://localhost:8000";
@@ -64,6 +65,7 @@ export const getSummaryReports = (group_id: number) => fetchJson<ReportSummary[]
 export const getReport = (report_id: number) => fetchJson<Report>(`/reports/${report_id}`);
 export const createReport = (data: { group_id: number; title: string; description: string }) =>  postJson<Report>(`/reports/`, data);
 export const deleteReport = (report_id: number) => deleteRequest(`/reports/${report_id}`);
+export const editReport = (data: { id: number; title: string; description: string }) => {return postJson<Report>(`/reports/${data.id}`, data, "PUT");};
 
 export const getMaps = (report_id: number) => fetchJson<Map[]>(`/reports/${report_id}/mapping_report/maps`);
 export const getODMProjectID = (report_id: number) => fetchJson<{ webodm_project_id: string }>(`/reports/${report_id}/mapping_report/webodm_project_id`);

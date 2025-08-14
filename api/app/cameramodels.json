@@ -30,7 +30,8 @@
       "uav_yaw": "XMP:FlightYawDegree",
       "uav_pitch": "XMP:FlightPitchDegree"
     },
-    "adjust_data": false
+    "adjust_data": false,
+    "fov_correction" : 1.0
   },
   "M30T": {
     "created_at": "EXIF:CreateDate",
@@ -63,8 +64,9 @@
       "uav_yaw": "XMP:FlightYawDegree",
       "uav_pitch": "XMP:FlightPitchDegree"
     },
-    "adjust_data": false
-  },
+    "adjust_data": false,
+    "fov_correction" : 1.225
+   },
   "MAVIC2-ENTERPRISE-ADVANCED": {
     "created_at": "EXIF:CreateDate",
     "width": "File:ImageWidth",

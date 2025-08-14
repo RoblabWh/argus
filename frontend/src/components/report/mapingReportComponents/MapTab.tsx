@@ -79,16 +79,6 @@ export function MapTab({ report, selectImageOnMap }: Props) {
         selectImageOnMap(image_id)
     };
 
-    // useEffect(() => {
-    //     map?.eachLayer((layer) => {
-    //         if (layer instanceof L.ImageOverlay) {
-    //             layer.setOpacity(overlayOpacity);
-    //         }
-    //     });
-    //     console.log("this is called:", overlayOpacity);
-    // }, [overlayOpacity]);
-
-
     useEffect(() => {
         console.log("Map created, bounds are:", bounds);
         if (map !== null && bounds) {
@@ -247,23 +237,7 @@ export function MapTab({ report, selectImageOnMap }: Props) {
                                         />
                                     )}
 
-                                    {/* {bounds_corners.map((corner, index) => (
-                                    <Circle
-                                        key={`map-${map.id}_corner-${index}`}
-                                        center={corner}
-                                        radius={1}
-                                        color="red"
-                                    />
-                                ))}
-
-                                {gps_corners.map((corner, index) => (
-                                    <Circle
-                                        key={`map-${map.id}_corner-${index}`}
-                                        center={corner}
-                                        radius={1}
-                                        color="green"
-                                    />
-                                ))} */}
+                                    
 
                                     {map.map_elements?.map((element) => {
                                         const corners = element.corners.gps;

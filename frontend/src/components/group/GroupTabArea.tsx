@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import type { Report } from '@/types/report';
 import type { ReportSummary } from '@/types/report';
 import { DetailedReportTable } from './DetailedReportTable';
+import { GroupMapTab } from './GroupMapTab';
 
 interface Props {
     summaryReports: ReportSummary[];
@@ -22,7 +23,7 @@ export function GroupTabArea({ summaryReports }: Props) {
             value={activeTab}
             className="w-full relative h-full "
         >
-            <div className="absolute left-[50%] -translate-x-[50%] top-2 z-10">
+            <div className="absolute left-[50%] -translate-x-[50%] top-2 z-1000">
                 <TabsList className="">
                     <TabsTrigger value="map">Map</TabsTrigger>
                     <TabsTrigger value="reports">Reports</TabsTrigger>
@@ -31,9 +32,9 @@ export function GroupTabArea({ summaryReports }: Props) {
             </div>
 
             <TabsContent value="map">
-                <div className="text-sm h-[calc(100vh-200px)] overflow-y-auto">
+                <div className="relative text-sm h-[calc(100%)] overflow-auto z-0">
                     {/* <MapTab report={report} selectImageOnMap={selectImageOnMap} /> */}
-                    <p>Map content goes here</p>
+                    <GroupMapTab summaryReports={summaryReports} />
                 </div>
             </TabsContent>
 

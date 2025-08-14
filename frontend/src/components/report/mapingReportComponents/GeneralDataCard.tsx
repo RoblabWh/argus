@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
@@ -10,6 +11,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { MoreHorizontal } from "lucide-react";
 import type { Report } from '@/types/report';
+import { EditReportPopup } from "../EditReportPopup";
 
 interface Props {
     report: Report;
@@ -18,13 +20,14 @@ interface Props {
 
 export function GeneralDataCard({ report, onReprocessClicked }: Props) {
     const isProcessing = report.status === 'processing' || report.status === 'preprocessing';
+    const [editPopupOpen, setEditPopupOpen] = useState(false);
 
     const onEditDetailsClick = () => {
-        // Handle edit details click
-        console.log("Edit details clicked");
+        setEditPopupOpen(true);
     };
     
     return (
+        <>
         <Card className="min-w-70 max-w-257 w-full flex-2 px-4 py-3">
             <CardContent className="px-0 py-2 flex flex-col justify-between h-full">
                 {/* Title */}
@@ -103,5 +106,13 @@ export function GeneralDataCard({ report, onReprocessClicked }: Props) {
                 </div>
             </CardContent>
         </Card>
+        <EditReportPopup
+            open={editPopupOpen}
+            onOpenChange={setEditPopupOpen}
+            reportId={report.report_id}
+            initialTitle={report.title}
+            initialDescription={report.description}
+        />
+        </>
     );
 }
