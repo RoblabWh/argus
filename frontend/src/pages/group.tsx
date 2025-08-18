@@ -7,6 +7,9 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardTitle } from '@/components/ui/card';
 import { ResponsiveResizableLayout } from '@/components/ResponsiveResizableLayout';
 import { GroupTabArea } from '@/components/group/GroupTabArea';
+import type { Group } from '@/types/group';
+import { GeneralDataCard } from '@/components/group/GenerealGroupDataCard';
+import { FlightGroupCard } from '@/components/group/FlightGroupCard';
 
 export default function Group() {
     const { id } = useParams<{ id: string }>();
@@ -43,18 +46,10 @@ export default function Group() {
                 left={
 
                     <div className="flex flex-col gap-4 h-full w-full">
-                        <div className='flex flex-wrap gap-4'>
+                        <div className='flex flex-wrap gap-4 w-full'>
+                            <GeneralDataCard group={group} />
+                            <FlightGroupCard data={summaryReports} />
 
-                            <Card className="w-full">
-                                <CardContent>
-                                    <CardTitle className="text-2xl font-bold mb-4">Group Details</CardTitle>
-                                    <p className="text-sm text-muted-foreground mb-2">ID: {group.id}</p>
-                                    <p className="text-sm text-muted-foreground mb-2">Description: {group.description}</p>
-                                </CardContent>
-                            </Card>
-                            <h1 className="text-2xl font-bold mb-4 mr-2">Group: {group.name}</h1>
-
-                            <p>This is the group page.</p>
                         </div>
                         {/* Add more cards as needed */}
                     </div>

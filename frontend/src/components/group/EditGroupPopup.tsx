@@ -11,37 +11,37 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { useUpdateReport } from "@/hooks/reportHooks" // You’ll need to create/adapt this
+import { useEditGroup } from "@/hooks/groupHooks" // You’ll need to create/adapt this
 
-interface EditReportPopupProps {
+interface EditGroupPopupProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  reportId: number
-  initialTitle: string
+  groupId: number
+  initialName: string
   initialDescription: string
-//   updateReport: (title: string, description: string) => void
+//   updateGroup: (name: string, description: string) => void
 }
 
-export function EditReportPopup({
+export function EditGroupPopup({
   open,
   onOpenChange,
-  reportId,
-  initialTitle,
+  groupId,
+  initialName,
   initialDescription,
-//   updateReport,
-}: EditReportPopupProps) {
-  const [formData, setFormData] = useState({ title: "", description: "" })
-  const [formErrors, setFormErrors] = useState<{ title?: string; description?: string }>({})
+//   updateGroup,
+}: EditGroupPopupProps) {
+  const [formData, setFormData] = useState({ name: "", description: "" })
+  const [formErrors, setFormErrors] = useState<{ name?: string; description?: string }>({})
 
-  const { mutate: updateReport, isPending, error } = useUpdateReport()
+  const { mutate: updateGroup, isPending, error } = useEditGroup()
 
   // Prefill when opened or when props change
   useEffect(() => {
     if (open) {
-      setFormData({ title: initialTitle, description: initialDescription })
+      setFormData({ name: initialName, description: initialDescription })
       setFormErrors({})
     }
-  }, [open, initialTitle, initialDescription])
+  }, [open, initialName, initialDescription])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -56,7 +56,7 @@ export function EditReportPopup({
     console.log("Submitting report update:", formData)
 
     const errors: typeof formErrors = {}
-    if (!formData.title.trim()) errors.title = "Title is required"
+    if (!formData.name.trim()) errors.name = "Name is required"
     if (!formData.description.trim()) errors.description = "Description is required"
 
     if (Object.keys(errors).length > 0) {
@@ -64,8 +64,8 @@ export function EditReportPopup({
       return
     }
 
-    updateReport(
-      { id: reportId, ...formData },
+    updateGroup(
+      { id: groupId, ...formData },
       {
         onSuccess: () => {
           onOpenChange(false)
@@ -91,13 +91,13 @@ export function EditReportPopup({
             <div className="grid gap-3">
               <Label htmlFor="title">Title</Label>
               <Input
-                id="title"
-                name="title"
-                value={formData.title}
+                id="name"
+                name="name"
+                value={formData.name}
                 onChange={handleChange}
-                className={formErrors.title ? "border-red-500 focus-visible:ring-red-500" : ""}
+                className={formErrors.name ? "border-red-500 focus-visible:ring-red-500" : ""}
               />
-              {formErrors.title && <p className="text-sm text-red-500">{formErrors.title}</p>}
+              {formErrors.name && <p className="text-sm text-red-500">{formErrors.name}</p>}
             </div>
 
             <div className="grid gap-3">

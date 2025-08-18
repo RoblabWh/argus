@@ -116,6 +116,7 @@ def get_summaries(db: Session, group_id: int):
             models.Report.status,
             models.Report.created_at,
             mr.flight_timestamp,
+            mr.coord,
 
             # Total images
             func.count(func.nullif(img.id, None)).label("image_count"),
@@ -139,7 +140,7 @@ def get_summaries(db: Session, group_id: int):
         .join(mr, models.Report.mapping_report, isouter=True)
         .join(img, mr.images, isouter=True)
         .where(models.Report.group_id == group_id) 
-        .group_by(models.Report.report_id, mr.flight_timestamp)
+        .group_by(models.Report.report_id, mr.flight_timestamp, mr.coord)
         .order_by(models.Report.created_at.desc())
     )
 
@@ -151,6 +152,7 @@ def get_summaries(db: Session, group_id: int):
         "status": r.status,
         "created_at": r.created_at,
         "flight_timestamp": r.flight_timestamp,
+        "coord": r.coord,
         "image_count": r.image_count or 0,
         "thermal_count": r.thermal_count or 0,
         "pano_count": r.pano_count or 0,

@@ -28,7 +28,7 @@ export function GeneralDataCard({ report, onReprocessClicked }: Props) {
     
     return (
         <>
-        <Card className="min-w-70 max-w-257 w-full flex-2 px-4 py-3">
+        <Card className="min-w-70 max-w-257 w-full flex-2 px-4 py-3 m-0">
             <CardContent className="px-0 py-2 flex flex-col justify-between h-full">
                 {/* Title */}
                 <div className="flex justify-between items-start w-full">
@@ -48,7 +48,7 @@ export function GeneralDataCard({ report, onReprocessClicked }: Props) {
                 <div className="flex items-center justify-start w-full gap-1 mt-0">
                     <Tooltip>
                         <TooltipTrigger asChild>
-                            <div className="text-sm text-muted-foreground line-clamp-3 max-w-[28rem] cursor-help">
+                            <div className="text-sm text-muted-foreground line-clamp-3 max-w-[28rem]">
                                 {report.description || "No description available"}
                             </div>
                         </TooltipTrigger>

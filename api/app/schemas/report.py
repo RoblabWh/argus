@@ -143,4 +143,5 @@ class ReportSummary(BaseModel):
     image_count: int
     pano_count: int
     thermal_count: int
+    coord: Optional[dict] = None
     maps: List[MapOutSlim] = []

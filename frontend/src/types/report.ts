@@ -54,6 +54,7 @@ export interface ReportSummary {
   status: string;
   created_at: string;
   flight_timestamp?: string;
+  coord?: Record<string, unknown>;
   image_count: number;
   thermal_count: number;
   pano_count: number;

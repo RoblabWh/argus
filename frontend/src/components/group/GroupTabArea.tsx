@@ -23,7 +23,7 @@ export function GroupTabArea({ summaryReports }: Props) {
             value={activeTab}
             className="w-full relative h-full "
         >
-            <div className="absolute left-[50%] -translate-x-[50%] top-2 z-1000">
+            <div className="absolute left-[50%] -translate-x-[50%] top-2 z-4">
                 <TabsList className="">
                     <TabsTrigger value="map">Map</TabsTrigger>
                     <TabsTrigger value="reports">Reports</TabsTrigger>
