@@ -133,7 +133,7 @@ export function WebOdmCard({ isWebODMAvailable, webODMURL, webODMProjectID, repo
 
 function miniWebODMStatusTag(status: number) {
     const statusColors: Record<number, string> = {
-        20: "bg-yellow-200 text-yellow-800 dark:bg-yellow-500 dark:text-yellow-100",
+        20: "bg-yellow-300 text-yellow-900 dark:bg-yellow-600 dark:text-white",
         30: "bg-red-200 text-red-800 dark:bg-red-800 dark:text-red-100",
         40: "bg-green-200 text-green-800 dark:bg-green-600 dark:text-green-100",
     };

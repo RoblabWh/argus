@@ -15,15 +15,7 @@ import {
 import type { ReportSummary } from "@/types/report";
 import { add } from "date-fns";
 
-const modelMap: Record<string, string> = {
-    "FC2403": "DJI Mavic 2 Enterprise",
-    "L1D-20c": "DJI Mavic 2 Pro",
-    "L2D-20c": "DJI Mavic 3 Pro",
-    "FC3582": "DJI Mini 3 Pro",
-    "FC6310": "DJI Phantom 4 Pro",
-    "M30T": "DJI Matrice 30T",
-    // Add as many as needed
-};
+
 
 type Props = {
     data: ReportSummary[] | undefined;
@@ -43,12 +35,21 @@ export function FlightGroupCard({ data = [] }: Props) {
     data.sort((a, b) => (a.flight_timestamp > b.flight_timestamp ? 1 : -1));
     const firstFlight = data[0];
     const hasMoreThanOneFlight = data.length > 1;
-    const lastFlight = data[data.length - 1];
+
+    let lastFlight = data[data.length - 1];
+    for (let i = data.length - 1; i >= 0; i--) {
+        if (data[i].flight_timestamp && i > 0) {
+            lastFlight = data[i];
+            break;
+        } else if (i === 0) {
+            lastFlight = data[data.length - 1]; // Fallback to last flight then with no valid timestamp
+        }
+    }
     const total_images = data.reduce((acc, flight) => acc + (flight.image_count || 0), 0);
     const total_maps = data.reduce((acc, flight) => acc + (flight.maps.length || 0), 0);
 
     return (
-        <Card className="min-w-70 max-w-480 flex-2 relative overflow-hidden pb-3">
+        <Card className="min-w-80 max-w-480 flex-2 relative overflow-hidden pb-3">
             {/* Background UAV Icon */}
             <Drone className="absolute right-2 top-1 w-24 h-24 opacity-100 text-muted-foreground dark:text-white z-0 pointer-events-none" />
 
@@ -71,8 +72,8 @@ export function FlightGroupCard({ data = [] }: Props) {
                     {hasMoreThanOneFlight && (
                         <p className="text-sm text-muted-foreground">
                             <ChevronLast className="inline w-3 h-3 mr-1" />
-                            Last flight: {new Date(lastFlight.flight_timestamp).toLocaleDateString()} at{" "}
-                            {new Date(lastFlight.flight_timestamp).toLocaleTimeString()}
+                            Last flight: {(lastFlight.flight_timestamp ? new Date(lastFlight.flight_timestamp).toLocaleDateString() : "Unknown")}
+                            {(lastFlight.flight_timestamp ? " at " + new Date(lastFlight.flight_timestamp).toLocaleTimeString() : "")}
                         </p>
                     )}
                     <p className="text-sm text-muted-foreground pt-1">

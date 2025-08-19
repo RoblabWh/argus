@@ -10,6 +10,7 @@ import { GroupTabArea } from '@/components/group/GroupTabArea';
 import type { Group } from '@/types/group';
 import { GeneralDataCard } from '@/components/group/GenerealGroupDataCard';
 import { FlightGroupCard } from '@/components/group/FlightGroupCard';
+import { ShortGroupTableCard } from '@/components/group/ShortGroupTableCard';
 
 export default function Group() {
     const { id } = useParams<{ id: string }>();
@@ -49,6 +50,7 @@ export default function Group() {
                         <div className='flex flex-wrap gap-4 w-full'>
                             <GeneralDataCard group={group} />
                             <FlightGroupCard data={summaryReports} />
+                            <ShortGroupTableCard data={summaryReports} />
 
                         </div>
                         {/* Add more cards as needed */}

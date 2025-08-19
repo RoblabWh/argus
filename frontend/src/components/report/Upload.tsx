@@ -12,6 +12,7 @@ import { toast } from "sonner"; // Assuming you have sonner for notifications
 import { useQueryClient } from "@tanstack/react-query"; // Adjust the import based on your project structure
 import { MappingSettingsCard } from "@/components/report/upload/MappingSettingsCard"; // Import the new settings card
 import { Separator } from "@/components/ui/separator";
+import { useWebODM } from '@/hooks/useWebODM';
 
 
 interface Props {
@@ -62,6 +63,8 @@ export function Upload({ report, onProcessingStarted, isEditing, setIsEditing }:
   const [showManualAltitudeField, setShowManualAltitudeField] = useState(
     checkShowManualAltitudeField(report)
   );
+  const { data: webODMData } = useWebODM();
+  
 
   useEffect(() => {
     // Recheck when uploads change
@@ -116,6 +119,7 @@ export function Upload({ report, onProcessingStarted, isEditing, setIsEditing }:
       <Toaster />
 
       <MappingSettingsCard
+        reportId={report.report_id}
         weatherAvailable={weatherAvailable}
         showManualAltitudeField={showManualAltitudeField}
         handleStartProcessing={handleStartProcessing}
@@ -124,6 +128,7 @@ export function Upload({ report, onProcessingStarted, isEditing, setIsEditing }:
         progress={report.progress}
         onCancelEditing={cancelEditing}
         isEditing={isEditing}
+        isWebODMAvailable={webODMData?.is_available}
       />
 
       <div className="mt-4">

@@ -34,8 +34,10 @@ import { Info, Blocks, Drone } from "lucide-react";
 import { WebODMLogo } from "@/components/report/mapingReportComponents/WebOdmCard";
 import { MappingTile } from "@/components/report/upload/SettingsTile";
 import type { ProcessingSettings } from "@/types/processing";
+import { useReportSettings } from "@/hooks/useReportSettingsCache";
 
 type MappingSettingsProps = {
+    reportId: number;
     weatherAvailable: boolean;
     showManualAltitudeField: boolean;
     handleStartProcessing: (settings: ProcessingSettings) => void;
@@ -44,10 +46,12 @@ type MappingSettingsProps = {
     progress?: number;
     onCancelEditing?: () => void; // Optional callback for canceling editing
     isEditing?: boolean; // Optional prop to control editing state
+    isWebODMAvailable?: boolean; // Optional prop to check if WebODM is available
 };
 // ...imports remain the same
 
 export function MappingSettingsCard({
+    reportId,
     weatherAvailable,
     showManualAltitudeField,
     handleStartProcessing,
@@ -55,34 +59,26 @@ export function MappingSettingsCard({
     status,
     progress,
     onCancelEditing,
-    isEditing
+    isEditing,
+    isWebODMAvailable
 }: MappingSettingsProps) {
-    const [keepWeather, setKeepWeather] = useState(weatherAvailable);
-    const [fastMapping, setFastMapping] = useState(true);
-    const [tiltDeviation, setTiltDeviation] = useState("7.5");
-    const [mapSize, setMapSize] = useState("6144");
-    const [defaultAltitude, setDefaultAltitude] = useState("100.0");
-    const [useDefaultAltitude, setUseDefaultAltitude] = useState(showManualAltitudeField);
-    const [useODM, setUseODM] = useState(false);
-    const [odmMode, setOdmMode] = useState("fast");
+    const { settings, setSettings } = useReportSettings(reportId, {
+        keep_weather: weatherAvailable,
+        default_flight_height: showManualAltitudeField ? 100.0 : 120.0,
+    });
+
     const processingButtonLabel = isEditing ? "Reprocess" : "Start Processing";
 
-    useEffect(() => {
-        setUseDefaultAltitude(showManualAltitudeField);
-    }, [showManualAltitudeField]);
+    const update = (partial: Partial<ProcessingSettings>) =>
+        {
+            console.log("Updating settings:", partial);
+            setSettings({ ...settings, ...partial });
+        };
 
     const handleStartProcessingWithSettings = () => {
-        const settings = {
-            keep_weather: keepWeather,
-            fast_mapping: fastMapping,
-            target_map_resolution: parseInt(mapSize, 10),
-            accepted_gimbal_tilt_deviation: parseFloat(tiltDeviation),
-            default_flight_height: useDefaultAltitude ? parseFloat(defaultAltitude) : 100.0, 
-            odm_processing: useODM,
-            odm_full: odmMode === "full",
-        };
         handleStartProcessing(settings);
     };
+
 
 
     const tileBaseClasses = "rounded-2xl border-2 border-primary p-4"// bg-muted bg-gradient-to-tl from-primary/15 via-white/0 to-white/0 dark:from-gray-700/70 dark:via-gray-900/0 dark:to-gray-900/0";
@@ -118,8 +114,8 @@ export function MappingSettingsCard({
                             <Switch
                                 id="keep-weather"
                                 disabled={!weatherAvailable}
-                                checked={keepWeather}
-                                onCheckedChange={setKeepWeather}
+                                checked={settings.keep_weather}
+                                onCheckedChange={(val) => { update({ keep_weather: val }) }}
                             />
                         </div>
                     </div>
@@ -128,8 +124,8 @@ export function MappingSettingsCard({
                     <MappingTile
                         title="Fast Mapping"
                         icon={<Blocks className="w-28 h-28" />}
-                        enabled={fastMapping}
-                        onToggle={setFastMapping}
+                        enabled={settings.fast_mapping}
+                        onToggle={(val) => update({ fast_mapping: val })}
                     >
                         {/* Fast Mapping */}
 
@@ -147,7 +143,7 @@ export function MappingSettingsCard({
                                         </TooltipContent>
                                     </Tooltip>
                                 </div>
-                                <Select value={mapSize} onValueChange={setMapSize}>
+                                <Select value={"" + settings.target_map_resolution} onValueChange={(val) => { let v = parseInt(val, 10); update({ target_map_resolution: v }) }}>
                                     <SelectTrigger id="map-size" className="bg-white/70 dark:bg-gray-800/70 cursor-pointer">
                                         <SelectValue />
                                     </SelectTrigger>
@@ -178,8 +174,8 @@ export function MappingSettingsCard({
                                     min={1.0}
                                     max={50.0}
                                     step={0.1}
-                                    value={tiltDeviation}
-                                    onChange={(e) => setTiltDeviation(e.target.value)}
+                                    value={settings.accepted_gimbal_tilt_deviation}
+                                    onChange={(e) => update({ accepted_gimbal_tilt_deviation: parseFloat(e.target.value) })}
                                     className="bg-white/70 dark:bg-gray-800/70"
                                 />
                             </div>
@@ -205,8 +201,8 @@ export function MappingSettingsCard({
                                     min={1}
                                     max={9999}
                                     step={0.1}
-                                    value={defaultAltitude}
-                                    onChange={(e) => setDefaultAltitude(e.target.value)}
+                                    value={settings.default_flight_height}
+                                    onChange={(e) => update({ default_flight_height: Number(e.target.value) })}
                                     className="bg-white/70 dark:bg-gray-800/70"
                                 />
                             </div>
@@ -217,19 +213,21 @@ export function MappingSettingsCard({
                     <MappingTile
                         title="ODM Mapping"
                         icon={<WebODMLogo className="w-28 h-28" />}
-                        enabled={useODM}
-                        onToggle={setUseODM}
+                        enabled={settings.odm_processing}
+                        onToggle={(val) => update({ odm_processing: val })}
+                        inactive={!isWebODMAvailable}
+                        inactiveTooltip={!isWebODMAvailable ? "WebODM is not available" : undefined}
                     >
 
                         <div className="relative flex flex-col space-y-1 z-10">
                             <Label htmlFor="odm-mode">ODM Mode</Label>
-                            <Select value={odmMode} onValueChange={setOdmMode}>
+                            <Select value={settings.odm_full ? "true" : "false"} onValueChange={(val: string) => update({ odm_full: val === "true" })}>
                                 <SelectTrigger id="odm-mode" className="bg-white/70 dark:bg-gray-800/70 cursor-pointer w-full">
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent className="bg-white dark:bg-gray-900">
-                                    <SelectItem value="fast">Fast Orthophoto</SelectItem>
-                                    <SelectItem value="full">Full 3D Mapping</SelectItem>
+                                    <SelectItem value="false">Fast Orthophoto</SelectItem>
+                                    <SelectItem value="true">Full 3D Mapping</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>

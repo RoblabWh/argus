@@ -2,6 +2,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { ReactNode } from "react";
+import { CircleAlert } from "lucide-react";
+import { TooltipContent, Tooltip, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 type MappingTileProps = {
   title: string;
@@ -9,6 +11,8 @@ type MappingTileProps = {
   enabled: boolean;
   onToggle: (val: boolean) => void;
   children?: ReactNode;
+  inactive?: boolean; // Optional prop to indicate if the tile is inactive
+  inactiveTooltip?: string; // Optional tooltip text for inactive state
 };
 
 export function MappingTile({
@@ -17,10 +21,12 @@ export function MappingTile({
   enabled,
   onToggle,
   children,
+  inactive = false,
+  inactiveTooltip
 }: MappingTileProps) {
   const inactiveClasses =
-    "cursor-pointer border border-muted-foreground/30 bg-muted/20 flex flex-col items-center justify-center hover:shadow-sm h-25 hover:border-primary";
-
+    "border border-muted-foreground/30 bg-muted/20 flex flex-col items-center justify-center hover:shadow-sm h-25 hover:border-primary";
+  const deactivatedClasses = "cursor-pointer " + inactiveClasses;
   const tileBaseClasses =
     "border-2 border-primary p-4";
 
@@ -30,9 +36,15 @@ export function MappingTile({
       <div
         className={cn(
           "relative transition-all duration-300 overflow-hidden rounded-2xl",
-          enabled ? tileBaseClasses : inactiveClasses
+          enabled ? tileBaseClasses : (inactive ? inactiveClasses : deactivatedClasses)
         )}
         onClick={() => {
+          if (inactive) {
+            if (inactiveTooltip) {
+              alert(inactiveTooltip); // Show tooltip or alert for inactive state
+            }
+            return; // Do not toggle if inactive
+          }
           if (!enabled) onToggle(true);
         }}
       >
@@ -47,7 +59,7 @@ export function MappingTile({
           >
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-semibold pr-6">{title}</h3>
-              <Switch checked={enabled} onCheckedChange={onToggle} className="cursor-pointer"/>
+              <Switch checked={enabled} onCheckedChange={onToggle} className="cursor-pointer" />
             </div>
             {children}
             <div className="absolute -bottom-8 left-2 opacity-10 z-0">{icon}</div>
@@ -63,7 +75,18 @@ export function MappingTile({
           >
             <div className="relative z-10 flex items-center justify-between gap-4">
               <h3 className="text-lg font-semibold">{title}</h3>
-              <Switch checked={false} className="cursor-pointer" />
+              {inactive ? (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger className="cursor-not-allowed">
+                      <CircleAlert className="w-6 h-6 text-muted-foreground" />
+                    </TooltipTrigger>
+                    <TooltipContent>{inactiveTooltip}</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              ) : (
+                <Switch checked={enabled} className="cursor-pointer" />
+              )}
             </div>
             <p className="text-sm text-muted-foreground">Deactivated</p>
             <div className="absolute -bottom-6 left-2 opacity-20 z-0">{icon}</div>

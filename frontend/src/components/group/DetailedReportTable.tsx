@@ -170,7 +170,7 @@ export function DetailedReportTable({ reports }: Props) {
                             <TableHead className="cursor-pointer" onClick={() => handleSort("flight_timestamp")}>Flight Date  {renderSortIcon("flight_timestamp")}</TableHead>
                             <TableHead className="cursor-pointer" onClick={() => handleSort("created_at")}>Created At  {renderSortIcon("created_at")}</TableHead>
                             <TableHead className="slim-col">{compactMode ? "Img" : "Images"}</TableHead>
-                            <TableHead className="slim-col">{compactMode ? "Therm" : "Thermal"}</TableHead>
+                            <TableHead className="slim-col">{compactMode ? "Thrm" : "Thermal"}</TableHead>
                             <TableHead className="slim-col">{compactMode ? "Pano" : "Panoramic"}</TableHead>
                             <TableHead className="cursor-pointer text-center" onClick={() => handleSort("status")}>Status  {renderSortIcon("status")}</TableHead>
                             <TableHead></TableHead>

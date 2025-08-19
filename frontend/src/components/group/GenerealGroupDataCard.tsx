@@ -27,7 +27,7 @@ export function GeneralDataCard({ group }: Props) {
 
     return (
         <>
-            <Card className="min-w-70 max-w-480 w-full flex-3 px-4 py-3">
+            <Card className="min-w-80 max-w-480 w-full flex-3 px-4 py-3">
                 <CardContent className="px-0 py-2 flex flex-col justify-between h-full">
                     {/* Title */}
                     <div className="flex justify-between items-start w-full">

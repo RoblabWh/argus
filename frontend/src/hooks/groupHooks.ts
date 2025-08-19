@@ -59,7 +59,7 @@ const useEditGroup = () => {
     mutationFn: editGroup,
     onSuccess: () => {
       // Invalidate and refetch the groups query to reflect the update
-      queryClient.invalidateQueries({ queryKey: ["groups"] });
+      queryClient.invalidateQueries({ queryKey: ["group"] });
     },
   });
 };

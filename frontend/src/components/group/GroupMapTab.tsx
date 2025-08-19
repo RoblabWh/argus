@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useEffect } from "react";
+import { useState, useMemo, useRef, useEffect, use } from "react";
 import {
     MapContainer,
     TileLayer,
@@ -22,6 +22,7 @@ import { createRoot } from "react-dom/client";
 import { useMap } from 'react-leaflet';
 import { Map as MapIcon, Layers } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
+import { set } from "date-fns";
 
 
 
@@ -79,17 +80,23 @@ export function GroupMapTab({
     );
 
 
-    const [enabledMaps, setEnabledMaps] = useState<Record<string, boolean>>(() => {
-        if (summaryReports.length === 0) return {};
-        return Object.fromEntries(
-            summaryReports.flatMap((r, i) =>
-                (r.maps || []).map((m) => [
-                    `${r.report_id}:${m.id}`,
-                    i === 0 || i === summaryReports.length - 1, 
-                ])
-            )
-        );
-    });
+    const [enabledMaps, setEnabledMaps] = useState<Record<string, boolean>>(() => { return {}; });
+
+    useEffect(() => {
+        if (summaryReports.length === 0) setEnabledMaps({});
+        else {
+            let enabled = Object.fromEntries(
+                summaryReports.flatMap((r, i) =>
+                    (r.maps || []).map((m) => [
+                        `${r.report_id}:${m.id}`,
+                        i === 0 || i === summaryReports.length - 1,
+                    ])
+                )
+            );
+            setEnabledMaps(enabled);
+        }
+    }, [summaryReports]);
+
 
 
     const overallBounds = useMemo(() => {
@@ -186,7 +193,7 @@ export function GroupMapTab({
             setEnabledMaps(newEnabledMaps);
             return;
         }
-       
+
         setEnabledMaps((prev) => ({
             ...prev,
             [`${reportId}:${mapId}`]: visible
@@ -302,9 +309,9 @@ export function GroupMapTab({
                         <CardContent>
                             {summaryReports.map((report) => (
                                 report.maps.length > 0 && (
-                                    <>
-                                        <Separator orientation="horizontal" className="my-2" />
-                                        <div key={report.report_id} className="mb-4">
+                                    
+                                    <div key={report.report_id} className="mb-4">
+                                            <Separator orientation="horizontal" className="my-2" />
                                             <div className="flex items-center space-x-2">
                                                 <Checkbox
                                                     checked={(report.maps.every((m) => enabledMaps[`${report.report_id}:${m.id}`])) ? true : (report.maps.some((m) => enabledMaps[`${report.report_id}:${m.id}`]) ? "indeterminate" : false)}
@@ -334,7 +341,7 @@ export function GroupMapTab({
                                                     onValueChange={(val) =>
                                                         handleChangeOpacity(report.report_id, val[0])
                                                     }
-                                                    disabled={!enabledMaps[`${report.report_id}:${report.maps[0]?.id}`]}
+                                                    disabled={!report.maps.some((m) => enabledMaps[`${report.report_id}:${m.id}`])}
                                                 />
                                             </div>
                                             {report.maps.map((mapItem) => {
@@ -367,7 +374,7 @@ export function GroupMapTab({
                                             })}
 
                                         </div>
-                                    </>
+                                    
                                 )))}
                         </CardContent>
                     </Card>
