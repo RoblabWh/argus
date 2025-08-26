@@ -155,7 +155,9 @@ class DetectionBase(BaseModel):
     image_id: int
     class_name: str
     score: float
-    bbox: dict  # JSONB as dict
+    bbox: list  # JSONB as dict
+    manually_verified: Optional[bool] = None
+
 
 class DetectionCreate(DetectionBase):
     pass
@@ -164,11 +166,12 @@ class DetectionUpdate(BaseModel):
     image_id: Optional[int] = None
     class_name: Optional[str] = None
     score: Optional[float] = None
-    bbox: Optional[dict] = None  # JSONB as dict
+    bbox: Optional[list] = None  # JSONB as dict
+    manually_verified: Optional[bool] = None
 
 class DetectionOut(DetectionBase):
     id: int
-    image: Optional[ImageOut] = None
+    #image: Optional[ImageOut] = None
 
     class Config:
         orm_mode = True

@@ -13,6 +13,7 @@ import { WebOdmCard } from './mapingReportComponents/WebOdmCard';
 import { GalleryCard } from './mapingReportComponents/GalleryCard';
 import { Toaster } from '@/components/ui/sonner';
 import { useWebODM } from '@/hooks/useWebODM';
+import { DetectionCard } from './mapingReportComponents/DetectionCard';
 
 import {ResponsiveResizableLayout} from "@/components/ResponsiveResizableLayout";
 import { Card, CardContent, CardTitle } from "@/components/ui/card";
@@ -64,6 +65,7 @@ export function MappingReport({ report, onEditClicked }: Props) {
               <FlightCard data={report.mapping_report} />
               <AutoDescriptionCard description={report.auto_description} />
               <WebOdmCard isWebODMAvailable={webODMData?.is_available} webODMURL={webODMData?.url} webODMProjectID={report.mapping_report?.webodm_project_id} reportID={report.report_id} progress={report.progress} />
+              <DetectionCard report={report} />
             </div>
             <GalleryCard images={report.mapping_report?.images} setFilteredImages={setFilteredImages} filteredImages={filteredImages} setSelectedImage={selectImageFromGallery} />
             {/* Add more cards as needed */}

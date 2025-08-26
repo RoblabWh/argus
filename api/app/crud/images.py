@@ -115,3 +115,44 @@ def update_thermal_matrix_path(db: Session, image_id: int, new_path: str):
     db.commit()
     db.refresh(thermal_data)
     return thermal_data
+
+def get_images_for_detection(db: Session, mapping_report_id: int):
+    images = db.query(models.Image).filter(models.Image.mapping_report_id == mapping_report_id).all()
+    return [{"path": image.url, "id": image.id} for image in images if not image.thermal]
+
+def get_detections_by_mapping_report_id(db: Session, mapping_report_id: int):
+    # 1. load images from the mapping report with their detections
+    # then only return the detections
+    images = (
+        db.query(models.Image)
+        .filter(models.Image.mapping_report_id == mapping_report_id)
+        .options(joinedload(models.Image.detections))
+        .all()
+    )
+    detections = []
+    for image in images:
+        detections.extend(image.detections)
+    return detections
+
+
+def save_detections(db: Session, mapping_report_id: int, detections: dict):
+    images = db.query(models.Image).filter(models.Image.mapping_report_id == mapping_report_id).all()
+    image_id_map = {image.id: image for image in images}
+
+    for det in detections.get("detections", []):
+        image_id = det.get("image_id")
+        if image_id in image_id_map:
+            new_detection = models.Detection(
+                image_id=image_id,
+                class_name=det.get("category_name"),
+                bbox=det.get("bbox"),
+                score=det.get("score"),
+                manually_verified=False
+            )
+            db.add(new_detection)
+
+    db.commit()
+    return {"status": "success", "message": "Detections saved successfully"}
+
+def get_all_detections(db: Session):
+    return db.query(models.Detection).all()

@@ -1,0 +1,5 @@
+psutil
+pyyaml
+celery
+redis
+numpy<2

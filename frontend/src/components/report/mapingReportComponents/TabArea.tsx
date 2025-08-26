@@ -76,9 +76,9 @@ export function TabArea({ report, filteredImages , selectedImage, setSelectedIma
     >
       <div className="absolute left-[50%] -translate-x-[50%] top-2 z-10">
         <TabsList className="">
-          <TabsTrigger value="map">Map</TabsTrigger>
-          <TabsTrigger value="slideshow">Images</TabsTrigger>
-          <TabsTrigger value="data">Data</TabsTrigger>
+          <TabsTrigger className="cursor-pointer" value="map">Map</TabsTrigger>
+          <TabsTrigger className="cursor-pointer" value="slideshow">Images</TabsTrigger>
+          <TabsTrigger className="cursor-pointer" value="data">Data</TabsTrigger>
         </TabsList>
       </div>
       <TabsContent value="map">

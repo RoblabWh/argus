@@ -13,6 +13,7 @@ from app.routers import (
     reports,
     images,
     odm,
+    detection,
     # weather,
     # detections,
     # processing,
@@ -45,6 +46,7 @@ app.include_router(groups.router)
 app.include_router(reports.router)
 app.include_router(images.router)
 app.include_router(odm.router)
+app.include_router(detection.router)
 
 cleanup_lost_tasks()  # Cleanup lost tasks on startup
 

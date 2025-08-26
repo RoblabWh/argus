@@ -1,5 +1,5 @@
 # entrypoint for celery task and in case of reprocessing defines the necessary processing steps
-from app.services.mapping.celery_app import celery_app
+from app.services.celery_app import celery_app
 import time
 import redis
 import os
@@ -18,7 +18,7 @@ import logging
 r = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, db=0)
 logger = logging.getLogger(__name__)
 
-@celery_app.task
+@celery_app.task(name="mapping.process_report")
 def process_report(report_id: int, settings: dict = None):
     db = next(get_db())
     progress_updater = ProgressUpdater(report_id, r, db)

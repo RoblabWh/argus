@@ -1,5 +1,6 @@
 from celery import Celery
 import logging
+from app.config import REDIS_HOST, REDIS_PORT
 
 logging.basicConfig(
     level=logging.INFO,  # Or DEBUG
@@ -8,14 +9,15 @@ logging.basicConfig(
 
 celery_app = Celery(
     "report_processing",
-    broker="redis://redis:6379/0",
-    backend="redis://redis:6379/0"
+    broker=f"redis://{REDIS_HOST}:{REDIS_PORT}/0",
+    backend=f"redis://{REDIS_HOST}:{REDIS_PORT}/0"
 )
 
 celery_app.autodiscover_tasks(["app.services.mapping"])
 
 
 celery_app.conf.task_routes = {
-    "tasks.*": {"queue": "default"}
+    "mapping.*": {"queue": "mapping"},
+    "detection.*": {"queue": "detection"},
 }
 
