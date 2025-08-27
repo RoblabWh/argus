@@ -1,21 +1,23 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { MoreHorizontal, ScanEye, ScanSearch, Car, Flame, PersonStanding, Funnel, Info } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import type { Report } from '@/types/report';
-import { EditReportPopup } from "../EditReportPopup";
+import type { Detection } from '@/types/detection';
+import {
+    useStartDetection,
+    useDetectionStatusPolling,
+    useDetections,
+    useUpdateDetection,
+    useIsDetectionRunning,
+} from "@/hooks/detectionHooks";
 
+const reportId = 1; // Example report ID, replace with actual prop or state
 interface Props {
     report: Report;
 
@@ -57,15 +59,52 @@ function initiateThresholds(report: Report) {
 
 
 export function DetectionCard({ report }: Props) {
-    const isProcessing = report.status === 'processing' || report.status === 'preprocessing';
-    const [editPopupOpen, setEditPopupOpen] = useState(false);
+    const [pollingEnabled, setPollingEnabled] = useState(false);
     const [thresholds, setThresholds] = useState<{ [key: string]: number }>({ ...initiateThresholds(report) });
     const [detectionSummary, setDetectionSummary] = useState<{ [key: string]: number }>({ ...countDetections(report, thresholds) });
     const [detectionMode, setDetectionMode] = useState<"fast" | "medium" | "detailed" | undefined>(undefined);
     const hasDetections = Object.keys(detectionSummary).length > 0;
-    const onEditDetailsClick = () => {
-        setEditPopupOpen(true);
+
+
+    // check if process is already running when loading
+    const isRunning = useIsDetectionRunning(report.report_id);
+
+    // enable polling automatically if backend says process is running
+    useEffect(() => {
+        if (isRunning.data) {
+            setPollingEnabled(true);
+        }
+    }, [isRunning.data]);
+
+    const startDetection = useStartDetection(report.report_id);
+    const detectionStatus = useDetectionStatusPolling(report.report_id, pollingEnabled);
+
+    const detections = useDetections(
+        report.report_id,
+        detectionStatus.data?.status === "finished" && pollingEnabled
+    );
+
+    // const updateDetection = useUpdateDetection(report.report_id);
+
+    useEffect(() => {
+        if (!detectionStatus.data) return;
+
+        if (detectionStatus.data.status.toUpperCase() === "FINISHED" || detectionStatus.data.status.toUpperCase() === "ERROR") {
+            setPollingEnabled(false);
+        }
+    }, [detectionStatus.data]);
+
+    const handleStart = () => {
+        startDetection.mutate(undefined, {
+            onSuccess: () => {
+                setPollingEnabled(true);
+            },
+        });
     };
+
+    // const handleUpdateDetection = (detectionId: number, newData: Detection) => {
+    //     updateDetection.mutate({ detectionId, data: newData });
+    // };
 
     const selectObjectIcon = (objectType: string) => {
         switch (objectType) {
@@ -112,7 +151,7 @@ export function DetectionCard({ report }: Props) {
                     </div>
 
                     {/* Description */}
-                    {hasDetections ?(
+                    {hasDetections ? (
                         <div className="flex items-center justify-start w-full gap-1 mt-0">
                             <Table className="w-full ">
                                 <TableHeader>
@@ -166,9 +205,9 @@ export function DetectionCard({ report }: Props) {
                                 </TableBody>
                             </Table>
                         </div>
-                    ):
+                    ) :
                         <div className="text-muted-foreground mt-2 text-xs">
-                            {isProcessing ? (
+                            {pollingEnabled ? (
                                 <span>Detection will be available after processing completes.</span>
                             ) : (
                                 <span>No detections found. Run AI Detection below.</span>
@@ -179,14 +218,14 @@ export function DetectionCard({ report }: Props) {
 
                     {/* Bottom section */}
                     <div className="w-full mt-4">
-                        {isProcessing ? (
+                        {pollingEnabled ? (
                             <div className="w-full">
 
-                                {report.progress !== undefined && (
+                                {detectionStatus.data !== undefined && (
                                     <>
-                                        <Progress value={report.progress} />
+                                        <Progress value={detectionStatus.data.progress} />
                                         <p className="text-sm text-muted-foreground mt-1">
-                                            {report.status} — {Math.round(report.progress)}%
+                                            {detectionStatus.data.status} — {Math.round(detectionStatus.data.progress)}%
                                         </p>
                                     </>
                                 )}
@@ -214,7 +253,7 @@ export function DetectionCard({ report }: Props) {
                                     </Select>
 
 
-                                    <Button variant="outline" size="sm" onClick={onEditDetailsClick}>
+                                    <Button variant="outline" size="sm" onClick={() => { handleStart() }} disabled={!pollingEnabled && (!detectionMode)}>
                                         Run Detection
                                     </Button>
                                 </div>
@@ -233,13 +272,6 @@ export function DetectionCard({ report }: Props) {
                     </div>
                 </CardContent>
             </Card>
-            <EditReportPopup
-                open={editPopupOpen}
-                onOpenChange={setEditPopupOpen}
-                reportId={report.report_id}
-                initialTitle={report.title}
-                initialDescription={report.description}
-            />
         </>
     );
 

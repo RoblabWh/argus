@@ -3,7 +3,10 @@ import type { Group } from "@/types/group";
 import type { Report, ReportSummary } from "@/types/report";
 import type { Map } from "@/types/map";
 import type { ProcessingSettings } from "@/types/processing";
+import type { Image } from "@/types/image";
+//
 import { data } from "react-router-dom";
+import type { Detection } from "./types";
 
 // const API_URL = "http://" + process.env.VITE_API_URL + ":" + process.env.VITE_API_PORT;
 // const API_URL = "http://localhost:8000";
@@ -76,6 +79,13 @@ export const getImages = (report_id: number) => fetchJson<{ images: string[] }>(
 export const getImage = (image_id: number) => fetchJson<{ image: string }>(`/images/${image_id}`);
 export const deleteImage = (image_id: number) => deleteRequest(`/images/${image_id}`);
 export const getThermalMatrix = (image_id: number) => fetchJson<{ image_id: number; matrix: number[][]; min_temp: number; max_temp: number }>(`/images/${image_id}/thermal_matrix`);
+
+export const startDetection = (report_id: number) => postJson<{ task_id: string }>(`/detections/r/${report_id}`, {});
+export const getDetectionStatus = (report_id: number) => fetchJson<{ report_id: number, status: string; progress: number; message?: string; error?: string }>(`/detections/r/${report_id}/status`);
+export const getDetections = (report_id: number) => fetchJson<Image[]>(`/detections/r/${report_id}`);
+export const updateDetection = (detection_id: number, data: Detection) => postJson<any>(`/detections/${detection_id}`, data, "PUT");
+
+// WebODM integration
 
 export const getWebODMAvailable = () => fetchJson<{ is_available: boolean, url: string }>("/odm/");
 export const getWebODMTasks = (project_id: string) => fetchJson<any[]>(`/odm/projects/${project_id}/tasks`);

@@ -5,6 +5,7 @@ import logging
 import numpy as np
 from transformer_pipeline.inference.datahandler import DataHandler
 from transformer_pipeline.inference.inference_engine import Inferencer
+from transformer_pipeline.inference.progress_tracker import ProgressTracker
 from PIL import Image
 import requests
 
@@ -44,6 +45,7 @@ celery_app = Celery(
     backend=f"redis://{REDIS_HOST}:{REDIS_PORT}/0"
 )
 
+
 @celery_app.task(name="detection.run")
 def run_detection(report_id: int, files: list[dict], max_splits: int = 0):
     try:
@@ -52,8 +54,16 @@ def run_detection(report_id: int, files: list[dict], max_splits: int = 0):
         r.set(f"detection:{report_id}:message", "Loading model and starting detection")
     
         annotation_path = f"reports_data/{report_id}/annotations.json"
-        datahandler = DataHandler()
-        inferencer = Inferencer(score_thr=0.4)
+        progress_tracker = ProgressTracker(
+            total_steps=5,
+            broadcast_status_function=lambda status, progress, message: (
+                r.set(f"detection:{report_id}:status", status),
+                r.set(f"detection:{report_id}:progress", progress),
+                r.set(f"detection:{report_id}:message", message)
+            )
+        )
+        datahandler = DataHandler(progress_tracker=progress_tracker)
+        inferencer = Inferencer(score_thr=0.4, progress_tracker=progress_tracker)
         models = inferencer.which_models_are_available()
         for model in models:
             inferencer.add_model(model)
@@ -73,7 +83,7 @@ def run_detection(report_id: int, files: list[dict], max_splits: int = 0):
         results_data = reformat_ann(annotation_path, files)
         
         # send results to backend API
-        url = f"{BACKEND_URL}/detections/{report_id}"
+        url = f"{BACKEND_URL}/detections/r/{report_id}"
         resp = requests.put(url, json={"detections": results_data}, timeout=30)
         resp.raise_for_status()
 

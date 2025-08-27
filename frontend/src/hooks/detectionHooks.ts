@@ -1,0 +1,58 @@
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
+import { startDetection, getDetectionStatus, getDetections, updateDetection } from "@/api";
+import type { Detection } from "@/types/detection";
+import type { Report } from "@/types/report";
+
+
+export function useStartDetection(reportId: number) {
+    return useMutation({
+        mutationFn: () => startDetection(reportId),
+    });
+}
+
+
+export function useIsDetectionRunning(reportId: number) {
+    return useQuery({
+        queryKey: ["isDetectionRunning", reportId],
+        queryFn: async () => {
+            try {
+                const status = await getDetectionStatus(reportId);
+                return status.status !== ""//; && status.status !== "completed" && status.status !== "failed";
+            } catch (err: any) {
+                if (err.status === 404) {
+                    return false; // no process running
+                }
+                throw err; // rethrow other errors
+            }
+        },
+    });
+}
+
+export function useDetectionStatusPolling(reportId: number, enabled: boolean) {
+    return useQuery({
+        queryKey: ["detectionStatus", reportId],
+        queryFn: () => getDetectionStatus(reportId),
+        enabled,
+        refetchInterval: enabled ? 2000 : false, // always poll if enabled
+    });
+}
+
+export function useDetections(reportId: number, enabled: boolean) {
+    return useQuery({
+        queryKey: ["detections", reportId],
+        queryFn: () => getDetections(reportId),
+        enabled,
+    });
+}
+
+export function useUpdateDetection() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ detectionId, data }: { detectionId: number; data: Detection }) =>
+            updateDetection(detectionId, data),
+        onSuccess: () => {
+            // Invalidate and refetch
+            queryClient.invalidateQueries({ queryKey: ["detections", reportId] });
+        },
+    });
+}

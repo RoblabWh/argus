@@ -2,7 +2,7 @@ from sqlalchemy.orm import Session, joinedload
 from datetime import datetime
 
 from app import models
-from app.schemas.image import ImageCreate, ImageUpdate, ImageUploadResult, MappingDataCreate, ThermalDataCreate
+from app.schemas.image import ImageCreate, ImageUpdate, ImageUploadResult, MappingDataCreate, ThermalDataCreate, DetectionUpdate
 from app.services.cleanup import delete_image_file
 
 def get_all(db: Session):
@@ -79,6 +79,14 @@ def create_mapping_data(db: Session, data: MappingDataCreate):
     db.refresh(new_mapping_data)
     return get_full_image(db, new_mapping_data.image_id) 
 
+
+
+
+######################
+############## Thermal
+######################
+
+
 def create_multiple_thermal_data(db: Session, data: list[ThermalDataCreate]):
     image_ids = [td.image_id for td in data]
     db.query(models.ThermalData).filter(models.ThermalData.image_id.in_(image_ids)).delete(synchronize_session=False)
@@ -115,6 +123,12 @@ def update_thermal_matrix_path(db: Session, image_id: int, new_path: str):
     db.commit()
     db.refresh(thermal_data)
     return thermal_data
+
+
+
+######################
+########### Detections
+######################
 
 def get_images_for_detection(db: Session, mapping_report_id: int):
     images = db.query(models.Image).filter(models.Image.mapping_report_id == mapping_report_id).all()
@@ -156,3 +170,20 @@ def save_detections(db: Session, mapping_report_id: int, detections: dict):
 
 def get_all_detections(db: Session):
     return db.query(models.Detection).all()
+
+def delete_all_detections_by_mapping_report_id(db: Session, mapping_report_id: int):
+    db.query(models.Detection).filter(models.Detection.image.has(mapping_report_id=mapping_report_id)).delete(synchronize_session=False)
+    db.commit()
+    return {"status": "success", "message": "All detections deleted successfully"}
+
+def update_detection(db: Session, detection_id: int, update_data: DetectionUpdate):
+    detection = db.query(models.Detection).filter(models.Detection.id == detection_id).first()
+    if not detection:
+        raise ValueError("Detection not found")
+
+    for key, value in update_data.dict(exclude_unset=True).items():
+        setattr(detection, key, value)
+
+    db.commit()
+    db.refresh(detection)
+    return detection
