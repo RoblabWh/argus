@@ -9,15 +9,32 @@ import { Separator } from "@/components/ui/separator";
 import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { ButtonToggle } from "@/components/ui/button-toggle";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
-import { ChevronLeft, ChevronRight, Thermometer, Scan, Locate, MousePointer2, Wand, Settings, RotateCcw } from "lucide-react";
+import {
+    ChevronLeft,
+    ChevronRight,
+    Thermometer,
+    Scan,
+    Settings,
+    RotateCcw,
+    Edit,
+    Trash,
+    Share2,
+    AlertTriangle,
+} from "lucide-react";
 import { useAspectRatio } from "@/hooks/useAspectRatio";
 import { set } from "date-fns";
 import { m } from "motion/react";
 import { PanoramaViewer } from "./panoramaViewer";
 
 
+const DETECTION_COLORS: Record<string, string> = {
+    fire: "red",
+    human: "lime",
+    vehicle: "magenta",
+};
 
 
 interface SlideshowTabProps {
@@ -25,6 +42,7 @@ interface SlideshowTabProps {
     images: Image[];
     nextImage: () => void;
     previousImage: () => void;
+    thresholds: { [key: string]: number };
 }
 
 export const SlideshowTab: React.FC<SlideshowTabProps> = ({
@@ -32,6 +50,7 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
     images,
     nextImage,
     previousImage,
+    thresholds,
 }) => {
     const apiUrl = getApiUrl();
     const containerRef = useRef<HTMLDivElement>(null);
@@ -70,6 +89,9 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
         maxTemp: 100,
         colorMap: "whiteHot",
     });
+
+    const [selectedDetection, setSelectedDetection] = useState<any | null>(null);
+
 
     const { data, isLoading, error, refetch } = useThermalMatrix(selectedImage?.id, selectedImage?.thermal);
 
@@ -198,6 +220,7 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
         setScale(fitScale);
         setMinScale(fitScale);
         setPosition({ x: offsetX, y: offsetY });
+        setSelectedDetection(null);
     };
 
 
@@ -209,6 +232,7 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
     // Handle zoom (wheel)
     const handleWheel = (e: any) => {
         e.evt.preventDefault();
+        setSelectedDetection(null);
         const scaleBy = 1.05;
         const stage = stageRef.current;
         const oldScale = stage.scaleX();
@@ -384,6 +408,7 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
 
 
     const handleMouseClick = (e: any) => {
+        setSelectedDetection(null);
 
         var stage = e.currentTarget;
         const stageScale = stage.scaleX();
@@ -442,88 +467,132 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
 
     }
 
-    useEffect(() => {
-        if (!probeResult) return;
-        const timer = setTimeout(() => setProbeResult(null), 3000);
-        return () => clearTimeout(timer);
-    }, [probeResult]);
+    function getDetectionMenuPosition(
+        det: any,
+        stageRef: React.RefObject<any>
+    ): { top: number; left: number } {
+        if (!stageRef.current) return { top: 0, left: 0 };
+
+        const scale = stageRef.current.scaleX() ?? 1;
+        const menuWidth = 50;   // rough width of button column
+        const menuHeight = 140; // rough height (3 stacked buttons)
+        const margin = 10;
+
+        const stageBox = stageRef.current.container().getBoundingClientRect();
+
+        const detX = det.screenX;
+        const detY = det.screenY;
+        const detW = det.bbox[2] * scale;
+        const detH = det.bbox[3] * scale;
+
+        let left = detX + detW + margin; // default: right side
+        let top = detY;
+
+        if (left + menuWidth > stageBox.width) {
+            left = detX - menuWidth - margin;
+        }
+
+        if (top + menuHeight > stageBox.height) {
+            top = detY + detH - menuHeight;
+        }
+
+        return { top, left };
+    }
+
+    function displayThresholdWarning(detections: any[]): boolean {
+        if (!detections || detections.length === 0) return false;
+        const selection = detections?.filter((det) => {
+            const threshold = thresholds?.[det.class_name] ?? 0; // thresholds passed as prop
+            return det.score < threshold;
+        });
+        if (!selection || selection.length === 0) return false;
+        return true;
+    }
 
 
     useEffect(() => {
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if (e.key === "ArrowRight") nextImage();
-            if (e.key === "ArrowLeft") previousImage();
-        };
-        window.addEventListener("keydown", handleKeyDown);
-        return () => window.removeEventListener("keydown", handleKeyDown);
-    }, [nextImage, previousImage]);
+            if (!probeResult) return;
+            const timer = setTimeout(() => setProbeResult(null), 3000);
+            return () => clearTimeout(timer);
+        }, [probeResult]);
 
 
-    return (
-        <div className="flex flex-col h-full w-full overflow-hidden justify-start" ref={containerRef}>
-            <div className="bg-white dark:bg-gray-800 h-full center flex items-center justify-center relative overflow-hidden flex-col">
-                {selectedImage ? (
-                    <>
-                        {selectedImage.panoramic ? (
-                            <>
-                                <PanoramaViewer imageUrl={`${apiUrl}/${selectedImage.url}`} />
-                            </>
-                        ) : (
-                            <div className="relative">
-                                <Stage
-                                    ref={stageRef}
-                                    width={containerSize.width}
-                                    height={containerSize.height}
-                                    scaleX={scale}
-                                    scaleY={scale}
-                                    x={position.x}
-                                    y={position.y}
-                                    onWheel={handleWheel}
-                                    draggable
-                                    onDragMove={handleDragMove}
-                                    onTouchMove={handleTouchMove}
-                                    onTouchEnd={handleTouchEnd}
-                                    onMouseUp={handleMouseClick}
-                                    onTap={handleMouseClick}
-                                    className="p-0 m-0"
-                                >
-                                    <Layer>
-                                        {/* Background RGB image (if exists) */}
-                                        {backgroundImage && selectedImage?.thermal && selectedImage.thermal_data?.counterpart_scale && (
-                                            <KonvaImage
-                                                image={backgroundImage}
-                                                scale={{
-                                                    x: image ? selectedImage.thermal_data.counterpart_scale : fallbackScale,
-                                                    y: image ? selectedImage.thermal_data.counterpart_scale : fallbackScale,
-                                                }}
-                                                x={image ? -((backgroundImage.width * selectedImage.thermal_data.counterpart_scale - image.width)) / 2 : 0}
-                                                y={image ? -((backgroundImage.height * selectedImage.thermal_data.counterpart_scale - image.height)) / 2 : 0}
-                                                opacity={1}
-                                            />
-                                        )}
-
-                                        {/* Foreground thermal image */}
-                                        {(image && (!tempMode || (!tempMatrix && tempMode)) || (!thermalSettings.recolor)) && (
-                                            <KonvaImage
-                                                image={image}
-                                                opacity={opacity}
-                                            />
-                                        )}
+        useEffect(() => {
+            const handleKeyDown = (e: KeyboardEvent) => {
+                if (e.key === "ArrowRight") nextImage();
+                if (e.key === "ArrowLeft") previousImage();
+            };
+            window.addEventListener("keydown", handleKeyDown);
+            return () => window.removeEventListener("keydown", handleKeyDown);
+        }, [nextImage, previousImage]);
 
 
-                                        {(tempMatrix && tempMode && thermalSettings.recolor) && (
-                                            <MatrixOverlayImage
-                                                matrix={tempMatrix}
-                                                width={image?.width || containerSize.width}
-                                                height={image?.height || containerSize.height}
-                                                minTemp={thermalSettings.autoTempLimits ? minmaxTemp.min : thermalSettings.minTemp}
-                                                maxTemp={thermalSettings.autoTempLimits ? minmaxTemp.max : thermalSettings.maxTemp}
-                                                colorMap={thermalSettings.colorMap}
-                                                opacity={opacity} // or whatever makes sense
-                                            />
-                                        )}
+        return (
+            <div className="flex flex-col h-full w-full overflow-hidden justify-start" ref={containerRef}>
+                <div className="bg-white dark:bg-gray-800 h-full center flex items-center justify-center relative overflow-hidden flex-col">
+                    {selectedImage ? (
+                        <>
+                            {selectedImage.panoramic ? (
+                                <>
+                                    <PanoramaViewer imageUrl={`${apiUrl}/${selectedImage.url}`} />
+                                </>
+                            ) : (
+                                <div className="relative">
+                                    <Stage
+                                        ref={stageRef}
+                                        width={containerSize.width}
+                                        height={containerSize.height}
+                                        scaleX={scale}
+                                        scaleY={scale}
+                                        x={position.x}
+                                        y={position.y}
+                                        onWheel={handleWheel}
+                                        draggable
+                                        onDragMove={handleDragMove}
+                                        onTouchMove={handleTouchMove}
+                                        onTouchEnd={handleTouchEnd}
+                                        onMouseUp={handleMouseClick}
+                                        onTap={handleMouseClick}
+                                        className="p-0 m-0"
 
-                                        {/* {probeResult && (
+                                    >
+                                        <Layer>
+                                            {/* Background RGB image (if exists) */}
+                                            {backgroundImage && selectedImage?.thermal && selectedImage.thermal_data?.counterpart_scale && (
+                                                <KonvaImage
+                                                    image={backgroundImage}
+                                                    scale={{
+                                                        x: image ? selectedImage.thermal_data.counterpart_scale : fallbackScale,
+                                                        y: image ? selectedImage.thermal_data.counterpart_scale : fallbackScale,
+                                                    }}
+                                                    x={image ? -((backgroundImage.width * selectedImage.thermal_data.counterpart_scale - image.width)) / 2 : 0}
+                                                    y={image ? -((backgroundImage.height * selectedImage.thermal_data.counterpart_scale - image.height)) / 2 : 0}
+                                                    opacity={1}
+                                                />
+                                            )}
+
+                                            {/* Foreground thermal image */}
+                                            {(image && (!tempMode || (!tempMatrix && tempMode)) || (!thermalSettings.recolor)) && (
+                                                <KonvaImage
+                                                    image={image}
+                                                    opacity={opacity}
+                                                />
+                                            )}
+
+
+                                            {(tempMatrix && tempMode && thermalSettings.recolor) && (
+                                                <MatrixOverlayImage
+                                                    matrix={tempMatrix}
+                                                    width={image?.width || containerSize.width}
+                                                    height={image?.height || containerSize.height}
+                                                    minTemp={thermalSettings.autoTempLimits ? minmaxTemp.min : thermalSettings.minTemp}
+                                                    maxTemp={thermalSettings.autoTempLimits ? minmaxTemp.max : thermalSettings.maxTemp}
+                                                    colorMap={thermalSettings.colorMap}
+                                                    opacity={opacity} // or whatever makes sense
+                                                />
+                                            )}
+
+                                            {/* {probeResult && (
                                     <Rect
                                         x={probeResult.x - 10}
                                         y={probeResult.y - 10}
@@ -534,381 +603,472 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
                                         fill="transparent"
                                     />
                                 )} */}
+                                            {selectedImage?.detections
+                                                ?.filter((det) => {
+                                                    const threshold = thresholds?.[det.class_name] ?? 0; // thresholds passed as prop
+                                                    return det.score >= threshold;
+                                                }).map((det) => {
+                                                    const [x, y, w, h] = det.bbox;
+                                                    const color = DETECTION_COLORS[det.class_name] || "white";
 
-                                    </Layer>
-                                </Stage>
-                                {selectedImage?.thermal && selectedImage.thermal_data?.counterpart_id && (
-                                    <div
-                                        className={`absolute -bottom-6 z-50 left-1/2 -translate-x-1/2 transition-all duration-300 ${showOpacityPanel ? '-translate-y-1/2' : 'translate-y-[-24px]'} opacity-60 hover:opacity-100`}
-                                    >
-                                        <div className="flex flex-col items-center justify-center">
-                                            {/* Toggle Button */}
-                                            <button
-                                                onClick={() => setShowOpacityPanel(!showOpacityPanel)}
-                                                className={`w-8 ${showOpacityPanel ? 'h-5 hover:h-6' : 'h-6'} bg-white dark:bg-gray-800 rounded-t-md flex items-center justify-center text-xs hover:cursor-pointer duration-300`}
-                                            >
-                                                {showOpacityPanel ? "▼" : "▲"}
-                                            </button>
-                                        </div>
+                                                    return (
+                                                        <Rect
+                                                            key={det.id}
+                                                            x={x}
+                                                            y={y}
+                                                            width={w}
+                                                            height={h}
+                                                            stroke={color}
+                                                            strokeWidth={6}
+                                                            onClick={(e) => {
+                                                                // Transform image coords into screen coords
+                                                                const stage = stageRef.current;
+                                                                const scale = stage.scaleX();
+                                                                const pos = stage.position();
+
+                                                                setSelectedDetection({
+                                                                    ...det,
+                                                                    screenX: x * scale + pos.x,
+                                                                    screenY: y * scale + pos.y,
+                                                                });
+                                                            }}
+                                                        />
+                                                    );
+                                                })}
+
+                                        </Layer>
+                                    </Stage>
+                                    {displayThresholdWarning(selectedImage?.detections) && (
+                                        <ThresholdWarning
+                                            detectionId="global"
+                                            message="Some detections are below the threshold and may not be shown."
+                                        />
+                                    )}
+                                    {selectedDetection && (
                                         <div
-                                            className={`flex flex-row bg-white dark:bg-gray-800 rounded-lg px-2 py-2 shadow-lg relative gap-2 h-10 w.full ${showOpacityPanel ? 'display-block' : 'hidden'} transition-opacity duration-300 `}
+                                            className="absolute flex gap-2 p-2 bg-white shadow-md rounded-lg z-50 flex-col"
+                                            style={getDetectionMenuPosition(selectedDetection, stageRef)}
                                         >
-
-
-                                            <div className="flex flex-row items-center justify-center w-full gap-2">
-
-                                                <Slider
-                                                    defaultValue={[100]}
-                                                    max={100}
-                                                    min={0}
-                                                    step={1}
-                                                    onValueChange={([val]) => setOpacity(val / 100)}
-                                                    className="min-w-[100px] hover:cursor-pointer"
-                                                />
-                                                <p className="text-xs text-center mt-1 opacity-80 whitespace-nowrap">Thermal Opacity</p>
-                                            </div>
+                                            <Button
+                                                size="icon"
+                                                variant="outline"
+                                                onClick={() => alert(`Edit detection ${selectedDetection.id}`)}
+                                            >
+                                                <Edit />
+                                            </Button>
+                                            <Button
+                                                size="icon"
+                                                variant="outline"
+                                                onClick={() => alert(`Delete detection ${selectedDetection.id}`)}
+                                            >
+                                                <Trash />
+                                            </Button>
+                                            <Button
+                                                size="icon"
+                                                variant="outline"
+                                                onClick={() => alert(`Share detection ${selectedDetection.id}`)}
+                                            >
+                                                <Share2 />
+                                            </Button>
                                         </div>
 
-                                    </div>
-                                )}
-                            </div>
-
-                        )}
-
-                        {probeResult && (
-                            <>
-                                <Scan className="absolute z-50 stroke-3 w-6 h-6 text-teal-400"
-                                    style={{
-                                        left: probeResult.x - 12,
-                                        top: probeResult.y - 12,
-                                        pointerEvents: "none",
-                                        mixBlendMode: "plus-darker",
-                                    }}
-                                />
-                                <Badge
-                                    variant="default"
-                                    className="absolute z-60 font-semibold text-md"
-                                    style={{
-                                        left: probeResult.x - 84,
-                                        top: probeResult.y + 16,
-                                    }}
-
-                                >
-                                    {probeResult.probeMessage}
-                                </Badge>
-                            </>
-                        )}
-
-                    </>
-
-                ) : (
-                    <p>No image selected</p>
-                )}
-            </div>
+                                    )}
+                                    {selectedImage?.thermal && selectedImage.thermal_data?.counterpart_id && (
+                                        <div
+                                            className={`absolute -bottom-6 z-50 left-1/2 -translate-x-1/2 transition-all duration-300 ${showOpacityPanel ? '-translate-y-1/2' : 'translate-y-[-24px]'} opacity-60 hover:opacity-100`}
+                                        >
+                                            <div className="flex flex-col items-center justify-center">
+                                                {/* Toggle Button */}
+                                                <button
+                                                    onClick={() => setShowOpacityPanel(!showOpacityPanel)}
+                                                    className={`w-8 ${showOpacityPanel ? 'h-5 hover:h-6' : 'h-6'} bg-white dark:bg-gray-800 rounded-t-md flex items-center justify-center text-xs hover:cursor-pointer duration-300`}
+                                                >
+                                                    {showOpacityPanel ? "▼" : "▲"}
+                                                </button>
+                                            </div>
+                                            <div
+                                                className={`flex flex-row bg-white dark:bg-gray-800 rounded-lg px-2 py-2 shadow-lg relative gap-2 h-10 w.full ${showOpacityPanel ? 'display-block' : 'hidden'} transition-opacity duration-300 `}
+                                            >
 
 
-            <div
-                className={containerSize.width < 720 ? "flex flex-row items-center justify-between gap-2 p-2 mt-4 w-full bg-white dark:bg-gray-800" :
-                    "grid grid-cols-3 items-center justify-between mt-4 p-4 w-full bg-white dark:bg-gray-800"}
-            >
-                <Tooltip>
-                    <TooltipTrigger className={`flex justify-start ${containerSize.width < 720 ? 'w-20' : 'w-auto'}`}>
-                        <div className="text-sm text-muted-foreground whitespace-nowrap overflow-hidden text-ellipsis">
-                            {selectedImage?.filename ?? ""} {backgroundImageName ? `(${backgroundImageName})` : ""}
-                        </div>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                        <p>{selectedImage?.filename ?? ""} {backgroundImageName ? `(${backgroundImageName})` : ""}</p>
-                    </TooltipContent>
-                </Tooltip>
+                                                <div className="flex flex-row items-center justify-center w-full gap-2">
 
-                <div className="flex items-center gap-2 w-full justify-center">
-                    <Button variant="default" onClick={previousImage} className="aspect-square">
-                        <ChevronLeft />
-                    </Button>
-                    <Button variant="default" onClick={nextImage} className="aspect-square">
-                        <ChevronRight />
-                    </Button>
+                                                    <Slider
+                                                        defaultValue={[100]}
+                                                        max={100}
+                                                        min={0}
+                                                        step={1}
+                                                        onValueChange={([val]) => setOpacity(val / 100)}
+                                                        className="min-w-[100px] hover:cursor-pointer"
+                                                    />
+                                                    <p className="text-xs text-center mt-1 opacity-80 whitespace-nowrap">Thermal Opacity</p>
+                                                </div>
+                                            </div>
+
+                                        </div>
+                                    )}
+                                </div>
+
+                            )}
+
+                            {probeResult && (
+                                <>
+                                    <Scan className="absolute z-50 stroke-3 w-6 h-6 text-teal-400"
+                                        style={{
+                                            left: probeResult.x - 12,
+                                            top: probeResult.y - 12,
+                                            pointerEvents: "none",
+                                            mixBlendMode: "plus-darker",
+                                        }}
+                                    />
+                                    <Badge
+                                        variant="default"
+                                        className="absolute z-60 font-semibold text-md"
+                                        style={{
+                                            left: probeResult.x - 84,
+                                            top: probeResult.y + 16,
+                                        }}
+
+                                    >
+                                        {probeResult.probeMessage}
+                                    </Badge>
+                                </>
+                            )}
+
+
+
+                        </>
+
+                    ) : (
+                        <p>No image selected</p>
+                    )}
                 </div>
 
-                <div className="flex items-center justify-end gap-2 h-6">
-                    <div className={`flex items-center gap-2 ${!selectedImage?.thermal ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                        <ButtonToggle
-                            isDisabled={!selectedImage?.thermal}
-                            icon={Thermometer}
-                            label="Analysis"
-                            isToggled={tempMode}
-                            setIsToggled={() => {
-                                setTempMode(!tempMode); // disable temp mode if no matrix
-                                if (tempMode) setProbeResult(null); // hide popup when disabling
-                            }}
-                            showLabel={containerSize.width < 720 ? false : true}
-                        />
 
-                        <Button variant="outline" onClick={() => setThermalSettingsPopupOpen(true)}
-                            className={`gap-0 ${!selectedImage?.thermal ? 'opacity-50 cursor-not-allowed' : ''}`} disabled={!selectedImage?.thermal}
-                        >
-                            <Thermometer className="w-4 h-4 pr-0 mr-0" />
-                            <Settings className="w-4 h-4 z-10" />
+                <div
+                    className={containerSize.width < 720 ? "flex flex-row items-center justify-between gap-2 p-2 mt-4 w-full bg-white dark:bg-gray-800" :
+                        "grid grid-cols-3 items-center justify-between mt-4 p-4 w-full bg-white dark:bg-gray-800"}
+                >
+                    <Tooltip>
+                        <TooltipTrigger className={`flex justify-start ${containerSize.width < 720 ? 'w-20' : 'w-auto'}`}>
+                            <div className="text-sm text-muted-foreground whitespace-nowrap overflow-hidden text-ellipsis">
+                                {selectedImage?.filename ?? ""} {backgroundImageName ? `(${backgroundImageName})` : ""}
+                            </div>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                            <p>{selectedImage?.filename ?? ""} {backgroundImageName ? `(${backgroundImageName})` : ""}</p>
+                        </TooltipContent>
+                    </Tooltip>
+
+                    <div className="flex items-center gap-2 w-full justify-center">
+                        <Button variant="default" onClick={previousImage} className="aspect-square">
+                            <ChevronLeft />
                         </Button>
-                        <Separator orientation="vertical" className="h-6" />
-
+                        <Button variant="default" onClick={nextImage} className="aspect-square">
+                            <ChevronRight />
+                        </Button>
                     </div>
 
-                    <Button variant="outline" onClick={resetView}>
-                        {/* depending on screen width */}
-                        {containerSize.width < 720 ? (
-                            <RotateCcw className="w-4 h-4 mr-1" />
-                        ) : (
-                            <>Reset View</>
-                        )}
-                    </Button>
+                    <div className="flex items-center justify-end gap-2 h-6">
+                        <div className={`flex items-center gap-2 ${!selectedImage?.thermal ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                            <ButtonToggle
+                                isDisabled={!selectedImage?.thermal}
+                                icon={Thermometer}
+                                label="Analysis"
+                                isToggled={tempMode}
+                                setIsToggled={() => {
+                                    setTempMode(!tempMode); // disable temp mode if no matrix
+                                    if (tempMode) setProbeResult(null); // hide popup when disabling
+                                }}
+                                showLabel={containerSize.width < 720 ? false : true}
+                            />
+
+                            <Button variant="outline" onClick={() => setThermalSettingsPopupOpen(true)}
+                                className={`gap-0 ${!selectedImage?.thermal ? 'opacity-50 cursor-not-allowed' : ''}`} disabled={!selectedImage?.thermal}
+                            >
+                                <Thermometer className="w-4 h-4 pr-0 mr-0" />
+                                <Settings className="w-4 h-4 z-10" />
+                            </Button>
+                            <Separator orientation="vertical" className="h-6" />
+
+                        </div>
+
+                        <Button variant="outline" onClick={resetView}>
+                            {/* depending on screen width */}
+                            {containerSize.width < 720 ? (
+                                <RotateCcw className="w-4 h-4 mr-1" />
+                            ) : (
+                                <>Reset View</>
+                            )}
+                        </Button>
+                    </div>
                 </div>
+                <ThermalSettingsPopup
+                    open={thermalSettingsPopupOpen}
+                    onOpenChange={setThermalSettingsPopupOpen}
+                    settings={thermalSettings}
+                    onSave={handleSettingsSave}
+                />
             </div>
-            <ThermalSettingsPopup
-                open={thermalSettingsPopupOpen}
-                onOpenChange={setThermalSettingsPopupOpen}
-                settings={thermalSettings}
-                onSave={handleSettingsSave}
-            />
-        </div>
 
-    );
-};
+        );
+    };
 
 
 
-interface MatrixOverlayImageProps {
-    matrix: number[][];
-    width: number;
-    height: number;
-    minTemp: number;
-    maxTemp: number;
-    y?: number;
-    opacity?: number;
-    scale?: { x: number; y: number };
-    colorMap?: string;
-}
-
-function normalizeMatrix(matrix: number[][], minTemp: number, maxTemp: number): number[][] {
-    const min = minTemp;
-    const max = maxTemp;
-    const range = max - min || 1;
-
-    let factor = 255 / range;
-
-    // let testa = Math.round((max - min) * factor);
-    // if (testa > 255) {
-    //     testa = 255;
-    // }
-
-    return matrix.map(row =>
-        row.map(value => ((value - min) * factor))
-    );
-}
-
-function matrixToCanvasImage(
-    matrix: number[][],
-    minTemp: number,
-    maxTemp: number,
-    colorMap: string
-): Promise<HTMLImageElement> {
-    const normalized = normalizeMatrix(matrix, minTemp, maxTemp);
-    const canvas = document.createElement("canvas");
-    canvas.width = matrix[0].length;
-    canvas.height = matrix.length;
-    const ctx = canvas.getContext("2d");
-
-    if (!ctx) throw new Error("2D context not available");
-
-    console.log(normalized)
-
-    const imageData = ctx.createImageData(canvas.width, canvas.height);
-    let calcColors: (gray: number) => number[];
-    switch (colorMap) {
-
-        case "blackHot":
-            calcColors = (gray) => [255 - gray, 255 - gray, 255 - gray];
-            break;
-        case "ironbow":
-            calcColors = (gray) => [
-                gray,
-                (1 / 256) * gray ** 2,
-                256 * (Math.sin(3 * ((gray / 256) - 1 / 6) * Math.PI) + 1)
-            ];
-            break;
-        case "ironRed":
-            calcColors = (gray) => {
-                //based und hsv going from 0(hue of blue) to 1(hue of  yellow), with 100% saturation and constant rising value
-                var h = gray / 256 / 1.25 + 0.55; // hue from 0 to 1
-                if (h > 1) h -= 1; // wrap around
-                var s = 1.0;
-                var l = gray / 256;
-                var r, g, b;
-
-                function hue2rgb(p, q, t) {
-                    if (t < 0) t += 1;
-                    if (t > 1) t -= 1;
-                    if (t < 1 / 6) return p + (q - p) * 6 * t;
-                    if (t < 1 / 2) return q;
-                    if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
-                    return p;
-                }
-
-                var q = l < 0.5 ? l * (1 + s) : l + s - l * s;
-                var p = 2 * l - q;
-
-                r = hue2rgb(p, q, h + 1 / 3);
-                g = hue2rgb(p, q, h);
-                b = hue2rgb(p, q, h - 1 / 3);
-                return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
-            }
-            break;
-        case "rainbowIsh":
-            calcColors = (gray) => {
-                gray = (gray < 0) ? 0 : (gray > 255) ? 255 : gray;
-                //clip grey to 0-1.0 range
-                return [
-                    128 * (Math.sin(((gray / 256) - 1 / 2) * Math.PI) + 1),
-                    128 * (Math.sin(((gray / 256)) * Math.PI) + 1),
-                    128 * (Math.sin(((gray / 256) + 1 / 2) * Math.PI) + 1),
-                ];
-            };
-            break;
-        case "rainbow":
-            calcColors = (gray) => {
-                gray = (gray < 0) ? 0 : (gray > 255) ? 255 : gray;
-                //clip grey to 0-1.0 range
-                gray /= 256;
-                var h, l, s, r, g, b;
-                l = gray < 0.1 ? 0.25 + gray * 2.5 : 0.5; // value (brightness) clamped to 0.1-1.0
-                s = 1.0;
-                h = 1 - gray; //
-
-                function hue2rgb(p, q, t) {
-                    if (t < 0) t += 1;
-                    if (t > 1) t -= 1;
-                    if (t < 1 / 6) return p + (q - p) * 6 * t;
-                    if (t < 1 / 2) return q;
-                    if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
-                    return p;
-                }
-
-                var q = l < 0.5 ? l * (1 + s) : l + s - l * s;
-                var p = 2 * l - q;
-
-                r = hue2rgb(p, q, h + 1 / 3);
-                g = hue2rgb(p, q, h);
-                b = hue2rgb(p, q, h - 1 / 3);
-                return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
-            }
-            break;
-
-        case "whspecial":
-            calcColors = (gray) => [
-                gray * 2.25,
-                (gray < 100 ? 90 - gray * 2.25 : (gray < 200 ? gray * 2 - 200 : gray)),
-                (gray < 100 ? 90 - gray * 1.75 : (gray < 200 ? gray * 2 - 200 : gray)),
-            ];
-            break;
-        case "minmax":
-            calcColors = (gray) => {
-                gray = (gray < 0) ? 0 : (gray > 255) ? 255 : gray;
-                //clip grey to 0-1.0 range
-                gray /= 256;
-                if (gray > 0.95) {
-                    return [
-                        255 * gray,
-                        0,
-                        0,
-                    ];
-                } else if (gray < 0.05) {
-                    return [
-                        0,
-                        0,
-                        255 * gray * 10,
-                    ];
-                }
-                return [
-                    255 * gray * 0.2,
-                    255 * gray * 0.2,
-                    255 * gray * 0.2,
-                ];
-            };
-            break;
-        case "whiteHot":
-        default:
-            calcColors = (gray) => [gray, gray, gray];
-            break;
-
+    interface MatrixOverlayImageProps {
+        matrix: number[][];
+        width: number;
+        height: number;
+        minTemp: number;
+        maxTemp: number;
+        y?: number;
+        opacity?: number;
+        scale?: { x: number; y: number };
+        colorMap?: string;
     }
 
-    for (let y = 0; y < canvas.height; y++) {
-        for (let x = 0; x < canvas.width; x++) {
-            const index = (y * canvas.width + x) * 4;
-            const gray = normalized[y][x];
-            const [r, g, b] = calcColors(gray);
-            imageData.data[index] = r;
-            imageData.data[index + 1] = g;
-            imageData.data[index + 2] = b;
-            let alpha = gray > 255 ? Math.round((0.3) * 255) : (gray < 0.0 ?  Math.round((0.3) * 255): 255);
-            imageData.data[index + 3] = alpha;
+    function normalizeMatrix(matrix: number[][], minTemp: number, maxTemp: number): number[][] {
+        const min = minTemp;
+        const max = maxTemp;
+        const range = max - min || 1;
+
+        let factor = 255 / range;
+
+        // let testa = Math.round((max - min) * factor);
+        // if (testa > 255) {
+        //     testa = 255;
+        // }
+
+        return matrix.map(row =>
+            row.map(value => ((value - min) * factor))
+        );
+    }
+
+    function matrixToCanvasImage(
+        matrix: number[][],
+        minTemp: number,
+        maxTemp: number,
+        colorMap: string
+    ): Promise<HTMLImageElement> {
+        const normalized = normalizeMatrix(matrix, minTemp, maxTemp);
+        const canvas = document.createElement("canvas");
+        canvas.width = matrix[0].length;
+        canvas.height = matrix.length;
+        const ctx = canvas.getContext("2d");
+
+        if (!ctx) throw new Error("2D context not available");
+
+        console.log(normalized)
+
+        const imageData = ctx.createImageData(canvas.width, canvas.height);
+        let calcColors: (gray: number) => number[];
+        switch (colorMap) {
+
+            case "blackHot":
+                calcColors = (gray) => [255 - gray, 255 - gray, 255 - gray];
+                break;
+            case "ironbow":
+                calcColors = (gray) => [
+                    gray,
+                    (1 / 256) * gray ** 2,
+                    256 * (Math.sin(3 * ((gray / 256) - 1 / 6) * Math.PI) + 1)
+                ];
+                break;
+            case "ironRed":
+                calcColors = (gray) => {
+                    //based und hsv going from 0(hue of blue) to 1(hue of  yellow), with 100% saturation and constant rising value
+                    var h = gray / 256 / 1.25 + 0.55; // hue from 0 to 1
+                    if (h > 1) h -= 1; // wrap around
+                    var s = 1.0;
+                    var l = gray / 256;
+                    var r, g, b;
+
+                    function hue2rgb(p, q, t) {
+                        if (t < 0) t += 1;
+                        if (t > 1) t -= 1;
+                        if (t < 1 / 6) return p + (q - p) * 6 * t;
+                        if (t < 1 / 2) return q;
+                        if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+                        return p;
+                    }
+
+                    var q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+                    var p = 2 * l - q;
+
+                    r = hue2rgb(p, q, h + 1 / 3);
+                    g = hue2rgb(p, q, h);
+                    b = hue2rgb(p, q, h - 1 / 3);
+                    return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
+                }
+                break;
+            case "rainbowIsh":
+                calcColors = (gray) => {
+                    gray = (gray < 0) ? 0 : (gray > 255) ? 255 : gray;
+                    //clip grey to 0-1.0 range
+                    return [
+                        128 * (Math.sin(((gray / 256) - 1 / 2) * Math.PI) + 1),
+                        128 * (Math.sin(((gray / 256)) * Math.PI) + 1),
+                        128 * (Math.sin(((gray / 256) + 1 / 2) * Math.PI) + 1),
+                    ];
+                };
+                break;
+            case "rainbow":
+                calcColors = (gray) => {
+                    gray = (gray < 0) ? 0 : (gray > 255) ? 255 : gray;
+                    //clip grey to 0-1.0 range
+                    gray /= 256;
+                    var h, l, s, r, g, b;
+                    l = gray < 0.1 ? 0.25 + gray * 2.5 : 0.5; // value (brightness) clamped to 0.1-1.0
+                    s = 1.0;
+                    h = 1 - gray; //
+
+                    function hue2rgb(p, q, t) {
+                        if (t < 0) t += 1;
+                        if (t > 1) t -= 1;
+                        if (t < 1 / 6) return p + (q - p) * 6 * t;
+                        if (t < 1 / 2) return q;
+                        if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+                        return p;
+                    }
+
+                    var q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+                    var p = 2 * l - q;
+
+                    r = hue2rgb(p, q, h + 1 / 3);
+                    g = hue2rgb(p, q, h);
+                    b = hue2rgb(p, q, h - 1 / 3);
+                    return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
+                }
+                break;
+
+            case "whspecial":
+                calcColors = (gray) => [
+                    gray * 2.25,
+                    (gray < 100 ? 90 - gray * 2.25 : (gray < 200 ? gray * 2 - 200 : gray)),
+                    (gray < 100 ? 90 - gray * 1.75 : (gray < 200 ? gray * 2 - 200 : gray)),
+                ];
+                break;
+            case "minmax":
+                calcColors = (gray) => {
+                    gray = (gray < 0) ? 0 : (gray > 255) ? 255 : gray;
+                    //clip grey to 0-1.0 range
+                    gray /= 256;
+                    if (gray > 0.95) {
+                        return [
+                            255 * gray,
+                            0,
+                            0,
+                        ];
+                    } else if (gray < 0.05) {
+                        return [
+                            0,
+                            0,
+                            255 * gray * 10,
+                        ];
+                    }
+                    return [
+                        255 * gray * 0.2,
+                        255 * gray * 0.2,
+                        255 * gray * 0.2,
+                    ];
+                };
+                break;
+            case "whiteHot":
+            default:
+                calcColors = (gray) => [gray, gray, gray];
+                break;
+
         }
+
+        for (let y = 0; y < canvas.height; y++) {
+            for (let x = 0; x < canvas.width; x++) {
+                const index = (y * canvas.width + x) * 4;
+                const gray = normalized[y][x];
+                const [r, g, b] = calcColors(gray);
+                imageData.data[index] = r;
+                imageData.data[index + 1] = g;
+                imageData.data[index + 2] = b;
+                let alpha = gray > 255 ? Math.round((0.3) * 255) : (gray < 0.0 ? Math.round((0.3) * 255) : 255);
+                imageData.data[index + 3] = alpha;
+            }
+        }
+
+        ctx.putImageData(imageData, 0, 0);
+
+        return new Promise((resolve) => {
+            const img = new Image();
+            img.onload = () => resolve(img);
+            img.src = canvas.toDataURL();
+        });
     }
 
-    ctx.putImageData(imageData, 0, 0);
+    const MatrixOverlayImage: React.FC<MatrixOverlayImageProps> = ({
+        matrix,
+        width,
+        height,
+        minTemp = 20.0,
+        maxTemp = 100.0,
+        opacity = 1.0,
+        colorMap = "whiteHot",
+    }) => {
+        const [image, setImage] = useState<HTMLImageElement | null>(null);
 
-    return new Promise((resolve) => {
-        const img = new Image();
-        img.onload = () => resolve(img);
-        img.src = canvas.toDataURL();
-    });
-}
+        useEffect(() => {
+            matrixToCanvasImage(matrix, minTemp, maxTemp, colorMap).then(setImage);
+        }, [matrix, matrix[0].length, matrix.length, minTemp, maxTemp, colorMap]);
 
-const MatrixOverlayImage: React.FC<MatrixOverlayImageProps> = ({
-    matrix,
-    width,
-    height,
-    minTemp = 20.0,
-    maxTemp = 100.0,
-    opacity = 1.0,
-    colorMap = "whiteHot",
-}) => {
-    const [image, setImage] = useState<HTMLImageElement | null>(null);
+        if (!image) return null;
+        let scaleX = width / matrix[0].length;
+        let scaleY = height / matrix.length;
 
-    useEffect(() => {
-        matrixToCanvasImage(matrix, minTemp, maxTemp, colorMap).then(setImage);
-    }, [matrix, matrix[0].length, matrix.length, minTemp, maxTemp, colorMap]);
+        return (
+            <KonvaImage
+                image={image}
+                opacity={opacity}
+                scale={{ x: scaleX, y: scaleY }}
+            />
+        );
+    };
 
-    if (!image) return null;
-    let scaleX = width / matrix[0].length;
-    let scaleY = height / matrix.length;
-
-    return (
-        <KonvaImage
-            image={image}
-            opacity={opacity}
-            scale={{ x: scaleX, y: scaleY }}
-        />
-    );
-};
-
-export default MatrixOverlayImage;
+    export default MatrixOverlayImage;
 
 
-const inMemoryCache: Record<string, number[][]> = {};
+    const inMemoryCache: Record<string, number[][]> = {};
 
-export function getCachedMatrix(id: string): number[][] | null {
-    return inMemoryCache[id] || null;
-}
+    export function getCachedMatrix(id: string): number[][] | null {
+        return inMemoryCache[id] || null;
+    }
 
-export function setCachedMatrix(id: string, matrix: number[][]) {
-    inMemoryCache[id] = matrix;
-    // Optional: persist to localStorage
-    localStorage.setItem(`tempMatrix:${id}`, JSON.stringify(matrix));
-}
+    export function setCachedMatrix(id: string, matrix: number[][]) {
+        inMemoryCache[id] = matrix;
+        // Optional: persist to localStorage
+        localStorage.setItem(`tempMatrix:${id}`, JSON.stringify(matrix));
+    }
 
-export function getMatrixFromLocalStorage(id: string): number[][] | null {
-    const stored = localStorage.getItem(`tempMatrix:${id}`);
-    return stored ? JSON.parse(stored) : null;
-}
+    export function getMatrixFromLocalStorage(id: string): number[][] | null {
+        const stored = localStorage.getItem(`tempMatrix:${id}`);
+        return stored ? JSON.parse(stored) : null;
+    }
+
+    function ThresholdWarning({ detectionId, message }: ThresholdWarningProps) {
+        return (
+            <Popover>
+                <PopoverTrigger asChild>
+                    <Button
+                        size="icon"
+                        variant="outline"
+                        className="text-yellow-700 hover:text-yellow-700 absolute top-4 right-4 z-50 bg-yellow-50/50 border-yellow-700 dark:bg-yellow-900/30 dark:border-yellow-400 dark:text-yellow-400 hover:dark:bg-yellow-900/50"
+                        title="Threshold Warning"
+                    >
+                        <AlertTriangle className="h-6 w-6" />
+                    </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-64">
+                    <p className="text-sm text-muted-foreground">
+                        {message ?? `Detection ${detectionId} might not be visible due to threshold settings.`}
+                    </p>
+                </PopoverContent>
+            </Popover>
+        )
+    }

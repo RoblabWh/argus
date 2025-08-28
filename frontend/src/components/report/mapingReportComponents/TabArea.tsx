@@ -13,9 +13,10 @@ interface Props {
   setSelectedImage: (image: Image | null) => void;
   tab: string;
   setTab: (value: string) => void;
+  thresholds: { [key: string]: number };
 }
 
-export function TabArea({ report, filteredImages , selectedImage, setSelectedImage, tab, setTab }: Props) {
+export function TabArea({ report, filteredImages , selectedImage, setSelectedImage, tab, setTab, thresholds }: Props) {
   const api_url = getApiUrl();
 
   const onTabChange = (value: string) => {
@@ -92,6 +93,7 @@ export function TabArea({ report, filteredImages , selectedImage, setSelectedIma
           images={report.mapping_report?.images || []}
           nextImage={() => changeImage('next')}
           previousImage={() => changeImage('previous')}
+          thresholds={thresholds}
         />
       </TabsContent>
       <TabsContent value="data">

@@ -29,3 +29,18 @@ def cleanup_lost_tasks():
             if report_short.mapping_report:
                 #if it has a mapping report object, set the type to "mapping"
                 crud.update_report_type(db, report.report_id, "mapping")
+
+        try: 
+            detection_task_id = r.get(f"detection:{report.report_id}:task_id")
+            if detection_task_id:
+                # Check if the task is still running
+                print(f"Cleaning up lost detection task for report {report.report_id}", flush=True)
+                # Set the report status to failed and progress to 0
+                r.delete(f"detection:{report.report_id}:task_id")
+                r.delete(f"detection:{report.report_id}:progress")
+                r.delete(f"detection:{report.report_id}:status")
+                r.delete(f"detection:{report.report_id}:message")
+        except Exception as e:
+            pass
+
+    

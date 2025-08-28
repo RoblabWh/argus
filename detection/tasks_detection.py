@@ -50,34 +50,54 @@ celery_app = Celery(
 def run_detection(report_id: int, files: list[dict], max_splits: int = 0):
     try:
         r.set(f"detection:{report_id}:status", "running")
-        r.set(f"detection:{report_id}:progress", 1)
-        r.set(f"detection:{report_id}:message", "Loading model and starting detection")
+        r.set(f"detection:{report_id}:progress", 0)
     
         annotation_path = f"reports_data/{report_id}/annotations.json"
         progress_tracker = ProgressTracker(
-            total_steps=5,
+            total_steps=4,
             broadcast_status_function=lambda status, progress, message: (
                 r.set(f"detection:{report_id}:status", status),
                 r.set(f"detection:{report_id}:progress", progress),
                 r.set(f"detection:{report_id}:message", message)
             )
         )
+
+        progress_tracker.start_step("starting", step_index=0)
+        progress_tracker.set_message("Maybe already loading models...")
+
         datahandler = DataHandler(progress_tracker=progress_tracker)
         inferencer = Inferencer(score_thr=0.4, progress_tracker=progress_tracker)
         models = inferencer.which_models_are_available()
-        for model in models:
+        
+        progress_tracker.set_message(f"Loading AI Models")
+        for i, model in enumerate(models):
             inferencer.add_model(model)
+            progress_tracker.update_step_progress_of_total(i + 1, len(models))
 
         datahandler.set_image_paths([file["path"] for file in files])
         datahandler.args.split = True
         datahandler.args.max_splitting_steps = max_splits
 
+
+        progress_tracker.start_step("Preprocessing", step_index=1)
+        progress_tracker.set_message("Preprocessing images")
+
         datahandler.preprocess()
         data = datahandler.get_data()
+
+        progress_tracker.start_step("Ai processing", step_index=2)
+        progress_tracker.set_message("Running inference on images")
+
         results = inferencer(data)
+
+        progress_tracker.start_step("Postprocessing", step_index=3)
+        progress_tracker.set_message("Processing and merging results")
+
         result = datahandler.postprocess(results)
         datahandler.set_ann_path(annotation_path)
         datahandler.save_annotation(result)
+
+        progress_tracker.set_message("Saving results to database and displaying detections")
 
         #datahandler.show(result)
         results_data = reformat_ann(annotation_path, files)

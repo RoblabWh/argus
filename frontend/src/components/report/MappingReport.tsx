@@ -18,6 +18,19 @@ import { DetectionCard } from './mapingReportComponents/DetectionCard';
 import {ResponsiveResizableLayout} from "@/components/ResponsiveResizableLayout";
 import { Card, CardContent, CardTitle } from "@/components/ui/card";
 
+function initiateThresholds(report: Report) {
+    let images = report.mapping_report?.images || [];
+    let thresholds: { [key: string]: number } = {};
+
+    images.forEach((image) => {
+        image.detections.forEach((detection) => {
+            if (!(detection.class_name in thresholds)) {
+                thresholds[detection.class_name] = 0.4; // Default threshold
+            }
+        });
+    });
+    return thresholds;
+}
 
 interface Props {
   report: Report;
@@ -32,6 +45,9 @@ export function MappingReport({ report, onEditClicked }: Props) {
   const [selectedImage, setSelectedImage] = useState<Image | null>(null);
   const [tab, setTab] = useState("map");
   const { data: webODMData } = useWebODM();
+  const [thresholds, setThresholds] = useState<{ [key: string]: number }>({
+    ...initiateThresholds(report),
+  });
 
   const selectImageFromGallery = (image: Image | null) => {
     setSelectedImage(image);
@@ -65,14 +81,14 @@ export function MappingReport({ report, onEditClicked }: Props) {
               <FlightCard data={report.mapping_report} />
               <AutoDescriptionCard description={report.auto_description} />
               <WebOdmCard isWebODMAvailable={webODMData?.is_available} webODMURL={webODMData?.url} webODMProjectID={report.mapping_report?.webodm_project_id} reportID={report.report_id} progress={report.progress} />
-              <DetectionCard report={report} />
+              <DetectionCard report={report} setThresholds={setThresholds} thresholds={thresholds} />
             </div>
             <GalleryCard images={report.mapping_report?.images} setFilteredImages={setFilteredImages} filteredImages={filteredImages} setSelectedImage={selectImageFromGallery} />
             {/* Add more cards as needed */}
           </div>
         }
         right={
-          <TabArea report={report} filteredImages={filteredImages} selectedImage={selectedImage} setSelectedImage={setSelectedImage} tab={tab} setTab={setTab} />
+          <TabArea report={report} filteredImages={filteredImages} selectedImage={selectedImage} setSelectedImage={setSelectedImage} tab={tab} setTab={setTab} thresholds={thresholds} />
         }
       />
     </>

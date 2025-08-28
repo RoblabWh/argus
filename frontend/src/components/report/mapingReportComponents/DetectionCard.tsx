@@ -20,7 +20,8 @@ import {
 const reportId = 1; // Example report ID, replace with actual prop or state
 interface Props {
     report: Report;
-
+    setThresholds: (thresholds: { [key: string]: number }) => void;
+    thresholds: { [key: string]: number };
 }
 
 function countDetections(report: Report, thresholds: { [key: string]: number } = {}) {
@@ -42,29 +43,15 @@ function countDetections(report: Report, thresholds: { [key: string]: number } =
     return summary;
 }
 
-function initiateThresholds(report: Report) {
-    let images = report.mapping_report?.images || [];
-    let thresholds: { [key: string]: number } = {};
-
-    images.forEach((image) => {
-        image.detections.forEach((detection) => {
-            if (!(detection.class_name in thresholds)) {
-                thresholds[detection.class_name] = 0.4; // Default threshold
-            }
-        });
-    });
-    return thresholds;
-}
 
 
 
-export function DetectionCard({ report }: Props) {
+
+export function DetectionCard({ report, setThresholds, thresholds }: Props) {
     const [pollingEnabled, setPollingEnabled] = useState(false);
-    const [thresholds, setThresholds] = useState<{ [key: string]: number }>({ ...initiateThresholds(report) });
     const [detectionSummary, setDetectionSummary] = useState<{ [key: string]: number }>({ ...countDetections(report, thresholds) });
     const [detectionMode, setDetectionMode] = useState<"fast" | "medium" | "detailed" | undefined>(undefined);
     const hasDetections = Object.keys(detectionSummary).length > 0;
-
 
     // check if process is already running when loading
     const isRunning = useIsDetectionRunning(report.report_id);
@@ -225,7 +212,7 @@ export function DetectionCard({ report }: Props) {
                                     <>
                                         <Progress value={detectionStatus.data.progress} />
                                         <p className="text-sm text-muted-foreground mt-1">
-                                            {detectionStatus.data.status} — {Math.round(detectionStatus.data.progress)}%
+                                            {detectionStatus.data.message ? <>{detectionStatus.data.message}</> : <>{detectionStatus.data.status}</>} — {Math.round(detectionStatus.data.progress)}%
                                         </p>
                                     </>
                                 )}
@@ -252,10 +239,18 @@ export function DetectionCard({ report }: Props) {
                                         </SelectContent>
                                     </Select>
 
+                                    <Tooltip>
+                                        <TooltipTrigger>
 
-                                    <Button variant="outline" size="sm" onClick={() => { handleStart() }} disabled={!pollingEnabled && (!detectionMode)}>
-                                        Run Detection
-                                    </Button>
+                                            <Button variant={`${detectionMode === undefined ? "outline" : "default"}`} size="sm" onClick={() => { handleStart() }} disabled={!pollingEnabled && (!detectionMode)}>
+                                                Run Detection
+                                            </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                            {detectionMode === undefined ? "Select analysis mode first" : "Start AI detection processing"}
+                                        </TooltipContent>
+
+                                    </Tooltip>
                                 </div>
                                 {detectionMode && (
                                     <div className="rounded-md border p-2 mt-2 text-sm border-gray-400 bg-gray-200 text-muted-foreground">

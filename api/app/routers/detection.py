@@ -38,23 +38,32 @@ def run_detections(report_id: int, db: Session = Depends(get_db)):
     """
     Queue detection tasks for a given report.
     """
-    mapping_report = report_crud.get_short_report(db, report_id).mapping_report
-    if not mapping_report:
-        raise HTTPException(status_code=404, detail="Mapping report not found for the given report ID")
-    images_list = image_crud.get_images_for_detection(db, mapping_report.id)
-    if not images_list:
-        raise HTTPException(status_code=404, detail="No images found for the given report ID")
-    
-    logger.info(f"Queueing detection task for report {report_id} with {len(images_list)} images")
-    logger.info(f"{images_list}")   
     r.set(f"detection:{report_id}:progress", 0)
     r.set(f"detection:{report_id}:status", "queued")
     r.set(f"detection:{report_id}:message", "Detection task queued")
 
+    mapping_report = report_crud.get_short_report(db, report_id).mapping_report
+    if not mapping_report:
+        r.delete(f"detection:{report_id}:status")
+        r.delete(f"detection:{report_id}:progress")
+        r.delete(f"detection:{report_id}:message")
+        raise HTTPException(status_code=404, detail="Mapping report not found for the given report ID")
+    images_list = image_crud.get_images_for_detection(db, mapping_report.id)
+    if not images_list:
+        r.delete(f"detection:{report_id}:status")
+        r.delete(f"detection:{report_id}:progress")
+        r.delete(f"detection:{report_id}:message")
+        raise HTTPException(status_code=404, detail="No images found for the given report ID")
+    
+    
+
     detection_task = celery_app.signature(
         "detection.run", args=[report_id, images_list], queue="detection"
     )
-    detection_task.apply_async()
+    asynch_task = detection_task.apply_async()
+
+    r.set(f"detection:{report_id}:task_id", asynch_task .id)
+    logger.info(f"Detection task {asynch_task .id} queued for report {report_id}")
 
     return {"message": "Detection task queued", "report_id": report_id}
 
@@ -104,6 +113,8 @@ def get_detection_status(report_id: int):
 
         if not status and not progress:
             raise HTTPException(status_code=404, detail="No detection status found for this report")
+        
+        logger.info(f"Detection status for report {report_id}: {status}, {progress}%, {message}")
 
         return {
             "report_id": report_id,
