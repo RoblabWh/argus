@@ -255,7 +255,7 @@ class ImageProcessor:
             wind_dir_degrees = actual_weather.get_wind_dir_degrees()
             wind_dir_cardinal = actual_weather.get_wind_dir_cardinal()
         except Exception as e:
-            print("load_weather_data error: " + e)
+            print("load_weather_data error: ", e)
             pass
 
         weather_data = []
