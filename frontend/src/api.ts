@@ -80,7 +80,7 @@ export const getImage = (image_id: number) => fetchJson<{ image: string }>(`/ima
 export const deleteImage = (image_id: number) => deleteRequest(`/images/${image_id}`);
 export const getThermalMatrix = (image_id: number) => fetchJson<{ image_id: number; matrix: number[][]; min_temp: number; max_temp: number }>(`/images/${image_id}/thermal_matrix`);
 
-export const startDetection = (report_id: number) => postJson<{ task_id: string }>(`/detections/r/${report_id}`, {});
+export const startDetection = (report_id: number, processing_mode: string) => postJson<{ task_id: number}>(`/detections/r/${report_id}`, { processing_mode });
 export const getDetectionStatus = (report_id: number) => fetchJson<{ report_id: number, status: string; progress: number; message?: string; error?: string }>(`/detections/r/${report_id}/status`);
 export const getDetections = (report_id: number) => fetchJson<Image[]>(`/detections/r/${report_id}`);
 export const updateDetection = (detection_id: number, data: Detection) => postJson<any>(`/detections/${detection_id}`, data, "PUT");

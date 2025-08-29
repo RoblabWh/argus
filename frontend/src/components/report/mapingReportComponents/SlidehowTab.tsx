@@ -43,6 +43,7 @@ interface SlideshowTabProps {
     nextImage: () => void;
     previousImage: () => void;
     thresholds: { [key: string]: number };
+    visibleCategories: { [key: string]: boolean };
 }
 
 export const SlideshowTab: React.FC<SlideshowTabProps> = ({
@@ -51,6 +52,7 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
     nextImage,
     previousImage,
     thresholds,
+    visibleCategories,
 }) => {
     const apiUrl = getApiUrl();
     const containerRef = useRef<HTMLDivElement>(null);
@@ -494,19 +496,27 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
 
         if (top + menuHeight > stageBox.height) {
             top = detY + detH - menuHeight;
+            if (top < 0) top = margin;
+            else if (top + menuHeight > stageBox.height) top = stageBox.height - menuHeight - margin;
         }
+
+        if (top < 0) top = margin;
+        if (left < 0) left = margin;
 
         return { top, left };
     }
 
-    function displayThresholdWarning(detections: any[]): boolean {
+    function displayHiddenDetectionsWarning(detections: any[]): boolean {
         if (!detections || detections.length === 0) return false;
         const selection = detections?.filter((det) => {
             const threshold = thresholds?.[det.class_name] ?? 0; // thresholds passed as prop
             return det.score < threshold;
         });
-        if (!selection || selection.length === 0) return false;
-        return true;
+        if (selection && selection.length > 0) return true;
+        //also check if any categories are not visible
+        const hidden = detections?.filter((det) => !visibleCategories[det.class_name]);
+        if (hidden && hidden.length > 0) return true;
+        return false;
     }
 
 
@@ -608,6 +618,7 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
                                                     const threshold = thresholds?.[det.class_name] ?? 0; // thresholds passed as prop
                                                     return det.score >= threshold;
                                                 }).map((det) => {
+                                                    if (!visibleCategories[det.class_name]) return null;
                                                     const [x, y, w, h] = det.bbox;
                                                     const color = DETECTION_COLORS[det.class_name] || "white";
 
@@ -634,19 +645,20 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
                                                             }}
                                                         />
                                                     );
-                                                })}
+                                                })
+                                            }
 
                                         </Layer>
                                     </Stage>
-                                    {displayThresholdWarning(selectedImage?.detections) && (
+                                    {displayHiddenDetectionsWarning(selectedImage?.detections) && (
                                         <ThresholdWarning
                                             detectionId="global"
-                                            message="Some detections are below the threshold and may not be shown."
+                                            message="Some detections are hidden due to visibility settings or threshold."
                                         />
                                     )}
                                     {selectedDetection && (
                                         <div
-                                            className="absolute flex gap-2 p-2 bg-white shadow-md rounded-lg z-50 flex-col"
+                                            className="absolute flex gap-2 p-2 bg-white shadow-md rounded-lg z-50 flex-col dark:bg-gray-800"
                                             style={getDetectionMenuPosition(selectedDetection, stageRef)}
                                         >
                                             <Button

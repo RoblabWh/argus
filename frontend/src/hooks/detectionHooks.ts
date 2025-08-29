@@ -4,9 +4,10 @@ import type { Detection } from "@/types/detection";
 import type { Report } from "@/types/report";
 
 
-export function useStartDetection(reportId: number) {
+export function useStartDetection() {
     return useMutation({
-        mutationFn: () => startDetection(reportId),
+        mutationFn: ({ reportId, processingMode }: { reportId: number; processingMode: string }) =>
+            startDetection(reportId, processingMode),
     });
 }
 

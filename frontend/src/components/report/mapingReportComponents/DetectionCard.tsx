@@ -1,14 +1,25 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
-import { MoreHorizontal, ScanEye, ScanSearch, Car, Flame, PersonStanding, Funnel, Info } from "lucide-react";
+import {
+    ScanEye,
+    ScanSearch,
+    Car,
+    Flame,
+    PersonStanding,
+    Funnel,
+    Info,
+    Eye,
+    EyeOff
+} from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import type { Report } from '@/types/report';
 import type { Detection } from '@/types/detection';
+import { useQueryClient } from '@tanstack/react-query';
 import {
     useStartDetection,
     useDetectionStatusPolling,
@@ -22,6 +33,9 @@ interface Props {
     report: Report;
     setThresholds: (thresholds: { [key: string]: number }) => void;
     thresholds: { [key: string]: number };
+    setSearch: (search: string) => void;
+    visibleCategories: { [key: string]: boolean };
+    setVisibleCategories: (visibility: { [key: string]: boolean }) => void;
 }
 
 function countDetections(report: Report, thresholds: { [key: string]: number } = {}) {
@@ -47,11 +61,12 @@ function countDetections(report: Report, thresholds: { [key: string]: number } =
 
 
 
-export function DetectionCard({ report, setThresholds, thresholds }: Props) {
+export function DetectionCard({ report, setThresholds, thresholds, setSearch, visibleCategories, setVisibleCategories }: Props) {
     const [pollingEnabled, setPollingEnabled] = useState(false);
-    const [detectionSummary, setDetectionSummary] = useState<{ [key: string]: number }>({ ...countDetections(report, thresholds) });
+    const detectionSummary = useMemo(() => countDetections(report, thresholds), [report, thresholds]);
     const [detectionMode, setDetectionMode] = useState<"fast" | "medium" | "detailed" | undefined>(undefined);
     const hasDetections = Object.keys(detectionSummary).length > 0;
+    const queryClient = useQueryClient();
 
     // check if process is already running when loading
     const isRunning = useIsDetectionRunning(report.report_id);
@@ -63,13 +78,8 @@ export function DetectionCard({ report, setThresholds, thresholds }: Props) {
         }
     }, [isRunning.data]);
 
-    const startDetection = useStartDetection(report.report_id);
+    const startDetection = useStartDetection();
     const detectionStatus = useDetectionStatusPolling(report.report_id, pollingEnabled);
-
-    const detections = useDetections(
-        report.report_id,
-        detectionStatus.data?.status === "finished" && pollingEnabled
-    );
 
     // const updateDetection = useUpdateDetection(report.report_id);
 
@@ -78,20 +88,27 @@ export function DetectionCard({ report, setThresholds, thresholds }: Props) {
 
         if (detectionStatus.data.status.toUpperCase() === "FINISHED" || detectionStatus.data.status.toUpperCase() === "ERROR") {
             setPollingEnabled(false);
+            if (detectionStatus.data.status.toUpperCase() === "FINISHED") {
+                // refresh detections by invalidating queries  ["report", report.report_id]
+                queryClient.invalidateQueries({ queryKey: ["report", report.report_id] });
+                console.log("Detections should be updated");
+            }
         }
     }, [detectionStatus.data]);
 
     const handleStart = () => {
-        startDetection.mutate(undefined, {
-            onSuccess: () => {
-                setPollingEnabled(true);
-            },
-        });
+        if (!detectionMode) return;
+
+        startDetection.mutate(
+            { reportId: report.report_id, processingMode: detectionMode },
+            {
+                onSuccess: () => {
+                    setPollingEnabled(true);
+                },
+            }
+        );
     };
 
-    // const handleUpdateDetection = (detectionId: number, newData: Detection) => {
-    //     updateDetection.mutate({ detectionId, data: newData });
-    // };
 
     const selectObjectIcon = (objectType: string) => {
         switch (objectType) {
@@ -170,7 +187,7 @@ export function DetectionCard({ report, setThresholds, thresholds }: Props) {
                                                     onChange={(e) => {
                                                         const newThresholds = { ...thresholds, [key]: parseFloat(e.target.value) };
                                                         setThresholds(newThresholds);
-                                                        setDetectionSummary(countDetections(report, newThresholds));
+                                                        //setDetectionSummary(countDetections(report, newThresholds));
                                                     }}
                                                     className="w-full m-0 "
                                                 />
@@ -181,12 +198,27 @@ export function DetectionCard({ report, setThresholds, thresholds }: Props) {
                                                     size="icon"
                                                     className='p-0 m-0'
                                                     onClick={() => {
-                                                        console.log(`Filter by ${key} clicked`);
+                                                        const thr = thresholds[key] || 0.4;
+                                                        setSearch(`det:${key}-thr:${thr}`);
                                                     }}
                                                 >
                                                     <Funnel className="w-4 h-4 p-0 m-0" />
                                                 </Button>
+                                                 <Button
+                                                    variant="outline"
+                                                    size="icon"
+                                                    className='p-0 m-0 ml-1'
+                                                    onClick={() => {
+                                                        const newVisibility = { ...visibleCategories, [key]: !visibleCategories[key] };
+                                                        setVisibleCategories(newVisibility);
+                                                    }}
+                                                >   
+                                                    {visibleCategories[key] ? <Eye className="w-4 h-4 p-0 m-0" /> :
+                                                        <EyeOff className="w-4 h-4 p-0 m-0" />
+                                                    }
+                                                </Button>
                                             </TableCell>
+                                            
                                         </TableRow>
                                     ))}
                                 </TableBody>
@@ -253,7 +285,7 @@ export function DetectionCard({ report, setThresholds, thresholds }: Props) {
                                     </Tooltip>
                                 </div>
                                 {detectionMode && (
-                                    <div className="rounded-md border p-2 mt-2 text-sm border-gray-400 bg-gray-200 text-muted-foreground">
+                                    <div className="rounded-md border p-2 mt-2 text-sm border-gray-400 bg-gray-200 text-muted-foreground dark:bg-gray-800 dark:border-gray-700">
                                         <p className="m-0">
                                             <Info className="inline-block w-3 h-3 align-middle mr-1" />
                                             {infotextForMode(detectionMode)}

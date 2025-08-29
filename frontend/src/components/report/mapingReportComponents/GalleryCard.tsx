@@ -11,13 +11,77 @@ interface GalleryCardProps {
     setFilteredImages: (images: Image[]) => void;
     filteredImages?: Image[];
     setSelectedImage: (image: Image | null) => void;
+    search: string;
+    setSearch: (search: string) => void;
+
+}function filterImages(images: Image[], search: string, activeTags: string[]): Image[] {
+    if (!images) return [];
+
+    let filtered = images;
+    const term = search.toLowerCase().trim();
+
+    // Regex for detection pattern
+    const detMatch = term.match(/^det:(.*?)(?:-thr:(\d*\.?\d+))?$/);
+    if (detMatch) {
+        const [, rawClass, thrString] = detMatch;
+        const thr = thrString ? parseFloat(thrString) : 0.4;
+        const className = rawClass?.trim().toLowerCase();
+
+        if (!className) {
+            // Case 1: "det:" only → show all images with any detection
+            filtered = images.filter((img) =>
+                img.detections?.some((det) => det.score >= thr)
+            );
+        } else {
+            // Case 2/3: class given (partial allowed, startsWith)
+            filtered = images.filter((img) =>
+                img.detections?.some(
+                    (det) =>
+                        det.class_name.toLowerCase().startsWith(className) &&
+                        det.score >= thr
+                )
+            );
+        }
+    } else {
+        // Normal filename search
+        filtered = images.filter((image) =>
+            image.filename.toLowerCase().includes(term)
+        );
+
+        // If no filename matches → fallback to detection class name (partial, startsWith)
+        if (filtered.length === 0 && term) {
+            filtered = images.filter((img) =>
+                img.detections?.some((det) =>
+                    det.class_name.toLowerCase().startsWith(term)
+                )
+            );
+        }
+    }
+
+    // Apply tag filters (thermal/panoramic/regular)
+    filtered = filtered.filter((image) => {
+        return (
+            activeTags.length === 0 ||
+            activeTags.some((tag) => {
+                if (tag === "thermal") return image.thermal;
+                if (tag === "panoramic") return image.panoramic;
+                if (tag === "regular") return !image.thermal && !image.panoramic;
+                return false;
+            })
+        );
+    });
+
+    // Sort chronologically
+    return filtered.sort((a, b) =>
+        new Date(a.created_at ?? 0).getTime() -
+        new Date(b.created_at ?? 0).getTime()
+    );
 }
 
 type FilterTag = "thermal" | "panoramic" | "regular";
 
-export function GalleryCard({ images, setFilteredImages, filteredImages, setSelectedImage }: GalleryCardProps) {
+export function GalleryCard({ images, setFilteredImages, filteredImages, setSelectedImage, search, setSearch }: GalleryCardProps) {
     const apiUrl = getApiUrl();
-    const [search, setSearch] = useState("");
     const [activeTags, setActiveTags] = useState<FilterTag[]>([]);
 
     const getAvailableTags = (images: Image[]): FilterTag[] => {
@@ -41,54 +105,10 @@ export function GalleryCard({ images, setFilteredImages, filteredImages, setSele
     };
 
     const onFilterChange = () => {
-        if (!images) return [];
-
-        const filtered = images.filter((image) => {
-            const matchesSearch = image.filename.toLowerCase().includes(search.toLowerCase());
-
-            const matchesTag =
-                activeTags.length === 0 ||
-                activeTags.some((tag) => {
-                    if (tag === "thermal") return image.thermal;
-                    if (tag === "panoramic") return image.panoramic;
-                    if (tag === "regular") return !image.thermal && !image.panoramic;
-                    return false;
-                });
-
-            return matchesSearch && matchesTag;
-        });
-
-        setFilteredImages(filtered.sort((a, b) => {
-            const aTime = new Date(a.created_at ?? 0).getTime();
-            const bTime = new Date(b.created_at ?? 0).getTime();
-            return aTime - bTime;
-        }))
+        if (!images) return;
+        const filtered = filterImages(images, search, activeTags);
+        setFilteredImages(filtered);
     };
-
-    // const filteredImages = useMemo(() => {
-    //     if (!images) return [];
-
-    //     const filtered = images.filter((image) => {
-    //         const matchesSearch = image.filename.toLowerCase().includes(search.toLowerCase());
-
-    //         const matchesTag =
-    //             activeTags.length === 0 ||
-    //             activeTags.some((tag) => {
-    //                 if (tag === "thermal") return image.thermal;
-    //                 if (tag === "panoramic") return image.panoramic;
-    //                 if (tag === "regular") return !image.thermal && !image.panoramic;
-    //                 return false;
-    //             });
-
-    //         return matchesSearch && matchesTag;
-    //     });
-
-    //     return filtered.sort((a, b) => {
-    //         const aTime = new Date(a.created_at ?? 0).getTime();
-    //         const bTime = new Date(b.created_at ?? 0).getTime();
-    //         return aTime - bTime;
-    //     });
-    // }, [images, search, activeTags]);
 
     useEffect(() => {
         onFilterChange();

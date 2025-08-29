@@ -12,7 +12,8 @@ from app.schemas.image import (
     DetectionCreate,
     DetectionOut,
     ImageOut,
-    DetectionUpdate
+    DetectionUpdate,
+    DetectionSettings
 )
 
 from app.services.celery_app import celery_app
@@ -34,7 +35,7 @@ def get_all_detections(db: Session = Depends(get_db)):
     return detections
 
 @router.post("/r/{report_id}", response_model=dict)   
-def run_detections(report_id: int, db: Session = Depends(get_db)):
+def run_detections(report_id: int, req: DetectionSettings, db: Session = Depends(get_db)):
     """
     Queue detection tasks for a given report.
     """
@@ -55,15 +56,19 @@ def run_detections(report_id: int, db: Session = Depends(get_db)):
         r.delete(f"detection:{report_id}:message")
         raise HTTPException(status_code=404, detail="No images found for the given report ID")
     
-    
+    max_splits = 0
+    if req.processing_mode == "medium":
+        max_splits = 1
+    elif req.processing_mode == "detailed":
+        max_splits = 4
 
     detection_task = celery_app.signature(
-        "detection.run", args=[report_id, images_list], queue="detection"
+        "detection.run", args=[report_id, images_list, max_splits], queue="detection"
     )
     asynch_task = detection_task.apply_async()
 
-    r.set(f"detection:{report_id}:task_id", asynch_task .id)
-    logger.info(f"Detection task {asynch_task .id} queued for report {report_id}")
+    r.set(f"detection:{report_id}:task_id", asynch_task.id)
+    #logger.info(f"Detection task {asynch_task.id} queued for report {report_id}")
 
     return {"message": "Detection task queued", "report_id": report_id}
 
@@ -81,7 +86,7 @@ def set_detections(report_id: int, detections: dict, db: Session = Depends(get_d
     r.set(f"detection:{report_id}:status", "finished")
     r.set(f"detection:{report_id}:progress", 100)
     r.set(f"detection:{report_id}:message", "Detections saved successfully")
-    logger.info(f"{len(detections.get('detections', []))} Detections saved for report {report_id}")
+    # logger.info(f"{len(detections.get('detections', []))} Detections saved for report {report_id}")
 
     return {"message": "Detections saved successfully", "report_id": report_id, "detections": detections}
 
@@ -96,8 +101,8 @@ def get_detections(report_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Report not found")
 
     detections = image_crud.get_detections_by_mapping_report_id(db, mapping_report.id)
-    logger.info(f"Found {len(detections)} detections for report {report_id}")
-    logger.info(f"{detections[0]}")
+    # logger.info(f"Found {len(detections)} detections for report {report_id}")
+    # logger.info(f"{detections[0]}")
     return detections
 
 
@@ -114,7 +119,7 @@ def get_detection_status(report_id: int):
         if not status and not progress:
             raise HTTPException(status_code=404, detail="No detection status found for this report")
         
-        logger.info(f"Detection status for report {report_id}: {status}, {progress}%, {message}")
+        # logger.info(f"Detection status for report {report_id}: {status}, {progress}%, {message}")
 
         return {
             "report_id": report_id,

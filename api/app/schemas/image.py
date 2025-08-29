@@ -177,4 +177,5 @@ class DetectionOut(DetectionBase):
         orm_mode = True
 
 
-
+class DetectionSettings(BaseModel):
+    processing_mode: str

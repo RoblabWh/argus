@@ -32,6 +32,22 @@ function initiateThresholds(report: Report) {
     return thresholds;
 }
 
+function initiateCategoryVisibility(report: Report) {
+    let images = report.mapping_report?.images || [];
+    let visibility: { [key: string]: boolean } = {};
+
+    images.forEach((image) => {
+        image.detections.forEach((detection) => {
+            if (!(detection.class_name in visibility)) {
+                visibility[detection.class_name] = true; // Default to visible
+            }
+        });
+    });
+    return visibility;
+}
+
+
+
 interface Props {
   report: Report;
   onEditClicked: () => void;
@@ -43,10 +59,14 @@ export function MappingReport({ report, onEditClicked }: Props) {
   const progress = report.progress ? Math.round(report.progress) : 0;
   const [filteredImages, setFilteredImages] = useState<Image[]>([]);
   const [selectedImage, setSelectedImage] = useState<Image | null>(null);
+  const [search, setSearch] = useState("");
   const [tab, setTab] = useState("map");
   const { data: webODMData } = useWebODM();
   const [thresholds, setThresholds] = useState<{ [key: string]: number }>({
     ...initiateThresholds(report),
+  });
+  const [visibleCategories, setVisibleCategories] = useState<{ [key: string]: boolean }>({
+    ...initiateCategoryVisibility(report),
   });
 
   const selectImageFromGallery = (image: Image | null) => {
@@ -81,14 +101,14 @@ export function MappingReport({ report, onEditClicked }: Props) {
               <FlightCard data={report.mapping_report} />
               <AutoDescriptionCard description={report.auto_description} />
               <WebOdmCard isWebODMAvailable={webODMData?.is_available} webODMURL={webODMData?.url} webODMProjectID={report.mapping_report?.webodm_project_id} reportID={report.report_id} progress={report.progress} />
-              <DetectionCard report={report} setThresholds={setThresholds} thresholds={thresholds} />
+              <DetectionCard report={report} setThresholds={setThresholds} thresholds={thresholds} setSearch={setSearch} visibleCategories={visibleCategories} setVisibleCategories={setVisibleCategories} />
             </div>
-            <GalleryCard images={report.mapping_report?.images} setFilteredImages={setFilteredImages} filteredImages={filteredImages} setSelectedImage={selectImageFromGallery} />
+            <GalleryCard images={report.mapping_report?.images} setFilteredImages={setFilteredImages} filteredImages={filteredImages} setSelectedImage={selectImageFromGallery} search={search} setSearch={setSearch} />
             {/* Add more cards as needed */}
           </div>
         }
         right={
-          <TabArea report={report} filteredImages={filteredImages} selectedImage={selectedImage} setSelectedImage={setSelectedImage} tab={tab} setTab={setTab} thresholds={thresholds} />
+          <TabArea report={report} filteredImages={filteredImages} selectedImage={selectedImage} setSelectedImage={setSelectedImage} tab={tab} setTab={setTab} thresholds={thresholds} visibleCategories={visibleCategories}/>
         }
       />
     </>
