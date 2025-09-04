@@ -11,7 +11,7 @@ from app.config import UPLOAD_DIR
 from app.database import get_db
 
 # Import schemas
-from app.schemas.image import ImageOut, ImageCreate, ImageUpdate, ImageUploadResult, ThermalMatrixResponse
+from app.schemas.image import ImageOut, ImageCreate, ImageUpdate, ImageUploadResult, ThermalMatrixResponse, ImageBasicPlusOut
 
 # Import CRUD logic
 import app.crud.images as crud_image
@@ -66,11 +66,13 @@ def create_images_batch(report_id: int, files: List[UploadFile] = File(...), db:
     print(f"Processed {len(files)} images in {processing_time:.2f} seconds")
     return responses
 
-@router.get("/report/{report_id}", response_model=List[ImageOut])
-def get_images_by_report(report_id: int, db: Session = Depends(get_db)):
+@router.get("/report/{report_id}", response_model=List[ImageBasicPlusOut])
+def get_images_by_report(report_id: int, db: Session = Depends(get_db)): # wihtout detections
     images = crud_image.get_by_report(db, report_id)
     if not images:
         raise HTTPException(status_code=404, detail="No images found for this report")
+    # sort by created_at ascending
+    images.sort(key=lambda x: x.created_at or time.time())
     return images
 
 @router.get("/{image_id}", response_model=ImageOut)

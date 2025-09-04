@@ -52,6 +52,14 @@ class ImageOut(ImageBase):
         orm_mode = True    
         from_attributes=True
 
+class ImageBasicPlusOut(ImageBase):
+    id: int
+    mapping_data: Optional["MappingDataOut"] = None
+    thermal_data: Optional["ThermalDataOut"] = None
+
+    class Config:
+        orm_mode = True    
+        from_attributes=True
 
 class ImageUploadResult(BaseModel):
     status: str  # "success" | "error" | "duplicate"
@@ -175,6 +183,8 @@ class DetectionOut(DetectionBase):
 
     class Config:
         orm_mode = True
+        from_attributes=True
+
 
 
 class DetectionSettings(BaseModel):

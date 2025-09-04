@@ -24,6 +24,9 @@ import { Slider } from "@/components/ui/slider";
 import "@/lib/Leaflet.ImageOverlay.Rotated";
 import { RotatedImageOverlay } from "@/components/report/mapingReportComponents/RotatedImageOverlay";
 import panoPinSVG from '@/assets/panorama.svg'
+import { useImages } from "@/hooks/imageHooks";
+import { useMaps } from "@/hooks/useMaps";
+import { useDetections } from "@/hooks/detectionHooks";
 
 interface Props {
     report: Report;
@@ -48,7 +51,8 @@ function extractFlightTrajectory(images: Image[]) {
 export function MapTab({ report, selectImageOnMap }: Props) {
     const [overlayOpacity, setOverlayOpacity] = useState(1.0);
     const [map, setMap] = useState<LeafletMap | null>(null);
-
+    const { data: images } = useImages(report.report_id);
+    const { data: maps } = useMaps(report.report_id);
     const api_url = getApiUrl();
     const { theme } = useTheme();
     const current = theme === "system"
@@ -57,25 +61,25 @@ export function MapTab({ report, selectImageOnMap }: Props) {
             : "light"
         : theme;    //Check if report has maps, If not show overlay over map (that can be closed by clicking, but since no gps data is available the map will start ata default location (in fututre editable in settins))
 
-    const first_image_with_gps = report.mapping_report?.images?.find((image) => image.coord);
-    const first_map = report.mapping_report?.maps?.[0] || null;
+    const first_image_with_gps = images?.find((image) => image.coord);
+    const first_map = maps?.[0] || null;
     const center = first_map
         ? [(first_map.bounds.gps.latitude_min + first_map.bounds.gps.latitude_max) / 2, (first_map.bounds.gps.longitude_min + first_map.bounds.gps.longitude_max) / 2]
         : (first_image_with_gps ? [first_image_with_gps.coord.gps.lat, first_image_with_gps.coord.gps.lon] : [51.574, 7.027]);
 
 
     const bounds = useMemo(() => {
-        if (!report?.mapping_report?.maps?.length) return null;
+        if (!maps?.length) return null;
 
-        const gps = report.mapping_report.maps[0].bounds.gps;
+        const gps = maps[0].bounds.gps;
         return [
             [gps.latitude_min, gps.longitude_min],
             [gps.latitude_max, gps.longitude_max]
         ] as LatLngBoundsExpression;
-    }, [report]);
+    }, [maps]);
 
 
-    const handleOverlayClick = (mapId: number, elementId: string, image_id: string) => {
+    const handleOverlayClick = (mapId: number, elementId: string, image_id: number) => {
         selectImageOnMap(image_id)
     };
 
@@ -150,21 +154,21 @@ export function MapTab({ report, selectImageOnMap }: Props) {
                     </BaseLayer>
 
 
-                    {report.mapping_report?.images && report.mapping_report?.images.length > 0 && (
+                    {images && images.length > 0 && (
                         <Overlay name="Flight Trajectory" checked>
                             <LayerGroup>
                                 <Polyline
-                                    positions={extractFlightTrajectory(report.mapping_report.images)}
+                                    positions={extractFlightTrajectory(images)}
                                     pathOptions={{ color: 'magenta', weight: 2, opacity: 1 }}
                                 />
                             </LayerGroup>
                         </Overlay>
                     )}
-                    { (report.mapping_report?.images && report.mapping_report?.images.length > 0 && report.mapping_report?.images.some(image => image.panoramic)) && (
+                    {(images && images.length > 0 && images.some(image => image.panoramic)) && (
                         //for each panoramic image, add a marker with a popup
                         <Overlay name="Panoramic Images" checked>
                             <LayerGroup>
-                                {report.mapping_report.images.map((image) => {
+                                {images.map((image) => {
                                     if (!image.coord || !image.coord.gps || image.coord.gps === undefined || !image.panoramic) return null;
                                     return (
                                         <Marker
@@ -190,7 +194,7 @@ export function MapTab({ report, selectImageOnMap }: Props) {
                         </Overlay>
                     )}
 
-                    {report.mapping_report?.maps?.map((map) => {
+                    {maps?.map((map) => {
                         const { latitude_min, latitude_max, longitude_min, longitude_max } = map.bounds.gps;
                         let useRotatedOverlay = false;
                         let gps_corners: LatLngBoundsExpression[] = [];
@@ -237,7 +241,7 @@ export function MapTab({ report, selectImageOnMap }: Props) {
                                         />
                                     )}
 
-                                    
+
 
                                     {map.map_elements?.map((element) => {
                                         const corners = element.corners.gps;
@@ -286,7 +290,7 @@ export function MapTab({ report, selectImageOnMap }: Props) {
                 )}
             </MapContainer>
 
-            {(report.mapping_report?.maps && report.mapping_report.maps.length !== 0) && (
+            {(maps && maps.length !== 0) && (
                 <div className="absolute left-1/2 bottom-2 transform -translate-x-1/2 z-10 bg-white dark:bg-gray-800 px-3 py-2 rounded-md shadow-md flex flex-col items-center">
                     <label className="text-sm font-medium mb-1 block text-center">Overlay Opacity</label>
                     <Slider

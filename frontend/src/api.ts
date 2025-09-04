@@ -3,7 +3,7 @@ import type { Group } from "@/types/group";
 import type { Report, ReportSummary } from "@/types/report";
 import type { Map } from "@/types/map";
 import type { ProcessingSettings } from "@/types/processing";
-import type { Image } from "@/types/image";
+import type { Image, ImageBasic } from "@/types/image";
 //
 import { data } from "react-router-dom";
 import type { Detection } from "./types";
@@ -73,16 +73,17 @@ export const deleteReport = (report_id: number) => deleteRequest(`/reports/${rep
 export const editReport = (data: { id: number; title: string; description: string }) => {return postJson<Report>(`/reports/${data.id}`, data, "PUT");};
 
 export const getMaps = (report_id: number) => fetchJson<Map[]>(`/reports/${report_id}/mapping_report/maps`);
+export const getMapsSlim = (report_id: number) => fetchJson<Map[]>(`/reports/${report_id}/mapping_report/maps_slim`);
 export const getODMProjectID = (report_id: number) => fetchJson<{ webodm_project_id: string }>(`/reports/${report_id}/mapping_report/webodm_project_id`);
 
-export const getImages = (report_id: number) => fetchJson<{ images: string[] }>(`/images/report/${report_id}`);
+export const getImages = (report_id: number) => fetchJson<ImageBasic[]>(`/images/report/${report_id}`);
 export const getImage = (image_id: number) => fetchJson<{ image: string }>(`/images/${image_id}`);
 export const deleteImage = (image_id: number) => deleteRequest(`/images/${image_id}`);
 export const getThermalMatrix = (image_id: number) => fetchJson<{ image_id: number; matrix: number[][]; min_temp: number; max_temp: number }>(`/images/${image_id}/thermal_matrix`);
 
 export const startDetection = (report_id: number, processing_mode: string) => postJson<{ task_id: number}>(`/detections/r/${report_id}`, { processing_mode });
 export const getDetectionStatus = (report_id: number) => fetchJson<{ report_id: number, status: string; progress: number; message?: string; error?: string }>(`/detections/r/${report_id}/status`);
-export const getDetections = (report_id: number) => fetchJson<Image[]>(`/detections/r/${report_id}`);
+export const getDetections = (report_id: number) => fetchJson<Detection[]>(`/detections/r/${report_id}`);
 export const updateDetection = (detection_id: number, data: Detection) => postJson<any>(`/detections/${detection_id}`, data, "PUT");
 export const deleteDetection = (detection_id: number) => deleteRequest(`/detections/${detection_id}`);
 

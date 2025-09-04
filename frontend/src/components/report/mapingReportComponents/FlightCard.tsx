@@ -11,7 +11,7 @@ import {
     Copy,
     Drone,
 } from "lucide-react";
-import type { MappingReport } from "@/types/report";
+import type { MappingReportSmall } from "@/types/report";
 import { add } from "date-fns";
 
 const modelMap: Record<string, string> = {
@@ -25,7 +25,7 @@ const modelMap: Record<string, string> = {
 };
 
 type Props = {
-    data: MappingReport | undefined;
+    data: MappingReportSmall | undefined;
 };
 
 export function FlightCard({ data }: Props) {

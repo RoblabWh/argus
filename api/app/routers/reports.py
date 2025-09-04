@@ -8,7 +8,9 @@ from app.schemas.report import (
     ReportCreate, 
     ReportUpdate, 
     ReportOut, 
-    ReportDetailOut
+    ReportDetailOut,
+    ReportSmallDetailPlusOut,
+    MapOutSlim
 )
 from app.schemas.report import (
     MappingReportCreate, 
@@ -37,9 +39,9 @@ def create_report(report: ReportCreate, db: Session = Depends(get_db)):
     return crud.create(db, report)
 
 
-@router.get("/{report_id}", response_model=ReportDetailOut)
+@router.get("/{report_id}", response_model=ReportSmallDetailPlusOut)
 def get_report(report_id: int, db: Session = Depends(get_db)):
-    report = crud.get_full_report(db, report_id, r)
+    report = crud.get_basic_report(db, report_id, r)
     if not report:
         raise HTTPException(status_code=404, detail="Report not found")
     return report
@@ -69,6 +71,10 @@ def update_mapping_report(report_id: int, data: MappingReportUpdate, db: Session
 def get_mapping_report_maps(report_id: int, db: Session = Depends(get_db)):
     return crud.get_mapping_report_maps(db, report_id)
 
+@router.get("/{report_id}/mapping_report/maps_slim", response_model=list[MapOutSlim])
+def get_mapping_report_maps(report_id: int, db: Session = Depends(get_db)):
+    return crud.get_mapping_report_maps_slim(db, report_id)
+
 @router.get("/{report_id}/mapping_report/webodm_project_id", response_model=int | None)
 def get_mapping_report_webodm_project_id(report_id: int, db: Session = Depends(get_db)):
     return crud.get_mapping_report_webodm_project_id(db, report_id)
@@ -89,4 +95,7 @@ def process_report(report_id: int, processing_settings: ProcessingSettings, db: 
 def get_process_status(report_id: int, db: Session = Depends(get_db)):
     """Get the current processing status and progress of a report."""
     return crud.get_process_status(db, report_id, r)
+
+
+
     

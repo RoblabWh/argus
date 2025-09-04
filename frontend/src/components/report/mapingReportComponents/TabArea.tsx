@@ -1,25 +1,27 @@
 import { useEffect, useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 import type { Report } from "@/types/report";
-import type { Image } from "@/types/image";
+import type { Image, ImageBasic } from "@/types/image";
 import { getApiUrl } from "@/api";
 import { MapTab } from "./MapTab";
 import { SlideshowTab } from "@/components/report/mapingReportComponents/SlidehowTab";
+import { useImages } from "@/hooks/imageHooks";
 
 interface Props {
   report: Report;
-  filteredImages?: Image[];
-  selectedImage: Image | null;
-  setSelectedImage: (image: Image | null) => void;
+  filteredImages?: ImageBasic[];
+  selectedImage: ImageBasic | null;
+  setSelectedImage: (image: ImageBasic | null) => void;
   tab: string;
   setTab: (value: string) => void;
   thresholds: { [key: string]: number };
   visibleCategories: { [key: string]: boolean };
-  deleteSpecificDetection?: (detectionId: number, imageId: number) => void;
 }
 
-export function TabArea({ report, filteredImages , selectedImage, setSelectedImage, tab, setTab, thresholds, visibleCategories, deleteSpecificDetection }: Props) {
+export function TabArea({ report, filteredImages, selectedImage, setSelectedImage, tab, setTab, thresholds, visibleCategories }: Props) {
   const api_url = getApiUrl();
+  const { data: images } = useImages(report.report_id);
 
   const onTabChange = (value: string) => {
     setTab(value);
@@ -27,7 +29,7 @@ export function TabArea({ report, filteredImages , selectedImage, setSelectedIma
 
 
   const selectImageOnMap = (image_id: number) => {
-    setSelectedImage(report.mapping_report?.images?.find(img => img.id === image_id) || null);
+    setSelectedImage(images?.find(img => img.id === image_id) || null);
     setTab("slideshow");
   }
 
@@ -51,7 +53,7 @@ export function TabArea({ report, filteredImages , selectedImage, setSelectedIma
         console.error("No closest image found");
         return;
       }
-      
+
       return;
     }
     if (currentIndex === -1) return;
@@ -66,10 +68,10 @@ export function TabArea({ report, filteredImages , selectedImage, setSelectedIma
   }
 
   useEffect(() => {
-    if (report.mapping_report?.images && report.mapping_report.images.length > 0) {
-      setSelectedImage(report.mapping_report.images[0]);
+    if (images && images.length > 0) {
+      setSelectedImage(images[0]);
     }
-  }, [report.mapping_report?.images]);
+  }, [images]);
 
   return (
     <Tabs
@@ -92,20 +94,42 @@ export function TabArea({ report, filteredImages , selectedImage, setSelectedIma
       <TabsContent value="slideshow">
         <SlideshowTab
           selectedImage={selectedImage}
-          images={report.mapping_report?.images || []}
           nextImage={() => changeImage('next')}
           previousImage={() => changeImage('previous')}
           thresholds={thresholds}
           visibleCategories={visibleCategories}
           report_id={report.report_id}
-          deleteSpecificDetection={deleteSpecificDetection}
         />
       </TabsContent>
       <TabsContent value="data">
         {/* Data content goes here */}
         <div className="text-sm text-muted-foreground mt-4 h-[calc(85vh)] overflow-auto">
-          {/* Print every property of the report object */}
-          <pre>{JSON.stringify(report, null, 2)}</pre>
+          <Accordion type="single" collapsible className="mt-4">
+            <AccordionItem value="item-1">
+              <AccordionTrigger>Report Data</AccordionTrigger>
+              <AccordionContent>
+                <pre>{JSON.stringify(report, null, 2)}</pre>
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="item-2">
+              <AccordionTrigger>Images Data</AccordionTrigger>
+              <AccordionContent>
+                <pre>{JSON.stringify(images, null, 2)}</pre>
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="item-3">
+              <AccordionTrigger>Detections</AccordionTrigger>
+              <AccordionContent>
+                <p>TODO</p>
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="item-4">
+              <AccordionTrigger>Maps</AccordionTrigger>
+              <AccordionContent>
+                <p>TODO</p>
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
         </div>
       </TabsContent>
     </Tabs>

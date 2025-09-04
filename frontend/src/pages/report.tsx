@@ -1,10 +1,10 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, use } from 'react';
 import { useParams } from 'react-router-dom';
 import { useBreadcrumbs } from "@/contexts/BreadcrumbContext";
 import type { Report } from '@/types/report';
 import { useReport } from '@/hooks/reportHooks';
 import { usePollReportStatus } from '@/hooks/usePollReportStatus';
-import { useMaps } from '@/hooks/useMaps';
+import { useMaps, useMapsSlim } from '@/hooks/useMaps';
 import { Upload } from '@/components/report/Upload';
 import { MappingReport } from '@/components/report/MappingReport';
 import { m } from 'motion/react';
@@ -14,11 +14,13 @@ export default function ReportOverview() {
   const { setBreadcrumbs } = useBreadcrumbs();
   const { data: initialReport, isLoading, error, refetch: refetchFullReport } = useReport(Number(report_id));
   const { data: mapsData, refetch: refetchMaps } = useMaps(Number(report_id), false);
+  const { data: slimMapsData, refetch: refetchSlimMaps } = useMapsSlim(Number(report_id), false);
 
   const prevStatusRef = useRef<string | null>(null);
 
 
   const [liveReport, setLiveReport] = useState<Report | null>(null);
+  const [liveMaps, setLiveMaps] = useState<Map[] | null>(null);
   const [shouldPoll, setShouldPoll] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [hasRefetchedAfterStatusChange, setHasRefetchedAfterStatusChange] = useState(true);
@@ -50,6 +52,7 @@ export default function ReportOverview() {
     }
   }, [initialReport]);
 
+
   const { data: polledData } = usePollReportStatus(
     Number(report_id),
     shouldPoll
@@ -57,29 +60,26 @@ export default function ReportOverview() {
 
   useEffect(() => {
     console.log("Polled data:", mapsData);
-    if (mapsData && liveReport?.mapping_report) {
-      //check if length op maps is different
-      if (liveReport === null) {
-        console.log("Live report is null, setting it to maps data...");
-        return;
-      }
-
-      if (mapsData.length !== liveReport.mapping_report.maps.length) {
-        console.log("Maps length changed, updating live report...");
-        setLiveReport((prev) => {
-          if (!prev) return prev;
-          return {
-            ...prev,
-            mapping_report: {
-              ...prev.mapping_report,
-              maps: mapsData,
-            },
-          };
-        });
-        console.log(liveReport?.mapping_report.maps);
-      }
+    if (mapsData) {
+      setLiveMaps(mapsData);
+    } else {
+      setLiveMaps([]);
     }
   }, [mapsData]);
+
+  useEffect(() => {
+    console.log("Slim maps data:", slimMapsData);
+    if (slimMapsData) {
+      if (liveMaps) {
+        const newMaps = slimMapsData.filter(slimMap => !liveMaps.some(liveMap => liveMap.id === slimMap.id));
+        if (newMaps.length > 0) {
+          console.log("New maps found in slim data, refetching full maps...");
+          refetchMaps();
+          return;
+        }
+      }
+    }
+  }, [slimMapsData]);
 
   useEffect(() => {
     if (polledData) {
@@ -116,7 +116,7 @@ export default function ReportOverview() {
             if (polledData.progress > (liveReport?.progress ?? 0)) {
               setLiveReport((prev) => ({ ...prev!, progress: polledData.progress }));
               console.log("Progress increased, refetching maps...");
-              refetchMaps();  // or throttle this if needed
+              refetchSlimMaps();
             }
           }
         }
@@ -129,6 +129,9 @@ export default function ReportOverview() {
         polledData.status !== "queued"
       ) {
         setShouldPoll(false);
+        if (liveReport?.mapping_report) {
+          refetchSlimMaps();
+        }
       }
       console.log(`Polled report status: ${newStatus}, old status: ${prevStatus}`);
 

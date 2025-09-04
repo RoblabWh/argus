@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState } from "react";
 import { Stage, Layer, Image as KonvaImage, Rect } from "react-konva";
-import type { Image } from "@/types/image";
+import type { Image, ImageBasic } from "@/types/image";
 import { ThermalSettingsPopup } from "./thermalSettingsPopup";
 import useImage from "use-image";
 import { useThermalMatrix } from "@/hooks/useThermalMatrix";
@@ -26,6 +26,9 @@ import {
     AlertTriangle,
 } from "lucide-react";
 import { useAspectRatio } from "@/hooks/useAspectRatio";
+import { useImages } from "@/hooks/imageHooks";
+import { useDetections } from "@/hooks/detectionHooks";
+import { useQueryClient } from "@tanstack/react-query";
 import { set } from "date-fns";
 import { m } from "motion/react";
 import { PanoramaViewer } from "./panoramaViewer";
@@ -39,33 +42,31 @@ const DETECTION_COLORS: Record<string, string> = {
 
 
 interface SlideshowTabProps {
-    selectedImage: Image | null;
-    images: Image[];
+    selectedImage: ImageBasic | null;
     nextImage: () => void;
     previousImage: () => void;
     thresholds: { [key: string]: number };
     visibleCategories: { [key: string]: boolean };
     report_id: number;
-    deleteSpecificDetection?: (detectionId: number, imageId: number) => void;
 }
 
 export const SlideshowTab: React.FC<SlideshowTabProps> = ({
     selectedImage,
-    images,
     nextImage,
     previousImage,
     thresholds,
     visibleCategories,
     report_id,
-    deleteSpecificDetection
 }) => {
     const apiUrl = getApiUrl();
     const containerRef = useRef<HTMLDivElement>(null);
     const stageRef = useRef<any>(null);
+    const queryClient = useQueryClient();
+
 
     const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
     const [imageUrl, setImageUrl] = useState<string | null>(null);
-    const [image] = useImage(imageUrl || "");//TODO check if image is loading
+    const [image, loadingStatus] = useImage(imageUrl || "");//TODO check if image is loading
 
     const [scale, setScale] = useState(1);
     const [minScale, setMinScale] = useState(1);
@@ -96,6 +97,7 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
         maxTemp: 100,
         colorMap: "whiteHot",
     });
+    const {data: images} = useImages(report_id);
 
     const [selectedDetection, setSelectedDetection] = useState<any | null>(null);
 
@@ -108,8 +110,14 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
         probeMessage: string;
     } | null>(null);
 
+    const { data: detections } = useDetections(report_id);
     const updateDetectionMutation = useUpdateDetection(report_id);
     const deleteDetectionMutation = useDeleteDetection(report_id);
+
+    const [detectionsOfImage, setDetectionsOfImage] = useState<any[]>([]);
+    useEffect(() => {
+        setDetectionsOfImage(detections?.filter((d) => d.image_id === selectedImage?.id) || []);
+    }, [detections, selectedImage]);
 
     useEffect(() => {
         if (data && selectedImage?.id === data.image_id) {
@@ -537,11 +545,9 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
             onSuccess: () => {
                 console.log("Detection deleted:", detectionId);
                 setSelectedDetection(null);
-                if (deleteSpecificDetection) {
-                    deleteSpecificDetection(detectionId, selectedImage.id);
-                } else {
-                    console.warn("No deleteSpecificDetection function provided");
-                }
+                // invalidate cache to refetch
+                queryClient.invalidateQueries({ queryKey: ["detections", report_id] });
+                // refetch
             },
             onError: (error) => {
                 console.error("Error deleting detection:", error);
@@ -589,7 +595,12 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
                                 <>
                                     <PanoramaViewer imageUrl={`${apiUrl}/${selectedImage.url}`} />
                                 </>
+                            ) : loadingStatus === "loading" ? (
+                                <div>Loading image...</div>
+                            ) : loadingStatus === "failed" ? (
+                                <div>Failed to load image.</div>
                             ) : (
+                                
                                 <div className="relative">
                                     <Stage
                                         ref={stageRef}
@@ -656,7 +667,7 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
                                         fill="transparent"
                                     />
                                 )} */}
-                                            {selectedImage?.detections
+                                            {detectionsOfImage
                                                 ?.filter((det) => {
                                                     const threshold = thresholds?.[det.class_name] ?? 0; // thresholds passed as prop
                                                     return det.score >= threshold;
@@ -693,7 +704,7 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
 
                                         </Layer>
                                     </Stage>
-                                    {displayHiddenDetectionsWarning(selectedImage?.detections) && (
+                                    {displayHiddenDetectionsWarning(detectionsOfImage) && (
                                         <ThresholdWarning
                                             detectionId="global"
                                             message="Some detections are hidden due to visibility settings or threshold."

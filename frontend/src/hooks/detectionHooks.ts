@@ -38,11 +38,10 @@ export function useDetectionStatusPolling(reportId: number, enabled: boolean) {
     });
 }
 
-export function useDetections(reportId: number, enabled: boolean) {
+export function useDetections(reportId: number) {
     return useQuery({
         queryKey: ["detections", reportId],
         queryFn: () => getDetections(reportId),
-        enabled,
     });
 }
 

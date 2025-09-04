@@ -52,6 +52,10 @@ class ReportSmallDetailOut(ReportOut):
     mapping_report: Optional["MappingReportSimpleOut"] = None
     pano_report: Optional["PanoReportOut"] = None
 
+class ReportSmallDetailPlusOut(ReportOut):
+    mapping_report: Optional["MappingReportSimplePlusOut"] = None
+    pano_report: Optional["PanoReportOut"] = None
+
 class ProcessingSettings(BaseModel):
     keep_weather: Optional[bool] = False
     fast_mapping: bool = True
@@ -99,6 +103,15 @@ class MappingReportOut(MappingReportBase):
 
 class MappingReportSimpleOut(MappingReportBase):
     id: int
+
+    class Config:
+        orm_mode = True
+
+
+class MappingReportSimplePlusOut(MappingReportBase):
+    id: int
+    weather: List[WeatherOut] = []
+
 
     class Config:
         orm_mode = True

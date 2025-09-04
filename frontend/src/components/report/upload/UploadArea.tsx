@@ -4,7 +4,7 @@ import { Progress } from "@/components/ui/progress";
 import { useBatchedUpload } from "@/hooks/useBatchedUpload";
 import type { Report } from "@/types/report";
 import { getApiUrl } from "@/api";
-import { useDeleteImage } from "@/hooks/useImageMutations";
+import { useDeleteImage , useImages} from "@/hooks/imageHooks";
 import { GalleryImage } from "@/components/report/upload/UploadGalleryImage";
 import { ImageUp, ImagePlus, Upload, CloudUpload } from "lucide-react";
 import type { UploadFile } from "@/types/image"; // Assuming you have an Image type defined
@@ -12,24 +12,26 @@ type UploadAreaProps = {
   report: Report;
   uploads: UploadFile[];
   setUploads: React.Dispatch<React.SetStateAction<UploadFile[]>>;
+  setIsUploading?: React.Dispatch<React.SetStateAction<boolean>>;
 };
 
-export const UploadArea: React.FC<UploadAreaProps> = ({ report, uploads, setUploads }) => {
+export const UploadArea: React.FC<UploadAreaProps> = ({ report, uploads, setUploads, setIsUploading }) => {
   const apiUrl = getApiUrl();
   const { uploadBatch } = useBatchedUpload(report.report_id);
   const deleteImageMutation = useDeleteImage();
+  const {data: images} = useImages(report.report_id);
 
 
     // Load existing images into unified list to show them with new uploads
   useEffect(() => {
-    if (report.mapping_report?.images) {
-      const existingUploads: UploadFile[] = report.mapping_report.images.map((img) => ({
+    if (images) {
+      const existingUploads: UploadFile[] = images.map((img) => ({
         imageObject: img,
         isExisting: true,
       }));
       setUploads(existingUploads);
     }
-  }, [report]);
+  }, [images]);
 
   const uploadingOnly = uploads.filter((u) => !u.isExisting);
   const overallProgress =
@@ -39,6 +41,12 @@ export const UploadArea: React.FC<UploadAreaProps> = ({ report, uploads, setUplo
         uploadingOnly.reduce((sum, u) => sum + (u.progress ?? 0), 0) /
         uploadingOnly.length
       );
+
+  useEffect(() => {
+    if (setIsUploading) {
+      setIsUploading(overallProgress > 0 && overallProgress < 100);
+    }
+  }, [overallProgress]);
       
 
   // Handle new image drop/upload

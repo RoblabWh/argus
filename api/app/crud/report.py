@@ -57,6 +57,28 @@ def get_short_report(db: Session, report_id: int):
         .first()
     )
 
+def get_basic_report(db: Session, report_id: int, r: redis.Redis = None):
+    if r:
+        try:
+            get_process_status(db, report_id, r)
+        except Exception as e:
+            print(f"Error getting process status: {e}")
+            return None
+
+    return (
+        db.query(models.Report)
+        .options(                
+            selectinload(models.Report.mapping_report) #todo seperate  for maps
+                .selectinload(models.MappingReport.maps)
+                .selectinload(models.Map.map_elements),
+                
+            selectinload(models.Report.mapping_report)
+                .selectinload(models.MappingReport.weather),
+        )
+        .filter(models.Report.report_id == report_id)
+        .first()
+    )
+
 
 def create(db: Session, data: ReportCreate):
     new_report = models.Report(
@@ -227,12 +249,20 @@ def set_webODM_project_id(db: Session, mapping_report_id: int, project_id: str):
     db.refresh(mapping_report)
     return mapping_report.webodm_project_id
 
-def get_mapping_report_maps(db: Session, report_id: int):
+def get_mapping_report_maps_slim(db: Session, report_id: int):
     mapping_report = db.query(models.MappingReport).filter(models.MappingReport.report_id == report_id).first()
     if not mapping_report:
         return []
 
     maps = db.query(models.Map).filter(models.Map.mapping_report_id == mapping_report.id).all()
+    return maps
+
+def get_mapping_report_maps(db: Session, report_id: int):
+    mapping_report = db.query(models.MappingReport).filter(models.MappingReport.report_id == report_id).first()
+    if not mapping_report:
+        return []
+
+    maps = db.query(models.Map).options(joinedload(models.Map.map_elements)).filter(models.Map.mapping_report_id == mapping_report.id).all()
     return maps
 
 def get_mapping_report_webodm_project_id(db: Session, report_id: int):

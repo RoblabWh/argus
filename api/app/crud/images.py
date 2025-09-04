@@ -21,13 +21,16 @@ def get_full_image(db: Session, image_id: int):
     )
 
 def get_by_report(db: Session, report_id: int):
+    mapping_report = db.query(models.MappingReport).filter(models.MappingReport.report_id == report_id).first()
+    if not mapping_report:
+        return []
     return (
         db.query(models.Image)
-        .filter(models.Image.report_id == report_id)
+        .filter(models.Image.mapping_report_id == mapping_report.id)
         .options(
             joinedload(models.Image.mapping_data),
             joinedload(models.Image.thermal_data),
-            joinedload(models.Image.detections),
+            #joinedload(models.Image.detections),
         )
         .all()
     )

@@ -212,7 +212,7 @@ export function MappingSettingsCard({
                     {/* ODM Mapping */}
                     <MappingTile
                         title="ODM Mapping"
-                        icon={<WebODMLogo className="w-28 h-28" />}
+                        icon={<WebODMLogo key="odm-logo-settings" className="w-28 h-28" />}
                         enabled={settings.odm_processing}
                         onToggle={(val) => update({ odm_processing: val })}
                         inactive={!isWebODMAvailable}

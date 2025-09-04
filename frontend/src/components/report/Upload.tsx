@@ -60,6 +60,7 @@ export function Upload({ report, onProcessingStarted, isEditing, setIsEditing }:
   const queryClient = useQueryClient();
   const weatherAvailable = checkWeatherAvailability(report); // Replace with actual logic to determine if weather data is available
   const [uploads, setUploads] = useState<UploadFile[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
   const [showManualAltitudeField, setShowManualAltitudeField] = useState(
     checkShowManualAltitudeField(report)
   );
@@ -123,7 +124,7 @@ export function Upload({ report, onProcessingStarted, isEditing, setIsEditing }:
         weatherAvailable={weatherAvailable}
         showManualAltitudeField={showManualAltitudeField}
         handleStartProcessing={handleStartProcessing}
-        processButtonActive={startProcessingMutation.isPending || report.status === "processing" || report.status === "preprocessing" || report.status === "queued"}
+        processButtonActive={startProcessingMutation.isPending || report.status === "processing" || report.status === "preprocessing" || report.status === "queued" || isUploading}
         status={report.status}
         progress={report.progress}
         onCancelEditing={cancelEditing}
@@ -137,7 +138,7 @@ export function Upload({ report, onProcessingStarted, isEditing, setIsEditing }:
 
       </div>
 
-     <UploadArea report={report} uploads={uploads} setUploads={setUploads} />
+     <UploadArea report={report} uploads={uploads} setUploads={setUploads} setIsUploading={setIsUploading} />
 
 
       <div className="text-sm text-muted-foreground mt-4">

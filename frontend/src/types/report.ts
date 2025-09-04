@@ -20,6 +20,21 @@ export interface MappingReport {
   webodm_project_id?: string | null;
 }
 
+export interface MappingReportSmall {
+  id: number;
+  report_id: number;
+  flight_timestamp?: string;
+  coord?: Record<string, unknown>;
+  address?: string;
+  flight_duration?: number;
+  flight_height?: number;
+  covered_area?: number;
+  uav?: string;
+  image_count?: number;
+  weather: Weather[];
+  webodm_project_id?: string | null;
+}
+
 export interface PanoReport {
   id: number;
   report_id: number;
@@ -41,7 +56,7 @@ export interface Report {
   progress?: number;
 
   // Optional detail sub-objects
-  mapping_report?: MappingReport;
+  mapping_report?: MappingReportSmall;
   pano_report?: PanoReport;
 }
 

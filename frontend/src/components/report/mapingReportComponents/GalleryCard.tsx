@@ -1,25 +1,24 @@
-import type { Image } from "@/types/image";
+import { useState, useMemo, useEffect } from "react";
 import { Card, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { getApiUrl } from "@/api";
-import { useState, useMemo, useEffect } from "react";
+import type { Image, ImageBasic } from "@/types/image";
+import type { Detection } from "@/types/detection";
+import { useImages } from "@/hooks/imageHooks";
+import { useDetections } from "@/hooks/detectionHooks";
 
-interface GalleryCardProps {
-    images: Image[] | undefined;
-    setFilteredImages: (images: Image[]) => void;
-    filteredImages?: Image[];
-    setSelectedImage: (image: Image | null) => void;
-    search: string;
-    setSearch: (search: string) => void;
 
-}function filterImages(images: Image[], search: string, activeTags: string[]): Image[] {
+function filterImages(images: ImageBasic[], detections: Detection[], search: string, activeTags: string[]): ImageBasic[] {
     console.log("Filtering images with search:", search, "and tags:", activeTags, "on images:", images);
     if (!images) return [];
 
     let filtered = images;
     const term = search.toLowerCase().trim();
+
+    const getImageDetections = (imageId: number) =>
+        detections.filter((det) => det.image_id === imageId);
 
     // Regex for detection pattern
     const detMatch = term.match(/^det:(.*?)(?:-thr:(\d*\.?\d+))?$/);
@@ -31,12 +30,12 @@ interface GalleryCardProps {
         if (!className) {
             // Case 1: "det:" only → show all images with any detection
             filtered = images.filter((img) =>
-                img.detections?.some((det) => det.score >= thr)
+                getImageDetections(img.id).some((det) => det.score >= thr)
             );
         } else {
             // Case 2/3: class given (partial allowed, startsWith)
             filtered = images.filter((img) =>
-                img.detections?.some(
+                getImageDetections(img.id).some(
                     (det) =>
                         det.class_name.toLowerCase().startsWith(className) &&
                         det.score >= thr
@@ -52,7 +51,7 @@ interface GalleryCardProps {
         // If no filename matches → fallback to detection class name (partial, startsWith)
         if (filtered.length === 0 && term) {
             filtered = images.filter((img) =>
-                img.detections?.some((det) =>
+                getImageDetections(img.id).some((det) =>
                     det.class_name.toLowerCase().startsWith(term)
                 )
             );
@@ -79,13 +78,24 @@ interface GalleryCardProps {
     );
 }
 
+
+interface GalleryCardProps {
+    reportId: number;
+    setFilteredImages: (images: ImageBasic[]) => void;
+    filteredImages?: ImageBasic[];
+    setSelectedImage: (image: ImageBasic | null) => void;
+    search: string;
+    setSearch: (search: string) => void;
+}
 type FilterTag = "thermal" | "panoramic" | "regular";
 
-export function GalleryCard({ images, setFilteredImages, filteredImages, setSelectedImage, search, setSearch }: GalleryCardProps) {
+export function GalleryCard({ reportId, setFilteredImages, filteredImages, setSelectedImage, search, setSearch }: GalleryCardProps) {
+    const { data: images, isLoading } = useImages(reportId);
+    const { data: detections } = useDetections(reportId);
     const apiUrl = getApiUrl();
     const [activeTags, setActiveTags] = useState<FilterTag[]>([]);
 
-    const getAvailableTags = (images: Image[]): FilterTag[] => {
+    const getAvailableTags = (images: ImageBasic[]): FilterTag[] => {
         const available: Set<FilterTag> = new Set();
 
         for (const img of images) {
@@ -107,25 +117,25 @@ export function GalleryCard({ images, setFilteredImages, filteredImages, setSele
 
     const onFilterChange = () => {
         if (!images) return;
-        const filtered = filterImages(images, search, activeTags);
+        const filtered = filterImages(images, detections || [], search, activeTags);
         setFilteredImages(filtered);
     };
 
     useEffect(() => {
         onFilterChange();
-    }, [search, activeTags, images]);
+    }, [search, activeTags, images, detections]);
 
-    if (!images || images.length === 0) {
-        return (
-            <Card className="min-w-80 max-w-257 flex-2">
-                <CardTitle className="text-lg font-semibold p-4">
-                    No Images Available
-                </CardTitle>
-            </Card>
-        );
-    }
+    // if (!images || images.length === 0) {
+    //     return (
+    //         <Card className="min-w-80 max-w-257 flex-2">
+    //             <CardTitle className="text-lg font-semibold p-4">
+    //                 No Images Available
+    //             </CardTitle>
+    //         </Card>
+    //     );
+    // }
 
-    const onImageClick = (image: Image) => {
+    const onImageClick = (image: ImageBasic) => {
         setSelectedImage(image);
     };
 
@@ -195,34 +205,36 @@ export function GalleryCard({ images, setFilteredImages, filteredImages, setSele
 
             {/* Gallery Grid */}
             <div className="overflow-auto grow grid grid-cols-[repeat(auto-fit,minmax(110px,1fr))] gap-2 flex-1">
-                {filteredImages.map((image) => (
-                    <Card
-                        key={"gallery-img-" + image.id}
-                        className="relative p-0 flex flex-col justify-between items-center h-full gap-0 rounded-sm"
-                        onClick={() => onImageClick(image)}
-                    >
-                        <div className="w-full overflow-hidden p-1">
-                            <img
-                                src={`${apiUrl}/${image.thumbnail_url}`}
-                                alt={image.filename}
-                                className="w-full h-full object-contain rounded-xs"
-                            />
-                        </div>
+                {isLoading ? (<p className="text-md text-muted-foreground">Loading images...</p>
+                ) :
+                    (filteredImages && filteredImages.length > 0) ? filteredImages.map((image) => (
+                        <Card
+                            key={"gallery-img-" + image.id}
+                            className="relative p-0 flex flex-col justify-between items-center h-full gap-0 rounded-sm"
+                            onClick={() => onImageClick(image)}
+                        >
+                            <div className="w-full overflow-hidden p-1">
+                                <img
+                                    src={`${apiUrl}/${image.thumbnail_url}`}
+                                    alt={image.filename}
+                                    className="w-full h-full object-contain rounded-xs"
+                                />
+                            </div>
 
-                        <div className="mt-0 w-full p-2 pt-0 pb-1">
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <p className="text-sm mt-1 w-full truncate text-center">
-                                        {image.filename}
-                                    </p>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                    <p>{image.filename}</p>
-                                </TooltipContent>
-                            </Tooltip>
-                        </div>
-                    </Card>
-                ))}
+                            <div className="mt-0 w-full p-2 pt-0 pb-1">
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <p className="text-sm mt-1 w-full truncate text-center">
+                                            {image.filename}
+                                        </p>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        <p>{image.filename}</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                            </div>
+                        </Card>
+                    )) : (<p className="text-md text-muted-foreground">No images found</p>)}
             </div>
         </Card>
     );

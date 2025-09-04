@@ -29,9 +29,50 @@ import {
 } from "@/hooks/detectionHooks";
 import type { Image } from '@/types';
 
+function countDetections(detections: Detection[] | undefined, thresholds: { [key: string]: number } = {}) {
+    console.log("Counting detections with thresholds:", thresholds);
+    let summary: { [key: string]: number } = {};
+    if (!detections || detections.length === 0 || Object.keys(thresholds).length === 0) return summary;
+
+    detections.forEach((detection) => {
+        if (!summary[detection.class_name]) {
+            summary[detection.class_name] = 0;
+        }
+        if (detection.score < (thresholds[detection.class_name])) {
+            return; // Skip detections below threshold
+        }
+        summary[detection.class_name] += 1;
+    });
+    return summary;
+}
+
+
+function initiateThresholds(detections: Detection[] | undefined) {
+    if (!detections) return {};
+    let thresholds: { [key: string]: number } = {};
+
+    detections.forEach((detection) => {
+        if (!(detection.class_name in thresholds)) {
+            thresholds[detection.class_name] = 0.4; // Default threshold
+        }
+    });
+    return thresholds;
+}
+
+function initiateCategoryVisibility(detections: Detection[]) {
+    let visibility: { [key: string]: boolean } = {};
+    if (!detections) return visibility;
+    detections.forEach((detection) => {
+        if (!(detection.class_name in visibility)) {
+            visibility[detection.class_name] = true; // Default to visible
+        }
+    });
+    return visibility;
+}
+
+
 interface Props {
     report_id: number;
-    images: Image[];
     setThresholds: (thresholds: { [key: string]: number }) => void;
     thresholds: { [key: string]: number };
     setSearch: (search: string) => void;
@@ -39,39 +80,23 @@ interface Props {
     setVisibleCategories: (visibility: { [key: string]: boolean }) => void;
 }
 
-function countDetections(images: Image[], thresholds: { [key: string]: number } = {}) {
-    console.log("Counting detections with thresholds:", thresholds);
-    let summary: { [key: string]: number } = {};
-    if (images.length === 0 || Object.keys(thresholds).length === 0) return summary;
-
-    images.forEach((image) => {
-        image.detections.forEach((detection) => {
-            if (!summary[detection.class_name]) {
-                summary[detection.class_name] = 0;
-            }
-            if (detection.score < (thresholds[detection.class_name])) {
-                return; // Skip detections below threshold
-            }
-            summary[detection.class_name] += 1;
-        });
-    });
-    return summary;
-}
-
-
-
-
-
-export function DetectionCard({ report_id, images, setThresholds, thresholds, setSearch, visibleCategories, setVisibleCategories }: Props) {
+export function DetectionCard({ report_id, setThresholds, thresholds, setSearch, visibleCategories, setVisibleCategories }: Props) {
     const [pollingEnabled, setPollingEnabled] = useState(false);
-    // let detectionSummary = useMemo(() => countDetections(images, thresholds), [images, thresholds]);
-    const detectionSummary = countDetections(images, thresholds);
-    const [detectionMode, setDetectionMode] = useState<"fast" | "medium" | "detailed" | undefined>(undefined);
-    const hasDetections = Object.keys(detectionSummary).length > 0;
-    const queryClient = useQueryClient();
-
-    // check if process is already running when loading
     const isRunning = useIsDetectionRunning(report_id);
+    const { data: detections, isLoading: isLoadingDetections, isError: isErrorDetections } = useDetections(report_id);
+    const queryClient = useQueryClient();
+    const detectionSummary = useMemo(() => { if (detections) return countDetections(detections, thresholds); }, [detections, thresholds]);
+    const hasDetections = detections && detections.length > 0;
+    const [detectionMode, setDetectionMode] = useState<"fast" | "medium" | "detailed" | undefined>(undefined);
+
+    useEffect(() => {
+        if (detections) {
+            if (Object.keys(thresholds).length == 0) {
+                setThresholds(initiateThresholds(detections));
+                setVisibleCategories(initiateCategoryVisibility(detections));
+            }
+        }
+    }, [detections]);
 
     // enable polling automatically if backend says process is running
     useEffect(() => {
@@ -92,15 +117,12 @@ export function DetectionCard({ report_id, images, setThresholds, thresholds, se
             setPollingEnabled(false);
             if (detectionStatus.data.status.toUpperCase() === "FINISHED") {
                 // refresh detections by invalidating queries  ["report", report.report_id]
-                queryClient.invalidateQueries({ queryKey: ["report", report_id] });
+                queryClient.invalidateQueries({ queryKey: ["detections", report_id] });
                 console.log("Detections should be updated");
             }
         }
     }, [detectionStatus.data]);
 
-    // useEffect(() => {
-    //     setDetectionSummary(countDetections(images, thresholds));
-    // }, [images, thresholds]);
 
     const handleStart = () => {
         if (!detectionMode) return;
@@ -173,7 +195,7 @@ export function DetectionCard({ report_id, images, setThresholds, thresholds, se
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {Object.entries(detectionSummary).map(([key, count]) => (
+                                    {detectionSummary && Object.entries(detectionSummary).map(([key, count]) => (
                                         <TableRow key={key} className="hover:bg-muted transition-colors p-1">
                                             <TableCell className="w-0 py-1">
                                                 <div className="flex items-center justify-center">
@@ -210,7 +232,7 @@ export function DetectionCard({ report_id, images, setThresholds, thresholds, se
                                                 >
                                                     <Funnel className="w-4 h-4 p-0 m-0" />
                                                 </Button>
-                                                 <Button
+                                                <Button
                                                     variant={visibleCategories[key] ? "ghost" : "outline"}
                                                     size="icon"
                                                     className={`p-0 m-0 ml-1 ${visibleCategories[key] ? "outline-white" : ""}`}
@@ -218,13 +240,13 @@ export function DetectionCard({ report_id, images, setThresholds, thresholds, se
                                                         const newVisibility = { ...visibleCategories, [key]: !visibleCategories[key] };
                                                         setVisibleCategories(newVisibility);
                                                     }}
-                                                >   
+                                                >
                                                     {visibleCategories[key] ? <Eye className="w-4 h-4 p-0 m-0" /> :
                                                         <EyeOff className="w-4 h-4 p-0 m-0" />
                                                     }
                                                 </Button>
                                             </TableCell>
-                                            
+
                                         </TableRow>
                                     ))}
                                 </TableBody>
