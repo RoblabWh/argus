@@ -142,3 +142,14 @@ def update_detection(detection_id: int, detection: DetectionUpdate, db: Session 
         return updated_detection
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
+    
+@router.delete("/{detection_id}", response_model=dict)
+def delete_detection(detection_id: int, db: Session = Depends(get_db)):
+    """
+    Delete a detection.
+    """
+    try:
+        image_crud.delete_detection(db, detection_id)
+        return {"message": "Detection deleted successfully", "detection_id": detection_id}
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))

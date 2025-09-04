@@ -15,9 +15,10 @@ interface Props {
   setTab: (value: string) => void;
   thresholds: { [key: string]: number };
   visibleCategories: { [key: string]: boolean };
+  deleteSpecificDetection?: (detectionId: number, imageId: number) => void;
 }
 
-export function TabArea({ report, filteredImages , selectedImage, setSelectedImage, tab, setTab, thresholds, visibleCategories }: Props) {
+export function TabArea({ report, filteredImages , selectedImage, setSelectedImage, tab, setTab, thresholds, visibleCategories, deleteSpecificDetection }: Props) {
   const api_url = getApiUrl();
 
   const onTabChange = (value: string) => {
@@ -96,6 +97,8 @@ export function TabArea({ report, filteredImages , selectedImage, setSelectedIma
           previousImage={() => changeImage('previous')}
           thresholds={thresholds}
           visibleCategories={visibleCategories}
+          report_id={report.report_id}
+          deleteSpecificDetection={deleteSpecificDetection}
         />
       </TabsContent>
       <TabsContent value="data">

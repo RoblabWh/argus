@@ -4,6 +4,7 @@ import type { Image } from "@/types/image";
 import { ThermalSettingsPopup } from "./thermalSettingsPopup";
 import useImage from "use-image";
 import { useThermalMatrix } from "@/hooks/useThermalMatrix";
+import { useDeleteDetection, useUpdateDetection } from "@/hooks/detectionHooks";
 import { getApiUrl } from "@/api";
 import { Separator } from "@/components/ui/separator";
 import { Slider } from "@/components/ui/slider";
@@ -44,6 +45,8 @@ interface SlideshowTabProps {
     previousImage: () => void;
     thresholds: { [key: string]: number };
     visibleCategories: { [key: string]: boolean };
+    report_id: number;
+    deleteSpecificDetection?: (detectionId: number, imageId: number) => void;
 }
 
 export const SlideshowTab: React.FC<SlideshowTabProps> = ({
@@ -53,6 +56,8 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
     previousImage,
     thresholds,
     visibleCategories,
+    report_id,
+    deleteSpecificDetection
 }) => {
     const apiUrl = getApiUrl();
     const containerRef = useRef<HTMLDivElement>(null);
@@ -103,6 +108,8 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
         probeMessage: string;
     } | null>(null);
 
+    const updateDetectionMutation = useUpdateDetection(report_id);
+    const deleteDetectionMutation = useDeleteDetection(report_id);
 
     useEffect(() => {
         if (data && selectedImage?.id === data.image_id) {
@@ -469,15 +476,16 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
 
     }
 
-    function getDetectionMenuPosition(
+    function getDetectionPopupPosition(
         det: any,
-        stageRef: React.RefObject<any>
+        stageRef: React.RefObject<any>,
+        elementWidth: number = 50,
+        elementHeight: number = 140,
+        start: "right" | "left" | "top" | "bottom" = "right",
     ): { top: number; left: number } {
         if (!stageRef.current) return { top: 0, left: 0 };
 
         const scale = stageRef.current.scaleX() ?? 1;
-        const menuWidth = 50;   // rough width of button column
-        const menuHeight = 140; // rough height (3 stacked buttons)
         const margin = 10;
 
         const stageBox = stageRef.current.container().getBoundingClientRect();
@@ -486,24 +494,59 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
         const detY = det.screenY;
         const detW = det.bbox[2] * scale;
         const detH = det.bbox[3] * scale;
-
+        
         let left = detX + detW + margin; // default: right side
+        if(start === "left"){ 
+            left = detX - elementWidth - margin;
+        } else if(start === "top" || start === "bottom"){
+            left = detX;
+        }
+
         let top = detY;
-
-        if (left + menuWidth > stageBox.width) {
-            left = detX - menuWidth - margin;
+        if(start === "bottom"){
+            top = detY + detH + margin;
+        } else if(start === "top"){ 
+            top = detY - elementHeight - margin;
         }
 
-        if (top + menuHeight > stageBox.height) {
-            top = detY + detH - menuHeight;
+        if (left + elementWidth > stageBox.width) {
+            left = detX - elementWidth - margin;
+        }
+
+        if (top + elementHeight > stageBox.height) {
+            top = detY + detH - elementHeight;
             if (top < 0) top = margin;
-            else if (top + menuHeight > stageBox.height) top = stageBox.height - menuHeight - margin;
+            else if (top + elementHeight > stageBox.height) top = stageBox.height - elementHeight - margin;
         }
 
-        if (top < 0) top = margin;
+        if (top < 0 && start !== "top") {
+            top = margin;
+        } else if (top < 0 && start === "top") {
+            top = detY + detH + margin;
+            if (top + elementHeight > stageBox.height) top = stageBox.height - elementHeight - margin;
+        }
         if (left < 0) left = margin;
 
         return { top, left };
+    }
+
+    function deleteDetectionMutationHandler(detectionId: number) {
+        if (!selectedImage) return;
+        confirm("Are you sure you want to delete this detection? This action cannot be undone.");
+        deleteDetectionMutation.mutate(detectionId, {
+            onSuccess: () => {
+                console.log("Detection deleted:", detectionId);
+                setSelectedDetection(null);
+                if (deleteSpecificDetection) {
+                    deleteSpecificDetection(detectionId, selectedImage.id);
+                } else {
+                    console.warn("No deleteSpecificDetection function provided");
+                }
+            },
+            onError: (error) => {
+                console.error("Error deleting detection:", error);
+            }
+        });
     }
 
     function displayHiddenDetectionsWarning(detections: any[]): boolean {
@@ -657,9 +700,14 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
                                         />
                                     )}
                                     {selectedDetection && (
+                                        <>
+                                        <div className="absolute top-2 left-2 bg-black/50 text-white text-xs p-2 rounded-md z-50 w-33" style={getDetectionPopupPosition(selectedDetection, stageRef, 135, 50, "top")}>
+                                            <div><span className="font-semibold">Class:</span> {selectedDetection.class_name}</div>
+                                            <div><span className="font-semibold">Confidence:</span> {(selectedDetection.score * 100).toFixed(1)}%</div>
+                                        </div>
                                         <div
                                             className="absolute flex gap-2 p-2 bg-white shadow-md rounded-lg z-50 flex-col dark:bg-gray-800"
-                                            style={getDetectionMenuPosition(selectedDetection, stageRef)}
+                                            style={getDetectionPopupPosition(selectedDetection, stageRef)}
                                         >
                                             <Button
                                                 size="icon"
@@ -671,7 +719,7 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
                                             <Button
                                                 size="icon"
                                                 variant="outline"
-                                                onClick={() => alert(`Delete detection ${selectedDetection.id}`)}
+                                                onClick={() => deleteDetectionMutationHandler(selectedDetection.id)}
                                             >
                                                 <Trash />
                                             </Button>
@@ -683,6 +731,7 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
                                                 <Share2 />
                                             </Button>
                                         </div>
+                                        </>
 
                                     )}
                                     {selectedImage?.thermal && selectedImage.thermal_data?.counterpart_id && (

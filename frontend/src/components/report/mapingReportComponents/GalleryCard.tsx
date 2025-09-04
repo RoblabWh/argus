@@ -15,6 +15,7 @@ interface GalleryCardProps {
     setSearch: (search: string) => void;
 
 }function filterImages(images: Image[], search: string, activeTags: string[]): Image[] {
+    console.log("Filtering images with search:", search, "and tags:", activeTags, "on images:", images);
     if (!images) return [];
 
     let filtered = images;

@@ -84,6 +84,7 @@ export const startDetection = (report_id: number, processing_mode: string) => po
 export const getDetectionStatus = (report_id: number) => fetchJson<{ report_id: number, status: string; progress: number; message?: string; error?: string }>(`/detections/r/${report_id}/status`);
 export const getDetections = (report_id: number) => fetchJson<Image[]>(`/detections/r/${report_id}`);
 export const updateDetection = (detection_id: number, data: Detection) => postJson<any>(`/detections/${detection_id}`, data, "PUT");
+export const deleteDetection = (detection_id: number) => deleteRequest(`/detections/${detection_id}`);
 
 // WebODM integration
 

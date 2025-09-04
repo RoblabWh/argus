@@ -187,3 +187,12 @@ def update_detection(db: Session, detection_id: int, update_data: DetectionUpdat
     db.commit()
     db.refresh(detection)
     return detection
+
+def delete_detection(db: Session, detection_id: int):
+    detection = db.query(models.Detection).filter(models.Detection.id == detection_id).first()
+    if not detection:
+        raise ValueError("Detection not found")
+    
+    db.delete(detection)
+    db.commit()
+    return {"status": "success", "message": "Detection deleted successfully"}

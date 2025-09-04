@@ -173,6 +173,7 @@ export default function ReportOverview() {
           <MappingReport
             report={report}
             onEditClicked={() => setIsEditing(true)} // <--- Pass edit handler here
+            setReport={setLiveReport}
           />
         );
       default:

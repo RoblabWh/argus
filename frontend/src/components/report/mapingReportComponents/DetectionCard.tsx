@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, use } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
@@ -27,10 +27,11 @@ import {
     useUpdateDetection,
     useIsDetectionRunning,
 } from "@/hooks/detectionHooks";
+import type { Image } from '@/types';
 
-const reportId = 1; // Example report ID, replace with actual prop or state
 interface Props {
-    report: Report;
+    report_id: number;
+    images: Image[];
     setThresholds: (thresholds: { [key: string]: number }) => void;
     thresholds: { [key: string]: number };
     setSearch: (search: string) => void;
@@ -38,8 +39,8 @@ interface Props {
     setVisibleCategories: (visibility: { [key: string]: boolean }) => void;
 }
 
-function countDetections(report: Report, thresholds: { [key: string]: number } = {}) {
-    let images = report.mapping_report?.images || [];
+function countDetections(images: Image[], thresholds: { [key: string]: number } = {}) {
+    console.log("Counting detections with thresholds:", thresholds);
     let summary: { [key: string]: number } = {};
     if (images.length === 0 || Object.keys(thresholds).length === 0) return summary;
 
@@ -61,15 +62,16 @@ function countDetections(report: Report, thresholds: { [key: string]: number } =
 
 
 
-export function DetectionCard({ report, setThresholds, thresholds, setSearch, visibleCategories, setVisibleCategories }: Props) {
+export function DetectionCard({ report_id, images, setThresholds, thresholds, setSearch, visibleCategories, setVisibleCategories }: Props) {
     const [pollingEnabled, setPollingEnabled] = useState(false);
-    const detectionSummary = useMemo(() => countDetections(report, thresholds), [report, thresholds]);
+    // let detectionSummary = useMemo(() => countDetections(images, thresholds), [images, thresholds]);
+    const detectionSummary = countDetections(images, thresholds);
     const [detectionMode, setDetectionMode] = useState<"fast" | "medium" | "detailed" | undefined>(undefined);
     const hasDetections = Object.keys(detectionSummary).length > 0;
     const queryClient = useQueryClient();
 
     // check if process is already running when loading
-    const isRunning = useIsDetectionRunning(report.report_id);
+    const isRunning = useIsDetectionRunning(report_id);
 
     // enable polling automatically if backend says process is running
     useEffect(() => {
@@ -79,7 +81,7 @@ export function DetectionCard({ report, setThresholds, thresholds, setSearch, vi
     }, [isRunning.data]);
 
     const startDetection = useStartDetection();
-    const detectionStatus = useDetectionStatusPolling(report.report_id, pollingEnabled);
+    const detectionStatus = useDetectionStatusPolling(report_id, pollingEnabled);
 
     // const updateDetection = useUpdateDetection(report.report_id);
 
@@ -90,17 +92,21 @@ export function DetectionCard({ report, setThresholds, thresholds, setSearch, vi
             setPollingEnabled(false);
             if (detectionStatus.data.status.toUpperCase() === "FINISHED") {
                 // refresh detections by invalidating queries  ["report", report.report_id]
-                queryClient.invalidateQueries({ queryKey: ["report", report.report_id] });
+                queryClient.invalidateQueries({ queryKey: ["report", report_id] });
                 console.log("Detections should be updated");
             }
         }
     }, [detectionStatus.data]);
 
+    // useEffect(() => {
+    //     setDetectionSummary(countDetections(images, thresholds));
+    // }, [images, thresholds]);
+
     const handleStart = () => {
         if (!detectionMode) return;
 
         startDetection.mutate(
-            { reportId: report.report_id, processingMode: detectionMode },
+            { reportId: report_id, processingMode: detectionMode },
             {
                 onSuccess: () => {
                     setPollingEnabled(true);
@@ -168,7 +174,7 @@ export function DetectionCard({ report, setThresholds, thresholds, setSearch, vi
                                 </TableHeader>
                                 <TableBody>
                                     {Object.entries(detectionSummary).map(([key, count]) => (
-                                        <TableRow key={key} className="cursor-pointer hover:bg-muted transition-colors p-1">
+                                        <TableRow key={key} className="hover:bg-muted transition-colors p-1">
                                             <TableCell className="w-0 py-1">
                                                 <div className="flex items-center justify-center">
                                                     {selectObjectIcon(key)} {key}
@@ -205,9 +211,9 @@ export function DetectionCard({ report, setThresholds, thresholds, setSearch, vi
                                                     <Funnel className="w-4 h-4 p-0 m-0" />
                                                 </Button>
                                                  <Button
-                                                    variant="outline"
+                                                    variant={visibleCategories[key] ? "ghost" : "outline"}
                                                     size="icon"
-                                                    className='p-0 m-0 ml-1'
+                                                    className={`p-0 m-0 ml-1 ${visibleCategories[key] ? "outline-white" : ""}`}
                                                     onClick={() => {
                                                         const newVisibility = { ...visibleCategories, [key]: !visibleCategories[key] };
                                                         setVisibleCategories(newVisibility);
@@ -236,7 +242,7 @@ export function DetectionCard({ report, setThresholds, thresholds, setSearch, vi
 
 
                     {/* Bottom section */}
-                    <div className="w-full mt-4">
+                    <div className="w-full mt-2">
                         {pollingEnabled ? (
                             <div className="w-full">
 

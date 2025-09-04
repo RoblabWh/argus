@@ -66,7 +66,7 @@ def run_detection(report_id: int, files: list[dict], max_splits: int = 0):
         progress_tracker.set_message("Maybe already loading models...")
 
         datahandler = DataHandler(progress_tracker=progress_tracker)
-        inferencer = Inferencer(score_thr=0.4, progress_tracker=progress_tracker)
+        inferencer = Inferencer(score_thr=0.4, progress_tracker=progress_tracker, batch_size=2)
         models = inferencer.which_models_are_available()
         
         progress_tracker.set_message(f"Loading AI Models")
