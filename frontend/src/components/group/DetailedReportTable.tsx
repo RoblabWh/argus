@@ -172,6 +172,7 @@ export function DetailedReportTable({ reports }: Props) {
                             <TableHead className="slim-col">{compactMode ? "Img" : "Images"}</TableHead>
                             <TableHead className="slim-col">{compactMode ? "Thrm" : "Thermal"}</TableHead>
                             <TableHead className="slim-col">{compactMode ? "Pano" : "Panoramic"}</TableHead>
+                            <TableHead className="slim-col">{compactMode ? "Det" : "Detections"}</TableHead>
                             <TableHead className="cursor-pointer text-center" onClick={() => handleSort("status")}>Status  {renderSortIcon("status")}</TableHead>
                             <TableHead></TableHead>
                         </TableRow>
@@ -214,6 +215,12 @@ export function DetailedReportTable({ reports }: Props) {
                                 </TableCell>
                                 <TableCell className="nowrap w-0">
                                     {report.pano_count > 0
+                                        ? <CircleCheck className="text-green-500 w-4 h-4 m-auto" />
+                                        : <CircleX className="text-red-500 w-4 h-4 m-auto" />
+                                    }
+                                </TableCell>
+                                <TableCell className="nowrap w-0">
+                                    {report.detection_count > 0
                                         ? <CircleCheck className="text-green-500 w-4 h-4 m-auto" />
                                         : <CircleX className="text-red-500 w-4 h-4 m-auto" />
                                     }

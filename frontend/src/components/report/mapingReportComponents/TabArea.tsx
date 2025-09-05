@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 import type { Report } from "@/types/report";
 import type { Image, ImageBasic } from "@/types/image";
 import { getApiUrl } from "@/api";
-import { MapTab } from "./MapTab";
+import { MapTab } from "@/components/report/mapingReportComponents/MapTab";
 import { SlideshowTab } from "@/components/report/mapingReportComponents/SlidehowTab";
+import { DataTab } from "@/components/report/mapingReportComponents/DataTab";
 import { useImages } from "@/hooks/imageHooks";
 
 interface Props {
@@ -88,7 +88,11 @@ export function TabArea({ report, filteredImages, selectedImage, setSelectedImag
       </div>
       <TabsContent value="map">
         <div className="text-sm h-[calc(100%)] overflow-auto">
-          <MapTab report={report} selectImageOnMap={selectImageOnMap} />
+          <MapTab 
+          report={report} 
+          selectImageOnMap={selectImageOnMap} 
+          thresholds={thresholds}
+          visibleCategories={visibleCategories}/>
         </div>
       </TabsContent>
       <TabsContent value="slideshow">
@@ -103,34 +107,7 @@ export function TabArea({ report, filteredImages, selectedImage, setSelectedImag
       </TabsContent>
       <TabsContent value="data">
         {/* Data content goes here */}
-        <div className="text-sm text-muted-foreground mt-4 h-[calc(85vh)] overflow-auto">
-          <Accordion type="single" collapsible className="mt-4">
-            <AccordionItem value="item-1">
-              <AccordionTrigger>Report Data</AccordionTrigger>
-              <AccordionContent>
-                <pre>{JSON.stringify(report, null, 2)}</pre>
-              </AccordionContent>
-            </AccordionItem>
-            <AccordionItem value="item-2">
-              <AccordionTrigger>Images Data</AccordionTrigger>
-              <AccordionContent>
-                <pre>{JSON.stringify(images, null, 2)}</pre>
-              </AccordionContent>
-            </AccordionItem>
-            <AccordionItem value="item-3">
-              <AccordionTrigger>Detections</AccordionTrigger>
-              <AccordionContent>
-                <p>TODO</p>
-              </AccordionContent>
-            </AccordionItem>
-            <AccordionItem value="item-4">
-              <AccordionTrigger>Maps</AccordionTrigger>
-              <AccordionContent>
-                <p>TODO</p>
-              </AccordionContent>
-            </AccordionItem>
-          </Accordion>
-        </div>
+        <DataTab report={report} />
       </TabsContent>
     </Tabs>
   );

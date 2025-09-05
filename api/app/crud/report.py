@@ -128,6 +128,7 @@ def get_summaries(db: Session, group_id: int):
 
     mr = aliased(models.MappingReport)
     img = aliased(models.Image)
+    det = aliased(models.Detection)
 
     stmt = (
         select(
@@ -158,9 +159,12 @@ def get_summaries(db: Session, group_id: int):
                     None
                 )
             ).label("pano_count"),
+            func.count(func.nullif(det.id, None)).label("detection_count"),
+
         )
         .join(mr, models.Report.mapping_report, isouter=True)
         .join(img, mr.images, isouter=True)
+        .join(det, img.detections, isouter=True)
         .where(models.Report.group_id == group_id) 
         .group_by(models.Report.report_id, mr.flight_timestamp, mr.coord)
         .order_by(models.Report.created_at.desc())
@@ -178,6 +182,7 @@ def get_summaries(db: Session, group_id: int):
         "image_count": r.image_count or 0,
         "thermal_count": r.thermal_count or 0,
         "pano_count": r.pano_count or 0,
+        "detection_count": r.detection_count or 0,
         "maps": []  # placeholder
     } for r in db.execute(stmt).all()}
 

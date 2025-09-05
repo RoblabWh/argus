@@ -32,7 +32,7 @@ export interface ImageBasic {
   uploaded_at?: string;
   width: number;
   height: number;
-  coord?: Record<string, unknown>;
+  coord?: Coord;
   camera_model?: string;
   mappable?: boolean;
   panoramic?: boolean;
@@ -48,4 +48,24 @@ export interface UploadFile {
   progress?: number;
   isExisting?: boolean;
   imageObject?: Partial<Image>; // Assuming Image type has id, filename, thumbnail_url
+};
+
+export interface GPSCoord {
+  lat: number;
+  lon: number;
+};
+
+export interface UTMCoord {
+  easting: number;
+  northing: number;
+  crs: string;
+  zone: number;
+  hemisphere: 'N' | 'S';
+  zone_letter: string;
+};
+
+export interface Coord {
+  gps: GPSCoord;
+  utm: UTMCoord;
+  rel_alt?: number;
 };

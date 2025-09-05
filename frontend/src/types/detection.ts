@@ -8,3 +8,10 @@ export type Detection = {
   bbox: Record<string, unknown>;
   image?: Image;
 };
+
+
+export const DETECTION_COLORS: Record<string, string> = {
+  fire: "orange",
+  human: "lime",
+  vehicle: "cyan",
+};

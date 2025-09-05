@@ -1,6 +1,9 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import type { Report } from "@/types/report";
-import type { Image } from "@/types/image";
+import type { Image, ImageBasic, Coord, UTMCoord, GPSCoord } from "@/types/image";
+import type { Map } from "@/types/map";
+import type { Detection } from "@/types/detection";
+import { DETECTION_COLORS } from "@/types/detection";
 import { getApiUrl } from "@/api";
 import {
     MapContainer,
@@ -21,6 +24,8 @@ import type { LatLngBoundsExpression, Map as LeafletMap } from 'leaflet';
 import L, { bounds, } from "leaflet";
 import 'leaflet/dist/leaflet.css';
 import { Slider } from "@/components/ui/slider";
+import { Switch } from "@/components/ui/switch";
+import { Separator } from "@/components/ui/separator";
 import "@/lib/Leaflet.ImageOverlay.Rotated";
 import { RotatedImageOverlay } from "@/components/report/mapingReportComponents/RotatedImageOverlay";
 import panoPinSVG from '@/assets/panorama.svg'
@@ -31,30 +36,79 @@ import { useDetections } from "@/hooks/detectionHooks";
 interface Props {
     report: Report;
     selectImageOnMap: (image_id: number) => void;
+    thresholds: { [key: string]: number };
+    visibleCategories: { [key: string]: boolean };
 }
+
+
 
 const { BaseLayer, Overlay } = LayersControl;
 
-function extractFlightTrajectory(images: Image[]) {
-    //sort all images by created_at
-    images.sort((a, b) => (a.created_at ? new Date(a.created_at).getTime() : 0) - (b.created_at ? new Date(b.created_at).getTime() : 0));
-    //collect gps coordinates from images and put them in a list of [lat, lon] pairs
-    const flightPath = images.map((image) => {
-        if (!image.coord || !image.coord.gps || image.coord.gps === undefined || image.panoramic) return null;
-        return [image.coord.gps.lat, image.coord.gps.lon];
-    }).filter(Boolean) as LatLngBoundsExpression;
+function utmDistance(a: UTMCoord, b: UTMCoord): number {
+    const dx = a.easting - b.easting;
+    const dy = a.northing - b.northing;
+    return Math.sqrt(dx * dx + dy * dy);
+}
 
-    return flightPath;
+export function extractFlightTrajectory(images: ImageBasic[]): LatLng[] {
+    // 1. Sort images chronologically
+    images.sort((a, b) =>
+        new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    );
+
+    const selected: ImageBasic[] = [];
+
+    for (let i = 0; i < images.length; i++) {
+        const img = images[i];
+        if (!img.coord?.gps || img.panoramic) continue;
+
+        const prev = selected[selected.length - 1];
+
+        if (
+            prev &&
+            Math.abs(new Date(img.created_at).getTime() - new Date(prev.created_at).getTime()) <=
+            2000 // within 3 seconds
+        ) {
+            // One thermal, one regular?
+            if (img.thermal !== prev.thermal) {
+                const utm1 = img.coord?.utm;
+                const utm2 = prev.coord?.utm;
+
+                if (utm1 && utm2) {
+                    const dist = utmDistance(utm1, utm2);
+
+                    if (dist <= 3.5) {
+                        // keep the regular one
+                        if (!img.thermal) {
+                            selected[selected.length - 1] = img; // replace with regular
+                        }
+                        continue; // skip thermal
+                    }
+                }
+            }
+        }
+
+        selected.push(img);
+    }
+
+    // 2. Collect flight path coords
+    return selected
+        .filter((img) => img.coord?.gps)
+        .map((img) => [img.coord!.gps.lat, img.coord!.gps.lon]);
 }
 
 
-export function MapTab({ report, selectImageOnMap }: Props) {
+export function MapTab({ report, selectImageOnMap, thresholds, visibleCategories }: Props) {
     const [overlayOpacity, setOverlayOpacity] = useState(1.0);
     const [map, setMap] = useState<LeafletMap | null>(null);
     const { data: images } = useImages(report.report_id);
     const { data: maps } = useMaps(report.report_id);
+    const { data: detections } = useDetections(report.report_id);
     const api_url = getApiUrl();
     const { theme } = useTheme();
+    const [showTrajectory, setShowTrajectory] = useState(true);
+    const [showPanoMarkers, setShowPanoMarkers] = useState(true);
+    const [showDetections, setShowDetections] = useState(true);
     const current = theme === "system"
         ? window.matchMedia("(prefers-color-scheme: dark)").matches
             ? "dark"
@@ -89,6 +143,33 @@ export function MapTab({ report, selectImageOnMap }: Props) {
             map.fitBounds(bounds);
         }
     }, [map]);
+
+    const determineGPSCoordOfDetection = (detection: Detection): GPSCoord | null => {
+        let image = images?.find(img => img.id === detection.image_id);
+        if (!image || !image.coord) return null;
+        let mapElement = maps?.flatMap(m => m.map_elements).find(el => el.image_id === image.id);
+        if (!mapElement) return null;
+        let cornersGps = mapElement.corners.gps;
+        let boundsPx = detection.bbox;
+        let imgWidth = image.width;
+        let imgHeight = image.height;
+
+        // Calculate relative position within image
+
+        let relX = (Number(boundsPx[0]) + Number(boundsPx[2]) / 2) / imgWidth; // center x
+        let relY = (Number(boundsPx[1]) + Number(boundsPx[3]) / 2) / imgHeight; // center y
+        // Interpolate GPS position within map element corners
+        let c0 = cornersGps[0]; // top-right
+        let c1 = cornersGps[1]; // bottom-right
+        let c2 = cornersGps[2]; // bottom-left
+        let c3 = cornersGps[3]; // top-left
+        let lat = c3[0] + relX * (c0[0] - c3[0]) + relY * (c2[0] - c3[0]);
+        let lon = c3[1] + relX * (c0[1] - c3[1]) + relY * (c2[1] - c3[1]);
+        return {
+            lat: lat,
+            lon: lon
+        };
+    };
 
     useEffect(() => {
         console.log("Map component mounted, current theme is:", current);
@@ -154,19 +235,47 @@ export function MapTab({ report, selectImageOnMap }: Props) {
                     </BaseLayer>
 
 
-                    {images && images.length > 0 && (
-                        <Overlay name="Flight Trajectory" checked>
+                    {images && images.length > 0 && showTrajectory && (
                             <LayerGroup>
                                 <Polyline
                                     positions={extractFlightTrajectory(images)}
                                     pathOptions={{ color: 'magenta', weight: 2, opacity: 1 }}
                                 />
                             </LayerGroup>
-                        </Overlay>
                     )}
-                    {(images && images.length > 0 && images.some(image => image.panoramic)) && (
+                    {detections && detections.length > 0 && images && images.length > 0 && maps && maps.length > 0 && showDetections && (
+
+                            <LayerGroup>
+                                {detections.filter(detection => visibleCategories[detection.class_name] && detection.score >= (thresholds[detection.class_name] || 0)).map((detection) => {
+                                    const gps = determineGPSCoordOfDetection(detection);
+                                    if (!gps) return null;
+                                    return (
+                                        <Marker
+                                            key={detection.id}
+                                            position={[gps.lat, gps.lon]}
+                                            icon={L.divIcon({
+                                                className: 'custom-div-icon',
+                                                html: `<div style="background-color:${DETECTION_COLORS[detection.class_name] || 'blue'};opacity:0.85;width:12px;height:12px;border-radius:50%;border:2px solid black;"></div>`,
+                                                iconSize: [16, 16],
+                                                iconAnchor: [8, 8],
+                                                popupAnchor: [0, -8],
+                                            })}
+                                        >
+                                            <Popup>
+                                                <div>
+                                                    <strong>{detection.class_name}</strong><br />
+                                                    Confidence: {(detection.score * 100).toFixed(1)}%<br />
+                                                    Image ID: {detection.image_id}
+                                                </div>
+                                            </Popup>
+                                        </Marker>
+                                    );
+                                })}
+
+                            </LayerGroup>
+                    )}
+                    {(images && images.length > 0 && images.some(image => image.panoramic)) && showPanoMarkers && (
                         //for each panoramic image, add a marker with a popup
-                        <Overlay name="Panoramic Images" checked>
                             <LayerGroup>
                                 {images.map((image) => {
                                     if (!image.coord || !image.coord.gps || image.coord.gps === undefined || !image.panoramic) return null;
@@ -191,7 +300,6 @@ export function MapTab({ report, selectImageOnMap }: Props) {
                                     );
                                 })}
                             </LayerGroup>
-                        </Overlay>
                     )}
 
                     {maps?.map((map) => {
@@ -243,39 +351,52 @@ export function MapTab({ report, selectImageOnMap }: Props) {
 
 
 
+
+
                                     {map.map_elements?.map((element) => {
                                         const corners = element.corners.gps;
+                                        // const cornerColors = ['red', 'green', 'blue', 'yellow'];
 
                                         return (
-                                            <Polygon
-                                                key={`map-${map.id}_element-${element.id}`}
-                                                positions={[
-                                                    corners[0],
-                                                    corners[1],
-                                                    corners[2],
-                                                    corners[3],
-                                                ]}
-                                                pathOptions={{
-                                                    color: 'blue',
-                                                    weight: 1,
-                                                    fillOpacity: 0,
-                                                    stroke: false,
-                                                }}
-                                                eventHandlers={{
-                                                    mouseover: (e) => {
-                                                        const layer = e.target as L.Path;
-                                                        layer.setStyle({ fillOpacity: 0.2 });
-                                                    },
-                                                    mouseout: (e) => {
-                                                        const layer = e.target as L.Path;
-                                                        layer.setStyle({ fillOpacity: 0 });
-                                                    },
-                                                    click: () => {
-                                                        handleOverlayClick(map.id, element.id, element.image_id);
-                                                        // later: open slideshow here
-                                                    },
-                                                }}
-                                            />
+                                            <>
+                                                {/* {corners.map((corner, index) => (
+                                                    <Circle
+                                                        key={`corner-${index}`}
+                                                        center={corner}
+                                                        radius={1}
+                                                        pathOptions={{ color: cornerColors[index % cornerColors.length] }}
+                                                    />
+                                                ))} */}
+                                                <Polygon
+                                                    key={`map-${map.id}_element-${element.id}`}
+                                                    positions={[
+                                                        corners[0],
+                                                        corners[1],
+                                                        corners[2],
+                                                        corners[3],
+                                                    ]}
+                                                    pathOptions={{
+                                                        color: 'blue',
+                                                        weight: 1,
+                                                        fillOpacity: 0,
+                                                        stroke: false,
+                                                    }}
+                                                    eventHandlers={{
+                                                        mouseover: (e) => {
+                                                            const layer = e.target as L.Path;
+                                                            layer.setStyle({ fillOpacity: 0.2 });
+                                                        },
+                                                        mouseout: (e) => {
+                                                            const layer = e.target as L.Path;
+                                                            layer.setStyle({ fillOpacity: 0 });
+                                                        },
+                                                        click: () => {
+                                                            handleOverlayClick(map.id, element.id, element.image_id);
+                                                            // later: open slideshow here
+                                                        },
+                                                    }}
+                                                />
+                                            </>
                                         );
                                     })}
                                 </LayerGroup>
@@ -291,16 +412,53 @@ export function MapTab({ report, selectImageOnMap }: Props) {
             </MapContainer>
 
             {(maps && maps.length !== 0) && (
-                <div className="absolute left-1/2 bottom-2 transform -translate-x-1/2 z-10 bg-white dark:bg-gray-800 px-3 py-2 rounded-md shadow-md flex flex-col items-center">
-                    <label className="text-sm font-medium mb-1 block text-center">Overlay Opacity</label>
-                    <Slider
-                        defaultValue={[overlayOpacity]}
-                        min={0}
-                        max={1}
-                        step={0.02}
-                        onValueChange={(value) => setOverlayOpacity(value[0])}
-                        className="py-1 w-40"
-                    />
+                <div className="absolute left-1/2 bottom-2 transform -translate-x-1/2 z-10 bg-white dark:bg-gray-800 px-3 py-2 rounded-md shadow-md flex flex-row items-center h-14">
+                    <div className="dlex flex-col items-center">
+                        <label className="text-sm font-medium mb-1 block text-center">Overlay Opacity</label>
+                        <Slider
+                            defaultValue={[overlayOpacity]}
+                            min={0}
+                            max={1}
+                            step={0.02}
+                            onValueChange={(value) => setOverlayOpacity(value[0])}
+                            className="py-1 w-40"
+                        />
+                    </div>
+                    <Separator orientation="vertical" className="mx-4 h-6" />
+                    <div className="flex flex-col items-center w-15">
+                        <label className="text-sm font-medium mb-1 block text-center">Trajectory</label>
+                        <Switch
+                            checked={showTrajectory}
+                            onCheckedChange={(checked) => setShowTrajectory(checked)}
+                            className="w-8"
+                        />
+                    </div>
+                    { (images && images.length > 0 && images.some(image => image.panoramic)) && (
+                        <>
+                            <Separator orientation="vertical" className="mx-4 h-6" />
+                            <div className="flex flex-col items-center w-15">
+                                <label className="text-sm font-medium mb-1 block text-center">Panos</label>
+                                <Switch
+                                    checked={showPanoMarkers}
+                                    onCheckedChange={(checked) => setShowPanoMarkers(checked)}
+                                    className="w-8"
+                                />
+                            </div>
+                        </>
+                    ) }
+                    { detections && detections.length > 0 && images && images.length > 0 && maps && maps.length > 0 && (
+                        <>
+                            <Separator orientation="vertical" className="mx-4 h-6" />
+                            <div className="flex flex-col items-center w-15">
+                                <label className="text-sm font-medium mb-1 block text-center">Detections</label>
+                                <Switch
+                                    checked={showDetections}
+                                    onCheckedChange={(checked) => setShowDetections(checked)}
+                                    className="w-8"
+                                />
+                            </div>
+                        </>
+                    ) }
                 </div>
             )}
         </div>

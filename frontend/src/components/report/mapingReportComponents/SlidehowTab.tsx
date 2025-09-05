@@ -32,13 +32,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { set } from "date-fns";
 import { m } from "motion/react";
 import { PanoramaViewer } from "./panoramaViewer";
-
-
-const DETECTION_COLORS: Record<string, string> = {
-    fire: "red",
-    human: "lime",
-    vehicle: "magenta",
-};
+import { DETECTION_COLORS } from "@/types/detection";
 
 
 interface SlideshowTabProps {

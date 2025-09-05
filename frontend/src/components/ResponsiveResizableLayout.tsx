@@ -22,7 +22,7 @@ export function ResponsiveResizableLayout({
         <div className="h-full w-full overflow-auto p-4">{left}</div>
       </ResizablePanel>
       <ResizableHandle className="cursor-col-resize" withHandle={true} />
-      <ResizablePanel defaultSize={62} minSize={20}>
+      <ResizablePanel defaultSize={67} minSize={20}>
         <div className="h-full w-full overflow-auto p-4">{right}</div>
       </ResizablePanel>
     </ResizablePanelGroup>

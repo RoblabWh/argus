@@ -73,5 +73,6 @@ export interface ReportSummary {
   image_count: number;
   thermal_count: number;
   pano_count: number;
+  detection_count: number;
   maps: Map[];
 }
