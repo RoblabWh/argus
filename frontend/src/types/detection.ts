@@ -1,4 +1,4 @@
-import type { Image } from "@/types/image";
+import type { Coord, GPSCoord, Image } from "@/types/image";
 
 export type Detection = {
   id: number;
@@ -7,6 +7,7 @@ export type Detection = {
   score: number;
   bbox: Record<string, unknown>;
   image?: Image;
+  coord?: Coord;
 };
 
 

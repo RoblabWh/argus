@@ -199,3 +199,11 @@ def delete_detection(db: Session, detection_id: int):
     db.delete(detection)
     db.commit()
     return {"status": "success", "message": "Detection deleted successfully"}
+
+def update_detections_coords_by_mapping_report_id(db: Session, mapping_report_id: int):
+    images = db.query(models.Image).filter(models.Image.mapping_report_id == mapping_report_id).all()
+    for image in images:
+        for detection in image.detections:
+            detection.coord = image.coord
+    db.commit()
+    return {"status": "success", "message": "Detection coordinates updated successfully"}

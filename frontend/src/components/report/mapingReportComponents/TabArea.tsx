@@ -22,6 +22,7 @@ interface Props {
 export function TabArea({ report, filteredImages, selectedImage, setSelectedImage, tab, setTab, thresholds, visibleCategories }: Props) {
   const api_url = getApiUrl();
   const { data: images } = useImages(report.report_id);
+  const [visibleMapOverlays, setVisibleMapOverlays] = useState<{ [mapId: number]: boolean }>({});
 
   const onTabChange = (value: string) => {
     setTab(value);
@@ -92,7 +93,10 @@ export function TabArea({ report, filteredImages, selectedImage, setSelectedImag
           report={report} 
           selectImageOnMap={selectImageOnMap} 
           thresholds={thresholds}
-          visibleCategories={visibleCategories}/>
+          visibleCategories={visibleCategories}
+          visibleMapOverlays={visibleMapOverlays}
+          setVisibleMapOverlays={setVisibleMapOverlays}
+          />
         </div>
       </TabsContent>
       <TabsContent value="slideshow">

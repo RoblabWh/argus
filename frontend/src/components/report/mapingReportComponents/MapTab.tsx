@@ -38,6 +38,8 @@ interface Props {
     selectImageOnMap: (image_id: number) => void;
     thresholds: { [key: string]: number };
     visibleCategories: { [key: string]: boolean };
+    visibleMapOverlays: { [mapId: number]: boolean };
+    setVisibleMapOverlays: (overlays: { [mapId: number]: boolean }) => void;
 }
 
 
@@ -98,7 +100,7 @@ export function extractFlightTrajectory(images: ImageBasic[]): LatLng[] {
 }
 
 
-export function MapTab({ report, selectImageOnMap, thresholds, visibleCategories }: Props) {
+export function MapTab({ report, selectImageOnMap, thresholds, visibleCategories, visibleMapOverlays, setVisibleMapOverlays }: Props) {
     const [overlayOpacity, setOverlayOpacity] = useState(1.0);
     const [map, setMap] = useState<LeafletMap | null>(null);
     const { data: images } = useImages(report.report_id);
@@ -132,6 +134,20 @@ export function MapTab({ report, selectImageOnMap, thresholds, visibleCategories
         ] as LatLngBoundsExpression;
     }, [maps]);
 
+    useEffect(() => {
+        if (maps && setVisibleMapOverlays) {
+            let newState: { [mapId: number]: boolean } = {};
+            maps.forEach((map) => {
+                if (visibleMapOverlays[map.id] === undefined) {
+                    newState[map.id] = true;
+                } else {
+                    newState[map.id] = visibleMapOverlays[map.id];
+                }
+            });
+            setVisibleMapOverlays(newState);
+            console.log("Initialized visibleMapOverlays state with maps:", newState);
+        }
+    }, [maps]);
 
     const handleOverlayClick = (mapId: number, elementId: string, image_id: number) => {
         selectImageOnMap(image_id)
@@ -190,6 +206,45 @@ export function MapTab({ report, selectImageOnMap, thresholds, visibleCategories
     }, [map]);
 
     useEffect(() => {
+  if (!map) return;
+
+  const handleOverlayAdd = (e: any) => {
+    const overlayName = e.name ?? e.layer?.options?.name;
+    console.log("Overlay added:", overlayName);
+    if (!overlayName) return;
+
+    setVisibleMapOverlays(prev => {
+      const next = { ...prev };
+      // find map.id by name if needed
+      const found = maps?.find(m => `Map: ${m.name}` === overlayName);
+      if (found) next[found.id] = true;
+      return next;
+    });
+  };
+
+  const handleOverlayRemove = (e: any) => {
+    const overlayName = e.name ?? e.layer?.options?.name;
+    console.log("Overlay removed:", overlayName);
+    if (!overlayName) return;
+
+    setVisibleMapOverlays(prev => {
+      const next = { ...prev };
+      const found = maps?.find(m => `Map: ${m.name}` === overlayName);
+      if (found) next[found.id] = false;
+      return next;
+    });
+  };
+
+  map.on("overlayadd", handleOverlayAdd);
+  map.on("overlayremove", handleOverlayRemove);
+
+  return () => {
+    map.off("overlayadd", handleOverlayAdd);
+    map.off("overlayremove", handleOverlayRemove);
+  };
+}, [map, maps, setVisibleMapOverlays]);
+
+    useEffect(() => {
         if (map !== null && bounds) {
             map.fitBounds(bounds);
         }
@@ -236,70 +291,73 @@ export function MapTab({ report, selectImageOnMap, thresholds, visibleCategories
 
 
                     {images && images.length > 0 && showTrajectory && (
-                            <LayerGroup>
-                                <Polyline
-                                    positions={extractFlightTrajectory(images)}
-                                    pathOptions={{ color: 'magenta', weight: 2, opacity: 1 }}
-                                />
-                            </LayerGroup>
+                        <LayerGroup>
+                            <Polyline
+                                positions={extractFlightTrajectory(images)}
+                                pathOptions={{ color: 'magenta', weight: 2, opacity: 1 }}
+                            />
+                        </LayerGroup>
                     )}
                     {detections && detections.length > 0 && images && images.length > 0 && maps && maps.length > 0 && showDetections && (
 
-                            <LayerGroup>
-                                {detections.filter(detection => visibleCategories[detection.class_name] && detection.score >= (thresholds[detection.class_name] || 0)).map((detection) => {
-                                    const gps = determineGPSCoordOfDetection(detection);
-                                    if (!gps) return null;
-                                    return (
-                                        <Marker
-                                            key={detection.id}
-                                            position={[gps.lat, gps.lon]}
-                                            icon={L.divIcon({
-                                                className: 'custom-div-icon',
-                                                html: `<div style="background-color:${DETECTION_COLORS[detection.class_name] || 'blue'};opacity:0.85;width:12px;height:12px;border-radius:50%;border:2px solid black;"></div>`,
-                                                iconSize: [16, 16],
-                                                iconAnchor: [8, 8],
-                                                popupAnchor: [0, -8],
-                                            })}
-                                        >
-                                            <Popup>
-                                                <div>
-                                                    <strong>{detection.class_name}</strong><br />
-                                                    Confidence: {(detection.score * 100).toFixed(1)}%<br />
-                                                    Image ID: {detection.image_id}
-                                                </div>
-                                            </Popup>
-                                        </Marker>
-                                    );
-                                })}
+                        <LayerGroup>
+                            {detections.filter(detection => visibleCategories[detection.class_name] && detection.score >= (thresholds[detection.class_name] || 0)).map((detection) => {
+                                const gps = determineGPSCoordOfDetection(detection);
+                                if (!gps) return null;
+                                return (
+                                    <Marker
+                                        key={detection.id}
+                                        position={[gps.lat, gps.lon]}
+                                        icon={L.divIcon({
+                                            className: 'custom-div-icon',
+                                            html: `<div style="background-color:${DETECTION_COLORS[detection.class_name] || 'blue'};opacity:0.85;width:12px;height:12px;border-radius:50%;border:2px solid black;"></div>`,
+                                            iconSize: [16, 16],
+                                            iconAnchor: [8, 8],
+                                            popupAnchor: [0, -8],
+                                        })}
+                                    >
+                                        <Popup>
+                                            <div>
+                                                <strong>{detection.class_name}</strong><br />
+                                                Confidence: {(detection.score * 100).toFixed(1)}%<br />
+                                                Image ID: {detection.image_id}
+                                                <Button onClick={() => {
+                                                    selectImageOnMap(detection.image_id);
+                                                }} className="mt-2 w-full">Show Image</Button>
+                                            </div>
+                                        </Popup>
+                                    </Marker>
+                                );
+                            })}
 
-                            </LayerGroup>
+                        </LayerGroup>
                     )}
                     {(images && images.length > 0 && images.some(image => image.panoramic)) && showPanoMarkers && (
                         //for each panoramic image, add a marker with a popup
-                            <LayerGroup>
-                                {images.map((image) => {
-                                    if (!image.coord || !image.coord.gps || image.coord.gps === undefined || !image.panoramic) return null;
-                                    return (
-                                        <Marker
-                                            key={image.id}
-                                            position={[image.coord.gps.lat, image.coord.gps.lon]}
-                                            eventHandlers={{
-                                                click: () => {
-                                                    selectImageOnMap(image.id);
-                                                },
-                                            }}
-                                            icon={L.icon({
-                                                iconUrl: panoPinSVG,
-                                                iconSize: [24, 24],
-                                                iconAnchor: [12, 12],
-                                                popupAnchor: [0, -12],
-                                            })}
-                                        >
+                        <LayerGroup>
+                            {images.map((image) => {
+                                if (!image.coord || !image.coord.gps || image.coord.gps === undefined || !image.panoramic) return null;
+                                return (
+                                    <Marker
+                                        key={image.id}
+                                        position={[image.coord.gps.lat, image.coord.gps.lon]}
+                                        eventHandlers={{
+                                            click: () => {
+                                                selectImageOnMap(image.id);
+                                            },
+                                        }}
+                                        icon={L.icon({
+                                            iconUrl: panoPinSVG,
+                                            iconSize: [24, 24],
+                                            iconAnchor: [12, 12],
+                                            popupAnchor: [0, -12],
+                                        })}
+                                    >
 
-                                        </Marker>
-                                    );
-                                })}
-                            </LayerGroup>
+                                    </Marker>
+                                );
+                            })}
+                        </LayerGroup>
                     )}
 
                     {maps?.map((map) => {
@@ -329,7 +387,12 @@ export function MapTab({ report, selectImageOnMap, thresholds, visibleCategories
                         }
 
                         return (
-                            <Overlay key={map.name} name={`Map: ${map.name}`} checked>
+                            <LayersControl.Overlay
+                                key={map.id}
+                                name={`Map: ${map.name}`}
+                                checked={visibleMapOverlays[map.id]}
+                            >
+
                                 <LayerGroup>
 
                                     {useRotatedOverlay ? (
@@ -400,7 +463,7 @@ export function MapTab({ report, selectImageOnMap, thresholds, visibleCategories
                                         );
                                     })}
                                 </LayerGroup>
-                            </Overlay>
+                            </LayersControl.Overlay>
 
                         );
                     })}
@@ -433,7 +496,7 @@ export function MapTab({ report, selectImageOnMap, thresholds, visibleCategories
                             className="w-8"
                         />
                     </div>
-                    { (images && images.length > 0 && images.some(image => image.panoramic)) && (
+                    {(images && images.length > 0 && images.some(image => image.panoramic)) && (
                         <>
                             <Separator orientation="vertical" className="mx-4 h-6" />
                             <div className="flex flex-col items-center w-15">
@@ -445,8 +508,8 @@ export function MapTab({ report, selectImageOnMap, thresholds, visibleCategories
                                 />
                             </div>
                         </>
-                    ) }
-                    { detections && detections.length > 0 && images && images.length > 0 && maps && maps.length > 0 && (
+                    )}
+                    {detections && detections.length > 0 && images && images.length > 0 && maps && maps.length > 0 && (
                         <>
                             <Separator orientation="vertical" className="mx-4 h-6" />
                             <div className="flex flex-col items-center w-15">
@@ -458,7 +521,7 @@ export function MapTab({ report, selectImageOnMap, thresholds, visibleCategories
                                 />
                             </div>
                         </>
-                    ) }
+                    )}
                 </div>
             )}
         </div>
@@ -470,6 +533,7 @@ export function MapTab({ report, selectImageOnMap, thresholds, visibleCategories
 
 // import { useMap } from 'react-leaflet';
 import { Home } from 'lucide-react'; // optional icon lib
+import { Button } from "@/components/ui/button";
 
 function HomeButton({ bounds, center }: { bounds: LatLngBoundsExpression | null, center: LatLngBoundsExpression }) {
     const map = useMap();

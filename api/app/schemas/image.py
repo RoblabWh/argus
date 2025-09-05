@@ -165,6 +165,7 @@ class DetectionBase(BaseModel):
     score: float
     bbox: list  # JSONB as dict
     manually_verified: Optional[bool] = None
+    coord: Optional[dict] = None  # JSONB as dict
 
 
 class DetectionCreate(DetectionBase):
@@ -176,6 +177,7 @@ class DetectionUpdate(BaseModel):
     score: Optional[float] = None
     bbox: Optional[list] = None  # JSONB as dict
     manually_verified: Optional[bool] = None
+    coord: Optional[dict] = None  # JSONB as dict
 
 class DetectionOut(DetectionBase):
     id: int

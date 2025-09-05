@@ -87,6 +87,7 @@ class Detection(Base):
     score = Column(Float)
     bbox = Column(JSONB)
     manually_verified = Column(Boolean, default=False)
+    coord = Column(JSONB, nullable=True)
 
     # relationships
     image = relationship("Image", back_populates="detections")

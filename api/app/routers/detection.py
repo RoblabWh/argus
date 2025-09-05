@@ -143,6 +143,18 @@ def update_detection(detection_id: int, detection: DetectionUpdate, db: Session 
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
     
+# @router.put("/r/{report_id}/updateCoords", response_model=dict)
+# def update_detections_coords(report_id: int, db: Session = Depends(get_db)):
+#     """
+#     Update detection coordinates for given detections.
+#     """
+#     mapping_report = report_crud.get_short_report(db, report_id).mapping_report
+#     if not mapping_report:
+#         raise HTTPException(status_code=404, detail="Report not found")
+    
+#     updated_count = image_crud.update_detections_coords_by_mapping_report_id(db, mapping_report.id)
+#     return {"message": f"Updated coordinates for {updated_count} detections", "report_id": report_id, "updated_count": updated_count}
+    
 @router.delete("/{detection_id}", response_model=dict)
 def delete_detection(detection_id: int, db: Session = Depends(get_db)):
     """
