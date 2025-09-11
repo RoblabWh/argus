@@ -30,7 +30,21 @@ def get_by_report(db: Session, report_id: int):
         .options(
             joinedload(models.Image.mapping_data),
             joinedload(models.Image.thermal_data),
-            #joinedload(models.Image.detections),
+        )
+        .all()
+    )
+
+def get_by_report_full(db: Session, report_id: int):
+    mapping_report = db.query(models.MappingReport).filter(models.MappingReport.report_id == report_id).first()
+    if not mapping_report:
+        return []
+    return (
+        db.query(models.Image)
+        .filter(models.Image.mapping_report_id == mapping_report.id)
+        .options(
+            joinedload(models.Image.mapping_data),
+            joinedload(models.Image.thermal_data),
+            joinedload(models.Image.detections),
         )
         .all()
     )
@@ -81,8 +95,6 @@ def create_mapping_data(db: Session, data: MappingDataCreate):
     db.commit()
     db.refresh(new_mapping_data)
     return get_full_image(db, new_mapping_data.image_id) 
-
-
 
 
 ######################

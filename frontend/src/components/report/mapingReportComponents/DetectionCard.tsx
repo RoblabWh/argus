@@ -211,7 +211,7 @@ export function DetectionCard({ report_id, setThresholds, thresholds, setSearch,
                                                     min="0"
                                                     max="1"
                                                     step="0.01"
-                                                    value={thresholds[key] || 0.4}
+                                                    value={thresholds[key]}
                                                     onChange={(e) => {
                                                         const newThresholds = { ...thresholds, [key]: parseFloat(e.target.value) };
                                                         setThresholds(newThresholds);
@@ -226,7 +226,7 @@ export function DetectionCard({ report_id, setThresholds, thresholds, setSearch,
                                                     size="icon"
                                                     className='p-0 m-0'
                                                     onClick={() => {
-                                                        const thr = thresholds[key] || 0.4;
+                                                        const thr = thresholds[key];
                                                         setSearch(`det:${key}-thr:${thr}`);
                                                     }}
                                                 >

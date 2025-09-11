@@ -39,3 +39,7 @@ The goal is to build a more robust and professional codebase, making Argus a fut
 ### Until this branch is pushed to main, please use the current main branch version
 
 
+<!-- Für Settings:
+API Key - Waether API
+WebODM Account und Settings aus env
+Farben Detections -->

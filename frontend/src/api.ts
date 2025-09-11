@@ -87,6 +87,9 @@ export const getDetections = (report_id: number) => fetchJson<Detection[]>(`/det
 export const updateDetection = (detection_id: number, data: Detection) => postJson<any>(`/detections/${detection_id}`, data, "PUT");
 export const deleteDetection = (detection_id: number) => deleteRequest(`/detections/${detection_id}`);
 
+export const startAutoDescription = (report_id: number) => postJson<{ status: string }>(`/reports/${report_id}/auto_description`, {});
+export const getAutoDescription = (report_id: number) => fetchJson<{ report_id: number, status: string, progress: number, description: string }>(`/reports/${report_id}/auto_description`);
+
 // WebODM integration
 
 export const getWebODMAvailable = () => fetchJson<{ is_available: boolean, url: string }>("/odm/");

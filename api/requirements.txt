@@ -18,3 +18,4 @@ opencv_python
 imutils
 rasterio
 psutil
+langchain-ollama

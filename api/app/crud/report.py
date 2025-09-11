@@ -351,3 +351,14 @@ def get_process_status(db: Session, report_id: int, r: redis.Redis):
             db.commit()
 
     return report
+
+
+def set_auto_description(db: Session, report_id: int, description: str):
+    report = db.query(models.Report).filter(models.Report.report_id == report_id).first()
+    if not report:
+        raise ValueError("Report not found")
+
+    report.auto_description = description
+    db.commit()
+    db.refresh(report)
+    return report.auto_description

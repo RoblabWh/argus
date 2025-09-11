@@ -59,7 +59,7 @@ export function MappingReport({ report, onEditClicked, setReport }: Props) {
               <GeneralDataCard report={report} onReprocessClicked={onEditClicked} />
               <WeatherCard data={report.mapping_report?.weather[0]} onReload={() => { alert("Reload Weather Data"); }} />
               <FlightCard data={report.mapping_report} />
-              <AutoDescriptionCard description={report.auto_description} />
+              <AutoDescriptionCard reportID={report.report_id} description={report.auto_description} />
               <WebOdmCard isWebODMAvailable={webODMData?.is_available || false} webODMURL={webODMData?.url} webODMProjectID={report.mapping_report?.webodm_project_id} reportID={report.report_id} progress={report.progress} />
               <DetectionCard report_id={report.report_id} setThresholds={setThresholds} thresholds={thresholds} setSearch={setSearch} visibleCategories={visibleCategories} setVisibleCategories={setVisibleCategories} />
             </div>

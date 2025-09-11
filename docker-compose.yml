@@ -52,7 +52,6 @@ services:
       VITE_API_URL: ${VITE_API_URL}
       WEBODM_URL: ${WEBODM_URL}
 
-
   argus_mapping_worker:
     build: ./api
     working_dir: /api
@@ -99,6 +98,44 @@ services:
               count: 1
               capabilities: [gpu]
 
+  ollama:
+    image: ollama/ollama
+    container_name: argusII_ollama
+    ports:
+      - ${ARGUS_OLLAMA_PORT}:11434
+    volumes:
+      - ${ARGUS_OLLAMA_MODELS}:/root/.ollama:rw
+    restart: unless-stopped
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  argus_ollama_worker:
+    build: ./api
+    working_dir: /api
+    container_name: argusII_ollama_worker
+    entrypoint: celery
+    command: -A app.services.image_describer worker -Q description --loglevel=info
+    volumes:
+      - ./api:/api
+      - argus_uploaded_files:/api/reports_data
+    depends_on: 
+      - db
+      - redis
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_PORT: ${PORT_REDIS}
+      REDIS_HOST: ${HOST_REDIS}
+      OPEN_WEATHER_API_KEY: ${OPEN_WEATHER_API_KEY}
+      WEBODM_ENABLED: ${ENABLE_WEBODM}
+      WEBODM_USERNAME: ${WEBODM_USERNAME}
+      WEBODM_PASSWORD: ${WEBODM_PASSWORD}
+      WEBODM_URL: ${WEBODM_URL}
+
   redis:
     image: redis:latest
     container_name: argusII_redis
@@ -110,3 +147,4 @@ volumes:
   argus_uploaded_files:
   frontend_node_modules:
   hf_cache:
+  models:

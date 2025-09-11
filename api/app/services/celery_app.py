@@ -14,10 +14,13 @@ celery_app = Celery(
 )
 
 celery_app.autodiscover_tasks(["app.services.mapping"])
+celery_app.autodiscover_tasks(["app.services.image_describer"])
+
 
 
 celery_app.conf.task_routes = {
     "mapping.*": {"queue": "mapping"},
     "detection.*": {"queue": "detection"},
+    "description.*": {"queue": "description"},
 }
 

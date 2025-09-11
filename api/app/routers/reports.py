@@ -22,6 +22,7 @@ from app.schemas.report import (
 from app.schemas.map import MapOut
 
 import app.services.mapping.processing_manager as process_report_service
+import app.services.image_describer as image_describer_service
 from app.config import REDIS_HOST, REDIS_PORT
 import redis
 
@@ -97,5 +98,50 @@ def get_process_status(report_id: int, db: Session = Depends(get_db)):
     return crud.get_process_status(db, report_id, r)
 
 
+@router.post("/{report_id}/auto_description", response_model=dict)
+def start_auto_description(report_id: int, db: Session = Depends(get_db)):
+    try:
+        image_describer_service.start_description_process(report_id, db)
+    except ValueError as e:
+        return {"status": "error", "message": str(e)}
+    return {"status": "started"}
 
+
+@router.get("/{report_id}/auto_description", response_model=dict)
+def get_auto_description(report_id: int, db: Session = Depends(get_db)):
+    task_id = r.get(f"description:{report_id}:task_id")
+    status = r.get(f"description:{report_id}:status")
+    progress = r.get(f"description:{report_id}:progress")
     
+    if status == b"processing" or status == b"queued":
+        progress = r.get(f"description:{report_id}:progress")
+        return {
+            "report_id": report_id,
+            "status": status.decode() if status else "unknown",
+            "progress": float(progress) if progress else 0.0,
+            "description": ""
+        }
+    elif status == b"error":
+        return {
+            "report_id": report_id,
+            "status": "error",
+            "progress": 100.0,
+            "description": ""
+        }
+
+    report = crud.get_basic_report(db, report_id)
+    if not report:
+        raise HTTPException(status_code=404, detail="Report not found")
+    if not report.auto_description:
+        return {
+            "report_id": report_id,
+            "status": "no_description",
+            "progress": 0,
+            "description": ""
+        }
+    return {
+        "report_id": report_id,
+        "status": "completed",
+        "progress": 100.0,
+        "description": report.auto_description
+    }

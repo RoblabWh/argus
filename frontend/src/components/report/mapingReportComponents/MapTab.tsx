@@ -317,13 +317,13 @@ export function MapTab({ report, selectImageOnMap, thresholds, visibleCategories
                                         })}
                                     >
                                         <Popup>
-                                            <div>
+                                            <div className="w-36">
                                                 <strong>{detection.class_name}</strong><br />
                                                 Confidence: {(detection.score * 100).toFixed(1)}%<br />
                                                 Image ID: {detection.image_id}
                                                 <Button onClick={() => {
                                                     selectImageOnMap(detection.image_id);
-                                                }} className="mt-2 w-full">Show Image</Button>
+                                                }} className="text-sm w-full mt-2">Show</Button>
                                             </div>
                                         </Popup>
                                     </Marker>
