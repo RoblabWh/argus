@@ -31,10 +31,10 @@ import { RotatedImageOverlay } from "@/components/report/mapingReportComponents/
 import panoPinSVG from '@/assets/panorama.svg'
 import { useImages } from "@/hooks/imageHooks";
 import { useMaps } from "@/hooks/useMaps";
-import { useDetections } from "@/hooks/detectionHooks";
+import { useDetections, useUpdateDetectionBatch } from "@/hooks/detectionHooks";
 
 interface Props {
-    report: Report;
+    reportId: number;
     selectImageOnMap: (image_id: number) => void;
     thresholds: { [key: string]: number };
     visibleCategories: { [key: string]: boolean };
@@ -100,12 +100,13 @@ export function extractFlightTrajectory(images: ImageBasic[]): LatLng[] {
 }
 
 
-export function MapTab({ report, selectImageOnMap, thresholds, visibleCategories, visibleMapOverlays, setVisibleMapOverlays }: Props) {
+export function MapTab({ reportId, selectImageOnMap, thresholds, visibleCategories, visibleMapOverlays, setVisibleMapOverlays }: Props) {
     const [overlayOpacity, setOverlayOpacity] = useState(1.0);
     const [map, setMap] = useState<LeafletMap | null>(null);
-    const { data: images } = useImages(report.report_id);
-    const { data: maps } = useMaps(report.report_id);
-    const { data: detections } = useDetections(report.report_id);
+    const { data: images } = useImages(reportId);
+    const { data: maps } = useMaps(reportId);
+    const { data: detections } = useDetections(reportId);
+    const { mutate: updateDetections } = useUpdateDetectionBatch(reportId);
     const api_url = getApiUrl();
     const { theme } = useTheme();
     const [showTrajectory, setShowTrajectory] = useState(true);
@@ -160,6 +161,26 @@ export function MapTab({ report, selectImageOnMap, thresholds, visibleCategories
         }
     }, [map]);
 
+    useEffect(() => {
+        if (!detections?.length || !images?.length || !maps?.length) return;
+
+        // Find detections missing GPS
+        const toUpdate = detections
+            .filter(det => !det.coord?.gps?.lat || !det.coord?.gps?.lon)
+            .map(det => {
+                const gps = determineGPSCoordOfDetection(det);
+                if (!gps) return null;
+                det.coord = { gps: gps, utm: undefined };
+                return det;
+            })
+            .filter(Boolean); // remove nulls
+
+        // Send a single batch PUT if needed
+        if (toUpdate.length > 0 && toUpdate !== null && updateDetections) {
+            updateDetections(toUpdate);
+        }
+    }, [detections, images, maps, updateDetections]);
+
     const determineGPSCoordOfDetection = (detection: Detection): GPSCoord | null => {
         let image = images?.find(img => img.id === detection.image_id);
         if (!image || !image.coord) return null;
@@ -206,43 +227,43 @@ export function MapTab({ report, selectImageOnMap, thresholds, visibleCategories
     }, [map]);
 
     useEffect(() => {
-  if (!map) return;
+        if (!map) return;
 
-  const handleOverlayAdd = (e: any) => {
-    const overlayName = e.name ?? e.layer?.options?.name;
-    console.log("Overlay added:", overlayName);
-    if (!overlayName) return;
+        const handleOverlayAdd = (e: any) => {
+            const overlayName = e.name ?? e.layer?.options?.name;
+            console.log("Overlay added:", overlayName);
+            if (!overlayName) return;
 
-    setVisibleMapOverlays(prev => {
-      const next = { ...prev };
-      // find map.id by name if needed
-      const found = maps?.find(m => `Map: ${m.name}` === overlayName);
-      if (found) next[found.id] = true;
-      return next;
-    });
-  };
+            setVisibleMapOverlays(prev => {
+                const next = { ...prev };
+                // find map.id by name if needed
+                const found = maps?.find(m => `Map: ${m.name}` === overlayName);
+                if (found) next[found.id] = true;
+                return next;
+            });
+        };
 
-  const handleOverlayRemove = (e: any) => {
-    const overlayName = e.name ?? e.layer?.options?.name;
-    console.log("Overlay removed:", overlayName);
-    if (!overlayName) return;
+        const handleOverlayRemove = (e: any) => {
+            const overlayName = e.name ?? e.layer?.options?.name;
+            console.log("Overlay removed:", overlayName);
+            if (!overlayName) return;
 
-    setVisibleMapOverlays(prev => {
-      const next = { ...prev };
-      const found = maps?.find(m => `Map: ${m.name}` === overlayName);
-      if (found) next[found.id] = false;
-      return next;
-    });
-  };
+            setVisibleMapOverlays(prev => {
+                const next = { ...prev };
+                const found = maps?.find(m => `Map: ${m.name}` === overlayName);
+                if (found) next[found.id] = false;
+                return next;
+            });
+        };
 
-  map.on("overlayadd", handleOverlayAdd);
-  map.on("overlayremove", handleOverlayRemove);
+        map.on("overlayadd", handleOverlayAdd);
+        map.on("overlayremove", handleOverlayRemove);
 
-  return () => {
-    map.off("overlayadd", handleOverlayAdd);
-    map.off("overlayremove", handleOverlayRemove);
-  };
-}, [map, maps, setVisibleMapOverlays]);
+        return () => {
+            map.off("overlayadd", handleOverlayAdd);
+            map.off("overlayremove", handleOverlayRemove);
+        };
+    }, [map, maps, setVisibleMapOverlays]);
 
     useEffect(() => {
         if (map !== null && bounds) {
@@ -301,34 +322,41 @@ export function MapTab({ report, selectImageOnMap, thresholds, visibleCategories
                     {detections && detections.length > 0 && images && images.length > 0 && maps && maps.length > 0 && showDetections && (
 
                         <LayerGroup>
-                            {detections.filter(detection => visibleCategories[detection.class_name] && detection.score >= (thresholds[detection.class_name] || 0)).map((detection) => {
-                                const gps = determineGPSCoordOfDetection(detection);
-                                if (!gps) return null;
-                                return (
-                                    <Marker
-                                        key={detection.id}
-                                        position={[gps.lat, gps.lon]}
-                                        icon={L.divIcon({
-                                            className: 'custom-div-icon',
-                                            html: `<div style="background-color:${DETECTION_COLORS[detection.class_name] || 'blue'};opacity:0.85;width:12px;height:12px;border-radius:50%;border:2px solid black;"></div>`,
-                                            iconSize: [16, 16],
-                                            iconAnchor: [8, 8],
-                                            popupAnchor: [0, -8],
-                                        })}
-                                    >
-                                        <Popup>
-                                            <div className="w-36">
-                                                <strong>{detection.class_name}</strong><br />
-                                                Confidence: {(detection.score * 100).toFixed(1)}%<br />
-                                                Image ID: {detection.image_id}
-                                                <Button onClick={() => {
-                                                    selectImageOnMap(detection.image_id);
-                                                }} className="text-sm w-full mt-2">Show</Button>
-                                            </div>
-                                        </Popup>
-                                    </Marker>
-                                );
-                            })}
+                            {detections
+                                .filter(
+                                    detection =>
+                                        visibleCategories[detection.class_name] &&
+                                        detection.score >= (thresholds[detection.class_name] || 0)
+                                )
+                                .map(detection => {
+                                    const gps =
+                                        detection.coord?.gps || determineGPSCoordOfDetection(detection);
+                                    if (!gps) return null;
+                                    return (
+                                        <Marker
+                                            key={detection.id}
+                                            position={[gps.lat, gps.lon]}
+                                            icon={L.divIcon({
+                                                className: 'custom-div-icon',
+                                                html: `<div style="background-color:${DETECTION_COLORS[detection.class_name] || 'blue'};opacity:0.85;width:12px;height:12px;border-radius:50%;border:2px solid black;"></div>`,
+                                                iconSize: [16, 16],
+                                                iconAnchor: [8, 8],
+                                                popupAnchor: [0, -8],
+                                            })}
+                                        >
+                                            <Popup>
+                                                <div className="w-36">
+                                                    <strong>{detection.class_name}</strong><br />
+                                                    Confidence: {(detection.score * 100).toFixed(1)}%<br />
+                                                    Image ID: {detection.image_id}
+                                                    <Button onClick={() => {
+                                                        selectImageOnMap(detection.image_id);
+                                                    }} className="text-sm w-full mt-2">Show</Button>
+                                                </div>
+                                            </Popup>
+                                        </Marker>
+                                    );
+                                })}
 
                         </LayerGroup>
                     )}

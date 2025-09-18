@@ -47,7 +47,9 @@ celery_app = Celery(
 
 
 @celery_app.task(name="detection.run")
-def run_detection(report_id: int, files: list[dict], max_splits: int = 0):
+def run_detection(report_id: int, images: list[dict], max_splits: int = 0):
+    logger.info(f"Starting detection for report {report_id} with {len(images)} images and max_splits={max_splits}")
+    logger.info(f"Images: {type(images[:3])} - {images[:3]}")  # Log first 3 images for brevity
     try:
         r.set(f"detection:{report_id}:status", "running")
         r.set(f"detection:{report_id}:progress", 0)
@@ -74,7 +76,7 @@ def run_detection(report_id: int, files: list[dict], max_splits: int = 0):
             inferencer.add_model(model)
             progress_tracker.update_step_progress_of_total(i + 1, len(models))
 
-        datahandler.set_image_paths([file["path"] for file in files])
+        datahandler.set_image_paths([file["url"] for file in images])
         datahandler.args.split = True
         datahandler.args.max_splitting_steps = max_splits
 
@@ -100,8 +102,9 @@ def run_detection(report_id: int, files: list[dict], max_splits: int = 0):
         progress_tracker.set_message("Saving results to database and displaying detections")
 
         #datahandler.show(result)
-        results_data = reformat_ann(annotation_path, files)
+        results_data = reformat_ann(annotation_path, images)
         
+
         # send results to backend API
         url = f"{BACKEND_URL}/detections/r/{report_id}"
         resp = requests.put(url, json={"detections": results_data}, timeout=30)
@@ -117,10 +120,10 @@ def run_detection(report_id: int, files: list[dict], max_splits: int = 0):
         r.set(f"detection:{report_id}:progress", 0)
 
 
-def reformat_ann(ann_path: str, files: list[dict]):
-    file_lookup = {os.path.basename(f["path"]): f["id"] for f in files}
-    
-    data = None        
+def reformat_ann(ann_path: str, images: list[dict]):
+    file_lookup = {os.path.basename(f["url"]): f["id"] for f in images}
+
+    data = None
     with open(ann_path, 'r') as json_file:
         data = json.load(json_file)
 
@@ -158,5 +161,5 @@ def reformat_ann(ann_path: str, files: list[dict]):
     # with open(ann_path, 'w') as json_file:
     #     json.dump(data, json_file)
 
-    return data
+    # return data
 

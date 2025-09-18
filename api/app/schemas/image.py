@@ -172,6 +172,7 @@ class DetectionCreate(DetectionBase):
     pass
 
 class DetectionUpdate(BaseModel):
+    id: int
     image_id: Optional[int] = None
     class_name: Optional[str] = None
     score: Optional[float] = None

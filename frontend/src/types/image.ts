@@ -66,6 +66,6 @@ export interface UTMCoord {
 
 export interface Coord {
   gps: GPSCoord;
-  utm: UTMCoord;
+  utm?: UTMCoord;
   rel_alt?: number;
 };

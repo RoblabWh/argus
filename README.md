@@ -42,4 +42,7 @@ The goal is to build a more robust and professional codebase, making Argus a fut
 <!-- Für Settings:
 API Key - Waether API
 WebODM Account und Settings aus env
-Farben Detections -->
+Farben Detections 
+DRZ Backend URL
+Name Autor (für DRZ Backend default
+-->

@@ -89,13 +89,13 @@ export function TabArea({ report, filteredImages, selectedImage, setSelectedImag
       </div>
       <TabsContent value="map">
         <div className="text-sm h-[calc(100%)] overflow-auto">
-          <MapTab 
-          report={report} 
-          selectImageOnMap={selectImageOnMap} 
-          thresholds={thresholds}
-          visibleCategories={visibleCategories}
-          visibleMapOverlays={visibleMapOverlays}
-          setVisibleMapOverlays={setVisibleMapOverlays}
+          <MapTab
+            reportId={report.report_id}
+            selectImageOnMap={selectImageOnMap}
+            thresholds={thresholds}
+            visibleCategories={visibleCategories}
+            visibleMapOverlays={visibleMapOverlays}
+            setVisibleMapOverlays={setVisibleMapOverlays}
           />
         </div>
       </TabsContent>

@@ -165,3 +165,18 @@ def delete_detection(detection_id: int, db: Session = Depends(get_db)):
         return {"message": "Detection deleted successfully", "detection_id": detection_id}
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
+    
+@router.put("/r/{report_id}/batch_update", response_model=dict)
+def update_detections_batch(report_id: int, data: List[DetectionUpdate], db: Session = Depends(get_db)):
+    """
+    Update multiple detections in a batch.
+    """
+    mapping_report = report_crud.get_short_report(db, report_id).mapping_report
+    if not mapping_report:
+        raise HTTPException(status_code=404, detail="Report not found")
+    
+    logger.info(f"Updating {len(data)} detections for report {report_id}")
+    logger.info(f"First detection data: {data[0] if data else 'No data'}")
+
+    updated_count = image_crud.update_detections_batch(db, mapping_report.id, data)
+    return {"message": f"Updated {updated_count} detections", "report_id": report_id, "updated_count": updated_count}

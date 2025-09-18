@@ -1,11 +1,12 @@
 import type { Coord, GPSCoord, Image } from "@/types/image";
 
-export type Detection = {
+export interface Detection {
   id: number;
   image_id: number;
   class_name: string;
   score: number;
   bbox: Record<string, unknown>;
+  manually_verified?: boolean;
   image?: Image;
   coord?: Coord;
 };

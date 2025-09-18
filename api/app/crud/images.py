@@ -147,7 +147,10 @@ def update_thermal_matrix_path(db: Session, image_id: int, new_path: str):
 
 def get_images_for_detection(db: Session, mapping_report_id: int):
     images = db.query(models.Image).filter(models.Image.mapping_report_id == mapping_report_id).all()
-    return [{"path": image.url, "id": image.id} for image in images if not image.thermal]
+    # return [{"path": image.url, "id": image.id} for image in images if not image.thermal]
+    #convert images to list of dicts
+    images = [{"url": image.url, "id": image.id, "coord": image.coord} for image in images]
+    return images
 
 def get_detections_by_mapping_report_id(db: Session, mapping_report_id: int):
     # 1. load images from the mapping report with their detections
@@ -219,3 +222,23 @@ def update_detections_coords_by_mapping_report_id(db: Session, mapping_report_id
             detection.coord = image.coord
     db.commit()
     return {"status": "success", "message": "Detection coordinates updated successfully"}
+
+def update_detections_batch(db: Session, mapping_report_id: int, updates: list[DetectionUpdate]):
+    mapping_report = db.query(models.MappingReport).filter(models.MappingReport.id == mapping_report_id).first()
+    if not mapping_report:
+        raise ValueError("Mapping report not found for this report ID")
+
+    images = db.query(models.Image).filter(models.Image.mapping_report_id == mapping_report.id).all()
+    image_id_map = {image.id: image for image in images}
+
+    updated_count = 0
+    for update in updates:
+        detection = db.query(models.Detection).filter(models.Detection.id == update.id).first()
+        if detection and detection.image_id in image_id_map:
+            for key, value in update.dict(exclude_unset=True).items():
+                if key != "id":  # Skip the id field
+                    setattr(detection, key, value)
+            updated_count += 1
+
+    db.commit()
+    return updated_count

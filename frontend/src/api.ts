@@ -86,6 +86,7 @@ export const getDetectionStatus = (report_id: number) => fetchJson<{ report_id: 
 export const getDetections = (report_id: number) => fetchJson<Detection[]>(`/detections/r/${report_id}`);
 export const updateDetection = (detection_id: number, data: Detection) => postJson<any>(`/detections/${detection_id}`, data, "PUT");
 export const deleteDetection = (detection_id: number) => deleteRequest(`/detections/${detection_id}`);
+export const updateDetectionBatch = (report_id: number, data: Detection[]) => postJson<any>(`/detections/r/${report_id}/batch_update`, data, "PUT");
 
 export const startAutoDescription = (report_id: number) => postJson<{ status: string }>(`/reports/${report_id}/auto_description`, {});
 export const getAutoDescription = (report_id: number) => fetchJson<{ report_id: number, status: string, progress: number, description: string }>(`/reports/${report_id}/auto_description`);

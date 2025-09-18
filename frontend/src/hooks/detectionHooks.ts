@@ -1,7 +1,8 @@
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
-import { startDetection, getDetectionStatus, getDetections, updateDetection, deleteDetection } from "@/api";
+import { startDetection, getDetectionStatus, getDetections, updateDetection, deleteDetection, updateDetectionBatch } from "@/api";
 import type { Detection } from "@/types/detection";
 import type { Report } from "@/types/report";
+
 
 
 export function useStartDetection() {
@@ -64,6 +65,18 @@ export function useDeleteDetection(reportId: number) {
         onSuccess: () => {
             // Invalidate and refetch
             console.log("successfully deleted detection");
+        },
+    });
+}
+
+export function useUpdateDetectionBatch(reportId: number) {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (data: Detection[]) =>
+            updateDetectionBatch(reportId, data),
+        onSuccess: () => {
+            // Invalidate and refetch
+            queryClient.invalidateQueries({ queryKey: ["detections", reportId] });
         },
     });
 }
