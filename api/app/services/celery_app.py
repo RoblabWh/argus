@@ -1,6 +1,6 @@
 from celery import Celery
 import logging
-from app.config import REDIS_HOST, REDIS_PORT
+from app.config import config
 
 logging.basicConfig(
     level=logging.INFO,  # Or DEBUG
@@ -9,8 +9,8 @@ logging.basicConfig(
 
 celery_app = Celery(
     "report_processing",
-    broker=f"redis://{REDIS_HOST}:{REDIS_PORT}/0",
-    backend=f"redis://{REDIS_HOST}:{REDIS_PORT}/0"
+    broker=f"redis://{config.REDIS_HOST}:{config.REDIS_PORT}/0",
+    backend=f"redis://{config.REDIS_HOST}:{config.REDIS_PORT}/0"
 )
 
 celery_app.autodiscover_tasks(["app.services.mapping"])
@@ -24,3 +24,15 @@ celery_app.conf.task_routes = {
     "description.*": {"queue": "description"},
 }
 
+def task_is_really_active(task_id: str) -> bool:
+    i = celery_app.control.inspect()
+    for worker_tasks in (i.active() or {}).values():
+        if any(t["id"] == task_id for t in worker_tasks):
+            return True
+    for worker_tasks in (i.scheduled() or {}).values():
+        if any(t["id"] == task_id for t in worker_tasks):
+            return True
+    for worker_tasks in (i.reserved() or {}).values():
+        if any(t["id"] == task_id for t in worker_tasks):
+            return True
+    return False

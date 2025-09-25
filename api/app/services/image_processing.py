@@ -6,7 +6,8 @@ import shutil
 from datetime import datetime, timezone
 from PIL import Image
 
-from app.config import UPLOAD_DIR
+from app.config import config
+UPLOAD_DIR = Path(config.UPLOAD_DIR)
 
 import app.crud.images as crud_image
 import app.crud.report as crud_report

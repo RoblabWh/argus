@@ -17,10 +17,11 @@ from app.schemas.image import (
 )
 
 from app.services.celery_app import celery_app
+from app.services.drz_backend_sharing import send_geojson_poi_to_iais
 
 import redis
-from app.config import REDIS_HOST, REDIS_PORT
-r = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, db=0)
+from app.config import config
+r = redis.Redis(host=config.REDIS_HOST, port=config.REDIS_PORT, db=0)
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/detections", tags=["Detections"])
@@ -180,3 +181,18 @@ def update_detections_batch(report_id: int, data: List[DetectionUpdate], db: Ses
 
     updated_count = image_crud.update_detections_batch(db, mapping_report.id, data)
     return {"message": f"Updated {updated_count} detections", "report_id": report_id, "updated_count": updated_count}
+
+@router.post("/send_to_iais", response_model=dict)
+def send_detection_to_iais(geometry: dict, properties: dict, db: Session = Depends(get_db)):
+    """
+    Send a detection to Iais system.
+    """
+    logger.info(f"Sending detection to Iais with properties: {properties}")
+    logger.info(f"Geometry: {geometry}")
+    try:
+        iais_response = send_geojson_poi_to_iais(geometry, properties)
+        logger.info(f"Iais response: {iais_response}")
+        return {"message": "Detection sent to Iais successfully", "iais_response": iais_response}
+    except Exception as e:
+        logger.error(f"Error sending detection to Iais: {e}")
+        return {"message": "Error sending detection to Iais", "error": str(e)}

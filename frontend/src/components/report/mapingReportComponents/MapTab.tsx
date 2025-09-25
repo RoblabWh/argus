@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, use } from "react";
 import type { Report } from "@/types/report";
 import type { Image, ImageBasic, Coord, UTMCoord, GPSCoord } from "@/types/image";
 import type { Map } from "@/types/map";
@@ -120,11 +120,11 @@ export function MapTab({ reportId, selectImageOnMap, thresholds, visibleCategori
 
     const first_image_with_gps = images?.find((image) => image.coord);
     const first_map = maps?.[0] || null;
-    const center = first_map
+    const [center, setCenter] = useState(first_map
         ? [(first_map.bounds.gps.latitude_min + first_map.bounds.gps.latitude_max) / 2, (first_map.bounds.gps.longitude_min + first_map.bounds.gps.longitude_max) / 2]
-        : (first_image_with_gps ? [first_image_with_gps.coord.gps.lat, first_image_with_gps.coord.gps.lon] : [51.574, 7.027]);
+        : (first_image_with_gps ? [first_image_with_gps.coord.gps.lat, first_image_with_gps.coord.gps.lon] : [51.574, 7.027]));
 
-
+    
     const bounds = useMemo(() => {
         if (!maps?.length) return null;
 
@@ -134,6 +134,14 @@ export function MapTab({ reportId, selectImageOnMap, thresholds, visibleCategori
             [gps.latitude_max, gps.longitude_max]
         ] as LatLngBoundsExpression;
     }, [maps]);
+
+    useEffect(() => {
+        let first_image_with_gps = images?.find((image) => image.coord);
+        if (first_image_with_gps && first_image_with_gps.coord?.gps) {
+            setCenter([first_image_with_gps.coord.gps.lat, first_image_with_gps.coord.gps.lon]);
+            map?.setView([first_image_with_gps.coord.gps.lat, first_image_with_gps.coord.gps.lon], 18);
+        }
+    }, [images]);
 
     useEffect(() => {
         if (maps && setVisibleMapOverlays) {

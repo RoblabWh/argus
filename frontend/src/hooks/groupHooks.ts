@@ -60,6 +60,7 @@ const useEditGroup = () => {
     onSuccess: () => {
       // Invalidate and refetch the groups query to reflect the update
       queryClient.invalidateQueries({ queryKey: ["group"] });
+      queryClient.invalidateQueries({ queryKey: ["groups"] });
     },
   });
 };

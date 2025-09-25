@@ -4,7 +4,8 @@ from sqlalchemy.orm import Session
 from fastapi import Depends
 import os
 
-from app.config import DATABASE_URL
+from app.config import config
+DATABASE_URL = config.DATABASE_URL
 
 engine = create_engine(DATABASE_URL)
 

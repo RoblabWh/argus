@@ -24,7 +24,8 @@ import rasterio
 import cv2
 import os
 
-from app.config import UPLOAD_DIR
+from app.config import config 
+UPLOAD_DIR = config.UPLOAD_DIR
 
 
 logger = logging.getLogger(__name__)

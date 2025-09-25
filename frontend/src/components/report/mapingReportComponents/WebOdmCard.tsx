@@ -106,7 +106,7 @@ export function WebOdmCard({ isWebODMAvailable, webODMURL, webODMProjectID, repo
                     {isLoading && <p>Loading tasks...</p>}
                     {error && <p className="text-red-500">Failed to load tasks</p>}
                     {odmTasks && odmTasks.length > 0 ? (
-                        <div className="flex flex-col gap-[0.5px] max-h-20 overflow-y-auto w-full pr-2">
+                        <div className="flex flex-col gap-[0.5px] max-h-40 overflow-y-auto w-full pr-2">
                             {odmTasks.map((task, index) => (
                                 <div key={task.id || index} className="flex items-center justify-between">
                                     <Tooltip>

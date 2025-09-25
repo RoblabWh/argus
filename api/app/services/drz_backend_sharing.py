@@ -2,21 +2,50 @@ import datetime as dt
 import json
 import requests
 
-iais_url = "http://iais-backend:8000/api/"
+#iais_url = "http://iais-backend:8000/api/"
+iais_url = "https://fake-rlw.rettungsrobotik.de/"
+iais_url = "https://eve.iais.fraunhofer.de/"
+import logging
+logger = logging.getLogger(__name__)
 
-def send_geojson_poi_to_iais(poi_data):
+def send_geojson_poi_to_iais(geometry: dict, properties: dict):
 
-    geometry = poi_data['geometry']
 
-    type = poi_data['properties']['type']
-    subtype = poi_data['properties']['subtype']
-    danger_level = False #poi_data['properties']['danger_level']
-    detection = poi_data['properties']['detection']
-    name = poi_data['properties']['name']
-    description = poi_data['properties']['description']
-    datetime = poi_data['properties']['datetime']
+    type = properties['type'] # 1 (Fire), 2 (USAR), 3 (EMS), 4 (Police), 5 (Army), 6 (Other), 7 (Action), 8 (CBuilding), 9 (Command), 10 (People), 11 (Resources), 12 (Active), 13 (ObjectManagement), -1 (All)
+    subtype = properties['subtype'] 
+    danger_level = False #properties['danger_level']
+    detection = properties['detection']
+    name = properties['name']
+    description = properties['description']
+    datetime = properties['datetime']
+    logger.info(f"Preparing to send POI to Iais with type: {type}, subtype: {subtype}, danger_level: {danger_level}, detection: {detection}, name: {name}, description: {description}, datetime: {datetime}")
     #convert datetime from 03.08.2024 10:00 to 2024-03-08T10:00:00
-    datetime = dt.datetime.strptime(datetime, '%d.%m.%Y %H:%M').isoformat()
+    #dt.datetime.strptime(datetime, '%Y-%m-%dT%H:%M').isoformat()
+    #logger.info(f"Converted datetime: {datetime}")
+
+    #Subtypes 
+    #0 Person
+        #1"Person in distress (trapped/buried)"
+        #2"Person injured"
+        #3"Person dead"
+        #4"Missing person"
+        #5"Buried person"
+        #6"Presumably buried person"
+    #2 Vehicle
+        #0"Land vehicle (car, truck, trailer)"
+        #1"Rail vehicle (locomotive, wagon)"
+        #2"Water vehicle (boat, ship)"
+        #3"Air vehicle (airplane, helicopter)"
+        #4"Helicopter"
+    #4 Fire
+        #0"Fire (small)"
+        #1"Fire (medium)"
+        #2"Fire (large)"
+
+    # danger_level SUSPECTED (FALSE), ACUTE (TRUE)
+    # detection 0 (AUTO), 1 (MANUELL), 2 (VERIFIED)
+
+
 
     # if type == "human":
     #     type = 10
@@ -65,7 +94,7 @@ def send_geojson_poi_to_iais(poi_data):
         "accept": "*/*",
         "Content-Type": "application/json"
     }
-    response = requests.put(url, headers=headers, data=json.dumps(data)  )#, auth=(self.iais_username, self.iais_password))
+    response = requests.put(url, headers=headers, data=json.dumps(data), auth=("development", "LookMomNoVPN!"))
 
     if response.status_code == 200:
         return "PUT request successful!"

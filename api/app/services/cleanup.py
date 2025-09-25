@@ -1,10 +1,11 @@
 import os
 from pathlib import Path
-from app.config import UPLOAD_DIR
+from app.config import config
 from app.crud import report as crud
 from app.database import get_db
 from sqlalchemy.orm import Session
 
+UPLOAD_DIR = Path(config.UPLOAD_DIR)
 UPLOAD_DIR.mkdir(exist_ok=True)
 
 #delete every file and directory in a folder named with id

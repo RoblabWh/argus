@@ -14,9 +14,7 @@ from app.routers import (
     images,
     odm,
     detection,
-    # weather,
-    # detections,
-    # processing,
+    settings,
 )
 
 models.Base.metadata.create_all(bind=engine)
@@ -47,6 +45,7 @@ app.include_router(reports.router)
 app.include_router(images.router)
 app.include_router(odm.router)
 app.include_router(detection.router)
+app.include_router(settings.router)
 
 cleanup_lost_tasks()  # Cleanup lost tasks on startup
 

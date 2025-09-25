@@ -3,17 +3,19 @@ import math
 import cv2
 import imutils
 import numpy as np
-from app.config import UPLOAD_DIR
+from app.config import config
 from app.schemas.image import ImageOut, MappingDataOut
 from app.schemas.map import MapCreate, MapElementCreate
 from app.schemas.report import ProcessingSettings
 from app.services.mapping.progress_updater import ProgressUpdater
 import app.crud.map as crud
 import logging
+import time
 
 import billiard as multiprocessing
 from billiard import Pool
 
+UPLOAD_DIR = config.UPLOAD_DIR
 logger = logging.getLogger(__name__)
 
 class Map_Element:
@@ -163,7 +165,8 @@ def map_images(report_id: int, mapping_report_id: int, mapping_selection: dict, 
 
     # draw map in batches combining map elements and voronoi mask
     map = draw_map(map_elements, voronoi, map_width, map_height, progress_updater)
-    file_path = UPLOAD_DIR / str(report_id) / f"final_map_{map_index}.png"
+    #add a timestamp to the file name to avoid caching issues
+    file_path = UPLOAD_DIR / str(report_id) / f"final_map_{map_index}_{str(int(time.time()))}.png"
     save_map_image(map, file_path)
     logger.info(f"Final map for report {report_id} saved as {file_path}")
 
@@ -448,7 +451,7 @@ def draw_and_save_voronoi_mask(voronoi_mask, file_path):
 def draw_map(map_elements, voronoi_mask, map_width, map_height, progress_updater):
 
     thermal_map = True if map_elements[0].matrix_contains_temperature else False
-    map_img = np.zeros((map_height, map_width, 4), dtype=np.uint8)
+    map_img = np.zeros((map_height, map_width, 4), dtype=np.float32) if thermal_map else np.zeros((map_height, map_width, 4), dtype=np.uint8)
 
     batch_size = 32
 
@@ -501,6 +504,10 @@ def draw_map(map_elements, voronoi_mask, map_width, map_height, progress_updater
         temperature_channel = map_img[:, :, 0]  # Assuming the temperature data is in the first channel
         max_temp = np.max(temperature_channel)
         min_temp = np.min(temperature_channel)
+        if min_temp < 0:
+            #half all values below zero to make sure the scaling works better
+            temperature_channel = np.where(temperature_channel < 0, temperature_channel / 3, temperature_channel)
+            min_temp = np.min(temperature_channel)
         logger.info(f"Max temperature: {max_temp}, Min temperature: {min_temp}")
         factor = 255 / (max_temp - min_temp) if max_temp != min_temp else 0
         temperature_channel = (temperature_channel - min_temp) * factor

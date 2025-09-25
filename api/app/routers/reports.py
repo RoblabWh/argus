@@ -20,15 +20,16 @@ from app.schemas.report import (
 )
 
 from app.schemas.map import MapOut
+from app.services.celery_app import task_is_really_active
 
 import app.services.mapping.processing_manager as process_report_service
 import app.services.image_describer as image_describer_service
-from app.config import REDIS_HOST, REDIS_PORT
+from app.config import config
 import redis
 
 router = APIRouter(prefix="/reports", tags=["Reports"])
 
-r = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, db=0)
+r = redis.Redis(host=config.REDIS_HOST, port=config.REDIS_PORT, db=0)
 
 @router.get("/", response_model=List[ReportOut])
 def list_reports(db: Session = Depends(get_db)):
@@ -113,15 +114,22 @@ def get_auto_description(report_id: int, db: Session = Depends(get_db)):
     status = r.get(f"description:{report_id}:status")
     progress = r.get(f"description:{report_id}:progress")
     
-    if status == b"processing" or status == b"queued":
-        progress = r.get(f"description:{report_id}:progress")
-        return {
-            "report_id": report_id,
-            "status": status.decode() if status else "unknown",
-            "progress": float(progress) if progress else 0.0,
-            "description": ""
-        }
-    elif status == b"error":
+    if status and status.decode() in ("processing", "queued"):
+        if task_id:
+            if not task_is_really_active(task_id.decode()):
+                status = b"error"
+                progress = 100.0
+                r.set(f"description:{report_id}:status", status)
+                r.set(f"description:{report_id}:progress", progress)
+            
+            return {
+                "report_id": report_id,
+                "status": status.decode() if status else "unknown",
+                "progress": float(progress) if progress else 0.0,
+                "description": ""
+            }
+    
+    if status == b"error":
         return {
             "report_id": report_id,
             "status": "error",

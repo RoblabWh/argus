@@ -4,9 +4,10 @@ import type { Report, ReportSummary } from "@/types/report";
 import type { Map } from "@/types/map";
 import type { ProcessingSettings } from "@/types/processing";
 import type { Image, ImageBasic } from "@/types/image";
-//
+import type { Detection, Geometry, Properties } from "./types/detection";
+import type { SettingsData } from "@/types/settings";
+
 import { data } from "react-router-dom";
-import type { Detection } from "./types";
 
 // const API_URL = "http://" + process.env.VITE_API_URL + ":" + process.env.VITE_API_PORT;
 // const API_URL = "http://localhost:8000";
@@ -87,12 +88,18 @@ export const getDetections = (report_id: number) => fetchJson<Detection[]>(`/det
 export const updateDetection = (detection_id: number, data: Detection) => postJson<any>(`/detections/${detection_id}`, data, "PUT");
 export const deleteDetection = (detection_id: number) => deleteRequest(`/detections/${detection_id}`);
 export const updateDetectionBatch = (report_id: number, data: Detection[]) => postJson<any>(`/detections/r/${report_id}/batch_update`, data, "PUT");
+export const sendDetectionToDrz = (geometry: Geometry, properties: Properties) => postJson<{ message: string }>("/detections/send_to_iais", { geometry, properties });
 
 export const startAutoDescription = (report_id: number) => postJson<{ status: string }>(`/reports/${report_id}/auto_description`, {});
 export const getAutoDescription = (report_id: number) => fetchJson<{ report_id: number, status: string, progress: number, description: string }>(`/reports/${report_id}/auto_description`);
 
-// WebODM integration
+export const getSettings = () => fetchJson< SettingsData >("/settings/");
+export const updateWebodmSettings = (settings: { ENABLE_WEBODM: boolean; WEBODM_URL: string; WEBODM_USERNAME: string; WEBODM_PASSWORD: string;}) => postJson<{ message: string }>("/settings/webodm", settings, "PUT");
+export const updateWeatherSettings = (settings: { OPEN_WEATHER_API_KEY: string;}) => postJson<{ message: string }>("/settings/openweather", settings, "PUT");
+export const updateDrzSettings = (settings: { BACKEND_URL: string; AUTHOR_NAME: string;}) => postJson<{ message: string }>("/settings/drz", settings, "PUT");
+export const updateDetectionColors = (settings: { DETECTION_COLORS: { [key: string]: string } }) => postJson<{ message: string }>("/settings/appearance", settings, "PUT");
 
+// WebODM integration
 export const getWebODMAvailable = () => fetchJson<{ is_available: boolean, url: string }>("/odm/");
 export const getWebODMTasks = (project_id: string) => fetchJson<any[]>(`/odm/projects/${project_id}/tasks`);
 // POST: Start report processing

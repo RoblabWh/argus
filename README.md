@@ -39,10 +39,26 @@ The goal is to build a more robust and professional codebase, making Argus a fut
 ### Until this branch is pushed to main, please use the current main branch version
 
 
-<!-- Für Settings:
-API Key - Waether API
-WebODM Account und Settings aus env
-Farben Detections 
-DRZ Backend URL
-Name Autor (für DRZ Backend default
--->
+
+### Image and Metadata Requirements
+
+ARGUS can display images from a variety of cameras and drones. However, to process these images into orthophotos, specific metadata is required.
+The mapping is based on the following data:
+
+- **Camera model name** – Used to map the metadata keys of each camera model to the correct variables.- This has to be done for each camera model. If not set ARGUS tries to retrieve the values with some default keys
+- **Creation date** – Date and time the image was captured.
+- **Image width and height** – Can always be extracted automatically.
+- **Projection type** – Used to filter out panoramic images. Only necessary if actual panoramic images are present.
+- **GPS latitude and longitude**
+- **Relative altitude** (distance to ground) – If not found in the metadata, a default value can be set by the user on the upload page (note: using a default may reduce accuracy).
+- **Altitude** – Absolute altitude of the camera/drone.
+- **Field of view (FOV)** – (also fov correction. default is 1.0, if mapping is off, this factor can be used to alter the fov).
+- **UAV roll, pitch, and yaw** – Orientation of the drone (roll is currently not used).
+- **Gimbal/Camera roll, pitch, and yaw** – Orientation of the camera (roll is currently not used).
+
+
+
+Thermal/ Infrared (IR) Images
+- **Image source tag** – The preferred and most robust method. IR images can be identified by a value (e.g., thermal or infrared) in the ImageSource tag. Both, the metadta key and the value for thermal images must be set for the camera model.
+- **Image dimensions or filename pattern** – Alternatively, a predefined image height/width or a filename pattern (regular expression) can be used for detection. This must also be configured beforehand but is less reliable than using the ImageSource tag.
+- **IR scale (IR_scale)** – Used to correctly scale the IR image when overlaying it on top of the RGB image, can be part of the camera model settings, does not need to be sotred in images metadta

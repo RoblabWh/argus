@@ -53,7 +53,7 @@ export default function Home() {
           </div>
         </CardContent>
         <CardFooter>
-          <p>New Version with redesigned Frontend coming soon! </p>
+          <p>New version (coming soon!)</p>
         </CardFooter>
       </Card>
     </>

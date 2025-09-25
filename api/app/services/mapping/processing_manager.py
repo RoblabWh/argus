@@ -4,7 +4,7 @@ import time
 import redis
 import os
 from app.schemas.report import ProcessingSettings
-from app.config import REDIS_PORT, REDIS_HOST
+from app.config import config
 import app.crud.report as crud
 import app.crud.map as map_crud
 from app.database import get_db
@@ -15,7 +15,7 @@ from app.services.mapping.progress_updater import ProgressUpdater
 from app.services.mapping.odm_mapping import summon_webODM_mapping_selections, process_webODM
 import logging
 
-r = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, db=0)
+r = redis.Redis(host=config.REDIS_HOST, port=config.REDIS_PORT, db=0)
 logger = logging.getLogger(__name__)
 
 @celery_app.task(name="mapping.process_report")

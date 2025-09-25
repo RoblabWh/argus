@@ -4,8 +4,6 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 import requests
 
-# Import Static Configurations
-from app.config import WEBODM_ENABLED, WEBODM_URL, WEBODM_USERNAME, WEBODM_PASSWORD
 
 # Import schemas
 from app.schemas.image import ImageOut, ImageCreate, ImageUpdate, ImageUploadResult, ThermalMatrixResponse

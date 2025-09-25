@@ -12,7 +12,10 @@ import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
 import { ComboButton } from "@/components/ComboButton"
-import type { Detection } from "@/types/detection"
+import type { Detection , Geometry, Properties} from "@/types/detection"
+import { useSendDetectionToDrz } from "@/hooks/poiHook"
+
+
 
 type DetectionSharePopupProps = {
     open: boolean
@@ -41,6 +44,8 @@ function shareAsEmail(type: string, detail: string, subtype: string, name: strin
     console.log("share as email")
 }
 
+
+
 export function DetectionSharePopup({
     open,
     onClose,
@@ -49,7 +54,7 @@ export function DetectionSharePopup({
     drzBackendApi,
 }: DetectionSharePopupProps) {
     const [sendOption, setSendOption] = useState<"email" | "gps" | "drz">("email")
-
+    const { mutate: sendToDrz } = useSendDetectionToDrz()
     // form states
     const [name, setName] = useState("")
     const [description, setDescription] = useState("")
@@ -100,8 +105,20 @@ export function DetectionSharePopup({
                 console.log("Download GPS POI", payload)
                 break
             case "drz":
-                if (drzBackendApi) {
-                    console.log("Send to DRZ System", drzBackendApi, payload)
+                if (drzBackendApi && payload.coordinate) {
+                    let geometry: Geometry = {
+                        type: "Point",
+                        coordinates: [payload.coordinate.gps.lon, payload.coordinate.gps.lat]
+                    }
+                    let properties: Properties = {
+                        type: payload.detail,
+                        subtype: payload.subtype,
+                        detection: 0,
+                        name: payload.name,
+                        description: payload.description,
+                        datetime: payload.timestamp,
+                    }
+                    sendToDrz({ geometry, properties })
                 }
                 break
         }

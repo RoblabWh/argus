@@ -10,12 +10,11 @@ import threading
 
 import logging
 
-from app.config import UPLOAD_DIR
+from app.config import config
 
 from app.schemas.report import ProcessingSettings, MappingReportUpdate
 from app.schemas.image import ImageOut, ThermalDataCreate
 from app.schemas.weather import WeatherUpdate, WeatherCreate
-from app.config import OPEN_WEATHER_API_KEY
 import app.crud.report as crud_report
 import app.crud.weather as crud_weather
 import app.crud.images as crud_image
@@ -157,7 +156,8 @@ def _get_weather_data(image: ImageOut) -> dict:
     This is a placeholder function and should be replaced with actual weather data retrieval logic.
     """
     
-    if not OPEN_WEATHER_API_KEY:
+    config.refresh()
+    if not config.OPEN_WEATHER_API_KEY:
         raise ValueError("Open Weather API key is not set in the configuration.")
     
     gps = image.coord.get('gps')
@@ -190,9 +190,9 @@ def _call_open_weather_api(gps: dict, timestamp: float = None) -> dict:
     Call the Open Weather API to get weather data for the given GPS coordinates and timestamp.
     """
     if timestamp:
-        api_call = f"https://api.openweathermap.org/data/2.5/onecall/timemachine?lat={gps['lat']}&lon={gps['lon']}&dt={str(int(timestamp))}&appid={OPEN_WEATHER_API_KEY}&units=metric"
+        api_call = f"https://api.openweathermap.org/data/2.5/onecall/timemachine?lat={gps['lat']}&lon={gps['lon']}&dt={str(int(timestamp))}&appid={config.OPEN_WEATHER_API_KEY}&units=metric"
     else:
-        api_call = f"https://api.openweathermap.org/data/2.5/weather?lat={gps['lat']}&lon={gps['lon']}&appid={OPEN_WEATHER_API_KEY}&units=metric"
+        api_call = f"https://api.openweathermap.org/data/2.5/weather?lat={gps['lat']}&lon={gps['lon']}&appid={config.OPEN_WEATHER_API_KEY}&units=metric"
 
     results = requests.get(api_call)
     results = results.json()
@@ -559,7 +559,7 @@ def _process_thermal_images(images: List[ImageOut], report_id: int, db: Session,
         scale = camera_specific_keys.get(camera_model, {}).get("ir", {}).get("ir_scale") or \
                 camera_specific_keys.get("default", {}).get("ir", {}).get("ir_scale", 0.4)
 
-        target_path = UPLOAD_DIR / str(report_id) / "thermal" / f"{thermal_image.id}.npy"
+        target_path = config.UPLOAD_DIR / str(report_id) / "thermal" / f"{thermal_image.id}.npy"
 
         thermal_metadata_list.append({
             "url": thermal_image.url,

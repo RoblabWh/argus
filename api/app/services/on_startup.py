@@ -1,5 +1,5 @@
 import redis
-from app.config import REDIS_HOST, REDIS_PORT
+from app.config import config
 from app.schemas.report import ReportOut
 from app.database import get_db
 from sqlalchemy.orm import Session
@@ -8,7 +8,7 @@ import app.crud.report as crud
 def cleanup_lost_tasks():
     """Cleans up lost tasks by checking the Redis database for reports that are in progress but not completed."""
 
-    r = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, db=0)
+    r = redis.Redis(host=config.REDIS_HOST, port=config.REDIS_PORT, db=0)
     db = next(get_db())
     
     #get reports and if the status is processing, preprocessing or queued, check redis for progress and if there is one end it and set to failed

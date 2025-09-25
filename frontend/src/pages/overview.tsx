@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/select";
 import { ArrowDown, ArrowUp } from "lucide-react";
 import type { Group } from '@/types/group';
+import { EditGroupPopup } from '@/components/group/EditGroupPopup';
 
 export default function Overview() {
   const { setBreadcrumbs } = useBreadcrumbs();
@@ -25,6 +26,7 @@ export default function Overview() {
   const [selectedGroupId, setSelectedGroupId] = useState<number | null>(null);
   const [isNewGroupOpen, setIsNewGroupOpen] = useState(false)
   const [isNewReportOpen, setIsNewReportOpen] = useState(false);
+  const [isEditGroupOpen, setIsEditGroupOpen] = useState(false);
   const [showRawData, setShowRawData] = useState(false);
   const { data: groups, isLoading, error } = useGroups();
   const [sortBy, setSortBy] = useState<"created_at" | "name" | "id">("created_at");
@@ -56,6 +58,11 @@ export default function Overview() {
   const handleAddReport = (groupId: number, groupName: string) => {
     setSelectedGroupId(groupId);
     setIsNewReportOpen(true);
+  };
+
+  const onEditGroupDetailsClick = (groupId: number) => {
+    setSelectedGroupId(groupId);
+    setIsEditGroupOpen(true);
   };
 
 
@@ -97,7 +104,7 @@ export default function Overview() {
       </div>
 
       {sortedGroups.map((group) => (
-        <GroupCard key={group.id} group={group} handleAddReport={handleAddReport} />
+        <GroupCard key={group.id} group={group} handleAddReport={handleAddReport} handleEditGroup={onEditGroupDetailsClick} />
       ))}
 
       <NewGroupPopup open={isNewGroupOpen} onOpenChange={setIsNewGroupOpen} />
@@ -118,6 +125,16 @@ export default function Overview() {
           {/* Print every property of the report object */}
           <pre>{JSON.stringify(groups, null, 2)}</pre>
         </div>
+      )}
+
+      {selectedGroupId && (
+        <EditGroupPopup
+          open={isEditGroupOpen}
+          onOpenChange={setIsEditGroupOpen}
+          groupId={selectedGroupId}
+          initialName={groups.find(g => g.id === selectedGroupId)?.name || ""}
+          initialDescription={groups.find(g => g.id === selectedGroupId)?.description || ""}
+        />
       )}
 
     </div>

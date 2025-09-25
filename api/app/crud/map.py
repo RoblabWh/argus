@@ -1,10 +1,12 @@
 from sqlalchemy.orm import Session, joinedload
 from datetime import datetime
 import redis
+from pathlib import Path
 
 from app import models
 from app.schemas.map import MapCreate, MapUpdate
 from app.schemas.map import MapElementCreate, MapElementUpdate
+from app.services.cleanup import delete_file
 
 def get_all(db: Session):
     return db.query(models.Map).all()
@@ -36,8 +38,11 @@ def create(db: Session, data: MapCreate):
 def delete(db: Session, map_id: int):
     map_to_delete = db.query(models.Map).filter(models.Map.id == map_id).first()
     if map_to_delete:
+        image_url = map_to_delete.url
         db.delete(map_to_delete)
         db.commit()
+        if image_url:
+            delete_file(Path(image_url))
         return True
     return False
 

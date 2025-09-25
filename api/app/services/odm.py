@@ -2,26 +2,19 @@ import time
 import requests
 import os
 import json
-from app.config import (
-    WEBODM_ENABLED,
-    WEBODM_URL,
-    WEBODM_USERNAME,
-    WEBODM_PASSWORD,
-    UPLOAD_DIR,
-)
+from app.config import config
 
 import logging
-
 logger = logging.getLogger(__name__)
 
 
 class WebodmManager:
     def __init__(
         self,
-        active=WEBODM_ENABLED,
-        url=WEBODM_URL,
-        username=WEBODM_USERNAME,
-        password=WEBODM_PASSWORD,
+        active=config.WEBODM_ENABLED,
+        url=config.WEBODM_URL,
+        username=config.WEBODM_USERNAME,
+        password=config.WEBODM_PASSWORD,
     ):
         self.active = active
         self.url = url
@@ -32,6 +25,9 @@ class WebodmManager:
             self.authentication = self.authenticate()
 
     def authenticate(self):
+        self.password = config.WEBODM_PASSWORD
+        self.username = config.WEBODM_USERNAME
+        self.url = config.WEBODM_URL
         try_count = 0
         while try_count < 5:
             try:
@@ -44,18 +40,18 @@ class WebodmManager:
                 if response.status_code == 200:
                     return response.json()["token"]
             except requests.exceptions.ConnectionError:
-                pass
+                logger.error(f"Connection error when connecting to WebODM at {self.url}, retrying...")
             try_count += 1
             time.sleep(1)
 
         if try_count == 5:
-            print(
+            logger.error(
                 'Failed to connect to WebODM Server "{}", timeout exceeded'.format(
                     self.url
                 )
             )
         else:
-            print(
+            logger.warning(
                 'Failed to connect to WebODM Server "{}", with http status code {}'.format(
                     self.url, response.status_code
                 )
@@ -67,7 +63,27 @@ class WebodmManager:
             return False
         if not self.authentication:
             self.authentication = self.authenticate()
-        return self.authentication is not None and self.authentication != ""
+        
+        tries = 0
+        while tries < 2 and (self.authentication is not None and self.authentication != ""):
+            try:
+                response = requests.get(
+                    f"{self.url}/api/projects/",
+                    headers={"Authorization": "JWT {}".format(self.authentication)},
+                )
+                if response.status_code == 200:
+                    return True
+                else:
+                    logger.warning(f"WebODM connection check failed with status code {response.status_code} in {tries+1}. try")
+                    if tries == 0:
+                        self.authentication = self.authenticate()
+                    else:
+                        return False
+            except requests.exceptions.RequestException as e:
+                self.authentication = self.authenticate()
+            tries += 1
+        
+        return False
 
     def get_all_projects(self):
         if not self.check_connection():
@@ -218,7 +234,7 @@ class WebodmManager:
         if not self.check_connection():
             return None
 
-        path = UPLOAD_DIR / f"{report_id}/ODM-{task_id}orthophoto.tif"
+        path = config.UPLOAD_DIR / f"{report_id}/ODM-{task_id}orthophoto.tif"
 
         response = requests.get(
             "{}/api/projects/{}/tasks/{}/download/orthophoto.tif".format(

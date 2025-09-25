@@ -5,7 +5,6 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from fastapi.concurrency import run_in_threadpool
 import app.services.thermal.thermal_processing as thermal_processing
-from app.config import UPLOAD_DIR
 
 
 from app.database import get_db
@@ -111,12 +110,7 @@ def get_thermal_matrix(image_id: int, db: Session = Depends(get_db)):
         if not image.url:
             raise HTTPException(status_code=400, detail="Image URL is not available for parsing")
         
-        # :
-        # target_path = UPLOAD_DIR / str(image.mapping_report_id) / "thermal" / f"{image.id}.npy"
-        # thermal_matrix, min_temp, max_temp = thermal_processing.parse_thermal_image(image.url)
-        # thermal_processing.save_as_temperature_matrix(thermal_matrix, target_path)
-        # # update database with the path
-        # crud_image.update_thermal_matrix_path(db, image_id, str(target_path))
+        
         return None
     else:
         raise HTTPException(status_code=404, detail="Thermal data not available for this image")

@@ -6,13 +6,15 @@ import { useState } from "react";
 import { Edit, Trash2, Plus, ChevronUp, ChevronDown } from "lucide-react"
 import { motion, AnimatePresence } from "motion/react";
 import { ReportTable } from "@/components/overview/ReportTable";
+import { useDeleteGroup } from "@/hooks/groupHooks";
 
 interface Props {
   group: Group;
   handleAddReport: (groupId: number, groupName: string) => void;
+  handleEditGroup: (groupId: number) => void;
 }
 
-export function GroupCard({ group, handleAddReport }: Props) {
+export function GroupCard({ group, handleAddReport, handleEditGroup }: Props) {
   const [isExpanded, setIsExpanded] = useState(false);
   if (!group) {
     return <div className="text-red-500">Group not found</div>;
@@ -24,6 +26,15 @@ export function GroupCard({ group, handleAddReport }: Props) {
     // link to group report page with react
     window.location.href = `/group/${group.id}`;
   }
+
+  const { mutate: deleteGroup } = useDeleteGroup();
+
+  const handleDeleteGroup = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (confirm(`Are you sure you want to delete the group "${group.name}"? This action cannot be undone.`)) {
+      deleteGroup(group.id);
+    }
+  };
 
   return (
     <div className="group">
@@ -63,11 +74,11 @@ export function GroupCard({ group, handleAddReport }: Props) {
           <Button variant="outline" className="cursor-pointer" onClick={(e) => openGroupReport(e)}>
             Group Report
           </Button>
-          
-          <Button variant="outline" className="ml-2" onClick={(e) => { e.stopPropagation(); alert(`Editing group ${group.id}`); }}>
-            <Edit className="" />  
+
+          <Button variant="outline" className="ml-2" onClick={(e) => { e.stopPropagation(); handleEditGroup(group.id); }}>
+            <Edit className="" />
           </Button>
-          <Button variant="destructive" className="ml-2" onClick={(e) => { e.stopPropagation(); confirm(`Deleting group ${group.id}`); }}>
+          <Button variant="destructive" className="ml-2" onClick={(e) => {handleDeleteGroup(e)}}>
             <Trash2 className="" />
           </Button>
         </div>

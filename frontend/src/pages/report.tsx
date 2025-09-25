@@ -8,6 +8,7 @@ import { useMaps, useMapsSlim } from '@/hooks/useMaps';
 import { Upload } from '@/components/report/Upload';
 import { MappingReport } from '@/components/report/MappingReport';
 import { m } from 'motion/react';
+import { useQueryClient } from '@tanstack/react-query';
 
 export default function ReportOverview() {
   const { report_id } = useParams<{ report_id: string }>();
@@ -15,6 +16,8 @@ export default function ReportOverview() {
   const { data: initialReport, isLoading, error, refetch: refetchFullReport } = useReport(Number(report_id));
   const { data: mapsData, refetch: refetchMaps } = useMaps(Number(report_id), false);
   const { data: slimMapsData, refetch: refetchSlimMaps } = useMapsSlim(Number(report_id), false);
+  const queryClient = useQueryClient();
+
 
   const prevStatusRef = useRef<string | null>(null);
 
@@ -74,7 +77,9 @@ export default function ReportOverview() {
         const newMaps = slimMapsData.filter(slimMap => !liveMaps.some(liveMap => liveMap.id === slimMap.id));
         if (newMaps.length > 0) {
           console.log("New maps found in slim data, refetching full maps...");
+          queryClient.invalidateQueries({ queryKey: ["maps", report_id] });
           refetchMaps();
+          // invalidate ["maps", reportId],
           return;
         }
       }

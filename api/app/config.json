@@ -1,0 +1,9 @@
+{
+    "DRZ_BACKEND_URL": "",
+    "DRZ_AUTHOR_NAME": "ARGUS",
+    "DETECTION_COLORS": {
+        "fire": "#ff0044",
+        "vehicle": "#00ffff",
+        "human": "#eeff00"
+    }
+}
