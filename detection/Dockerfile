@@ -1,15 +1,16 @@
-ARG PYTORCH="2.2.0"
-ARG CUDA="12.1"
-ARG CUDNN="8"
+ARG PYTORCH="2.7.0" # PYTORCH="2.2.0" new for the 5090
+ARG CUDA="12.8" # CUDA="12.1"
+ARG CUDNN="9" # CUDNN="8"
 
 FROM pytorch/pytorch:${PYTORCH}-cuda${CUDA}-cudnn${CUDNN}-devel
 
-# Hugging Face cache location
+# Hugging Face cache location; 12.0 added to arch_list for the 5090 
 ENV HF_HOME="/data/.huggingface" \
-    TORCH_CUDA_ARCH_LIST="6.0 6.1 7.0 7.5 8.0 8.6+PTX" \
+    TORCH_CUDA_ARCH_LIST="6.0 6.1 7.0 7.5 8.0 8.6+PTX 12.0" \
     TORCH_NVCC_FLAGS="-Xfatbin -compress-all" \
     CMAKE_PREFIX_PATH="$(dirname $(which conda))/../" \
-    FORCE_CUDA="1"
+    FORCE_CUDA="1" # Force all extensions to use CUDA
+    TORCH_USE_CUDA_DSA=1 # Enable CUDA Dynamic Parallelism debug support
 
 # Install system dependencies
 RUN apt-get update \
