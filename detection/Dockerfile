@@ -9,8 +9,8 @@ ENV HF_HOME="/data/.huggingface" \
     TORCH_CUDA_ARCH_LIST="6.0 6.1 7.0 7.5 8.0 8.6+PTX 12.0" \
     TORCH_NVCC_FLAGS="-Xfatbin -compress-all" \
     CMAKE_PREFIX_PATH="$(dirname $(which conda))/../" \
-    FORCE_CUDA="1" # Force all extensions to use CUDA
-    TORCH_USE_CUDA_DSA=1 # Enable CUDA Dynamic Parallelism debug support
+    FORCE_CUDA="1" \
+    TORCH_USE_CUDA_DSA=1
 
 # Install system dependencies
 RUN apt-get update \
