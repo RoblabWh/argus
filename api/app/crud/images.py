@@ -147,6 +147,8 @@ def update_thermal_matrix_path(db: Session, image_id: int, new_path: str):
 
 def get_images_for_detection(db: Session, mapping_report_id: int):
     images = db.query(models.Image).filter(models.Image.mapping_report_id == mapping_report_id).all()
+    # filter out thermal images
+    images = [image for image in images if not image.thermal]
     # return [{"path": image.url, "id": image.id} for image in images if not image.thermal]
     #convert images to list of dicts
     images = [{"url": image.url, "id": image.id, "coord": image.coord} for image in images]

@@ -47,7 +47,7 @@ export interface UploadFile {
   preview?: string;
   progress?: number;
   isExisting?: boolean;
-  imageObject?: Partial<Image>; // Assuming Image type has id, filename, thumbnail_url
+  imageObject?: Partial<ImageBasic>; // Assuming Image type has id, filename, thumbnail_url
 };
 
 export interface GPSCoord {

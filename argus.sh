@@ -6,12 +6,12 @@ ARGUS_PATH="$(dirname "$(realpath "${BASH_SOURCE[0]}")")"
 echo "Argus path is $ARGUS_PATH"
 
 # Parse CLI arguments
-FORCE_UPDATE_IP=false
+FORCE_UPDATE_IP=true
 ARGS=()
 
 for arg in "$@"; do
-  if [ "$arg" == "--refresh-ip" ]; then
-    FORCE_UPDATE_IP=true
+  if [ "$arg" == "--keep-ip" ]; then
+    FORCE_UPDATE_IP=false
   else
     ARGS+=("$arg")
   fi

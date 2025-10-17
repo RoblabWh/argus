@@ -26,6 +26,7 @@ def _get_keys(model_name: str) -> dict:
         all_keys = json.load(file)
         keys = all_keys.get(model_name, {})
         if keys == {}:
+            #print(f"No keys found for {model_name}, falling back to default.", flush=True)
             keys = all_keys.get("default", {})
     return keys
 
@@ -54,27 +55,29 @@ def extract_image_metadata(image_path: str) -> dict:
         "thermal": False,  # will be set later
         "mappable": False,  # will be set later
     }
+    #print(f"extracted data for {model_name}: {data}", flush=True)
     
     data["thermal"] = _check_thermal(
         metadata, datakeys, data, os.path.basename(image_path)
     )
+    #print(f"Image thermal check for {model_name}: {data['thermal']}", flush=True)
 
     try:
         mappable, mapping_data = _extract_mapping_data(metadata, datakeys, data)
         if mapping_data:
             data["mappable"] = mappable
             data["mapping_data"] = mapping_data
-    except ValueError as e:
+    except Exception as e:
         print(f"Error extracting mapping data: {e}", flush=True)
         mapping_data = None
     
-
+    #print(f"Image mappable check for {model_name}: {data['mappable']}", flush=True)
 
 
     # check if some values need adjustment
     if datakeys.get("adjust_data", False):
         data = _adjust_data(model_name, data)
-
+    #print(f"adjusted data for {model_name}: {data}", flush=True)
     #print(f"final data for {model_name}: {data}", flush=True)
 
     return data
