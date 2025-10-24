@@ -1,3 +1,4 @@
+import React from "react";
 import { useState, useEffect, useRef, useMemo, use } from "react";
 import type { Report } from "@/types/report";
 import type { Image, ImageBasic, Coord, UTMCoord, GPSCoord } from "@/types/image";
@@ -33,14 +34,6 @@ import { useImages } from "@/hooks/imageHooks";
 import { useMaps } from "@/hooks/useMaps";
 import { useDetections, useUpdateDetectionBatch } from "@/hooks/detectionHooks";
 
-interface Props {
-    reportId: number;
-    selectImageOnMap: (image_id: number) => void;
-    thresholds: { [key: string]: number };
-    visibleCategories: { [key: string]: boolean };
-    visibleMapOverlays: { [mapId: number]: boolean };
-    setVisibleMapOverlays: (overlays: { [mapId: number]: boolean }) => void;
-}
 
 
 
@@ -100,7 +93,15 @@ export function extractFlightTrajectory(images: ImageBasic[]): LatLng[] {
 }
 
 
-export function MapTab({ reportId, selectImageOnMap, thresholds, visibleCategories, visibleMapOverlays, setVisibleMapOverlays }: Props) {
+interface Props {
+    reportId: number;
+    selectImageOnMap: (image_id: number) => void;
+    thresholds: { [key: string]: number };
+    visibleCategories: { [key: string]: boolean };
+    visibleMapOverlays: { [mapId: number]: boolean };
+    setVisibleMapOverlays: (overlays: { [mapId: number]: boolean }) => void;
+}
+function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCategories, visibleMapOverlays, setVisibleMapOverlays }: Props) {
     const [overlayOpacity, setOverlayOpacity] = useState(1.0);
     const [map, setMap] = useState<LeafletMap | null>(null);
     const { data: images } = useImages(reportId);
@@ -603,3 +604,5 @@ function HomeButton({ bounds, center }: { bounds: LatLngBoundsExpression | null,
         </div>
     );
 }
+
+export const MapTab = React.memo(MapTabComponent);

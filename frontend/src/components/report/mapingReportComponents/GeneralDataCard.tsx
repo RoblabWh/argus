@@ -9,9 +9,10 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal } from "lucide-react";
+import { MoreHorizontal, Share } from "lucide-react";
 import type { Report } from '@/types/report';
 import { EditReportPopup } from "../EditReportPopup";
+import { ShareMapImagesPopup } from './ShareMapImagesPopup';
 
 interface Props {
     report: Report;
@@ -21,10 +22,15 @@ interface Props {
 export function GeneralDataCard({ report, onReprocessClicked }: Props) {
     const isProcessing = report.status === 'processing' || report.status === 'preprocessing';
     const [editPopupOpen, setEditPopupOpen] = useState(false);
+    const [sharePopupOpen, setSharePopupOpen] = useState(false);
 
     const onEditDetailsClick = () => {
         setEditPopupOpen(true);
     };
+
+    const onShareMapClicked = () => {
+        setSharePopupOpen(true);
+    }
     
     return (
         <>
@@ -98,6 +104,7 @@ export function GeneralDataCard({ report, onReprocessClicked }: Props) {
                             <DropdownMenuContent align="end">
                                 <DropdownMenuItem onClick={onEditDetailsClick}> Edit details</DropdownMenuItem>
                                 <DropdownMenuItem onClick={onReprocessClicked}>Reprocess</DropdownMenuItem>
+                                <DropdownMenuItem onClick={onShareMapClicked}>Share Map Images</DropdownMenuItem>
                                 <DropdownMenuItem>Export</DropdownMenuItem>
                                 <DropdownMenuItem className="text-red-600">Delete</DropdownMenuItem>
                             </DropdownMenuContent>
@@ -112,6 +119,12 @@ export function GeneralDataCard({ report, onReprocessClicked }: Props) {
             reportId={report.report_id}
             initialTitle={report.title}
             initialDescription={report.description}
+        />
+        <ShareMapImagesPopup
+            open={sharePopupOpen}
+            onOpenChange={setSharePopupOpen}
+            reportId={report.report_id}
+            drzBackendApi="https://lets.try.this"
         />
         </>
     );

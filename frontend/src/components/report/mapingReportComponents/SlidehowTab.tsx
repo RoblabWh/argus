@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from "react";
+import React, { useRef, useEffect, useState, useMemo } from "react";
 import { Stage, Layer, Image as KonvaImage, Rect } from "react-konva";
 import type { Image, ImageBasic } from "@/types/image";
 import { ThermalSettingsPopup } from "./thermalSettingsPopup";
@@ -77,6 +77,9 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
     const [backgroundImageName, setBackgroundImageName] = useState<string | null>(null);
     const [backgroundImage] = useImage(backgroundImageUrl || "");
     const [opacity, setOpacity] = useState(1);
+    const imageFilename = useMemo(() => {
+        return `${selectedImage?.filename ?? ""} ${backgroundImageName ? `(${backgroundImageName})` : ""}`;
+    }, [selectedImage, backgroundImageName]);
 
     const [showOpacityPanel, setShowOpacityPanel] = useState(false);
 
@@ -847,11 +850,11 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
                 <Tooltip>
                     <TooltipTrigger className={`flex justify-start ${containerSize.width < 720 ? 'w-20' : 'w-auto'}`}>
                         <div className="text-sm text-muted-foreground whitespace-nowrap overflow-hidden text-ellipsis">
-                            {selectedImage?.filename ?? ""} {backgroundImageName ? `(${backgroundImageName})` : ""}
+                            {imageFilename}
                         </div>
                     </TooltipTrigger>
                     <TooltipContent>
-                        <p>{selectedImage?.filename ?? ""} {backgroundImageName ? `(${backgroundImageName})` : ""}</p>
+                        <p>{imageFilename}</p>
                     </TooltipContent>
                 </Tooltip>
 

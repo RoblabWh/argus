@@ -7,6 +7,7 @@ import { ExternalLink } from "lucide-react";
 import { useWebODMTasks } from "@/hooks/useODMTasks";
 import { useODMProjectID } from "@/hooks/useODMProjectID";
 import { createLucideIcon } from 'lucide-react';
+import { useWebODM } from "@/hooks/useWebODM";
 import type { IconNode } from 'lucide-react';
 
 const iconNode: IconNode = [
@@ -23,14 +24,16 @@ const WebODMLogo = createLucideIcon("webodm-logo", iconNode);
 export { WebODMLogo };
 
 type Props = {
-    isWebODMAvailable: boolean;
-    webODMURL?: string;
     webODMProjectID?: string | null;
     reportID?: number;
     progress?: number;
 };
 
-export function WebOdmCard({ isWebODMAvailable, webODMURL, webODMProjectID, reportID, progress }: Props) {
+export function WebOdmCard({  webODMProjectID, reportID, progress }: Props) {
+    const { data: webODMData } = useWebODM();
+    const isWebODMAvailable = webODMData?.is_available || false;
+    const webODMURL = webODMData?.url;
+
     const [activeProjectID, setActiveProjectID] = useState<string | null | undefined>(webODMProjectID);
 
     // Step 1: Try to fetch project ID from server if missing
@@ -70,7 +73,6 @@ export function WebOdmCard({ isWebODMAvailable, webODMURL, webODMProjectID, repo
     //sort tasks by created_at descending
     odmTasks?.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
-    console.log("WebODM Tasks:", odmTasks);
 
 
     return (

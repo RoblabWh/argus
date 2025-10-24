@@ -20,6 +20,7 @@ type ComboButtonProps = {
   onAction: (key: string) => void
   /** extra tailwind classes */
   className?: string
+  disabled?: boolean
 }
 
 /**
@@ -31,6 +32,7 @@ export const ComboButton: React.FC<ComboButtonProps> = ({
   onChange,
   onAction,
   className,
+  disabled = false,
 }) => {
   const selected = options.find((o) => o.key === value)
 
@@ -46,6 +48,7 @@ export const ComboButton: React.FC<ComboButtonProps> = ({
         variant="default"
         className="rounded-r-none"
         onClick={() => onAction(value)}
+        disabled={disabled}
       >
         {selected?.label}
       </Button>

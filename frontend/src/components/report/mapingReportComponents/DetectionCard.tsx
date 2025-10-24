@@ -75,12 +75,13 @@ interface Props {
     report_id: number;
     setThresholds: (thresholds: { [key: string]: number }) => void;
     thresholds: { [key: string]: number };
-    setSearch: (search: string) => void;
+    setFilter: (filter: string[]) => void;
+    filters: string[];
     visibleCategories: { [key: string]: boolean };
     setVisibleCategories: (visibility: { [key: string]: boolean }) => void;
 }
 
-export function DetectionCard({ report_id, setThresholds, thresholds, setSearch, visibleCategories, setVisibleCategories }: Props) {
+export function DetectionCard({ report_id, setThresholds, thresholds, setFilter, filters, visibleCategories, setVisibleCategories }: Props) {
     const [pollingEnabled, setPollingEnabled] = useState(false);
     const isRunning = useIsDetectionRunning(report_id);
     const { data: detections, isLoading: isLoadingDetections, isError: isErrorDetections } = useDetections(report_id);
@@ -222,17 +223,6 @@ export function DetectionCard({ report_id, setThresholds, thresholds, setSearch,
                                             </TableCell>
                                             <TableCell className="w-0 py-1">
                                                 <Button
-                                                    variant="outline"
-                                                    size="icon"
-                                                    className='p-0 m-0'
-                                                    onClick={() => {
-                                                        const thr = thresholds[key];
-                                                        setSearch(`det:${key}-thr:${thr}`);
-                                                    }}
-                                                >
-                                                    <Funnel className="w-4 h-4 p-0 m-0" />
-                                                </Button>
-                                                <Button
                                                     variant={visibleCategories[key] ? "ghost" : "outline"}
                                                     size="icon"
                                                     className={`p-0 m-0 ml-1 ${visibleCategories[key] ? "outline-white" : ""}`}
@@ -245,6 +235,23 @@ export function DetectionCard({ report_id, setThresholds, thresholds, setSearch,
                                                         <EyeOff className="w-4 h-4 p-0 m-0" />
                                                     }
                                                 </Button>
+
+                                                <Button
+                                                    variant="outline"
+                                                    size="icon"
+                                                    className='p-0 m-0'
+                                                    onClick={() => {
+                                                        const thr = thresholds[key];
+                                                        let newFilters = [...filters];
+                                                        if (!filters.includes(key)) {
+                                                            newFilters.push(key);
+                                                        }
+                                                        setFilter(newFilters);
+                                                    }}
+                                                >
+                                                    <Funnel className="w-4 h-4 p-0 m-0" />
+                                                </Button>
+                                                
                                             </TableCell>
 
                                         </TableRow>

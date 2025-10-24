@@ -8,13 +8,15 @@ interface PanoramaViewerProps {
 
 export function PanoramaViewer({ imageUrl }: PanoramaViewerProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const viewerRef = useRef<Viewer | null>(null); // ✅ Properly typed
+  const viewerRef = useRef<Viewer | null>(null);
 
   useEffect(() => {
     if (containerRef.current && !viewerRef.current) {
       viewerRef.current = new Viewer({
         container: containerRef.current,
         panorama: imageUrl,
+        minFov: 8,
+        maxFov: 120,
       });
     }
 

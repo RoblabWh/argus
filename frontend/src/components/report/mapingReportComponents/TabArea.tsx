@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Report } from "@/types/report";
 import type { Image, ImageBasic } from "@/types/image";
@@ -7,10 +7,10 @@ import { MapTab } from "@/components/report/mapingReportComponents/MapTab";
 import { SlideshowTab } from "@/components/report/mapingReportComponents/SlidehowTab";
 import { DataTab } from "@/components/report/mapingReportComponents/DataTab";
 import { useImages } from "@/hooks/imageHooks";
+import { useFilteredImages } from "@/contexts/FileteredImagesContext";
 
 interface Props {
   report: Report;
-  filteredImages?: ImageBasic[];
   selectedImage: ImageBasic | null;
   setSelectedImage: (image: ImageBasic | null) => void;
   tab: string;
@@ -19,20 +19,26 @@ interface Props {
   visibleCategories: { [key: string]: boolean };
 }
 
-export function TabArea({ report, filteredImages, selectedImage, setSelectedImage, tab, setTab, thresholds, visibleCategories }: Props) {
+export function TabArea({ report, selectedImage, setSelectedImage, tab, setTab, thresholds, visibleCategories }: Props) {
   const api_url = getApiUrl();
   const { data: images } = useImages(report.report_id);
   const [visibleMapOverlays, setVisibleMapOverlays] = useState<{ [mapId: number]: boolean }>({});
+  const { filteredImages, } = useFilteredImages();
 
   const onTabChange = (value: string) => {
     setTab(value);
   }
 
 
-  const selectImageOnMap = (image_id: number) => {
+  // const selectImageOnMap = (image_id: number) => {
+  //   setSelectedImage(images?.find(img => img.id === image_id) || null);
+  //   setTab("slideshow");
+  // }
+  const selectImageOnMap = useCallback((image_id: number) => {
     setSelectedImage(images?.find(img => img.id === image_id) || null);
     setTab("slideshow");
-  }
+  }, [images, setSelectedImage, setTab]);
+
 
   const changeImage = (direction: 'next' | 'previous') => {
     if (!filteredImages || filteredImages.length === 0) return;
