@@ -21,7 +21,7 @@ The goal is to build a more robust and professional codebase, making Argus a fut
 **installation and setup**
 
 1. Docker needs to be installed (install nvidia-docker)
-2. clone complete repo (branch) (make sure to use --recursivce)
+2. clone complete repo (branch) (make sure to use --recursive)
    ```git clone --branch major-rewrite --recursive https://github.com/RoblabWh/argus.git```
 4. run  ```./argus.sh up --build```
     - a local .env file will be created during the first launch (or always when the .env is missing), based on env.example
