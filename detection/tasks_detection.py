@@ -64,6 +64,13 @@ def run_detection(report_id: int, images: list[dict], max_splits: int = 0):
             )
         )
 
+        progress_tracker.estimate_total_time(
+            images_count=len(images),
+            splitting=True,
+            max_splitting_steps=max_splits,
+            models=["RoblabWhGe/rescuedet-deformable-detr", "RoblabWhGe/rescuedet-yolos-small"]
+        )
+
         progress_tracker.start_step("starting", step_index=0)
         progress_tracker.set_message("Maybe already loading models...")
 
@@ -86,6 +93,15 @@ def run_detection(report_id: int, images: list[dict], max_splits: int = 0):
 
         datahandler.preprocess()
         data = datahandler.get_data()
+
+        progress_tracker.estimate_time_inference(
+            images_count=len(data),
+            models=models,
+            splitting=max_splits > 0
+        )
+        progress_tracker.estimate_time_postprocessing(
+            images_count=len(data)
+        )
 
         progress_tracker.start_step("Ai processing", step_index=2)
         progress_tracker.set_message("Running inference on images")
