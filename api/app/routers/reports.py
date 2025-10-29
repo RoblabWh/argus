@@ -19,11 +19,12 @@ from app.schemas.report import (
     ProcessingSettings
 )
 
-from app.schemas.map import MapOut
+from app.schemas.map import MapOut, MapSharingData
 from app.services.celery_app import task_is_really_active
 
 import app.services.mapping.processing_manager as process_report_service
 import app.services.image_describer as image_describer_service
+import app.services.drz_backend_sharing as drz_service
 from app.config import config
 import redis
 
@@ -153,3 +154,15 @@ def get_auto_description(report_id: int, db: Session = Depends(get_db)):
         "progress": 100.0,
         "description": report.auto_description
     }
+
+@router.post("/{report_id}/send_map", response_model=dict)
+def send_map(report_id: int, payload: MapSharingData, db:Session = Depends(get_db)):
+    selected_map_id = payload.map_id
+    map_layer = payload.layer_name
+    try: 
+        map = crud.get_mapping_report_map(db, selected_map_id, report_id)
+        message = drz_service.send_map_to_iais(map, map_layer, report_id)
+        return {"sucess": True, "message": message}
+    except Exception as e:
+        message = "Error during upload: " + str(e)
+        return {"success": False, "message": message}

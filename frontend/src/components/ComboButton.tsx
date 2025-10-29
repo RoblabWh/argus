@@ -20,6 +20,7 @@ type ComboButtonProps = {
   onAction: (key: string) => void
   /** extra tailwind classes */
   className?: string
+  children?: React.ReactNode
   disabled?: boolean
 }
 
@@ -32,6 +33,7 @@ export const ComboButton: React.FC<ComboButtonProps> = ({
   onChange,
   onAction,
   className,
+  children,
   disabled = false,
 }) => {
   const selected = options.find((o) => o.key === value)
@@ -50,7 +52,9 @@ export const ComboButton: React.FC<ComboButtonProps> = ({
         onClick={() => onAction(value)}
         disabled={disabled}
       >
-        {selected?.label}
+        <span>{selected?.label}</span>
+        {/* Optional children (spinner, icon, etc.) */}
+        {children}
       </Button>
 
       {/* Dropdown side */}

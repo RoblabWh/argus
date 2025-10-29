@@ -22,7 +22,7 @@ const TopMenuBar: React.FC = () => {
       <div className="flex items-center gap-4">
        <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="outline" className="flex items-center gap-2">
+          <Button variant="ghost" className="flex items-center gap-2">
              <Menu className="w-4 h-4" />
           </Button>
         </DropdownMenuTrigger>

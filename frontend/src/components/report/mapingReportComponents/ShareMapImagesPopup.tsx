@@ -9,7 +9,9 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 import { useMaps } from "@/hooks/useMaps"
 import { getApiUrl } from "@/api"
 import { on } from "events"
-// import { useSendMapToDrz } from "@/hooks/useSendMapToDrz"
+import { useSendMapToDrz } from "@/hooks/useSendMapToDRZ";
+import { Loader2 } from "lucide-react"
+
 
 interface ShareMapImagesPopupProps {
     open: boolean
@@ -28,8 +30,12 @@ export function ShareMapImagesPopup({
     const [selectedMapId, setSelectedMapId] = useState<number | null>(null)
     const [filename, setFilename] = useState<string>("")
     const [layerName, setLayerName] = useState<string>(`argus_report${reportId}`)
+    const [serverMessage, setServerMessage] = useState<string>("");
+
     const { data: maps, isLoading: isLoadingMaps, isError: isErrorMaps } = useMaps(reportId)
     const apiUrl = getApiUrl()
+    const { mutateAsync: sendToDrz, isPending: isSending } = useSendMapToDrz();
+
 
     // Select first map automatically
     useEffect(() => {
@@ -49,6 +55,10 @@ export function ShareMapImagesPopup({
         }
     }, [selectedMapId, maps])
 
+    useEffect(() => {
+        setServerMessage("");
+    }, [sendOption, selectedMapId, layerName]);
+
     const handleSend = async () => {
         if (!selectedMapId || !maps) return
 
@@ -65,7 +75,22 @@ export function ShareMapImagesPopup({
         switch (sendOption) {
             case "drz":
                 console.log("Send to DRZ System", payload)
-                // sendMapToDrz(payload)
+                try {
+                    const resp = await sendToDrz({
+                        reportId,
+                        mapId: selectedMap.id,
+                        layerName,
+                    });
+                    const ok = resp.success
+                    if (ok) {
+                        handleClose();
+                    } else {
+                        setServerMessage(resp.message || "Upload failed.");
+                    }
+                } catch (err: any) {
+                    setServerMessage(err?.message || "Upload failed.");
+                }
+
                 break
 
             case "download":
@@ -82,18 +107,25 @@ export function ShareMapImagesPopup({
                 } catch (err) {
                     console.error("Failed to download map:", err)
                 }
+                handleClose()
                 break
         }
 
-        handleClose()
     }
 
     const handleClose = () => {
         setSelectedMapId(null)
         setFilename("")
         setLayerName(`argus_report${reportId}`)
+        setServerMessage("");
         onOpenChange(false)
     }
+
+    useEffect(() =>{
+        if(open){
+            setServerMessage("");
+        }
+    },[open])
 
     // Info message depending on state
     const infoText = (() => {
@@ -114,7 +146,7 @@ export function ShareMapImagesPopup({
                     <DialogTitle>Share Orthophoto</DialogTitle>
                 </DialogHeader>
 
-                <form className="space-y-4 mt-2">
+                <form className="space-y-4 mt-2" onSubmit={(e) => e.preventDefault()}>
                     {isLoadingMaps ? (
                         <div>Loading maps...</div>
                     ) : isErrorMaps ? (
@@ -172,7 +204,13 @@ export function ShareMapImagesPopup({
                     )}
 
                     {/* Info Text */}
-                    <p className="text-xs text-muted-foreground italic">{infoText}</p>
+                    {/* Info Text + Server Message */}
+                    <div className="space-y-1">
+                        <p className="text-xs text-muted-foreground italic">{infoText}</p>
+                        {serverMessage && (
+                            <p className="text-xs text-red-600">{serverMessage}</p>
+                        )}
+                    </div>
 
                     <DialogFooter className="pt-4 flex justify-between">
                         <DialogClose asChild>
@@ -188,8 +226,12 @@ export function ShareMapImagesPopup({
                             ]}
                             onChange={(key) => setSendOption(key as typeof sendOption)}
                             onAction={handleSend}
-                            disabled={!hasMaps}
-                        />
+                            disabled={!hasMaps || isSending}
+                        >
+                            {isSending && (
+                                <Loader2 className="ml-2 h-4 w-4 animate-spin" />
+                            )}
+                        </ComboButton>
                     </DialogFooter>
                 </form>
             </DialogContent>

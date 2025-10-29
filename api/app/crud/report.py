@@ -362,3 +362,18 @@ def set_auto_description(db: Session, report_id: int, description: str):
     db.commit()
     db.refresh(report)
     return report.auto_description
+
+
+def get_mapping_report_map(db: Session, map_id: int, report_id:int):
+    map = db.query(models.Map).filter(models.Map.id == map_id).first()
+    if not map:
+        raise ValueError(f"Map not found (map_id: {map_id})")
+    
+    mapping_report = db.query(models.MappingReport).filter(models.MappingReport.report_id == report_id).first()
+    if not mapping_report:
+        raise ValueError(f"Mapping Report for report_id ({report_id}) not found")
+    
+    if not map.mapping_report_id == mapping_report.id:
+        raise ValueError(f"Trying to access a map from another report")
+    
+    return map

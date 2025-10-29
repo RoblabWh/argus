@@ -90,6 +90,8 @@ export const deleteDetection = (detection_id: number) => deleteRequest(`/detecti
 export const updateDetectionBatch = (report_id: number, data: Detection[]) => postJson<any>(`/detections/r/${report_id}/batch_update`, data, "PUT");
 export const sendDetectionToDrz = (geometry: Geometry, properties: Properties) => postJson<{ message: string }>("/detections/send_to_iais", { geometry, properties });
 
+export const sendMapToDrz = (reportId: number, data: { map_id: number; layer_name: string } ) => postJson<{success: boolean; message:string}>(`/reports/${reportId}/send_map`, data);
+
 export const startAutoDescription = (report_id: number) => postJson<{ status: string }>(`/reports/${report_id}/auto_description`, {});
 export const getAutoDescription = (report_id: number) => fetchJson<{ report_id: number, status: string, progress: number, description: string }>(`/reports/${report_id}/auto_description`);
 

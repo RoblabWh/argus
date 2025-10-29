@@ -73,3 +73,9 @@ class MapElementOut(MapElementBase):
 
     class Config:
         orm_mode = True
+
+
+
+class MapSharingData(BaseModel):
+    map_id: int
+    layer_name: str

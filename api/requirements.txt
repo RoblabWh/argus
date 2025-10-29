@@ -19,3 +19,5 @@ imutils
 rasterio
 psutil
 langchain-ollama
+geoserver-rest
+

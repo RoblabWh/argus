@@ -16,6 +16,8 @@ import {
 import { Separator } from "@/components/ui/separator"
 import { useBreadcrumbs } from "@/contexts/BreadcrumbContext";
 import { useTheme } from "@/components/ui/theme-provider";
+import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
 
 
 export default function Home() {
@@ -23,11 +25,11 @@ export default function Home() {
   const { theme } = useTheme();
 
   const current = theme === "system"
-  ? window.matchMedia("(prefers-color-scheme: dark)").matches
-    ? "dark"
-    : "light"
-  : theme;
-  
+    ? window.matchMedia("(prefers-color-scheme: dark)").matches
+      ? "dark"
+      : "light"
+    : theme;
+
   useEffect(() => {
     setBreadcrumbs([]);
   }, []);
@@ -53,9 +55,15 @@ export default function Home() {
           </div>
         </CardContent>
         <CardFooter>
-          <p>New version (coming soon!)</p>
+          <p>Development-Release</p>
         </CardFooter>
+
       </Card>
+      <div className="w-full flex justify-center items-center mt-10">
+        <Button variant="default" asChild>
+          <Link to="/overview">Go to Projects</Link>
+        </Button>
+      </div>
     </>
   )
 }

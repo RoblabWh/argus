@@ -7,6 +7,13 @@ iais_url = "https://fake-rlw.rettungsrobotik.de/"
 iais_url = "https://eve.iais.fraunhofer.de/"
 import logging
 logger = logging.getLogger(__name__)
+from app.config import config
+from app.models.map import Map 
+import os
+import cv2
+import rasterio
+from geo.Geoserver import Geoserver
+
 
 def send_geojson_poi_to_iais(geometry: dict, properties: dict):
 
@@ -105,26 +112,84 @@ def send_geojson_poi_to_iais(geometry: dict, properties: dict):
 
 
 
-# def send_map_to_iais( maps, report_id):
-#     message = "Sending maps to iais"
-#     for map_data in maps:
-#         file_path = map_data['file'].replace('png', 'tif')
-#         #test if file exists
-#         if not os.path.exists(file_path):
-#             print(f"File {file_path} does not exist", flush=True)
-#             message += f"\nFile {file_path} does not exist"
-#             continue
-#         else:
-#             print(f"File {file_path} exists", flush=True)
+def send_map_to_iais(map:Map, layer:str, report_id:int):
+    logger.info("Sending file to iais")
+    message = "Sending maps to iais"
 
-#         #send file to iais
-#         print("Sending file to iais", flush=True)
+    geotiff_path = get_geo_tiff(map)
+    logger.info(geotiff_path)
+    #send file to iais
+    settings = config.local_settings['DRZ_BACKEND_URL']
+    logger.info(settings)
+    if geotiff_path == None:
+        return "failed to send"
+    geo_server_url = config.local_settings['DRZ_BACKEND_URL']
+    logger.info(f"geo_server_url{geo_server_url}")
 
-#         try:
-#             filename = os.path.basename(file_path)
-#             response = self.geo.create_coveragestore(layer_name=f"argus_{report_id}_{filename}", path=file_path, workspace='DRZ')
-#             print(response, flush=True)
-#         except Exception as e:
-#             print(f"Error while sending file to iais: {e}", flush=True)
-#             message += f"\nError while sending file to iais: {e}"
-#     return message
+    # try:
+    geo = Geoserver()#, username=geo_server_username, password=geo_server_password)
+    # filename = os.path.basename(geotiff_path)
+    response = geo.create_coveragestore(layer_name=layer, path=geotiff_path, workspace='DRZ')
+    logger.info(response, flush=True)
+    # except Exception as e:
+    #     logger.info(f"Error while sending file to iais: {e}")
+    #     message += f"\nError while sending file to iais: {e}"
+    return message
+
+def get_geo_tiff(map:Map):
+    file_path = map.url.replace('png', 'tif')
+    mapping = map.bounds
+
+    
+    #test if file exists
+    #if not os.path.exists(file_path):
+    if not create_geo_tiff(map): return None
+    
+    print(f"File {file_path} exists", flush=True)
+    return file_path
+
+def create_geo_tiff(map:Map):
+    img_path = map.url
+    geotiff_path = map.url.replace('png', 'tif')
+    bounds = map.bounds
+    corners = bounds["corners"]["gps"]
+
+
+    logger.info(f"trying to convert map {img_path} into geotiff based on bounds ({bounds}) with corners: {corners}")
+
+
+    img = cv2.imread(img_path, cv2.IMREAD_UNCHANGED)
+    if img is None:
+        raise ValueError("Error loading image. Check the file path.")
+
+    # Ensure the image has 4 channels (RGBA)
+    if img.shape[-1] == 3:
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2BGRA)
+    elif img.shape[-1] == 4:
+        img = cv2.cvtColor(img, cv2.COLOR_BGRA2RGBA)
+
+    height, width = img.shape[:2]
+
+    #get the smallest and largest lat and lon from the corners
+    min_lon = min([corner[0] for corner in corners])
+    min_lat = min([corner[1] for corner in corners])
+    max_lon = max([corner[0] for corner in corners])
+    max_lat = max([corner[1] for corner in corners])
+
+    # Compute affine transformation
+    transform = rasterio.transform.from_bounds(min_lon, min_lat, max_lon, max_lat, width, height)
+
+    # Create GeoTIFF with affine transformation
+    with rasterio.open(
+            geotiff_path, 'w', driver='GTiff',
+            height=height, width=width,
+            count=4, dtype=img.dtype.name,  # Assuming RGBA
+            crs='EPSG:4326',  # WGS84 coordinate system
+            transform=transform,  # Now using a valid affine transform
+            compress='DEFLATE',
+            tiled=True,
+    ) as dst:
+        for band in range(4):  # RGBA bands
+            dst.write(img[:, :, band], band + 1)
+    
+    return True

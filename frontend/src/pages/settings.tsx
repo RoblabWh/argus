@@ -10,6 +10,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Lock, Unlock, Info } from 'lucide-react';
 import { useSettings, useUpdateDetectionColors, useUpdateDrzSettings, useUpdateWeatherSettings, useUpdateWebodmSettings } from '@/hooks/settingsHooks';
 import type { SettingsData } from '@/types/settings';
+
+
 // Simple color picker wrapper
 function ColorPicker({
   value,
