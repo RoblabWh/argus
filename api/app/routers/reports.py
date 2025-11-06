@@ -162,7 +162,7 @@ def send_map(report_id: int, payload: MapSharingData, db:Session = Depends(get_d
     try: 
         map = crud.get_mapping_report_map(db, selected_map_id, report_id)
         message = drz_service.send_map_to_iais(map, map_layer, report_id)
-        return {"sucess": True, "message": message}
+        return {"sucess": True, "message": "successfully sent map to DRZ backend"}
     except Exception as e:
         message = "Error during upload: " + str(e)
         return {"success": False, "message": message}

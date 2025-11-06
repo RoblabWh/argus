@@ -39,6 +39,8 @@ def get_all_settings():
         "WEBODM_PASSWORD": env_vars.get("WEBODM_PASSWORD", ""),
         "DRZ_BACKEND_URL": local_vars.get("DRZ_BACKEND_URL", ""),
         "DRZ_AUTHOR_NAME": local_vars.get("DRZ_AUTHOR_NAME", ""),
+        "DRZ_BACKEND_USERNAME": local_vars.get("DRZ_BACKEND_USERNAME", ""),
+        "DRZ_BACKEND_PASSWORD": local_vars.get("DRZ_BACKEND_PASSWORD", ""),
         "DETECTION_COLORS": local_vars.get("DETECTION_COLORS", {}),
     }
 
@@ -78,15 +80,21 @@ def update_openweather(settings: OpenWeatherSettings):
 def update_drz(settings: DRZSettings):
     logger.info(f"Updating DRZ settings: {settings}")
     try:
+        url = settings.BACKEND_URL
+        if url:
+            url = settings.BACKEND_URL if (settings.BACKEND_URL[-1] == "/" ) else settings.BACKEND_URL+"/" 
         config.write_local_settings(
             {
-                "DRZ_BACKEND_URL": settings.BACKEND_URL,
+                "DRZ_BACKEND_URL": url,
                 "DRZ_AUTHOR_NAME": settings.AUTHOR_NAME,
+                "DRZ_BACKEND_USERNAME": settings.BACKEND_USERNAME,
+                "DRZ_BACKEND_PASSWORD": settings.BACKEND_PASSWORD,
             }
         )
         return {"message": "DRZ settings updated."}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    
 
 
 @router.put("/appearance")

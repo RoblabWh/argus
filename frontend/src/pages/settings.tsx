@@ -48,6 +48,8 @@ export default function Settings() {
     WEBODM_PASSWORD: '******',
     DRZ_BACKEND_URL: 'https://drz.example.org',
     DRZ_AUTHOR_NAME: 'ARGUS',
+    DRZ_BACKEND_USERNAME: '',
+    DRZ_BACKEND_PASSWORD: '',
     DETECTION_COLORS: {
       fire: '#ff0000',
       vehicle: '#ff0000',
@@ -95,8 +97,15 @@ export default function Settings() {
     console.log('Save DRZ settings:', {
       backend_url: settings.DRZ_BACKEND_URL,
       author_name: settings.DRZ_AUTHOR_NAME,
+      backend_username: settings.DRZ_BACKEND_USERNAME,
+      backend_password: settings.DRZ_BACKEND_PASSWORD,
     });
-    updateDrzSettings.mutate({ BACKEND_URL: settings.DRZ_BACKEND_URL, AUTHOR_NAME: settings.DRZ_AUTHOR_NAME });
+    updateDrzSettings.mutate({
+      BACKEND_URL: settings.DRZ_BACKEND_URL,
+      AUTHOR_NAME: settings.DRZ_AUTHOR_NAME,
+      BACKEND_USERNAME: settings.DRZ_BACKEND_USERNAME,
+      BACKEND_PASSWORD: settings.DRZ_BACKEND_PASSWORD,
+    });
   }
 
   function saveAppearance() {
@@ -117,6 +126,8 @@ export default function Settings() {
         WEBODM_PASSWORD: settingsData.WEBODM_PASSWORD || '',
         DRZ_BACKEND_URL: settingsData.DRZ_BACKEND_URL || '',
         DRZ_AUTHOR_NAME: settingsData.DRZ_AUTHOR_NAME || '',
+        DRZ_BACKEND_USERNAME: settingsData.DRZ_BACKEND_USERNAME || '',
+        DRZ_BACKEND_PASSWORD: settingsData.DRZ_BACKEND_PASSWORD || '',
         DETECTION_COLORS: {
           fire: settingsData.DETECTION_COLORS.fire || '#ff0000',
           vehicle: settingsData.DETECTION_COLORS.vehicle || '#00ff00',
@@ -254,6 +265,23 @@ export default function Settings() {
                 id="authorName"
                 value={settings.DRZ_AUTHOR_NAME}
                 onChange={(e) => handleChange('DRZ_AUTHOR_NAME', e.target.value)}
+              />
+            </div>
+            <div>
+              <Label htmlFor="backendUsername">Backend Username</Label>
+              <Input
+                id="backendUsername"
+                value={settings.DRZ_BACKEND_USERNAME}
+                onChange={(e) => handleChange('DRZ_BACKEND_USERNAME', e.target.value)}
+              />
+            </div>
+            <div>
+              <Label htmlFor="backendPassword">Backend Password</Label>
+              <Input
+                id="backendPassword"
+                type="password"
+                value={settings.DRZ_BACKEND_PASSWORD}
+                onChange={(e) => handleChange('DRZ_BACKEND_PASSWORD', e.target.value)}
               />
             </div>
             <div className='text-right'>

@@ -8,7 +8,6 @@ import type { Map } from "@/types/map"
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import { useMaps } from "@/hooks/useMaps"
 import { getApiUrl } from "@/api"
-import { on } from "events"
 import { useSendMapToDrz } from "@/hooks/useSendMapToDRZ";
 import { Loader2 } from "lucide-react"
 
@@ -82,6 +81,7 @@ export function ShareMapImagesPopup({
                         layerName,
                     });
                     const ok = resp.success
+                    console.log(resp)
                     if (ok) {
                         handleClose();
                     } else {

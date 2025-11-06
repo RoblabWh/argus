@@ -19,6 +19,8 @@ class OpenWeatherSettings(BaseModel):
 class DRZSettings(BaseModel):
     BACKEND_URL: str
     AUTHOR_NAME: str
+    BACKEND_USERNAME: str
+    BACKEND_PASSWORD: str
 
 
 class AppearanceSettings(BaseModel):

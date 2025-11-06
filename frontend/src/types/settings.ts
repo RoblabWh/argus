@@ -6,6 +6,8 @@ export interface SettingsData {
   WEBODM_PASSWORD: string;
   DRZ_BACKEND_URL: string;
   DRZ_AUTHOR_NAME: string;
+  DRZ_BACKEND_USERNAME: string;
+  DRZ_BACKEND_PASSWORD: string;
   DETECTION_COLORS: {
     fire: string;
     vehicle: string;

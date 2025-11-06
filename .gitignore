@@ -6,5 +6,6 @@ __pycache__/
 
 deprecated/
 api/app/reports_data/
+api/app/config.json
 
 .vscode/

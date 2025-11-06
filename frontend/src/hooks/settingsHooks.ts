@@ -34,7 +34,7 @@ export function useUpdateWeatherSettings() {
 export function useUpdateDrzSettings() {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: (newSettings: { BACKEND_URL: string; AUTHOR_NAME: string }) =>
+        mutationFn: (newSettings: { BACKEND_URL: string; AUTHOR_NAME: string; BACKEND_USERNAME: string; BACKEND_PASSWORD: string; }) =>
             updateDrzSettings(newSettings),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["settings"] });

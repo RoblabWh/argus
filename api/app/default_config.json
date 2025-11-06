@@ -1,6 +1,8 @@
 {
     "DRZ_BACKEND_URL": "",
     "DRZ_AUTHOR_NAME": "ARGUS",
+    "DRZ_BACKEND_USERNAME": "",
+    "DRZ_BACKEND_PASSWORD": "",
     "DETECTION_COLORS": {
         "fire": "#ec5b81",
         "vehicle": "#00ffff",

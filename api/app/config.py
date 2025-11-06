@@ -84,6 +84,7 @@ class Config:
         # file paths
         self.env_path = Path(__file__).resolve().parent.parent / ".env"
         self.config_path = Path(__file__).resolve().parent / "config.json"
+        self.check_config(self.config_path)
 
         # runtime storage
         self._env_vars: dict = {}
@@ -92,7 +93,20 @@ class Config:
         # initial load
         self.refresh()
 
-    
+    def check_config(self, config_path: Path):
+        """Ensure config.json exists, if not create from default."""
+        if config_path.exists():
+            return
+        
+        default_config_path = Path(__file__).resolve().parent / "default_config.json"
+        if not default_config_path.exists():
+            logger.error(f"Default config.json not found at {default_config_path}")
+            return
+
+        logger.info(f"Creating config.json from default at {config_path}")
+        with default_config_path.open() as src, config_path.open("w") as dst:
+            dst.write(src.read())
+
     def _read_env_file(self) -> dict:
         env_vars = {}
         logger.info(f"Reading .env file from {self.env_path}")
@@ -169,6 +183,8 @@ class Config:
         self.DRZ_BACKEND_URL = self._local_settings.get("DRZ_BACKEND_URL", "")
         self.DRZ_AUTHOR_NAME = self._local_settings.get("DRZ_AUTHOR_NAME", "")
         self.DETECTION_COLORS = self._local_settings.get("DETECTION_COLORS", {})
+        self.DRZ_BACKEND_USERNAME = self._local_settings.get("DRZ_BACKEND_USERNAME", "")
+        self.DRZ_BACKEND_PASSWORD = self._local_settings.get("DRZ_BACKEND_PASSWORD", "")
 
     def _get_env(self, key: str, default=None):
         """Lookup key in os.environ first, then .env file, then default."""

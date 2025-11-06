@@ -16,7 +16,11 @@ from geo.Geoserver import Geoserver
 
 
 def send_geojson_poi_to_iais(geometry: dict, properties: dict):
-
+    url = config.local_settings['DRZ_BACKEND_URL'] + 'poi/'
+    token = authenticate_backend(url)
+    coord = geometry["coordinates"]
+    coord += [0.0]
+    geometry["coordinates"] = coord
 
     type = properties['type'] # 1 (Fire), 2 (USAR), 3 (EMS), 4 (Police), 5 (Army), 6 (Other), 7 (Action), 8 (CBuilding), 9 (Command), 10 (People), 11 (Resources), 12 (Active), 13 (ObjectManagement), -1 (All)
     subtype = properties['subtype'] 
@@ -51,7 +55,6 @@ def send_geojson_poi_to_iais(geometry: dict, properties: dict):
 
     # danger_level SUSPECTED (FALSE), ACUTE (TRUE)
     # detection 0 (AUTO), 1 (MANUELL), 2 (VERIFIED)
-
 
 
     # if type == "human":
@@ -96,20 +99,31 @@ def send_geojson_poi_to_iais(geometry: dict, properties: dict):
     }
     print(data, flush=True)
 
-    url = iais_url + 'poi/'
     headers = {
         "accept": "*/*",
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        'Authorization': f'Bearer {token}'
     }
-    response = requests.put(url, headers=headers, data=json.dumps(data), auth=("development", "LookMomNoVPN!"))
+    response = requests.put(url, headers=headers, data=json.dumps(data))
+
 
     if response.status_code == 200:
         return "PUT request successful!"
     else:
         print(f"PUT request failed with status code {response.status_code}", flush=True)
-        return requests.json()
+        return response.json()
 
-
+def authenticate_backend(url):
+    username = config.local_settings['DRZ_BACKEND_USERNAME']
+    password = config.local_settings['DRZ_BACKEND_PASSWORD']
+    response = requests.post(f"{url}token", data={"username": username, "password": password}, timeout=10)
+    token = None
+    if response.status_code == 200:
+        token = response.json().get("access_token")
+    else:
+        logger.info("token authentication failed:")
+        logger.info(response.status_code)        
+    return token
 
 
 def send_map_to_iais(map:Map, layer:str, report_id:int):
@@ -127,10 +141,10 @@ def send_map_to_iais(map:Map, layer:str, report_id:int):
     logger.info(f"geo_server_url{geo_server_url}")
 
     # try:
-    geo = Geoserver()#, username=geo_server_username, password=geo_server_password)
+    geo = Geoserver(f"{geo_server_url}/geoserver")#, username=geo_server_username, password=geo_server_password)
     # filename = os.path.basename(geotiff_path)
     response = geo.create_coveragestore(layer_name=layer, path=geotiff_path, workspace='DRZ')
-    logger.info(response, flush=True)
+    logger.info(response)
     # except Exception as e:
     #     logger.info(f"Error while sending file to iais: {e}")
     #     message += f"\nError while sending file to iais: {e}"
