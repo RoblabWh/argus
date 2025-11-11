@@ -493,7 +493,18 @@ def draw_map(map_elements, voronoi_mask, map_width, map_height, progress_updater
             # logger.info(f"shape of map at roi: {map_img[y1:y2, x1:x2].shape}, shape of voronoi_roi: {voronoi_roi.shape}, shape of image: {image.shape}, index: {index}")
 
             #inside of roi, check voronoi mask index, if index matches, copy pixel data
-            merged_roi = np.where(voronoi_roi == index, image, map_img[y1:y2, x1:x2])
+            if element.matrix_contains_temperature:
+                # merged_roi = np.where(voronoi_roi == index, image, map_img[y1:y2, x1:x2])
+                # merged_roi = np.where(image >= merged_roi + 25, image, merged_roi)
+
+                #inside of the roi always use image unless map_img has temperature values more than 20°C higher than image
+                merged_roi = np.where(voronoi_roi == index, image, map_img[y1:y2, x1:x2])
+                merged_roi = np.where(map_img[y1:y2, x1:x2] >= merged_roi + 20, map_img[y1:y2, x1:x2], merged_roi)
+                #outside of the roi use map_img unless image has temperature values more than 20°C higher than map_img
+                merged_roi = np.where(image >= merged_roi + 20, image, merged_roi)
+
+            else:
+                merged_roi = np.where(voronoi_roi == index, image, map_img[y1:y2, x1:x2])
             map_img[y1:y2, x1:x2] = merged_roi
             element.clear_image_matrix()  # Clear the image matrix to free memory
         progress_updater.update_progress_of_map("processing", 50 + (i+1 / len(map_elements_batches)*45))
