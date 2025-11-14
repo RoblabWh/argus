@@ -1,8 +1,13 @@
 ![Argus Logo](https://github.com/RoblabWh/argus/blob/main/app/static/default/Argus_icon_dark_title-long_white_BG_scaled.PNG?raw=true)
 
 # ARGUS - Aerial Rescue and Geospatial Utility System
+> [!NOTE]
+> **NEW VERSION IN DEVELOPMENT**
+>
+> **Development of ARGUS 1.0 (main branch) has been discontinued – The current version can be found in the branch [major-rewrite](https://github.com/RoblabWh/argus/tree/major-rewrite).**
+> *ARGUS 2.0 is in active Development. Most features of ARGUS 1.0 are already available. As soon as all features are available in ARGUS 2.0, it will be released in the main branch. You are welcome to try ARGUS 2.0 with its improved UI and more modern architecture.*
 
-**The ARGUS WebApp is currently in development.**
+
 
 ARGUS is a documentation and analysis app designed for structured work with drone images in rescue operations. Its main functions include creating orthophotos from mapping flights with UAVs, presenting flight data and individual images in a structured manner, and evaluating infrared images. Additionally, ARGUS offers extensive object recognition functionalities with specially developed classifiers based on our own datasets ([paper link](https://arxiv.org/abs/2310.05512), [dataset link](https://www.kaggle.com/datasets/julienmeine/rescue-object-detection)) from real-world missions. The established drone software OpenDroneMaps ([ODM link](https://www.opendronemap.org/) ) is also integrated into ARGUS.
 Since ARGUS is a WebApp, it can be accessed from every device within the same network as the server. It is recommended to use Chrome (or any Chrome-based browser).
