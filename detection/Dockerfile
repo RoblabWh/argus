@@ -19,8 +19,8 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 
-# Install Python packages
-RUN pip install torch torchvision transformers[torch] albumentations datasets pycocotools timm safetensors gitpython
+# Install Python packages for transformer-pipeline
+RUN pip install torch==2.2.0 torchvision==0.17.0 transformers[torch]==4.57.1 albumentations==2.0.8 datasets==4.3.0 pycocotools==2.0.10 timm==1.0.21 safetensors==0.6.2 gitpython==3.1.45
 
 COPY requirements.txt /detection/requirements.txt
 RUN pip install --no-cache-dir -r /detection/requirements.txt
