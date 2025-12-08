@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, use } from 'react';
+import { useState, useEffect, useMemo, use, useRef } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
@@ -19,15 +19,18 @@ import {
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import type { Report } from '@/types/report';
 import type { Detection } from '@/types/detection';
+import { getDetectionColor } from '@/types/detection';
 import { useQueryClient } from '@tanstack/react-query';
 import {
     useStartDetection,
     useDetectionStatusPolling,
+    useFetchNewDetections,
     useDetections,
     useUpdateDetection,
     useIsDetectionRunning,
 } from "@/hooks/detectionHooks";
 import type { Image } from '@/types';
+import { set } from 'date-fns';
 
 function countDetections(detections: Detection[] | undefined, thresholds: { [key: string]: number } = {}) {
     console.log("Counting detections with thresholds:", thresholds);
@@ -47,13 +50,14 @@ function countDetections(detections: Detection[] | undefined, thresholds: { [key
 }
 
 
+
 function initiateThresholds(detections: Detection[] | undefined) {
     if (!detections) return {};
     let thresholds: { [key: string]: number } = {};
 
     detections.forEach((detection) => {
         if (!(detection.class_name in thresholds)) {
-            thresholds[detection.class_name] = 0.4; // Default threshold
+            thresholds[detection.class_name] = 0.2; // Default threshold
         }
     });
     return thresholds;
@@ -62,6 +66,32 @@ function initiateThresholds(detections: Detection[] | undefined) {
 function initiateCategoryVisibility(detections: Detection[]) {
     let visibility: { [key: string]: boolean } = {};
     if (!detections) return visibility;
+    detections.forEach((detection) => {
+        if (!(detection.class_name in visibility)) {
+            visibility[detection.class_name] = true; // Default to visible
+        }
+    });
+    return visibility;
+}
+
+function updateThresholds(detections: Detection[] | undefined, currentThresholds: { [key: string]: number }) {
+    console.log("Updating thresholds with current:", currentThresholds);
+    if (!detections) return currentThresholds;
+    let thresholds = { ...currentThresholds };
+
+    detections.forEach((detection) => {
+        if (!(detection.class_name in thresholds)) {
+            thresholds[detection.class_name] = 0.2; // Default threshold
+        }
+    });
+    console.log("Updated thresholds:", thresholds);
+    return thresholds;
+}
+
+function updateCategoryVisibility(detections: Detection[] | undefined, currentVisibility: { [key: string]: boolean }) {
+    if (!detections) return currentVisibility;
+    let visibility = { ...currentVisibility };
+
     detections.forEach((detection) => {
         if (!(detection.class_name in visibility)) {
             visibility[detection.class_name] = true; // Default to visible
@@ -87,14 +117,19 @@ export function DetectionCard({ report_id, setThresholds, thresholds, setFilter,
     const { data: detections, isLoading: isLoadingDetections, isError: isErrorDetections } = useDetections(report_id);
     const queryClient = useQueryClient();
     const detectionSummary = useMemo(() => { if (detections) return countDetections(detections, thresholds); }, [detections, thresholds]);
-    const hasDetections = detections && detections.length > 0;
-    const [detectionMode, setDetectionMode] = useState<"fast" | "medium" | "detailed" | undefined>(undefined);
+    var [hasDetections, setHasDetections] = useState(detections && detections.length > 0);
+    const [detectionMode, setDetectionMode] = useState<"fast" | "medium" | "detailed" | "experimental" | undefined>(undefined);
 
     useEffect(() => {
         if (detections) {
+            setHasDetections(detections.length > 0);
             if (Object.keys(thresholds).length == 0) {
                 setThresholds(initiateThresholds(detections));
                 setVisibleCategories(initiateCategoryVisibility(detections));
+            }
+            else {
+                setThresholds(updateThresholds(detections, thresholds));
+                setVisibleCategories(updateCategoryVisibility(detections, visibleCategories));
             }
         }
     }, [detections]);
@@ -108,11 +143,21 @@ export function DetectionCard({ report_id, setThresholds, thresholds, setFilter,
 
     const startDetection = useStartDetection();
     const detectionStatus = useDetectionStatusPolling(report_id, pollingEnabled);
+    const fetchNewDetections = useFetchNewDetections(report_id);
+    const lastProgressRef = useRef(0);
 
     // const updateDetection = useUpdateDetection(report.report_id);
 
     useEffect(() => {
         if (!detectionStatus.data) return;
+
+        const progress = detectionStatus.data.progress ?? 0;
+
+        // If progress increased, request more detections
+        if (progress > lastProgressRef.current) {
+            fetchNewDetections.mutate();
+        }
+        lastProgressRef.current = progress;
 
         if (detectionStatus.data.status.toUpperCase() === "FINISHED" || detectionStatus.data.status.toUpperCase() === "ERROR") {
             setPollingEnabled(false);
@@ -132,6 +177,7 @@ export function DetectionCard({ report_id, setThresholds, thresholds, setFilter,
             { reportId: report_id, processingMode: detectionMode },
             {
                 onSuccess: () => {
+                    queryClient.invalidateQueries({ queryKey: ["detections", report_id] });
                     setPollingEnabled(true);
                 },
             }
@@ -140,16 +186,34 @@ export function DetectionCard({ report_id, setThresholds, thresholds, setFilter,
 
 
     const selectObjectIcon = (objectType: string) => {
+        const color = getDetectionColor(objectType);
+
+        var icon;
+
+
         switch (objectType) {
             case 'vehicle':
-                return <Car className="w-4 h-4 mr-2" />;
+                icon = <Car className="w-4 h-4" color={"black"} />;
+                break;
             case 'fire':
-                return <Flame className="w-4 h-4 mr-2" />;
+                icon = <Flame className="w-4 h-4" color={"black"} />;
+                break;
             case 'human':
-                return <PersonStanding className="w-4 h-4 mr-2" />;
+                icon = <PersonStanding className="w-4 h-4" color={"black"} />;
+                break;
             default:
-                return <ScanSearch className="w-4 h-4 mr-2" />;
+                icon = <ScanSearch className="w-4 h-4" color={"black"} />;
+                break;
         }
+
+        return (
+            <div
+                className={`w-6 h-6 flex items-center justify-center rounded-sm bg-[var(--tag-color)]  mr-1`}
+                style={{ '--tag-color': color }}
+            >
+                {icon}
+            </div>
+        );
     };
 
     const infotextForMode = (mode: string) => {
@@ -160,8 +224,10 @@ export function DetectionCard({ report_id, setThresholds, thresholds, setFilter,
                 return "Medium mode splits the image into 4 parts for better detection. Slower than fast, but more accurate.";
             case 'detailed':
                 return "Detailed mode processes images at full resolution for maximum detail. Much slower, best for high-altitude or fine-detail.";
+            case 'experimental':
+                return "Experimental mode uses the latest YOLOv11 model. May not be integrated fully and could produce unexpected results.";
             default:
-                return "";
+                return "No information available for this mode.";
         }
     };
 
@@ -242,7 +308,7 @@ export function DetectionCard({ report_id, setThresholds, thresholds, setFilter,
                                                     className='p-0 m-0'
                                                     onClick={() => {
                                                         const thr = thresholds[key];
-                                                        let newFilters = [...filters];
+                                                        let newFilters = [];
                                                         if (!filters.includes(key)) {
                                                             newFilters.push(key);
                                                         }
@@ -251,7 +317,7 @@ export function DetectionCard({ report_id, setThresholds, thresholds, setFilter,
                                                 >
                                                     <Funnel className="w-4 h-4 p-0 m-0" />
                                                 </Button>
-                                                
+
                                             </TableCell>
 
                                         </TableRow>
@@ -291,7 +357,7 @@ export function DetectionCard({ report_id, setThresholds, thresholds, setFilter,
 
                                     <Select
                                         value={detectionMode}
-                                        onValueChange={(value) => setDetectionMode(value as "fast" | "medium" | "detailed")}
+                                        onValueChange={(value) => setDetectionMode(value as "fast" | "medium" | "detailed" | "experimental" | undefined)}
                                     >
                                         <SelectTrigger className="w-[150px]"
                                             value={detectionMode}
@@ -302,6 +368,7 @@ export function DetectionCard({ report_id, setThresholds, thresholds, setFilter,
                                             <SelectItem value="fast">Fast (Coarse)</SelectItem>
                                             <SelectItem value="medium">Medium (Refined)</SelectItem>
                                             <SelectItem value="detailed">Fine (Detailed)</SelectItem>
+                                            <SelectItem value="experimental">Experimental (YOLOv11)</SelectItem>
                                             {/* Add more actions as needed */}
                                         </SelectContent>
                                     </Select>

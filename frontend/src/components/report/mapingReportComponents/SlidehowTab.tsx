@@ -32,7 +32,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { set } from "date-fns";
 import { m } from "motion/react";
 import { PanoramaViewer } from "./panoramaViewer";
-import { DETECTION_COLORS } from "@/types/detection";
+import { DETECTION_COLORS, getDetectionColor } from "@/types/detection";
 import { DetectionSharePopup } from "./DetectionSharePopup";
 import { DetectionEditPopup } from "./DetectionEditPopup";
 
@@ -679,7 +679,7 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
                                             }).map((det) => {
                                                 if (!visibleCategories[det.class_name]) return null;
                                                 const [x, y, w, h] = det.bbox;
-                                                const color = DETECTION_COLORS[det.class_name] || "white";
+                                                const color = getDetectionColor(det.class_name);
 
                                                 return (
                                                     <Rect

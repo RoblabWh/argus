@@ -19,6 +19,20 @@ export const DETECTION_COLORS: Record<string, string> = {
   vehicle: "#00FFFF",
 };
 
+export function getDetectionColor(className: string): string {
+  if (className in DETECTION_COLORS) {
+    return DETECTION_COLORS[className];
+  }
+  //calculate a color based on the hash of the class name
+  let hash = 0;
+  for (let i = 0; i < className.length; i++) {
+    hash = className.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  console.log("Hash for", className, "is", hash, hash % 360);
+  const color = `hsl(${(hash / 2) % 360}, 90%, 60%)`;
+  return color;
+}
+
 export interface Geometry {
     type: "Point"
     coordinates: [number, number] // [longitude, latitude]

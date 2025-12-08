@@ -85,6 +85,7 @@ export const getThermalMatrix = (image_id: number) => fetchJson<{ image_id: numb
 export const startDetection = (report_id: number, processing_mode: string) => postJson<{ task_id: number}>(`/detections/r/${report_id}`, { processing_mode });
 export const getDetectionStatus = (report_id: number) => fetchJson<{ report_id: number, status: string; progress: number; message?: string; error?: string }>(`/detections/r/${report_id}/status`);
 export const getDetections = (report_id: number) => fetchJson<Detection[]>(`/detections/r/${report_id}`);
+export const getNewDetections = (report_id: number, knownIds: number[]) => postJson<Detection[]>(`/detections/r/${report_id}/incremental`, { known_ids: knownIds });
 export const updateDetection = (detection_id: number, data: Detection) => postJson<any>(`/detections/${detection_id}`, data, "PUT");
 export const deleteDetection = (detection_id: number) => deleteRequest(`/detections/${detection_id}`);
 export const updateDetectionBatch = (report_id: number, data: Detection[]) => postJson<any>(`/detections/r/${report_id}/batch_update`, data, "PUT");

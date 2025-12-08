@@ -169,6 +169,23 @@ def get_detections_by_mapping_report_id(db: Session, mapping_report_id: int):
     return detections
 
 
+def get_incremental_detections(db: Session, mapping_report_id: int, known_ids: list[int]):
+    images = (
+        db.query(models.Image)
+        .filter(models.Image.mapping_report_id == mapping_report_id)
+        .options(joinedload(models.Image.detections))
+        .all()
+    )
+
+    detections = []
+    for image in images:
+        for detection in image.detections:
+            if detection.id not in known_ids:
+                detections.append(detection)
+
+    return detections
+
+
 def save_detections(db: Session, mapping_report_id: int, detections: dict):
     images = db.query(models.Image).filter(models.Image.mapping_report_id == mapping_report_id).all()
     image_id_map = {image.id: image for image in images}

@@ -68,7 +68,7 @@ def run_detection(report_id: int, images: list[dict], max_splits: int = 0):
             images_count=len(images),
             splitting=True,
             max_splitting_steps=max_splits,
-            models=["RoblabWhGe/rescuedet-deformable-detr", "RoblabWhGe/rescuedet-yolos-small"]
+            models=["ultralytics/yolo11m"]#["RoblabWhGe/rescuedet-deformable-detr", "RoblabWhGe/rescuedet-yolos-small"]
         )
 
         progress_tracker.start_step("starting", step_index=0)
@@ -119,6 +119,7 @@ def run_detection(report_id: int, images: list[dict], max_splits: int = 0):
 
         #datahandler.show(result)
         results_data = reformat_ann(annotation_path, images)
+        logger.info(f"Reformatted annotations: {results_data[:2]}")  # Log first 2 annotations for brevity
         
 
         # send results to backend API

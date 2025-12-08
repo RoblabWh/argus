@@ -20,7 +20,7 @@ RUN apt-get update \
 
 
 # Install Python packages
-RUN pip install torch torchvision transformers[torch] albumentations datasets pycocotools timm safetensors gitpython
+# RUN pip install torch torchvision transformers[torch] albumentations datasets pycocotools timm safetensors gitpython
 
 COPY requirements.txt /detection/requirements.txt
 RUN pip install --no-cache-dir -r /detection/requirements.txt

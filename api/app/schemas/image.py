@@ -192,3 +192,6 @@ class DetectionOut(DetectionBase):
 
 class DetectionSettings(BaseModel):
     processing_mode: str
+
+class DetectionIncremental(BaseModel):
+    known_ids: List[int]

@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
-import { startDetection, getDetectionStatus, getDetections, updateDetection, deleteDetection, updateDetectionBatch } from "@/api";
+import { startDetection, getDetectionStatus, getDetections, updateDetection, deleteDetection, updateDetectionBatch, getNewDetections } from "@/api";
 import type { Detection } from "@/types/detection";
 import type { Report } from "@/types/report";
 
@@ -43,6 +43,25 @@ export function useDetections(reportId: number) {
     return useQuery({
         queryKey: ["detections", reportId],
         queryFn: () => getDetections(reportId),
+    });
+}
+
+export function useFetchNewDetections(reportId: number) {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async () => {
+            const cached = queryClient.getQueryData<Detection[]>(["detections", reportId]) ?? [];
+            const knownIds = cached.map(d => d.id);
+
+            const newOnes = await getNewDetections(reportId, knownIds);
+
+            // merge into cache
+            const merged = [...cached, ...newOnes];
+            queryClient.setQueryData(["detections", reportId], merged);
+
+            return merged;
+        }
     });
 }
 

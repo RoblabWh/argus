@@ -13,7 +13,8 @@ from app.schemas.image import (
     DetectionOut,
     ImageOut,
     DetectionUpdate,
-    DetectionSettings
+    DetectionSettings,
+    DetectionIncremental
 )
 
 from app.services.celery_app import celery_app
@@ -35,7 +36,8 @@ def get_all_detections(db: Session = Depends(get_db)):
     detections = image_crud.get_all_detections(db)
     return detections
 
-@router.post("/r/{report_id}", response_model=dict)   
+
+@router.post("/r/{report_id}", response_model=dict)
 def run_detections(report_id: int, req: DetectionSettings, db: Session = Depends(get_db)):
     """
     Queue detection tasks for a given report.
@@ -57,15 +59,25 @@ def run_detections(report_id: int, req: DetectionSettings, db: Session = Depends
         r.delete(f"detection:{report_id}:message")
         raise HTTPException(status_code=404, detail="No images found for the given report ID")
     
+    image_crud.delete_all_detections_by_mapping_report_id(db, mapping_report.id)
+    
     max_splits = 0
+    pipeline = "roblab_rescue"
     if req.processing_mode == "medium":
         max_splits = 1
     elif req.processing_mode == "detailed":
         max_splits = 4
-
-    detection_task = celery_app.signature(
-        "detection.run", args=[report_id, images_list, max_splits], queue="detection"
-    )
+    elif req.processing_mode == "experimental":
+        pipeline = "yolo"
+    detection_task = None
+    if pipeline == "yolo":
+        detection_task = celery_app.signature(
+            "detection_yolo.run", args=[report_id, images_list], queue="detection_yolo"
+        )
+    else:
+        detection_task = celery_app.signature(
+            "detection.run", args=[report_id, images_list, max_splits], queue="detection"
+        )
     asynch_task = detection_task.apply_async()
 
     r.set(f"detection:{report_id}:task_id", asynch_task.id)
@@ -82,11 +94,13 @@ def set_detections(report_id: int, detections: dict, db: Session = Depends(get_d
     mapping_report = report_crud.get_short_report(db, report_id).mapping_report
     if not mapping_report:
         raise HTTPException(status_code=404, detail="Report not found")
-    image_crud.delete_all_detections_by_mapping_report_id(db, mapping_report.id)
+    logger.info(f"Saving {len(detections.get('detections', []))} detections for report {report_id}")
+    logger.info(detections)
+    #
     image_crud.save_detections(db, mapping_report.id, detections)  # adapt to your CRUD
-    r.set(f"detection:{report_id}:status", "finished")
-    r.set(f"detection:{report_id}:progress", 100)
-    r.set(f"detection:{report_id}:message", "Detections saved successfully")
+    # r.set(f"detection:{report_id}:status", "finished")
+    # r.set(f"detection:{report_id}:progress", 100)
+    # r.set(f"detection:{report_id}:message", "Detections saved successfully")
     # logger.info(f"{len(detections.get('detections', []))} Detections saved for report {report_id}")
 
     return {"message": "Detections saved successfully", "report_id": report_id, "detections": detections}
@@ -104,6 +118,20 @@ def get_detections(report_id: int, db: Session = Depends(get_db)):
     detections = image_crud.get_detections_by_mapping_report_id(db, mapping_report.id)
     # logger.info(f"Found {len(detections)} detections for report {report_id}")
     # logger.info(f"{detections[0]}")
+    return detections
+
+@router.post("/r/{report_id}/incremental", response_model=List[DetectionOut])
+def get_detections_incremental(report_id: int, payload: DetectionIncremental, db: Session = Depends(get_db)):
+    """
+    Get incremental detections for a given report.
+    """
+    known_ids = payload.known_ids
+    logger.info(f"Fetching incremental detections for report {report_id} excluding known IDs: {known_ids}")
+    mapping_report = report_crud.get_short_report(db, report_id).mapping_report
+    if not mapping_report:
+        raise HTTPException(status_code=404, detail="Report not found")
+
+    detections = image_crud.get_incremental_detections(db, mapping_report.id, known_ids)
     return detections
 
 

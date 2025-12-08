@@ -22,6 +22,7 @@ celery_app.conf.task_routes = {
     "mapping.*": {"queue": "mapping"},
     "detection.*": {"queue": "detection"},
     "description.*": {"queue": "description"},
+    "detection_yolo.*": {"queue": "detection_yolo"},
 }
 
 def task_is_really_active(task_id: str) -> bool:

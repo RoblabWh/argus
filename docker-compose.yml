@@ -100,6 +100,30 @@ services:
               count: 1
               capabilities: [gpu]
 
+  argus_yolo_worker:
+    build: ./detection_yolo
+    working_dir: /detection_yolo
+    container_name: argusII_yolo_worker
+    entrypoint: celery
+    command: -A tasks_detection_yolo worker -Q detection_yolo --loglevel=info
+    volumes:
+      - argus_uploaded_files:/detection_yolo/reports_data
+    depends_on:
+      - redis
+      - api
+    environment:
+      REDIS_PORT: ${PORT_REDIS}
+      REDIS_HOST: ${HOST_REDIS}
+      BACKEND_URL: ${VITE_API_URL}
+    runtime: nvidia
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
   ollama:
     image: ollama/ollama
     container_name: argusII_ollama

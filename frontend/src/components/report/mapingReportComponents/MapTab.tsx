@@ -4,7 +4,7 @@ import type { Report } from "@/types/report";
 import type { Image, ImageBasic, Coord, UTMCoord, GPSCoord } from "@/types/image";
 import type { Map } from "@/types/map";
 import type { Detection } from "@/types/detection";
-import { DETECTION_COLORS } from "@/types/detection";
+import { DETECTION_COLORS, getDetectionColor } from "@/types/detection";
 import { getApiUrl } from "@/api";
 import {
     MapContainer,
@@ -347,7 +347,7 @@ function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCatego
                                             position={[gps.lat, gps.lon]}
                                             icon={L.divIcon({
                                                 className: 'custom-div-icon',
-                                                html: `<div style="background-color:${DETECTION_COLORS[detection.class_name] || 'blue'};opacity:0.85;width:12px;height:12px;border-radius:50%;border:2px solid black;"></div>`,
+                                                html: `<div style="background-color:${getDetectionColor(detection.class_name)};opacity:0.85;width:12px;height:12px;border-radius:50%;border:2px solid black;"></div>`,
                                                 iconSize: [16, 16],
                                                 iconAnchor: [8, 8],
                                                 popupAnchor: [0, -8],
