@@ -1,14 +1,17 @@
 #!/bin/bash
 set -e
 
-# Get path to Argus (your app)
+#######################################
+# Resolve Argus path
+#######################################
 ARGUS_PATH="$(dirname "$(realpath "${BASH_SOURCE[0]}")")"
-echo "Argus path is $ARGUS_PATH"
+echo "Argus path: $ARGUS_PATH"
 
-# Parse CLI arguments
+#######################################
+# Parse CLI args
+#######################################
 FORCE_UPDATE_IP=true
 ARGS=()
-
 for arg in "$@"; do
   if [ "$arg" == "--keep-ip" ]; then
     FORCE_UPDATE_IP=false
@@ -17,32 +20,34 @@ for arg in "$@"; do
   fi
 done
 
-# Create .env from example if missing
+#######################################
+# Create .env if missing
+#######################################
 if [ ! -f "$ARGUS_PATH/.env" ]; then
-  echo "Creating default .env file..."
-  cp "$ARGUS_PATH/.env.example" "$ARGUS_PATH/.env"
-  echo "Please edit the .env file with your real secrets."
+    echo "Creating .env from example..."
+    cp "$ARGUS_PATH/.env.example" "$ARGUS_PATH/.env"
+    echo "Edit .env before first run."
 fi
 
-# Load environment variables into shell session
+#######################################
+# Load .env
+#######################################
 set -a
 source "$ARGUS_PATH/.env"
 set +a
 
-# Determine local IP address
+#######################################
+# Detect system IP for VITE_API_URL etc.
+#######################################
 LOCAL_IP=$(ip route get 8.8.8.8 | awk '{for(i=1;i<=NF;i++) if ($i=="src") print $(i+1)}')
 if [ -z "$LOCAL_IP" ]; then
   echo "Warning: Could not determine local IP, falling back to 127.0.0.1"
   LOCAL_IP="127.0.0.1"
 fi
 
-# Set default if not already defined in .env
 PORT_API=${PORT_API:-8008}
-
-# Dynamically compute new API_URLs
 COMPUTED_VITE_API_URL="http://${LOCAL_IP}:${PORT_API}"
 
-# Update or set VITE_API_URL
 if [[ -z "$VITE_API_URL" || "$FORCE_UPDATE_IP" == true ]]; then
   echo "Setting or updating VITE_API_URL to $COMPUTED_VITE_API_URL"
   sed -i "s|^VITE_API_URL=.*|VITE_API_URL=$COMPUTED_VITE_API_URL|" "$ARGUS_PATH/.env" || \
@@ -52,11 +57,43 @@ else
   echo "VITE_API_URL is already set to $VITE_API_URL. Use --refresh-ip to update it."
 fi
 
+#######################################
+# GPU Detection (NVIDIA only relevant)
+#######################################
+GPU_TYPE="cpu"
+echo "Checking for NVIDIA GPU..."
+
+HAS_NVIDIA_HARDWARE=false
+
+set +e  
+# NVIDIA Hardware detection via lspci or nvidia-smi
+if command -v nvidia-smi &>/dev/null; then
+    HAS_NVIDIA_HARDWARE=true
+elif lspci | grep -qi 'nvidia'; then
+    HAS_NVIDIA_HARDWARE=true
+fi
+
+if [ "$HAS_NVIDIA_HARDWARE" = true ]; then
+    echo "NVIDIA GPU detected."
+
+    # Check docker runtime
+    if grep -q 'nvidia-container-runtime' /etc/docker/daemon.json 2>/dev/null; then
+        GPU_TYPE="nvidia"
+        echo "NVIDIA container runtime found → GPU mode enabled."
+    else
+        echo "NVIDIA GPU present but missing container runtime → using CPU mode."
+    fi
+else
+    echo "No NVIDIA hardware detected → using CPU mode."
+fi
+set -e
+
+echo "Final GPU type: $GPU_TYPE"
+
 
 ########################################
 # WebODM startup (optional via .env)
 ########################################
-
 ENABLE_WEBODM=${ENABLE_WEBODM:-false}
 WEBODM_PATH=${WEBODM_PATH:-"$HOME/WebODM"}
 WEBODM_IMAGE_NAME="opendronemap/webodm_webapp"
@@ -113,7 +150,23 @@ if [ "$ENABLE_WEBODM" = true ]; then
   fi
 fi
 
-# Start your main app (blocks until exited)
+
+#######################################
+# Compose file selection
+#######################################
 docker_compose="docker compose -f $ARGUS_PATH/docker-compose.yml"
-echo "Running: $docker_compose ${ARGS[*]}"
+
+case $GPU_TYPE in
+    nvidia)
+        docker_compose="$docker_compose -f $ARGUS_PATH/docker-compose.nvidia.yml"
+        ;;
+    cpu|*)
+        docker_compose="$docker_compose" # -f $ARGUS_PATH/docker-compose.cpu.yml"
+        ;;
+esac
+
+#######################################
+# Run docker compose
+#######################################
+echo "Running: $docker_compose ${ARGS[@]} "
 $docker_compose "${ARGS[@]}"

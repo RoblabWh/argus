@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
 class YOLOInferencer:
-    def __init__(self, model_name="yolo11m.pt", device="cuda", progress_callback=None):
+    def __init__(self, model_name="yolo11m.pt", device="cuda:0", progress_callback=None):
         self.model = YOLO(model_name)
         self.device = device
         self.progress_callback = progress_callback

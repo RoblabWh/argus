@@ -49,13 +49,15 @@ def describe_images(report_id: int):
                 logger.info(f"Second model ({TEXT_MODEL}) loaded successfully.")
 
         data, report = load_images(report_id)
+        logger.info(f"Loaded {len(data)} images for description in report {report_id}")
         
         set_redis_progress(report_id, 10.0)
 
         # TODO before make sure models are loaded in ollama
 
         prompt_report_context = f"You help in civil protection by analyzing reconnaissance data taken by UAVs in firefighting, first responder and rescue missions. \
-            You analyze a number of images one after another, from a UAV flight at {report.mapping_report.address}. Focused on possible hazards, dangers and points of interest for first responders."
+             You analyze a number of images one after another, from a UAV flight at {report.mapping_report.address}. Focused on possible hazards, dangers and points of interest for first responders."
+        # prompt_report_context = f"You are a photographer and image analyst working for a newspaper writing an ongoing civil protection mission (like firefighters, first responders, technical units...). Now you look at the images taken by UAVs at a mission at {report.mapping_report.address}."
 
         descriptions, headings = describe_all_images(data, prompt_report_context, report_id)
         set_redis_progress(report_id, 75.0)
@@ -64,6 +66,9 @@ def describe_images(report_id: int):
         set_redis_progress(report_id, 90.0)
 
         report_crud.set_auto_description(next(get_db()), report_id, final_report)
+
+        unload_model(OLLAMA_URL, IMAGE_MODEL)
+        unload_model(OLLAMA_URL, TEXT_MODEL)
         # for i, img in enumerate(data):
         #     try:
         #         img_path = img.url
@@ -73,6 +78,8 @@ def describe_images(report_id: int):
         #         continue
         set_redis_progress(report_id, 100.0)
     except Exception as e:
+        unload_model(OLLAMA_URL, IMAGE_MODEL)
+        unload_model(OLLAMA_URL, TEXT_MODEL)
         logger.error(f"Error in description process for report {report_id}: {e}")
         set_redis_progress(report_id, -1.0)
 
@@ -100,17 +107,40 @@ def pull_model(address, model):
         body = {"model": model}
         conn.request("POST", "/api/pull", body=json.dumps(body))
         res = conn.getresponse().read().decode("utf-8")
-        logger.info("Response:", res)
     except:
         logger.error("Server not reachable")
         return False
     else:
-        logger.info(res)
+        logger.info(f"Response: {res}")
         if "\"status\":\"success\"" in res:
             logger.info("Model pulled successfully")
             return True
 
-    logger.error("Model pull failed:", res)
+    logger.error(f"Model pull failed: {res}")
+    return False
+
+def unload_model(address, model):
+    if address is None:
+        logger.error("No server address found, cannot unload model")
+        return False
+    else:
+        logger.info(f"Unloading model {model} from server at {address}")
+
+    conn = http.client.HTTPConnection(address, timeout=120)
+
+    try:
+        body = {"model": model,
+                "keep_alive": 0}
+        conn.request("POST", "/api/generate", body=json.dumps(body))
+        res = conn.getresponse().read().decode("utf-8")
+    except:
+        logger.error("Server not reachable")
+        return False
+    else:
+        logger.info(f"Response: {res}")
+        return True
+
+    logger.error(f"Model unload failed: {res}")
     return False
     
 
@@ -131,11 +161,12 @@ def describe_all_images(data, prompt_report_context: str, report_id: int):
     prompt_keywords = f"{prompt_report_context} Extract {NUMBER_OF_KEYWORDS} relevant keywords that describe the main elements in the image."
     prompt_description = f"{prompt_report_context} Generate a short and informative description of the image in no more than {MAX_DESCRIPTION_LENGTH} characters and only describe what had been seen in the images. \
         No need for headings or formatting. If there is nothing interesting to see, say so and write only a short sentence about the general area depicted within the image."
+    prompt_description_minimalPrompt = f"Describe the image taken from a drone in no more than {MAX_DESCRIPTION_LENGTH} characters."
 
     descriptions = []
     headings = []
 
-    llm_inst = OllamaLLM(model=IMAGE_MODEL, base_url=OLLAMA_URL, temperature=0)
+    llm_inst = OllamaLLM(model=IMAGE_MODEL, base_url=f"http://{OLLAMA_URL}/", temperature=0)
 
     logging.info(f"Uploading images from {UPLOAD_DIR}...")
 
@@ -169,6 +200,9 @@ def describe_all_images(data, prompt_report_context: str, report_id: int):
                 except TimeoutError:
                     logging.error("Timeout while waiting for LLM")
                     return ""
+                except Exception as e:
+                    logging.error(f"Error during LLM invocation: {e}")
+                    return ""
                 
 
         description = call_llm(f"{prompt_description} {prompt_image_context} ")
@@ -190,8 +224,8 @@ def describe_all_images(data, prompt_report_context: str, report_id: int):
 
     return descriptions, headings
 
-def summarize_descriptions(descriptions, prompt_report_context):
-    summary_llm = OllamaLLM(model=TEXT_MODEL, base_url=OLLAMA_URL, temperature=0)
+def summarize_descriptions(descriptions, prompt_report_context, translate_to='german'):
+    summary_llm = OllamaLLM(model=TEXT_MODEL, base_url=f"http://{OLLAMA_URL}/", temperature=0)
 
     full_report_prompt = f"{prompt_report_context}. There are {len(descriptions)} images of partially overlapping images to summarize. \
         Each Image already has a short description. \
@@ -202,9 +236,12 @@ def summarize_descriptions(descriptions, prompt_report_context):
     for i, desc in enumerate(descriptions):
         full_report_prompt += f"Image {i+1}: {descriptions[i]}. {desc}\n"
 
-    full_report_prompt += "\nEnd of descriptions.\n\nPlease provide the full summary in German language and do not use any special formatting. No need for conversation and introductions, just report the facts."
+    full_report_prompt += "\nEnd of descriptions.\n\nPlease provide the full summary without any special formatting. No need for conversation and introductions, just report the facts."
 
     final_report = summary_llm.invoke(full_report_prompt).strip()
+
+    if (translate_to):
+        final_report = translate_text(final_report, target_language=translate_to)
 
     return final_report
 
@@ -221,8 +258,15 @@ def summarize_detections(image: ImageModel):
             summary[name] = 1
 
     summary_parts = [f"{count} {name}(s)" for name, count in summary.items()]
-    return " Previously Detected the following objects: " + ", ".join(summary_parts)
+    return " An AI model detected the following objects in this image: " + ", ".join(summary_parts)
 
+def translate_text(text: str, target_language: str):
+    translation_llm = OllamaLLM(model=TEXT_MODEL, base_url=f"http://{OLLAMA_URL}/", temperature=0)
+
+    translation_prompt = f"Translate the following text to {target_language} while keeping the meaning intact. Do not change any names or addresses. Keep it concise and clear, do not use special formatting.\n\nText: {text}\n\nTranslated Text:"
+
+    translated_text = translation_llm.invoke(translation_prompt).strip()
+    return translated_text
 
 
 def convert2Base64(image):

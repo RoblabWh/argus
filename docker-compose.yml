@@ -91,14 +91,7 @@ services:
       REDIS_PORT: ${PORT_REDIS}
       REDIS_HOST: ${HOST_REDIS}
       BACKEND_URL: ${VITE_API_URL}
-    runtime: nvidia  # only if GPU available
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
+      DEVICE: "cpu"
 
   argus_yolo_worker:
     build: ./detection_yolo
@@ -115,14 +108,8 @@ services:
       REDIS_PORT: ${PORT_REDIS}
       REDIS_HOST: ${HOST_REDIS}
       BACKEND_URL: ${VITE_API_URL}
-    runtime: nvidia
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
+      DEVICE: "cpu"
+
 
   ollama:
     image: ollama/ollama
@@ -132,13 +119,6 @@ services:
     volumes:
       - ${ARGUS_OLLAMA_MODELS}:/root/.ollama:rw
     restart: unless-stopped
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
 
   argus_ollama_worker:
     build: ./api

@@ -1,0 +1,38 @@
+services:
+  argus_detection_worker:
+    runtime: nvidia
+    environment:
+      DEVICE: "cuda:0"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  argus_yolo_worker:
+    runtime: nvidia
+    environment:
+      DEVICE: "cuda"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  ollama:
+    runtime: nvidia
+    environment:
+      DEVICE: "cuda:0"
+      OLLAMA_GPU: "1"
+      OLLAMA_NUM_GPU: "1"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]

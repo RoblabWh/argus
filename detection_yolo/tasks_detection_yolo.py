@@ -16,6 +16,7 @@ logging.basicConfig(level=logging.INFO)
 REDIS_HOST = os.getenv("HOST_REDIS", "redis")
 REDIS_PORT = int(os.getenv("PORT_REDIS", 6379))
 BACKEND_URL = os.getenv("BACKEND_URL", "http://127.0.0.1:8008")
+DEVICE = os.getenv("DEVICE", "cuda:0")
 r = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, db=0)
 
 # Celery app for *this* pipeline
@@ -50,7 +51,7 @@ def run_detection_yolo(report_id: int, images: list[dict]):
         #     filename="best.pt"
         # )
         # model_path = "yolo11l.pt"
-        infer = YOLOInferencer(model_name=model_path, progress_callback=set_progress)
+        infer = YOLOInferencer(model_name=model_path, progress_callback=set_progress, device=DEVICE)
 
         r.set(f"detection:{report_id}:message", "Running YOLOv11 inference…")
 
