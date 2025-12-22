@@ -7,11 +7,9 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
-    ports:
-      - "${PORT_DB}:5432"
     volumes:
       - argus_db_data:/var/lib/postgresql/data
-  
+
   api:
     build: ./api
     working_dir: /api
@@ -29,7 +27,7 @@ services:
       WEBODM_PASSWORD: ${WEBODM_PASSWORD}
       WEBODM_URL: ${WEBODM_URL}
       OPEN_WEATHER_API_KEY: ${OPEN_WEATHER_API_KEY}
-    depends_on:
+    links:
       - db
       - redis
     volumes:
@@ -63,7 +61,7 @@ services:
       - ./api:/api
       - argus_uploaded_files:/api/reports_data
       - ./.env:/api/.env:rw
-    depends_on: 
+    links:
       - db
       - redis
     environment:
@@ -114,8 +112,6 @@ services:
   ollama:
     image: ollama/ollama
     container_name: argusII_ollama
-    ports:
-      - ${ARGUS_OLLAMA_PORT}:11434
     volumes:
       - ${ARGUS_OLLAMA_MODELS}:/root/.ollama:rw
     restart: unless-stopped
@@ -130,7 +126,7 @@ services:
       - ./api:/api
       - argus_uploaded_files:/api/reports_data
       - ./.env:/api/.env:rw
-    depends_on: 
+    links:
       - db
       - redis
     environment:
@@ -146,8 +142,6 @@ services:
   redis:
     image: redis:latest
     container_name: argusII_redis
-    ports:
-    - "${PORT_REDIS}:6379"
 
 volumes:
   argus_db_data:
