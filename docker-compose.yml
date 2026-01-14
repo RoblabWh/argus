@@ -46,7 +46,6 @@ services:
       - frontend_node_modules:/frontend/node_modules  # Separates Volume für node_modules
     stdin_open: true
     tty: true
-    network_mode: host
     environment:
       VITE_API_URL: ${VITE_API_URL}
       WEBODM_URL: ${WEBODM_URL}
@@ -113,7 +112,7 @@ services:
     image: ollama/ollama
     container_name: argusII_ollama
     volumes:
-      - ${ARGUS_OLLAMA_MODELS}:/root/.ollama:rw
+      - models:/root/.ollama:rw
     restart: unless-stopped
 
   argus_ollama_worker:

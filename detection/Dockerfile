@@ -1,6 +1,6 @@
-ARG PYTORCH="2.7.0" # PYTORCH="2.2.0" new for the 5090
-ARG CUDA="12.8" # CUDA="12.1"
-ARG CUDNN="9" # CUDNN="8"
+ARG PYTORCH="2.9.1"
+ARG CUDA="12.8"
+ARG CUDNN="9" 
 
 FROM pytorch/pytorch:${PYTORCH}-cuda${CUDA}-cudnn${CUDNN}-devel
 

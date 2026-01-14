@@ -154,7 +154,7 @@ fi
 #######################################
 # Compose file selection
 #######################################
-docker_compose="docker compose -f $ARGUS_PATH/docker-compose.yml"
+docker_compose="docker compose -f $ARGUS_PATH/docker-compose.yml -f $ARGUS_PATH/docker-compose.linux.yml" 
 
 case $GPU_TYPE in
     nvidia)

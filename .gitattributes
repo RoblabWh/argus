@@ -1,0 +1,16 @@
+# Default: always use LF
+* text=auto eol=lf
+
+# Explicitly force LF for shell scripts
+*.sh text eol=lf
+
+# Docker-related files
+Dockerfile text eol=lf
+*.dockerfile text eol=lf
+
+# Optional: prevent Windows tools from touching these
+*.env text eol=lf
+
+# cmd and ps1 scripts
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
