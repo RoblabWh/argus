@@ -28,7 +28,7 @@ import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import "@/lib/Leaflet.ImageOverlay.Rotated";
-import { RotatedImageOverlay } from "@/components/report/mapingReportComponents/RotatedImageOverlay";
+import { RotatedImageOverlay } from "@/components/report/mappingReportComponents/RotatedImageOverlay";
 import panoPinSVG from '@/assets/panorama.svg'
 import { useImages } from "@/hooks/imageHooks";
 import { useMaps } from "@/hooks/useMaps";

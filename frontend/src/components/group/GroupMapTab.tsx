@@ -9,7 +9,7 @@ import {
 import type { LatLngBoundsExpression, Map as LeafletMap } from 'leaflet';
 import { getApiUrl } from "@/api";
 import { useTheme } from "@/components/ui/theme-provider";
-import { RotatedImageOverlay } from "@/components/report/mapingReportComponents/RotatedImageOverlay";
+import { RotatedImageOverlay } from "@/components/report/mappingReportComponents/RotatedImageOverlay";
 import { Slider } from "@/components/ui/slider";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -22,7 +22,6 @@ import { createRoot } from "react-dom/client";
 import { useMap } from 'react-leaflet';
 import { Map as MapIcon, Layers } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
-import { set } from "date-fns";
 
 
 

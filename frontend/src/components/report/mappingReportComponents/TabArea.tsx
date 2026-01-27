@@ -3,9 +3,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Report } from "@/types/report";
 import type { Image, ImageBasic } from "@/types/image";
 import { getApiUrl } from "@/api";
-import { MapTab } from "@/components/report/mapingReportComponents/MapTab";
-import { SlideshowTab } from "@/components/report/mapingReportComponents/SlidehowTab";
-import { DataTab } from "@/components/report/mapingReportComponents/DataTab";
+import { MapTab } from "@/components/report/mappingReportComponents/MapTab";
+import { SlideshowTab } from "@/components/report/mappingReportComponents/SlideshowTab";
+import { DataTab } from "@/components/report/mappingReportComponents/DataTab";
 import { useImages } from "@/hooks/imageHooks";
 import { useFilteredImages } from "@/contexts/FileteredImagesContext";
 

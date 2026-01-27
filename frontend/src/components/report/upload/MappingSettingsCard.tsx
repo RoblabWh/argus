@@ -31,7 +31,7 @@ import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { useState, useEffect } from "react";
 import { Info, Blocks, Drone } from "lucide-react";
-import { WebODMLogo } from "@/components/report/mapingReportComponents/WebOdmCard";
+import { WebODMLogo } from "@/components/report/mappingReportComponents/WebOdmCard";
 import { MappingTile } from "@/components/report/upload/SettingsTile";
 import type { ProcessingSettings } from "@/types/processing";
 import { useReportSettings } from "@/hooks/useReportSettingsCache";
