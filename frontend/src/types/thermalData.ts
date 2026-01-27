@@ -9,6 +9,6 @@ export type ThermalData = {
   max_temp: number;
   temp_matrix: number[][] | null; // Stored as JSONB in the database
   temp_embedded?: boolean;
-  temp_unit?: string;
+  temp_unit?: "C" | "F";
   lut_name?: string;
 };

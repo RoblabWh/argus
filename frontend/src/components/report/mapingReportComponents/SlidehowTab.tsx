@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useState, useMemo } from "react";
 import { Stage, Layer, Image as KonvaImage, Rect } from "react-konva";
 import type { Image, ImageBasic } from "@/types/image";
+import type { Detection } from "@/types/detection";
 import { ThermalSettingsPopup } from "./thermalSettingsPopup";
 import useImage from "use-image";
 import { useThermalMatrix } from "@/hooks/useThermalMatrix";
@@ -226,16 +227,17 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
 
 
         if (selectedImage.thermal && selectedImage.thermal_data?.counterpart_id) {
-            const rgbImage = images.find(img => img.id === selectedImage.thermal_data?.counterpart_id);
-            if (rgbImage) {
-                console.log("Setting background image for thermal counterpart:", rgbImage.filename);
-                setBackgroundImageUrl(`${apiUrl}/${rgbImage.url}`);
-                setBackgroundImageName(rgbImage.filename);
-            } else {
-                setBackgroundImageUrl(null); // fallback
-                setBackgroundImageName(null);
-            }
-            //refetch(); // refetch thermal matrix for new image
+            if (images){
+                const rgbImage = images.find(img => img.id === selectedImage.thermal_data?.counterpart_id);
+                if (rgbImage) {
+                    console.log("Setting background image for thermal counterpart:", rgbImage.filename);
+                    setBackgroundImageUrl(`${apiUrl}/${rgbImage.url}`);
+                    setBackgroundImageName(rgbImage.filename);
+                } else {
+                    setBackgroundImageUrl(null); // fallback
+                    setBackgroundImageName(null);
+                }
+            }            //refetch(); // refetch thermal matrix for new image
             if (data && selectedImage?.id === data.image_id && tempMode) {
                 setTempMatrix(data.matrix);
                 let minTemp = data.min_temp || 20.0;
@@ -407,6 +409,7 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
     };
 
     const clampPosition = (pos: { x: number, y: number }, currentScale: number) => {
+        if (!image) return pos;
         const scaledWidth = image.width * currentScale;
         const scaledHeight = image.height * currentScale;
 
@@ -856,7 +859,7 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
                                         left: probeResult.x - 12,
                                         top: probeResult.y - 12,
                                         pointerEvents: "none",
-                                        mixBlendMode: "plus-darker",
+                                        // mixBlendMode: "plus-darken" as React.CSSProperties["mixBlendMode"],
                                     }}
                                 />
                                 <Badge
@@ -1039,7 +1042,7 @@ function matrixToCanvasImage(
                 var l = gray / 256;
                 var r, g, b;
 
-                function hue2rgb(p, q, t) {
+                function hue2rgb(p: number, q: number, t: number) {
                     if (t < 0) t += 1;
                     if (t > 1) t -= 1;
                     if (t < 1 / 6) return p + (q - p) * 6 * t;
@@ -1078,7 +1081,7 @@ function matrixToCanvasImage(
                 s = 1.0;
                 h = 1 - gray; //
 
-                function hue2rgb(p, q, t) {
+                function hue2rgb(p: number, q: number, t: number) {
                     if (t < 0) t += 1;
                     if (t > 1) t -= 1;
                     if (t < 1 / 6) return p + (q - p) * 6 * t;
@@ -1109,17 +1112,18 @@ function matrixToCanvasImage(
                 gray = (gray < 0) ? 0 : (gray > 255) ? 255 : gray;
                 //clip grey to 0-1.0 range
                 gray /= 256;
-                if (gray > 0.95) {
+                if (gray > 0.93) {
                     return [
-                        255 * gray,
-                        0,
-                        0,
+                        255 * (gray-0.8) * 7,
+                        35 * (gray-.92) * 10 * 5,
+                        20 * (gray-.92) * 10 * 5,
                     ];
                 } else if (gray < 0.05) {
+                    let c = 1.0 - (gray * 10);
                     return [
-                        0,
-                        0,
-                        255 * gray * 10,
+                        60 * 2 * c,
+                        100 * 2 * c,
+                        255 ,
                     ];
                 }
                 return [
@@ -1204,6 +1208,12 @@ export function setCachedMatrix(id: string, matrix: number[][]) {
 export function getMatrixFromLocalStorage(id: string): number[][] | null {
     const stored = localStorage.getItem(`tempMatrix:${id}`);
     return stored ? JSON.parse(stored) : null;
+}
+
+
+interface ThresholdWarningProps {
+    detectionId: string | number;
+    message?: string;
 }
 
 function ThresholdWarning({ detectionId, message }: ThresholdWarningProps) {

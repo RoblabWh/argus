@@ -210,7 +210,7 @@ export default function Settings() {
                     type={field === 'WEBODM_PASSWORD' ? 'password' : 'text'}
                     disabled={locked[field]}
                     value={settings[field]}
-                    onChange={(e) => handleChange(field, e.target.value as any)}
+                    onChange={(e) => handleChange(field, e.target.value)}
                   />
                 </div>
                 <Button

@@ -93,8 +93,7 @@ function filterImages(
 
     // 2) Thermal constraints (only if thermal)
     if (image.thermal) {
-      // @ts-ignore (runtime shape)
-      const td = (image as any).thermal_data;
+      const td = image.thermal_data;
       const hasTD = td && typeof td.min_temp === "number" && typeof td.max_temp === "number";
 
       // If temp filters are set but there's no thermal data → exclude
@@ -154,8 +153,7 @@ function getDatasetTempRange(images: ImageBasic[] | undefined) {
   let max = Number.NEGATIVE_INFINITY;
   let count = 0;
   for (const img of images || []) {
-    // @ts-ignore — runtime check only
-    const td = img.thermal_data as any;
+    const td = img.thermal_data;
     if (img.thermal && td && typeof td.min_temp === "number" && typeof td.max_temp === "number") {
       min = Math.min(min, td.min_temp);
       max = Math.max(max, td.max_temp);
@@ -457,9 +455,8 @@ export function GalleryCard({
   const tempUnit = useMemo((): "C" | "F" => {
     // If any thermal image reports a temp unit, surface it (default to C)
     for (const img of images || []) {
-      // @ts-ignore
-      const td = img.thermal_data as any;
-      if (img.thermal && td?.temp_unit && (td.temp_unit === "C" || td.temp_unit === "F")) return td.temp_unit;
+      const td = img.thermal_data;
+      if (img.thermal && td?.temp_unit) return td.temp_unit;
     }
     return "C";
   }, [images]);
@@ -612,7 +609,7 @@ export function GalleryCard({
             {/* <div className="cursor-pointer" key={"gallery-img-" + image.id} onClick={() => onImageClick(image)}> */}
               <div className="w-full overflow-hidden p-1">
                 <img
-                  src={`${apiUrl}/${(image as any).thumbnail_url}`}
+                  src={`${apiUrl}/${image.thumbnail_url}`}
                   alt={image.filename}
                   className="w-full h-full object-contain rounded-xs"
                   loading="lazy"

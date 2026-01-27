@@ -399,8 +399,8 @@ export function GroupMapTab({
                 title="Reset View"
                 onClick={() => {
                     if (leafletMap) {
-                        if (overallBounds) (leafletMap as any).fitBounds(overallBounds);
-                        else (leafletMap as any).setView(center, 18.5);
+                        if (overallBounds) leafletMap.fitBounds(overallBounds);
+                        else leafletMap.setView(center, 18.5);
                     }
                 }}
             >

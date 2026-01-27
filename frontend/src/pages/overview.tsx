@@ -91,7 +91,7 @@ export default function Overview() {
 
         </Button>
 
-        <Select value={sortBy} onValueChange={(val) => setSortBy(val as any)}>
+        <Select value={sortBy} onValueChange={(val) => setSortBy(val as typeof sortBy)}>
           <SelectTrigger className="w-[150px]">
             <SelectValue placeholder="Sort by" />
           </SelectTrigger>
