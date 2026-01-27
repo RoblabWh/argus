@@ -24,6 +24,7 @@ import {
     Trash,
     Share2,
     AlertTriangle,
+    Focus,
 } from "lucide-react";
 import { useAspectRatio } from "@/hooks/useAspectRatio";
 import { useImages } from "@/hooks/imageHooks";
@@ -61,6 +62,8 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
 
 
     const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
+    const isCompactView = containerSize.width < 940; // Controls when buttons collapse to icons only
+
     const [imageUrl, setImageUrl] = useState<string | null>(null);
     const [image, loadingStatus] = useImage(imageUrl || "");//TODO check if image is loading
 
@@ -123,6 +126,37 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
     useEffect(() => {
         setDetectionsOfImage(detections?.filter((d) => d.image_id === selectedImage?.id) || []);
     }, [detections, selectedImage]);
+
+    // Highlight detections animation
+    const [highlightDetections, setHighlightDetections] = useState(false);
+    const [highlightPhase, setHighlightPhase] = useState(0); // 0-1 for animation phase
+
+    useEffect(() => {
+        if (!highlightDetections) {
+            setHighlightPhase(0);
+            return;
+        }
+
+        // Pulse animation: 3 cycles over 2 seconds
+        const startTime = Date.now();
+        const duration = 2000; // 2 seconds total
+        const cycles = 3;
+
+        const animate = () => {
+            const elapsed = Date.now() - startTime;
+            if (elapsed >= duration) {
+                setHighlightDetections(false);
+                setHighlightPhase(0);
+                return;
+            }
+            // Sin wave for smooth pulse, 3 full cycles
+            const phase = Math.sin((elapsed / duration) * cycles * Math.PI * 2) * 0.5 + 0.5;
+            setHighlightPhase(phase);
+            requestAnimationFrame(animate);
+        };
+
+        requestAnimationFrame(animate);
+    }, [highlightDetections]);
 
     useEffect(() => {
         if (data && selectedImage?.id === data.image_id) {
@@ -681,6 +715,12 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
                                                 const [x, y, w, h] = det.bbox;
                                                 const color = getDetectionColor(det.class_name);
 
+                                                // Pulse stroke width when highlighting (6 to 16)
+                                                const baseStroke = 6;
+                                                const strokeWidth = highlightDetections
+                                                    ? baseStroke + highlightPhase * 25
+                                                    : baseStroke;
+
                                                 return (
                                                     <Rect
                                                         key={det.id}
@@ -689,7 +729,7 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
                                                         width={w}
                                                         height={h}
                                                         stroke={color}
-                                                        strokeWidth={6}
+                                                        strokeWidth={strokeWidth}
                                                         onClick={(e) => {
                                                             // Transform image coords into screen coords
                                                             const stage = stageRef.current;
@@ -843,14 +883,14 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
             </div>
 
 
-            <div
-                className={containerSize.width < 720 ? "flex flex-row items-center justify-between gap-2 p-2 mt-4 w-full bg-white dark:bg-gray-800" :
-                    "grid grid-cols-3 items-center justify-between mt-4 p-4 w-full bg-white dark:bg-gray-800"}
-            >
+            <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center mt-4 p-2 md:p-4 w-full bg-white dark:bg-gray-800 gap-2">
+
                 <Tooltip>
-                    <TooltipTrigger className={`flex justify-start ${containerSize.width < 720 ? 'w-20' : 'w-auto'}`}>
-                        <div className="text-sm text-muted-foreground whitespace-nowrap overflow-hidden text-ellipsis">
-                            {imageFilename}
+                    <TooltipTrigger asChild>
+                        <div className="min-w-0">
+                            <div className="text-sm text-muted-foreground truncate">
+                                {imageFilename}
+                            </div>
                         </div>
                     </TooltipTrigger>
                     <TooltipContent>
@@ -858,7 +898,7 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
                     </TooltipContent>
                 </Tooltip>
 
-                <div className="flex items-center gap-2 w-full justify-center">
+                <div className="flex items-center justify-center gap-2">
                     <Button variant="default" onClick={previousImage} className="aspect-square">
                         <ChevronLeft />
                     </Button>
@@ -878,7 +918,7 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
                                 setTempMode(!tempMode); // disable temp mode if no matrix
                                 if (tempMode) setProbeResult(null); // hide popup when disabling
                             }}
-                            showLabel={containerSize.width < 720 ? false : true}
+                            showLabel={isCompactView ? false : true}
                         />
 
                         <Button variant="outline" onClick={() => setThermalSettingsPopupOpen(true)}
@@ -891,9 +931,26 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
 
                     </div>
 
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <Button
+                                variant={highlightDetections ? "default" : "outline"}
+                                onClick={() => setHighlightDetections(true)}
+                                disabled={!detectionsOfImage?.length || highlightDetections}
+                                className={!detectionsOfImage?.length ? 'opacity-50' : ''}
+                            >
+                                <Focus className="w-4 h-4" />
+                                {!isCompactView && <span className="ml-1">Highlight</span>}
+                            </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                            <p>Pulse detection boxes to make them easier to spot</p>
+                        </TooltipContent>
+                    </Tooltip>
+
                     <Button variant="outline" onClick={resetView}>
                         {/* depending on screen width */}
-                        {containerSize.width < 720 ? (
+                        {isCompactView ? (
                             <RotateCcw className="w-4 h-4 mr-1" />
                         ) : (
                             <>Reset View</>
