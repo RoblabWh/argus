@@ -37,12 +37,23 @@ export type GalleryFilters = {
   dets: string[];            // empty => no restriction
 };
 
+/** Build a map from image_id to its detections (for efficient lookup) */
+function buildDetectionIndex(detections: Detection[] | undefined): Map<number, Detection[]> {
+  const index = new Map<number, Detection[]>();
+  for (const det of detections || []) {
+    const arr = index.get(det.image_id);
+    if (arr) arr.push(det);
+    else index.set(det.image_id, [det]);
+  }
+  return index;
+}
+
 function filterImages(
   images: ImageBasic[] | undefined,
-  detections: Detection[] | undefined,
   search: string,
   filters: GalleryFilters,
-  thresholds: Record<string, number> = {} // e.g. { person: 0.6, car: 0.5, "*": 0.4 }
+  thresholds: Record<string, number> = {},
+  detectionIndex: Map<number, Detection[]> // pre-built index for performance
 ): ImageBasic[] {
   if (!images) return [];
 
@@ -55,21 +66,18 @@ function filterImages(
 
   const { types, temp, dets } = filters;
 
-  // Build detection index only if we actually filter by detections
-  let detIndex: Map<number, Detection[]> | null = null;
-  let lowerDets: string[] = [];
-  if (dets.length > 0) {
-    detIndex = new Map();
-    for (const det of detections || []) {
-      const arr = detIndex.get(det.image_id);
-      if (arr) arr.push(det);
-      else detIndex.set(det.image_id, [det]);
-    }
-    lowerDets = dets.map((d) => d.toLowerCase().trim());
-  }
+  // Prepare lowercase detection filter names
+  const lowerDets = dets.length > 0 ? dets.map((d) => d.toLowerCase().trim()) : [];
 
-  const thrFor = (cls: string) =>
-    thresholds[cls] ?? thresholds[cls.toLowerCase()] ?? thresholds["*"] ?? 0.4;
+  // Case-insensitive threshold lookup
+  const thrFor = (cls: string) => {
+    const lowerCls = cls.toLowerCase();
+    // Find the threshold key that matches (case-insensitive)
+    const matchingKey = Object.keys(thresholds).find(
+      (key) => key.toLowerCase() === lowerCls
+    );
+    return matchingKey ? thresholds[matchingKey] : (thresholds["*"] ?? 0.4);
+  };
 
   filtered = filtered.filter((image) => {
     // 1) Type filters
@@ -102,8 +110,8 @@ function filterImages(
     }
 
     // 3) Detection filters — OR semantics (any selected class may match)
-    if (detIndex) {
-      const imageDets = detIndex.get(image.id) ?? [];
+    if (lowerDets.length > 0) {
+      const imageDets = detectionIndex.get(image.id) ?? [];
       if (imageDets.length === 0) return false;
 
       const hasAny = lowerDets.some((cls) => {
@@ -446,7 +454,7 @@ export function GalleryCard({
     return Array.from(classes);
   }, [detections]);
   const datasetTempRange = useMemo(() => getDatasetTempRange(images), [images]);
-  const tempUnit = ((): "C" | "F" => {
+  const tempUnit = useMemo((): "C" | "F" => {
     // If any thermal image reports a temp unit, surface it (default to C)
     for (const img of images || []) {
       // @ts-ignore
@@ -454,7 +462,10 @@ export function GalleryCard({
       if (img.thermal && td?.temp_unit && (td.temp_unit === "C" || td.temp_unit === "F")) return td.temp_unit;
     }
     return "C";
-  })();
+  }, [images]);
+
+  // Memoize detection index - only rebuilt when detections change
+  const detectionIndex = useMemo(() => buildDetectionIndex(detections), [detections]);
 
   const [filters, setFilters] = useState<GalleryFilters>({ types: [], temp: {}, dets: detectionFilter });
 
@@ -464,10 +475,9 @@ export function GalleryCard({
 
   // Apply filter pipeline whenever deps change
   useEffect(() => {
-    console.log("triggered Filtering images");
-    const next = filterImages(images, detections, search, filters, thresholds);
+    const next = filterImages(images, search, filters, thresholds, detectionIndex);
     setFilteredImages(next);
-  }, [images, detections, search, filters, thresholds, setFilteredImages]);
+  }, [images, search, filters, thresholds, detectionIndex, setFilteredImages]);
 
   const onImageClick = (image: ImageBasic) => setSelectedImage(image);
 
@@ -514,7 +524,11 @@ export function GalleryCard({
             availableTypes={availableTags}
             availableDetectionClasses={availableDetectionClasses}
             value={filters}
-            onChange={setFilters}
+            onChange={(next) => {
+              setFilters(next);
+              // Sync detection filter changes to parent
+              setDetectionFilter(next.dets);
+            }}
             datasetTempRange={datasetTempRange}
             tempUnit={tempUnit}
             onReset={clearSearchAndFilters}
@@ -566,14 +580,20 @@ export function GalleryCard({
               </Badge>
             )}
 
-            {filters.dets.map((d) => (
-              <Badge key={d} variant="secondary" className="px-2 py-1 text-xs">
-                Det: {d}
-                <button className="ml-1" onClick={() => setFilters({ ...filters, dets: filters.dets.filter((x) => x !== d) })}>
-                  <X className="h-3 w-3" />
-                </button>
-              </Badge>
-            ))}
+            {filters.dets.map((d) => {
+              const newDets = filters.dets.filter((x) => x !== d);
+              return (
+                <Badge key={d} variant="secondary" className="px-2 py-1 text-xs">
+                  Det: {d}
+                  <button className="ml-1" onClick={() => {
+                    setFilters({ ...filters, dets: newDets });
+                    setDetectionFilter(newDets);
+                  }}>
+                    <X className="h-3 w-3" />
+                  </button>
+                </Badge>
+              );
+            })}
           </div>
         )}
       </div>

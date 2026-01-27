@@ -16,7 +16,6 @@ import { DetectionCard } from './mapingReportComponents/DetectionCard';
 import { ResponsiveResizableLayout } from "@/components/ResponsiveResizableLayout";
 import { Card, CardContent, CardTitle } from "@/components/ui/card";
 import { useDetections, useIsDetectionRunning } from '@/hooks/detectionHooks';
-import { set } from 'date-fns';
 import { FilteredImagesProvider } from '@/contexts/FileteredImagesContext';
 
 

@@ -93,7 +93,8 @@ export function TabArea({ report, selectedImage, setSelectedImage, tab, setTab, 
           <TabsTrigger className="cursor-pointer" value="data">Data</TabsTrigger>
         </TabsList>
       </div>
-      <TabsContent value="map">
+      {/* forceMount keeps the map alive when switching tabs, hidden with CSS */}
+      <TabsContent value="map" forceMount className={tab !== "map" ? "hidden" : ""}>
         <div className="text-sm h-[calc(100%)] overflow-auto">
           <MapTab
             reportId={report.report_id}

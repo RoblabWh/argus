@@ -957,7 +957,7 @@ function matrixToCanvasImage(
 
     if (!ctx) throw new Error("2D context not available");
 
-    console.log(normalized)
+    // console.log(normalized)
 
     const imageData = ctx.createImageData(canvas.width, canvas.height);
     let calcColors: (gray: number) => number[];

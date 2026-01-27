@@ -303,16 +303,29 @@ export function DetectionCard({ report_id, setThresholds, thresholds, setFilter,
                                                 </Button>
 
                                                 <Button
-                                                    variant="outline"
+                                                    variant={filters.includes(key) ? "default" : "outline"}
                                                     size="icon"
                                                     className='p-0 m-0'
                                                     onClick={() => {
-                                                        const thr = thresholds[key];
-                                                        let newFilters = [];
-                                                        if (!filters.includes(key)) {
-                                                            newFilters.push(key);
+                                                        const isCurrentlyFiltered = filters.includes(key);
+
+                                                        if (isCurrentlyFiltered) {
+                                                            // Clear filter and restore all categories to visible
+                                                            setFilter([]);
+                                                            const newVisibility: { [k: string]: boolean } = {};
+                                                            Object.keys(visibleCategories).forEach(cat => {
+                                                                newVisibility[cat] = true;
+                                                            });
+                                                            setVisibleCategories(newVisibility);
+                                                        } else {
+                                                            // Set filter to this category and hide all others
+                                                            setFilter([key]);
+                                                            const newVisibility: { [k: string]: boolean } = {};
+                                                            Object.keys(visibleCategories).forEach(cat => {
+                                                                newVisibility[cat] = cat === key;
+                                                            });
+                                                            setVisibleCategories(newVisibility);
                                                         }
-                                                        setFilter(newFilters);
                                                     }}
                                                 >
                                                     <Funnel className="w-4 h-4 p-0 m-0" />

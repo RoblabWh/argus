@@ -1,5 +1,5 @@
 import React from "react";
-import { useState, useEffect, useRef, useMemo, use } from "react";
+import { useState, useEffect, useMemo } from "react";
 import type { Report } from "@/types/report";
 import type { Image, ImageBasic, Coord, UTMCoord, GPSCoord } from "@/types/image";
 import type { Map } from "@/types/map";
@@ -45,7 +45,7 @@ function utmDistance(a: UTMCoord, b: UTMCoord): number {
     return Math.sqrt(dx * dx + dy * dy);
 }
 
-export function extractFlightTrajectory(images: ImageBasic[]): LatLng[] {
+export function extractFlightTrajectory(images: ImageBasic[]): [number, number][] {
     // 1. Sort images chronologically
     images.sort((a, b) =>
         new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
@@ -136,6 +136,63 @@ function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCatego
         ] as LatLngBoundsExpression;
     }, [maps]);
 
+    // Memoize flight trajectory - only recalculate when images change
+    const flightTrajectory = useMemo(() => {
+        if (!images?.length) return [];
+        return extractFlightTrajectory([...images]); // spread to avoid mutating original
+    }, [images]);
+
+    // Cache detection icons by class name - avoids creating new icon objects on every render
+    const detectionIconCache = useMemo(() => {
+        const cache = new Map<string, L.DivIcon>();
+        const getIcon = (className: string) => {
+            if (!cache.has(className)) {
+                cache.set(className, L.divIcon({
+                    className: 'custom-div-icon',
+                    html: `<div style="background-color:${getDetectionColor(className)};opacity:0.85;width:12px;height:12px;border-radius:50%;border:2px solid black;"></div>`,
+                    iconSize: [16, 16],
+                    iconAnchor: [8, 8],
+                    popupAnchor: [0, -8],
+                }));
+            }
+            return cache.get(className)!;
+        };
+        return getIcon;
+    }, []); // Icons are static based on class colors
+
+    // Memoize filtered detections with their GPS coordinates pre-computed
+    const visibleDetections = useMemo(() => {
+        if (!detections?.length || !images?.length || !maps?.length) return [];
+
+        // Helper to compute GPS from detection bbox (inlined to avoid dependency issues)
+        const computeGps = (detection: Detection): GPSCoord | null => {
+            const image = images.find(img => img.id === detection.image_id);
+            if (!image || !image.coord) return null;
+            const mapElement = maps.flatMap(m => m.map_elements).find(el => el.image_id === image.id);
+            if (!mapElement) return null;
+            const cornersGps = mapElement.corners.gps;
+            const boundsPx = detection.bbox;
+            const relX = (Number(boundsPx[0]) + Number(boundsPx[2]) / 2) / image.width;
+            const relY = (Number(boundsPx[1]) + Number(boundsPx[3]) / 2) / image.height;
+            const c0 = cornersGps[0], c2 = cornersGps[2], c3 = cornersGps[3];
+            return {
+                lat: c3[0] + relX * (c0[0] - c3[0]) + relY * (c2[0] - c3[0]),
+                lon: c3[1] + relX * (c0[1] - c3[1]) + relY * (c2[1] - c3[1])
+            };
+        };
+
+        return detections
+            .filter(det =>
+                visibleCategories[det.class_name] &&
+                det.score >= (thresholds[det.class_name] || 0)
+            )
+            .map(det => {
+                const gps = det.coord?.gps || computeGps(det);
+                return gps ? { ...det, computedGps: gps } : null;
+            })
+            .filter(Boolean) as (Detection & { computedGps: GPSCoord })[];
+    }, [detections, images, maps, visibleCategories, thresholds]);
+
     useEffect(() => {
         let first_image_with_gps = images?.find((image) => image.coord);
         if (first_image_with_gps && first_image_with_gps.coord?.gps) {
@@ -155,7 +212,6 @@ function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCatego
                 }
             });
             setVisibleMapOverlays(newState);
-            console.log("Initialized visibleMapOverlays state with maps:", newState);
         }
     }, [maps]);
 
@@ -164,7 +220,6 @@ function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCatego
     };
 
     useEffect(() => {
-        console.log("Map created, bounds are:", bounds);
         if (map !== null && bounds) {
             map.fitBounds(bounds);
         }
@@ -218,15 +273,12 @@ function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCatego
     };
 
     useEffect(() => {
-        console.log("Map component mounted, current theme is:", current);
         if (map !== null) {
-            // new resize Observer to handle map resizing
+            // Resize observer to handle map container resizing
             const resizeObserver = new ResizeObserver(() => {
                 if (!map) return;
                 try {
-                    console.log("Resizing map observer triggered");
                     map.invalidateSize();
-                    // map.flyTo(map.getCenter(), map.getZoom());
                 } catch (error) {
                     return
                 }
@@ -240,12 +292,10 @@ function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCatego
 
         const handleOverlayAdd = (e: any) => {
             const overlayName = e.name ?? e.layer?.options?.name;
-            console.log("Overlay added:", overlayName);
             if (!overlayName) return;
 
             setVisibleMapOverlays(prev => {
                 const next = { ...prev };
-                // find map.id by name if needed
                 const found = maps?.find(m => `Map: ${m.name}` === overlayName);
                 if (found) next[found.id] = true;
                 return next;
@@ -254,7 +304,6 @@ function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCatego
 
         const handleOverlayRemove = (e: any) => {
             const overlayName = e.name ?? e.layer?.options?.name;
-            console.log("Overlay removed:", overlayName);
             if (!overlayName) return;
 
             setVisibleMapOverlays(prev => {
@@ -320,53 +369,34 @@ function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCatego
                     </BaseLayer>
 
 
-                    {images && images.length > 0 && showTrajectory && (
+                    {flightTrajectory.length > 0 && showTrajectory && (
                         <LayerGroup>
                             <Polyline
-                                positions={extractFlightTrajectory(images)}
+                                positions={flightTrajectory}
                                 pathOptions={{ color: 'magenta', weight: 2, opacity: 1 }}
                             />
                         </LayerGroup>
                     )}
-                    {detections && detections.length > 0 && images && images.length > 0 && maps && maps.length > 0 && showDetections && (
-
+                    {visibleDetections.length > 0 && showDetections && (
                         <LayerGroup>
-                            {detections
-                                .filter(
-                                    detection =>
-                                        visibleCategories[detection.class_name] &&
-                                        detection.score >= (thresholds[detection.class_name] || 0)
-                                )
-                                .map(detection => {
-                                    const gps =
-                                        detection.coord?.gps || determineGPSCoordOfDetection(detection);
-                                    if (!gps) return null;
-                                    return (
-                                        <Marker
-                                            key={detection.id}
-                                            position={[gps.lat, gps.lon]}
-                                            icon={L.divIcon({
-                                                className: 'custom-div-icon',
-                                                html: `<div style="background-color:${getDetectionColor(detection.class_name)};opacity:0.85;width:12px;height:12px;border-radius:50%;border:2px solid black;"></div>`,
-                                                iconSize: [16, 16],
-                                                iconAnchor: [8, 8],
-                                                popupAnchor: [0, -8],
-                                            })}
-                                        >
-                                            <Popup>
-                                                <div className="w-36">
-                                                    <strong>{detection.class_name}</strong><br />
-                                                    Confidence: {(detection.score * 100).toFixed(1)}%<br />
-                                                    Image ID: {detection.image_id}
-                                                    <Button onClick={() => {
-                                                        selectImageOnMap(detection.image_id);
-                                                    }} className="text-sm w-full mt-2">Show</Button>
-                                                </div>
-                                            </Popup>
-                                        </Marker>
-                                    );
-                                })}
-
+                            {visibleDetections.map(detection => (
+                                <Marker
+                                    key={detection.id}
+                                    position={[detection.computedGps.lat, detection.computedGps.lon]}
+                                    icon={detectionIconCache(detection.class_name)}
+                                >
+                                    <Popup>
+                                        <div className="w-36">
+                                            <strong>{detection.class_name}</strong><br />
+                                            Confidence: {(detection.score * 100).toFixed(1)}%<br />
+                                            Image ID: {detection.image_id}
+                                            <Button onClick={() => {
+                                                selectImageOnMap(detection.image_id);
+                                            }} className="text-sm w-full mt-2">Show</Button>
+                                        </div>
+                                    </Popup>
+                                </Marker>
+                            ))}
                         </LayerGroup>
                     )}
                     {(images && images.length > 0 && images.some(image => image.panoramic)) && showPanoMarkers && (
