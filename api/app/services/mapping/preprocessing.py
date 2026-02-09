@@ -140,7 +140,7 @@ def _extract_location(image: ImageOut) -> str:
         coord = image.coord['gps']
         location = geolocator.reverse(f"{coord['lat']}, {coord['lon']}")
     except Exception as e:
-        print(f"Error extracting location: {e}")
+        logger.error(f"Error extracting location: {e}")
         return "Unknown Location"
 
     return location.address if location else "Unknown Location"
@@ -173,7 +173,7 @@ def _get_weather_data(image: ImageOut) -> dict:
         useful_data = _extract_useful_weather_data(weather, timestamp)
         return useful_data
     except Exception as e:
-        print(f"Error fetching past weather data: {e}")
+        logger.warning(f"Error fetching past weather data: {e}")
      
     try:
         # Fallback to current weather if historical data fails
@@ -181,7 +181,7 @@ def _get_weather_data(image: ImageOut) -> dict:
         useful_data = _extract_useful_weather_data(weather)
         return useful_data
     except Exception as e:
-        print(f"Error fetching current weather data: {e}")
+        logger.warning(f"Error fetching current weather data: {e}")
         return None
 
 
@@ -196,9 +196,9 @@ def _call_open_weather_api(gps: dict, timestamp: float = None) -> dict:
 
     results = requests.get(api_call)
     results = results.json()
-    print(f"Open Weather API call: {api_call}")
+    logger.info(f"Open Weather API call: {api_call}")
     if results:
-        print(f"Open Weather API results: {results}")
+        logger.debug(f"Open Weather API results: {results}")
         if results["cod"] == 401 or results["cod"] == "401":
             raise Exception("API key invalid, falling back to default key")
         if results["cod"] == 400 or results["cod"] == "400":
@@ -315,9 +315,11 @@ def _check_altitude(images: list[ImageOut], settings: dict) -> tuple:
     if altitude_count > 1:
         average_altitude = altitude_sum / altitude_count
     else:
-        average_altitude = 0
+        average_altitude = altitude_sum if altitude_count == 1 else default_altitude
 
-    covered_area = (northhing_max - northhing_min) * (easting_max - easting_min)
+    covered_area = 0.0
+    if northhing_max != float('-inf') and northhing_min != float('inf') and easting_max != float('-inf') and easting_min != float('inf'):
+        covered_area = (northhing_max - northhing_min) * (easting_max - easting_min)
 
     return images, average_altitude, covered_area
 
@@ -402,8 +404,8 @@ def _separate_sequences(images: list[ImageOut]) -> list[list[ImageOut]]:
     logger.info(f"Median time difference: {median_time_diff}, Median distance: {median_distance}")
 
 
-    for i in range(0, len(images)-1):
-        if delta_times[i] > 2 * median_time_diff or delta_distances[i] > 5 * median_distance:
+    for i in range(1, len(images)):#Fix? should run from 1 to len(images)
+        if delta_times[i-1] > 2 * median_time_diff or delta_distances[i-1] > 5 * median_distance:
             sequences.append(current_sequence)
             current_sequence = [images[i]]
         else:
@@ -428,11 +430,13 @@ def _set_bounds_and_corners_per_job(mapping_jobs: list[dict]) -> list[dict]:
         longitude_min = float('inf')
         latitude_max = float('-inf')
         latitude_min = float('inf')
+        basic_utm = None
 
         for image in job["images"]:
             if image.coord and image.coord.get("utm"):
                 utm = image.coord["utm"]
                 gps = image.coord["gps"]
+                basic_utm = basic_utm or utm
                 northing_max = max(northing_max, utm["northing"])
                 northing_min = min(northing_min, utm["northing"])
                 easting_max = max(easting_max, utm["easting"])
@@ -442,12 +446,15 @@ def _set_bounds_and_corners_per_job(mapping_jobs: list[dict]) -> list[dict]:
                 latitude_max = max(latitude_max, gps["lat"])
                 latitude_min = min(latitude_min, gps["lat"])
 
+        if basic_utm is None:
+            continue
+
         bounds_coordinates = {
             "utm": {
-                "zone": utm["zone"],
-                "crs": utm["crs"],
-                "hemisphere": utm["hemisphere"],
-                "zone_letter": utm["zone_letter"],
+                "zone": basic_utm["zone"],
+                "crs": basic_utm["crs"],
+                "hemisphere": basic_utm["hemisphere"],
+                "zone_letter": basic_utm["zone_letter"],
                 "northing_max": northing_max,
                 "northing_min": northing_min,
                 "easting_max": easting_max,
@@ -486,7 +493,7 @@ def process_thermal_wrapper(data, progress_queue):
         try:
             min_temp, max_temp = thermal_processing.process_thermal_image(data["url"], path)
         except Exception as e:
-            print(f"Error processing thermal image {data['image_id']}: {e}")
+            logger.error(f"Error processing thermal image {data['image_id']}: {e}")
             progress_queue.put(1)
             return {
                 "image_id": data["image_id"],
@@ -534,7 +541,7 @@ def _process_thermal_images(images: List[ImageOut], report_id: int, db: Session,
     thermal_metadata_list = []
 
     if total_ir_images == 0:
-        print("No thermal images found, skipping thermal processing.", flush=True)
+        logger.info("No thermal images found, skipping thermal processing.")
         return images
     
     while thermal_images:
@@ -542,18 +549,26 @@ def _process_thermal_images(images: List[ImageOut], report_id: int, db: Session,
         closest_rgb_image_index = -1
         smallest_diff = float("inf")
         counterpart = None
+        discard_from_index = -1
 
         for i, rgb_image in enumerate(rgb_images):
-            time_diff = abs((thermal_image.created_at - rgb_image.created_at).total_seconds())
-            if time_diff <= 2:
-                if time_diff < smallest_diff:
-                    smallest_diff = time_diff
-                    closest_rgb_image_index = i
-            elif closest_rgb_image_index != -1:
+            time_diff = (rgb_image.created_at - thermal_image.created_at).total_seconds()
+            if time_diff > 2:  # rgb too far ahead, rest will be further (sorted)
+                break
+            if time_diff < -2:  # rgb too far behind, skip (no possibles matches for all images before that one)
+                discard_from_index = i
+                continue
+            if abs(time_diff) < smallest_diff:
+                smallest_diff = abs(time_diff)
+                closest_rgb_image_index = i
+            elif abs(time_diff) > smallest_diff:  # past the best match, stop
                 break
 
         if closest_rgb_image_index != -1:
-            counterpart = rgb_images.pop(closest_rgb_image_index)
+            rgb_images = rgb_images[closest_rgb_image_index:]  # discard earlier rgb images
+            counterpart = rgb_images.pop(0)  # pop the matched counterpart
+        elif discard_from_index != -1:
+            rgb_images = rgb_images[discard_from_index:]  # discard rgb images too old for any future thermal
 
         camera_model = thermal_image.camera_model
         scale = camera_specific_keys.get(camera_model, {}).get("ir", {}).get("ir_scale") or \
@@ -607,6 +622,8 @@ def _process_thermal_images(images: List[ImageOut], report_id: int, db: Session,
 
     crud_image.create_multiple_thermal_data(db, thermal_data_list)
 
-    report_data = crud_report.get_full_report(db, report_id)
-    return report_data.mapping_report.images
+    for img in images:
+        if img.thermal:
+            db.refresh(img, ["thermal_data"])
+    return images
 

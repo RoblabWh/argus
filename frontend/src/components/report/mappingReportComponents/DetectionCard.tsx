@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, use, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
@@ -17,7 +17,6 @@ import {
     EyeOff
 } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import type { Report } from '@/types/report';
 import type { Detection } from '@/types/detection';
 import { getDetectionColor } from '@/types/detection';
 import { useQueryClient } from '@tanstack/react-query';
@@ -26,79 +25,15 @@ import {
     useDetectionStatusPolling,
     useFetchNewDetections,
     useDetections,
-    useUpdateDetection,
     useIsDetectionRunning,
 } from "@/hooks/detectionHooks";
-import type { Image } from '@/types';
-import { set } from 'date-fns';
-
-function countDetections(detections: Detection[] | undefined, thresholds: { [key: string]: number } = {}) {
-    console.log("Counting detections with thresholds:", thresholds);
-    let summary: { [key: string]: number } = {};
-    if (!detections || detections.length === 0 || Object.keys(thresholds).length === 0) return summary;
-
-    detections.forEach((detection) => {
-        if (!summary[detection.class_name]) {
-            summary[detection.class_name] = 0;
-        }
-        if (detection.score < (thresholds[detection.class_name])) {
-            return; // Skip detections below threshold
-        }
-        summary[detection.class_name] += 1;
-    });
-    return summary;
-}
-
-
-
-function initiateThresholds(detections: Detection[] | undefined) {
-    if (!detections) return {};
-    let thresholds: { [key: string]: number } = {};
-
-    detections.forEach((detection) => {
-        if (!(detection.class_name in thresholds)) {
-            thresholds[detection.class_name] = 0.2; // Default threshold
-        }
-    });
-    return thresholds;
-}
-
-function initiateCategoryVisibility(detections: Detection[]) {
-    let visibility: { [key: string]: boolean } = {};
-    if (!detections) return visibility;
-    detections.forEach((detection) => {
-        if (!(detection.class_name in visibility)) {
-            visibility[detection.class_name] = true; // Default to visible
-        }
-    });
-    return visibility;
-}
-
-function updateThresholds(detections: Detection[] | undefined, currentThresholds: { [key: string]: number }) {
-    console.log("Updating thresholds with current:", currentThresholds);
-    if (!detections) return currentThresholds;
-    let thresholds = { ...currentThresholds };
-
-    detections.forEach((detection) => {
-        if (!(detection.class_name in thresholds)) {
-            thresholds[detection.class_name] = 0.2; // Default threshold
-        }
-    });
-    console.log("Updated thresholds:", thresholds);
-    return thresholds;
-}
-
-function updateCategoryVisibility(detections: Detection[] | undefined, currentVisibility: { [key: string]: boolean }) {
-    if (!detections) return currentVisibility;
-    let visibility = { ...currentVisibility };
-
-    detections.forEach((detection) => {
-        if (!(detection.class_name in visibility)) {
-            visibility[detection.class_name] = true; // Default to visible
-        }
-    });
-    return visibility;
-}
+import {
+    countDetections,
+    initiateThresholds,
+    initiateCategoryVisibility,
+    updateThresholds,
+    updateCategoryVisibility,
+} from "@/utils/detectionUtils";
 
 
 interface Props {
@@ -146,8 +81,6 @@ export function DetectionCard({ report_id, setThresholds, thresholds, setFilter,
     const fetchNewDetections = useFetchNewDetections(report_id);
     const lastProgressRef = useRef(0);
 
-    // const updateDetection = useUpdateDetection(report.report_id);
-
     useEffect(() => {
         if (!detectionStatus.data) return;
 
@@ -189,7 +122,6 @@ export function DetectionCard({ report_id, setThresholds, thresholds, setFilter,
         const color = getDetectionColor(objectType);
 
         var icon;
-
 
         switch (objectType) {
             case 'vehicle':
@@ -238,7 +170,6 @@ export function DetectionCard({ report_id, setThresholds, thresholds, setFilter,
                 <ScanEye className="absolute right-2 top-1 w-24 h-24 opacity-100 text-muted-foreground dark:text-white z-0 pointer-events-none" />
 
                 {/* Gradient Overlay */}
-                {/* <div className="absolute inset-0 z-10 pointer-events-none bg-gradient-to-l from-white/90 via-white/60 to-white/0 dark:from-gray-900/100 dark:via-gray-900/70 dark:to-gray-900/0" /> */}
                 <div className="absolute w-40 h-30 right-0 top-0 z-10 pointer-events-none bg-gradient-to-l from-white/90 via-white/75 to-white/55 dark:from-gray-900/100 dark:via-gray-900/85 dark:to-gray-900/60" />
 
                 <CardContent className="px-4 pt-1 flex flex-col items-start space-y-1 relative z-10">
@@ -282,7 +213,6 @@ export function DetectionCard({ report_id, setThresholds, thresholds, setFilter,
                                                     onChange={(e) => {
                                                         const newThresholds = { ...thresholds, [key]: parseFloat(e.target.value) };
                                                         setThresholds(newThresholds);
-                                                        //setDetectionSummary(countDetections(report, newThresholds));
                                                     }}
                                                     className="w-full m-0 "
                                                 />
@@ -382,7 +312,6 @@ export function DetectionCard({ report_id, setThresholds, thresholds, setFilter,
                                             <SelectItem value="medium">Medium (Refined)</SelectItem>
                                             <SelectItem value="detailed">Fine (Detailed)</SelectItem>
                                             <SelectItem value="experimental">Experimental (YOLOv11)</SelectItem>
-                                            {/* Add more actions as needed */}
                                         </SelectContent>
                                     </Select>
 

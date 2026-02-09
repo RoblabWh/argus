@@ -1,10 +1,8 @@
 import React from "react";
 import { useState, useEffect, useMemo } from "react";
-import type { Report } from "@/types/report";
-import type { Image, ImageBasic, Coord, UTMCoord, GPSCoord } from "@/types/image";
-import type { Map } from "@/types/map";
+import type { ImageBasic, GPSCoord } from "@/types/image";
 import type { Detection } from "@/types/detection";
-import { DETECTION_COLORS, getDetectionColor } from "@/types/detection";
+import { getDetectionColor } from "@/types/detection";
 import { getApiUrl } from "@/api";
 import {
     MapContainer,
@@ -13,85 +11,32 @@ import {
     ImageOverlay,
     Marker,
     Popup,
-    Rectangle,
     Polygon,
     Polyline,
     LayerGroup,
-    Circle,
     useMap
 } from 'react-leaflet';
 import { useTheme } from "@/components/ui/theme-provider";
 import type { LatLngBoundsExpression, Map as LeafletMap } from 'leaflet';
-import L, { bounds, } from "leaflet";
+import L from "leaflet";
 import 'leaflet/dist/leaflet.css';
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
+import { Button } from "@/components/ui/button";
+import { Home } from 'lucide-react';
 import "@/lib/Leaflet.ImageOverlay.Rotated";
 import { RotatedImageOverlay } from "@/components/report/mappingReportComponents/RotatedImageOverlay";
-import panoPinSVG from '@/assets/panorama.svg'
+import panoPinSVG from '@/assets/panorama.svg';
 import { useImages } from "@/hooks/imageHooks";
 import { useMaps } from "@/hooks/useMaps";
 import { useDetections, useUpdateDetectionBatch } from "@/hooks/detectionHooks";
+import { extractFlightTrajectory, computeDetectionGps } from "@/utils/coordinateUtils";
 
+// Re-export for backward compatibility if other components import from here
+export { extractFlightTrajectory } from "@/utils/coordinateUtils";
 
-
-
-const { BaseLayer, Overlay } = LayersControl;
-
-function utmDistance(a: UTMCoord, b: UTMCoord): number {
-    const dx = a.easting - b.easting;
-    const dy = a.northing - b.northing;
-    return Math.sqrt(dx * dx + dy * dy);
-}
-
-export function extractFlightTrajectory(images: ImageBasic[]): [number, number][] {
-    // 1. Sort images chronologically
-    images.sort((a, b) =>
-        new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-    );
-
-    const selected: ImageBasic[] = [];
-
-    for (let i = 0; i < images.length; i++) {
-        const img = images[i];
-        if (!img.coord?.gps || img.panoramic) continue;
-
-        const prev = selected[selected.length - 1];
-
-        if (
-            prev &&
-            Math.abs(new Date(img.created_at).getTime() - new Date(prev.created_at).getTime()) <=
-            2000 // within 3 seconds
-        ) {
-            // One thermal, one regular?
-            if (img.thermal !== prev.thermal) {
-                const utm1 = img.coord?.utm;
-                const utm2 = prev.coord?.utm;
-
-                if (utm1 && utm2) {
-                    const dist = utmDistance(utm1, utm2);
-
-                    if (dist <= 3.5) {
-                        // keep the regular one
-                        if (!img.thermal) {
-                            selected[selected.length - 1] = img; // replace with regular
-                        }
-                        continue; // skip thermal
-                    }
-                }
-            }
-        }
-
-        selected.push(img);
-    }
-
-    // 2. Collect flight path coords
-    return selected
-        .filter((img) => img.coord?.gps)
-        .map((img) => [img.coord!.gps.lat, img.coord!.gps.lon]);
-}
-
+const { BaseLayer } = LayersControl;
 
 interface Props {
     reportId: number;
@@ -101,6 +46,7 @@ interface Props {
     visibleMapOverlays: { [mapId: number]: boolean };
     setVisibleMapOverlays: (overlays: { [mapId: number]: boolean }) => void;
 }
+
 function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCategories, visibleMapOverlays, setVisibleMapOverlays }: Props) {
     const [overlayOpacity, setOverlayOpacity] = useState(1.0);
     const [map, setMap] = useState<LeafletMap | null>(null);
@@ -117,7 +63,7 @@ function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCatego
         ? window.matchMedia("(prefers-color-scheme: dark)").matches
             ? "dark"
             : "light"
-        : theme;    //Check if report has maps, If not show overlay over map (that can be closed by clicking, but since no gps data is available the map will start ata default location (in fututre editable in settins))
+        : theme;
 
     const first_image_with_gps = images?.find((image) => image.coord);
     const first_map = maps?.[0] || null;
@@ -125,7 +71,7 @@ function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCatego
         ? [(first_map.bounds.gps.latitude_min + first_map.bounds.gps.latitude_max) / 2, (first_map.bounds.gps.longitude_min + first_map.bounds.gps.longitude_max) / 2]
         : (first_image_with_gps ? [first_image_with_gps.coord.gps.lat, first_image_with_gps.coord.gps.lon] : [51.574, 7.027]));
 
-    
+
     const bounds = useMemo(() => {
         if (!maps?.length) return null;
 
@@ -139,7 +85,7 @@ function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCatego
     // Memoize flight trajectory - only recalculate when images change
     const flightTrajectory = useMemo(() => {
         if (!images?.length) return [];
-        return extractFlightTrajectory([...images]); // spread to avoid mutating original
+        return extractFlightTrajectory([...images]);
     }, [images]);
 
     // Cache detection icons by class name - avoids creating new icon objects on every render
@@ -158,28 +104,11 @@ function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCatego
             return cache.get(className)!;
         };
         return getIcon;
-    }, []); // Icons are static based on class colors
+    }, []);
 
     // Memoize filtered detections with their GPS coordinates pre-computed
     const visibleDetections = useMemo(() => {
         if (!detections?.length || !images?.length || !maps?.length) return [];
-
-        // Helper to compute GPS from detection bbox (inlined to avoid dependency issues)
-        const computeGps = (detection: Detection): GPSCoord | null => {
-            const image = images.find(img => img.id === detection.image_id);
-            if (!image || !image.coord) return null;
-            const mapElement = maps.flatMap(m => m.map_elements).find(el => el.image_id === image.id);
-            if (!mapElement) return null;
-            const cornersGps = mapElement.corners.gps;
-            const boundsPx = detection.bbox;
-            const relX = (Number(boundsPx[0]) + Number(boundsPx[2]) / 2) / image.width;
-            const relY = (Number(boundsPx[1]) + Number(boundsPx[3]) / 2) / image.height;
-            const c0 = cornersGps[0], c2 = cornersGps[2], c3 = cornersGps[3];
-            return {
-                lat: c3[0] + relX * (c0[0] - c3[0]) + relY * (c2[0] - c3[0]),
-                lon: c3[1] + relX * (c0[1] - c3[1]) + relY * (c2[1] - c3[1])
-            };
-        };
 
         return detections
             .filter(det =>
@@ -187,7 +116,7 @@ function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCatego
                 det.score >= (thresholds[det.class_name] || 0)
             )
             .map(det => {
-                const gps = det.coord?.gps || computeGps(det);
+                const gps = det.coord?.gps || computeDetectionGps(det, images, maps);
                 return gps ? { ...det, computedGps: gps } : null;
             })
             .filter(Boolean) as (Detection & { computedGps: GPSCoord })[];
@@ -216,7 +145,7 @@ function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCatego
     }, [maps]);
 
     const handleOverlayClick = (mapId: number, elementId: string, image_id: number) => {
-        selectImageOnMap(image_id)
+        selectImageOnMap(image_id);
     };
 
     useEffect(() => {
@@ -232,45 +161,18 @@ function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCatego
         const toUpdate = detections
             .filter(det => !det.coord?.gps?.lat || !det.coord?.gps?.lon)
             .map(det => {
-                const gps = determineGPSCoordOfDetection(det);
+                const gps = computeDetectionGps(det, images, maps);
                 if (!gps) return null;
                 det.coord = { gps: gps, utm: undefined };
                 return det;
             })
-            .filter(Boolean); // remove nulls
+            .filter(Boolean);
 
         // Send a single batch PUT if needed
         if (toUpdate.length > 0 && toUpdate !== null && updateDetections) {
             updateDetections(toUpdate);
         }
     }, [detections, images, maps, updateDetections]);
-
-    const determineGPSCoordOfDetection = (detection: Detection): GPSCoord | null => {
-        let image = images?.find(img => img.id === detection.image_id);
-        if (!image || !image.coord) return null;
-        let mapElement = maps?.flatMap(m => m.map_elements).find(el => el.image_id === image.id);
-        if (!mapElement) return null;
-        let cornersGps = mapElement.corners.gps;
-        let boundsPx = detection.bbox;
-        let imgWidth = image.width;
-        let imgHeight = image.height;
-
-        // Calculate relative position within image
-
-        let relX = (Number(boundsPx[0]) + Number(boundsPx[2]) / 2) / imgWidth; // center x
-        let relY = (Number(boundsPx[1]) + Number(boundsPx[3]) / 2) / imgHeight; // center y
-        // Interpolate GPS position within map element corners
-        let c0 = cornersGps[0]; // top-right
-        let c1 = cornersGps[1]; // bottom-right
-        let c2 = cornersGps[2]; // bottom-left
-        let c3 = cornersGps[3]; // top-left
-        let lat = c3[0] + relX * (c0[0] - c3[0]) + relY * (c2[0] - c3[0]);
-        let lon = c3[1] + relX * (c0[1] - c3[1]) + relY * (c2[1] - c3[1]);
-        return {
-            lat: lat,
-            lon: lon
-        };
-    };
 
     useEffect(() => {
         if (map !== null) {
@@ -280,7 +182,7 @@ function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCatego
                 try {
                     map.invalidateSize();
                 } catch (error) {
-                    return
+                    return;
                 }
             });
             resizeObserver.observe(map.getContainer());
@@ -350,7 +252,6 @@ function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCatego
                         />
                     </BaseLayer>
 
-
                     <BaseLayer name="Esri Satellite">
                         <TileLayer
                             attribution='Tiles © Esri'
@@ -367,7 +268,6 @@ function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCatego
                             maxZoom={23}
                         />
                     </BaseLayer>
-
 
                     {flightTrajectory.length > 0 && showTrajectory && (
                         <LayerGroup>
@@ -400,7 +300,6 @@ function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCatego
                         </LayerGroup>
                     )}
                     {(images && images.length > 0 && images.some(image => image.panoramic)) && showPanoMarkers && (
-                        //for each panoramic image, add a marker with a popup
                         <LayerGroup>
                             {images.map((image) => {
                                 if (!image.coord || !image.coord.gps || image.coord.gps === undefined || !image.panoramic) return null;
@@ -420,7 +319,6 @@ function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCatego
                                             popupAnchor: [0, -12],
                                         })}
                                     >
-
                                     </Marker>
                                 );
                             })}
@@ -437,17 +335,9 @@ function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCatego
                             [latitude_max, longitude_max],
                         ];
 
-                        const bounds_corners = [
-                            [latitude_min, longitude_min],
-                            [latitude_min, longitude_max],
-                            [latitude_max, longitude_max],
-                            [latitude_max, longitude_min],
-                        ];
-
                         if (!map.bounds.corners || map.bounds.corners.gps.length < 4) {
                             console.warn(`Map ${map.name} does not have enough corners defined, using default bounds.`);
                             useRotatedOverlay = false;
-
                         } else {
                             useRotatedOverlay = true;
                             gps_corners = map.bounds.corners.gps.map((corner: LatLngBoundsExpression) => ([corner[1], corner[0]]));
@@ -459,16 +349,14 @@ function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCatego
                                 name={`Map: ${map.name}`}
                                 checked={visibleMapOverlays[map.id]}
                             >
-
                                 <LayerGroup>
-
                                     {useRotatedOverlay ? (
                                         <RotatedImageOverlay
                                             url={`${api_url}/${map.url}`}
                                             corners={[
-                                                gps_corners[0], // top-left
-                                                gps_corners[1], // top-right
-                                                gps_corners[3], // bottom-left
+                                                gps_corners[0],
+                                                gps_corners[1],
+                                                gps_corners[3],
                                             ]}
                                             opacity={overlayOpacity}
                                         />) : (
@@ -479,59 +367,42 @@ function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCatego
                                         />
                                     )}
 
-
-
-
-
                                     {map.map_elements?.map((element) => {
                                         const corners = element.corners.gps;
-                                        // const cornerColors = ['red', 'green', 'blue', 'yellow'];
 
                                         return (
-                                            <>
-                                                {/* {corners.map((corner, index) => (
-                                                    <Circle
-                                                        key={`corner-${index}`}
-                                                        center={corner}
-                                                        radius={1}
-                                                        pathOptions={{ color: cornerColors[index % cornerColors.length] }}
-                                                    />
-                                                ))} */}
-                                                <Polygon
-                                                    key={`map-${map.id}_element-${element.id}`}
-                                                    positions={[
-                                                        corners[0],
-                                                        corners[1],
-                                                        corners[2],
-                                                        corners[3],
-                                                    ]}
-                                                    pathOptions={{
-                                                        color: 'blue',
-                                                        weight: 1,
-                                                        fillOpacity: 0,
-                                                        stroke: false,
-                                                    }}
-                                                    eventHandlers={{
-                                                        mouseover: (e) => {
-                                                            const layer = e.target as L.Path;
-                                                            layer.setStyle({ fillOpacity: 0.2 });
-                                                        },
-                                                        mouseout: (e) => {
-                                                            const layer = e.target as L.Path;
-                                                            layer.setStyle({ fillOpacity: 0 });
-                                                        },
-                                                        click: () => {
-                                                            handleOverlayClick(map.id, element.id, element.image_id);
-                                                            // later: open slideshow here
-                                                        },
-                                                    }}
-                                                />
-                                            </>
+                                            <Polygon
+                                                key={`map-${map.id}_element-${element.id}`}
+                                                positions={[
+                                                    corners[0],
+                                                    corners[1],
+                                                    corners[2],
+                                                    corners[3],
+                                                ]}
+                                                pathOptions={{
+                                                    color: 'blue',
+                                                    weight: 1,
+                                                    fillOpacity: 0,
+                                                    stroke: false,
+                                                }}
+                                                eventHandlers={{
+                                                    mouseover: (e) => {
+                                                        const layer = e.target as L.Path;
+                                                        layer.setStyle({ fillOpacity: 0.2 });
+                                                    },
+                                                    mouseout: (e) => {
+                                                        const layer = e.target as L.Path;
+                                                        layer.setStyle({ fillOpacity: 0 });
+                                                    },
+                                                    click: () => {
+                                                        handleOverlayClick(map.id, element.id, element.image_id);
+                                                    },
+                                                }}
+                                            />
                                         );
                                     })}
                                 </LayerGroup>
                             </LayersControl.Overlay>
-
                         );
                     })}
                 </LayersControl>
@@ -592,15 +463,9 @@ function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCatego
                 </div>
             )}
         </div>
-
-
     );
 }
 
-
-// import { useMap } from 'react-leaflet';
-import { Home } from 'lucide-react'; // optional icon lib
-import { Button } from "@/components/ui/button";
 
 function HomeButton({ bounds, center }: { bounds: LatLngBoundsExpression | null, center: LatLngBoundsExpression }) {
     const map = useMap();
