@@ -94,7 +94,12 @@ def create_mapping_data(db: Session, data: MappingDataCreate):
     db.add(new_mapping_data)
     db.commit()
     db.refresh(new_mapping_data)
-    return get_full_image(db, new_mapping_data.image_id) 
+    return get_full_image(db, new_mapping_data.image_id)
+
+
+def delete_mapping_data(db: Session, image_id: int):
+    db.query(models.MappingData).filter(models.MappingData.image_id == image_id).delete()
+    db.commit()
 
 
 ######################

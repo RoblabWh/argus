@@ -15,6 +15,7 @@ export function useReportSettings(
     default_flight_height: 100.0,
     odm_processing: false,
     odm_full: false,
+    reread_metadata: false,
     ...dynamicDefaults,
   };
 

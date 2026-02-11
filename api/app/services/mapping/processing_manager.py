@@ -11,8 +11,10 @@ from app.database import get_db
 from sqlalchemy.orm import Session
 from app.services.mapping.preprocessing import preprocess_report
 from app.services.mapping.fast_mapping import map_images
+from app.services.mapping.advanced_mapping import map_images_advanced
 from app.services.mapping.progress_updater import ProgressUpdater
 from app.services.mapping.odm_mapping import summon_webODM_mapping_selections, process_webODM
+from app.services.image_processing import reread_image_metadata
 import logging
 
 r = redis.Redis(host=config.REDIS_HOST, port=config.REDIS_PORT, db=0)
@@ -25,14 +27,22 @@ def process_report(report_id: int, settings: dict = None):
     logger.info(f"Starting processing for report {report_id}")
     logger.info(f"Settings of type {type(settings)}: {settings}")
     try:
-        progress_updater.update_progress("preprocessing", 1.0)
         report = crud.get_full_report(db, report_id, r)
         images = report.mapping_report.images
         mapping_report_id = report.mapping_report.id
-        progress_updater.update_progress("preprocessing", 5.0)
+
+        do_reread = settings.get('reread_metadata', False)
+
+        if do_reread:
+            progress_updater.scope(0.0, 20.0)
+            reread_image_metadata(images, db, progress_updater)
+            report = crud.get_full_report(db, report_id, r)
+            images = report.mapping_report.images
+
+        progress_updater.scope(20.0 if do_reread else 0.0, 100.0)
         mapping_selections = preprocess_report(report_id, images, settings, db, progress_updater)
-        
-        
+
+
         if (settings['fast_mapping'] or settings["odm_processing"]) and len(mapping_selections) > 0:
             #delete old maps if they exist
             old_maps = map_crud.get_maps_by_mapping_report(db, mapping_report_id)
@@ -48,12 +58,18 @@ def process_report(report_id: int, settings: dict = None):
             odm_mapping_selections = summon_webODM_mapping_selections(mapping_selections)
 
         progress_updater.update_progress("preprocessing", 100.0)
+        progress_updater.scope(0.0, 100.0)
 
         if settings['fast_mapping'] and len(mapping_selections) > 0:
             for map_index, mapping_selection in enumerate(mapping_selections):
                     progress_updater.set_map_index(map_index, len(mapping_selections)+len(odm_mapping_selections))
-                    map_images(report_id, mapping_report_id, mapping_selection, settings, db, progress_updater, map_index=map_index)
-
+                    # time_a = time.time()
+                    # map_images(report_id, mapping_report_id, mapping_selection, settings, db, progress_updater, map_index=map_index)
+                    # time_b = time.time()
+                    map_images_advanced(report_id, mapping_report_id, mapping_selection, settings, db, progress_updater, map_index=map_index)
+                    # time_c = time.time()
+                    # logger.info(f"Finished og fast mapping task {map_index} for report {report_id} in:  {time_b - time_a:.2f}")
+                    # logger.info(f"Finished advanced mapping task {map_index} for report {report_id} in: {time_c - time_b:.2f}")
 
         if settings['odm_processing'] and len(odm_mapping_selections) > 0:
             webODM_project_id = crud.get_mapping_report_webodm_project_id(db, report_id)

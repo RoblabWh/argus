@@ -65,7 +65,11 @@
       "uav_pitch": "XMP:FlightPitchDegree"
     },
     "adjust_data": false,
-    "fov_correction" : 1.225
+    "fov_correction" : 1.225,
+    "rgb_orientation_offset": {
+      "cam_yaw": -180,
+      "cam_roll": 180
+    }
    },
   "MAVIC2-ENTERPRISE-ADVANCED": {
     "created_at": "EXIF:CreateDate",

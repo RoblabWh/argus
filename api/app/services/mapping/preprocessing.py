@@ -377,39 +377,43 @@ def _split_mapping_jobs(images: list[ImageOut]) -> list:
 
 def _separate_sequences(images: list[ImageOut]) -> list[list[ImageOut]]:
     """
-    Separate images into sequences based on the time difference.
+    Separate images into sequences based on the time difference and distance.
     """
     if not images:
         return []
 
-    delta_times = []
-    delta_distances = []
-    sequences = []
-    current_sequence = [images[0]]
-
+    # Build paired deltas — use sentinel distance when UTM is missing
+    deltas = []  # list of (time_diff, distance_squared)
     for i in range(1, len(images)):
         date_a = images[i-1].created_at
         date_b = images[i].created_at
         time_diff = (date_b - date_a).total_seconds()
-        delta_times.append(time_diff)
 
-        utm_a = images[i-1].coord.get("utm")
-        utm_b = images[i].coord.get("utm")
+        utm_a = images[i-1].coord.get("utm") if images[i-1].coord else None
+        utm_b = images[i].coord.get("utm") if images[i].coord else None
         if utm_a and utm_b:
-            distance = ((utm_b['easting'] - utm_a['easting']) ** 2 + (utm_b['northing'] - utm_a['northing']) ** 2) # root can be ignored for performance if all compared values are squared
-            delta_distances.append(distance)
-    
+            distance = (utm_b['easting'] - utm_a['easting']) ** 2 + (utm_b['northing'] - utm_a['northing']) ** 2
+        else:
+            distance = 0.0  # no UTM data — don't split on distance
+
+        deltas.append((time_diff, distance))
+
+    delta_times = [d[0] for d in deltas]
+    delta_distances = [d[1] for d in deltas]
+
     median_time_diff = sorted(delta_times)[len(delta_times) // 2] if delta_times else 0
     median_distance = sorted(delta_distances)[len(delta_distances) // 2] if delta_distances else 0
     logger.info(f"Median time difference: {median_time_diff}, Median distance: {median_distance}")
 
+    sequences = []
+    current_sequence = [images[0]]
 
-    for i in range(1, len(images)):#Fix? should run from 1 to len(images)
-        if delta_times[i-1] > 2 * median_time_diff or delta_distances[i-1] > 5 * median_distance:
+    for i in range(len(deltas)):
+        if deltas[i][0] > 2 * median_time_diff or deltas[i][1] > 5 * median_distance:
             sequences.append(current_sequence)
-            current_sequence = [images[i]]
+            current_sequence = [images[i + 1]]
         else:
-            current_sequence.append(images[i])
+            current_sequence.append(images[i + 1])
 
     if current_sequence:
         sequences.append(current_sequence)
@@ -544,19 +548,24 @@ def _process_thermal_images(images: List[ImageOut], report_id: int, db: Session,
         logger.info("No thermal images found, skipping thermal processing.")
         return images
     
-    while thermal_images:
-        thermal_image = thermal_images.pop(0)
+    rgb_start = 0  # index pointer into rgb_images — avoids O(n²) list slicing
+    matched_rgb = set()  # track matched RGB indices to avoid reuse
+
+    for thermal_image in thermal_images:
         closest_rgb_image_index = -1
         smallest_diff = float("inf")
         counterpart = None
-        discard_from_index = -1
+        discard_to_index = -1
 
-        for i, rgb_image in enumerate(rgb_images):
+        for i in range(rgb_start, len(rgb_images)):
+            if i in matched_rgb:
+                continue
+            rgb_image = rgb_images[i]
             time_diff = (rgb_image.created_at - thermal_image.created_at).total_seconds()
             if time_diff > 2:  # rgb too far ahead, rest will be further (sorted)
                 break
-            if time_diff < -2:  # rgb too far behind, skip (no possibles matches for all images before that one)
-                discard_from_index = i
+            if time_diff < -2:  # rgb too far behind
+                discard_to_index = i
                 continue
             if abs(time_diff) < smallest_diff:
                 smallest_diff = abs(time_diff)
@@ -565,10 +574,11 @@ def _process_thermal_images(images: List[ImageOut], report_id: int, db: Session,
                 break
 
         if closest_rgb_image_index != -1:
-            rgb_images = rgb_images[closest_rgb_image_index:]  # discard earlier rgb images
-            counterpart = rgb_images.pop(0)  # pop the matched counterpart
-        elif discard_from_index != -1:
-            rgb_images = rgb_images[discard_from_index:]  # discard rgb images too old for any future thermal
+            rgb_start = closest_rgb_image_index  # advance pointer past old entries
+            matched_rgb.add(closest_rgb_image_index)
+            counterpart = rgb_images[closest_rgb_image_index]
+        elif discard_to_index != -1:
+            rgb_start = discard_to_index  # advance pointer past too-old entries
 
         camera_model = thermal_image.camera_model
         scale = camera_specific_keys.get(camera_model, {}).get("ir", {}).get("ir_scale") or \

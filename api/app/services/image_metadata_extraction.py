@@ -4,6 +4,9 @@ import pyproj
 import pyexifinfo as p
 import re
 from datetime import datetime, timezone
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def _read_metadata(image_path: str) -> dict:
@@ -55,12 +58,12 @@ def extract_image_metadata(image_path: str) -> dict:
         "thermal": False,  # will be set later
         "mappable": False,  # will be set later
     }
-    #print(f"extracted data for {model_name}: {data}", flush=True)
+    logger.debug(f"extracted data for {model_name}: {data}")
     
     data["thermal"] = _check_thermal(
         metadata, datakeys, data, os.path.basename(image_path)
     )
-    #print(f"Image thermal check for {model_name}: {data['thermal']}", flush=True)
+    logger.debug(f"Image thermal check for {model_name}: {data['thermal']}")
 
     try:
         mappable, mapping_data = _extract_mapping_data(metadata, datakeys, data)
@@ -68,17 +71,16 @@ def extract_image_metadata(image_path: str) -> dict:
             data["mappable"] = mappable
             data["mapping_data"] = mapping_data
     except Exception as e:
-        print(f"Error extracting mapping data: {e}", flush=True)
+        logger.warning(f"Error extracting mapping data: {e}")
         mapping_data = None
     
-    #print(f"Image mappable check for {model_name}: {data['mappable']}", flush=True)
-
+    logger.debug(f"Image mappable check for {model_name}: {data['mappable']}")
 
     # check if some values need adjustment
     if datakeys.get("adjust_data", False):
         data = _adjust_data(model_name, data)
-    #print(f"adjusted data for {model_name}: {data}", flush=True)
-    #print(f"final data for {model_name}: {data}", flush=True)
+    logger.debug(f"adjusted data for {model_name}: {data}")
+    logger.debug(f"final data for {model_name}: {data}")
 
     return data
 
@@ -170,9 +172,9 @@ def _check_thermal(metadata: dict, datakeys: dict, data: dict, filename: str) ->
     if "ir" not in datakeys:
         return False
     if "ir_value" in datakeys['ir']:
-        print(f"Checking if image {filename} is thermal based on ir_value", flush=True)
+        logger.info(f"Checking if image {filename} is thermal based on ir_value")
         image_source = metadata.get(datakeys["ir"]["ir"], None)
-        print(f"Image source: {image_source}", flush=True)
+        logger.info(f"Image source: {image_source}")
         if image_source:
             if image_source.lower() == datakeys["ir"]["ir_value"].lower():
                 return True
@@ -182,6 +184,14 @@ def _check_thermal(metadata: dict, datakeys: dict, data: dict, filename: str) ->
     elif re.search(datakeys["ir"]["ir_filename_pattern"], filename) is not None:
         return True
     return False
+
+
+def _normalize_angle(angle: float) -> float:
+    """Normalize angle to [-180, 180] range."""
+    angle = angle % 360
+    if angle > 180:
+        angle -= 360
+    return angle
 
 
 def _adjust_data(model_name: str, data: dict) -> dict:
@@ -310,26 +320,31 @@ def _extract_mapping_data(metadata: dict, datakeys: dict, data: dict) -> tuple:
         if datakeys.get("fov_correction", 1.0) != 1.0:
             mapping_data["fov"] *= datakeys["fov_correction"]
 
-    mapping_data["uav_roll"] = metadata.get(datakeys["orientation"]["uav_roll"], None)
-    mapping_data["uav_yaw"] = metadata.get(datakeys["orientation"]["uav_yaw"], None)
-    mapping_data["uav_pitch"] = metadata.get(datakeys["orientation"]["uav_pitch"], None)
+    orientation_keys = datakeys["orientation"]
+    for key in ("uav_roll", "uav_yaw", "uav_pitch"):
+        value = metadata.get(orientation_keys[key], None)
+        if value is None:
+            return False, None
+        try:
+            mapping_data[key] = float(value)
+        except (TypeError, ValueError):
+            return False, None
 
-    if (mapping_data["uav_roll"] is None or
-        mapping_data["uav_yaw"] is None or
-        mapping_data["uav_pitch"] is None
-    ):
-        return False, None
+    for key in ("cam_roll", "cam_yaw", "cam_pitch"):
+        value = metadata.get(orientation_keys[key], None)
+        if value is None:
+            continue
+        try:
+            mapping_data[key] = float(value)
+        except (TypeError, ValueError):
+            continue
     
-    cam_roll = metadata.get(datakeys["orientation"]["cam_roll"], None)
-    cam_yaw = metadata.get(datakeys["orientation"]["cam_yaw"], None)
-    cam_pitch = metadata.get(datakeys["orientation"]["cam_pitch"], None)
+    for uav_key, cam_key in [("uav_yaw", "cam_yaw"), ("uav_roll", "cam_roll")]:
+         if uav_key in mapping_data and cam_key in mapping_data:
+            yaw_diff = mapping_data[uav_key] - mapping_data[cam_key]
+            if abs(yaw_diff) > 140:
+                mapping_data[cam_key] = _normalize_angle(mapping_data[cam_key] + 180)
 
-    if cam_roll is not None:
-        mapping_data["cam_roll"] = cam_roll
-    if cam_yaw is not None:
-        mapping_data["cam_yaw"] = cam_yaw
-    if cam_pitch is not None:
-        mapping_data["cam_pitch"] = cam_pitch
 
 
     return True, mapping_data
@@ -338,7 +353,7 @@ def _load_fallback(key: str, model_name: str, thermal: bool) -> float:
     # Load fallback values from a JSON file
     with open("app/fallback_camera_properties.json", "r") as file:
         fallbacks = json.load(file)
-        print(f"Fallbacks loaded for {model_name}: {fallbacks.get(model_name, {})}", flush=True)
+        logger.info(f"Fallbacks loaded for {model_name}: {fallbacks.get(model_name, {})}")
     
     if model_name in fallbacks:
         values = fallbacks[model_name].get("thermal" if thermal else "optical", {})

@@ -118,6 +118,25 @@ export function MappingSettingsCard({
                                 onCheckedChange={(val) => { update({ keep_weather: val }) }}
                             />
                         </div>
+
+                        <div className="flex items-center justify-between gap-6 ">
+                            <div className="flex items-center gap-2">
+                                <Label htmlFor="reread-metadata">Reload image metadata</Label>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Info className="w-4 h-4 text-muted-foreground cursor-help" />
+                                    </TooltipTrigger>
+                                    <TooltipContent side="right">
+                                        Re-extract metadata from all images. May be needed after updates to run mapping successfully.
+                                    </TooltipContent>
+                                </Tooltip>
+                            </div>
+                            <Switch
+                                id="reread-metadata"
+                                checked={settings.reread_metadata}
+                                onCheckedChange={(val) => { update({ reread_metadata: val }) }}
+                            />
+                        </div>
                     </div>
 
                     {/* Mapping Option Tiles */}

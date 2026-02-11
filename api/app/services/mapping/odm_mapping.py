@@ -23,8 +23,10 @@ import rasterio
 
 import cv2
 import os
+import subprocess
 
-from app.config import config 
+from app.config import config
+from app.services.mapping.fast_mapping import process_with_timeouts_starmap
 UPLOAD_DIR = config.UPLOAD_DIR
 
 
@@ -227,7 +229,7 @@ def scale_images(images, report_id, proxy_size):
 
     scaled_image_paths = []
     nmbr_of_processes = calculate_number_of_safely_usable_processes(images[0].url)
-    if nmbr_of_processes < len(images):
+    if nmbr_of_processes > len(images):
         nmbr_of_processes = len(images)
 
     MAX_RETRIES = 3
@@ -274,35 +276,14 @@ def calculate_number_of_safely_usable_processes(example_image_path):
     return safely_usable_processes
 
 def get_image_memory_usage(image_path):
-    initial_memory = psutil.virtual_memory().used
-    loaded_image = cv2.imread(image_path)
-    final_memory = psutil.virtual_memory().used
-
-    image_memory_usage = final_memory - initial_memory
-    loaded_image = None
-
-    return image_memory_usage
+    img = cv2.imread(image_path)
+    if img is None:
+        return 0
+    # Calculate actual memory: height * width * channels * bytes_per_channel
+    memory = img.shape[0] * img.shape[1] * img.shape[2] * img.dtype.itemsize
+    return memory
 
 
-def process_with_timeouts_starmap(pool, func, params, timeout_per_item=5):
-    results = []
-    async_results = []
-
-    for param in params:
-        res = pool.apply_async(func, args=param)
-        async_results.append(res)
-
-    for i, res in enumerate(async_results):
-        try:
-            result = res.get(timeout=timeout_per_item)
-            results.append(result)
-        except TimeoutError:
-            logger.warning(f"Timeout processing item {i} with params {params[i]}")
-            results.append(None)  # or use params[i] or a custom error placeholder
-        except Exception as e:
-            logger.error(f"Error processing item {i} with params {params[i]}: {e}")
-            #results.append(None)  # or log/handle differently
-    return results
 
 
 def scale_image(load_path, destination_path, size):
@@ -316,7 +297,7 @@ def scale_image(load_path, destination_path, size):
     scaled_image_path = os.path.join(destination_path, os.path.basename(load_path))
     cv2.imwrite(scaled_image_path, resized)
     resized = None
-    os.system("exiftool -TagsFromFile " + load_path + " " + scaled_image_path)
+    subprocess.run(["exiftool", "-TagsFromFile", load_path, scaled_image_path], check=True)
     return scaled_image_path
 
 

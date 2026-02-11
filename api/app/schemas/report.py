@@ -64,6 +64,7 @@ class ProcessingSettings(BaseModel):
     default_flight_height: Optional[float] = None
     odm_processing: bool = False
     odm_full: bool = False
+    reread_metadata: Optional[bool] = False
 
 
 ##################

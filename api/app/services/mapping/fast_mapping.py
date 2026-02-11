@@ -3,6 +3,8 @@ import math
 import cv2
 import imutils
 import numpy as np
+import pyproj
+from functools import lru_cache
 from app.config import config
 from app.schemas.image import ImageOut, MappingDataOut
 from app.schemas.map import MapCreate, MapElementCreate
@@ -137,6 +139,7 @@ def map_images(report_id: int, mapping_report_id: int, mapping_selection: dict, 
             raise TimeoutError("Giving up on calculate_utm_corners")
 
     
+    map_elements = [e for e in map_elements if e is not None]
     for i, element in enumerate(map_elements):
         element.index = i
     progress_updater.update_progress_of_map("processing", 20.0)
@@ -222,7 +225,7 @@ def calculate_reference_yaw(images: list[ImageOut]) -> float:
     if images_len < 3:
         dumb_offset = calc_dumb_offset(images[0]) #uav yaw - cam yaw
         logger.info(f"REFERENCE YAW, using dumb offset: {dumb_offset}")
-        return math.radians(dumb_offset)
+        return dumb_offset
 
 
     for i in range(len(images)-2):
@@ -267,7 +270,7 @@ def calculate_reference_yaw(images: list[ImageOut]) -> float:
 def calc_dumb_offset(image: ImageOut) -> float:
     if not image.mapping_data or not image.mapping_data.cam_yaw:
         return 0.0
-    return image.mapping_data.uav_yaw - image.mapping_data.cam_yaw
+    return math.radians(image.mapping_data.uav_yaw - image.mapping_data.cam_yaw)
 
 
 
@@ -389,15 +392,27 @@ def calc_voronoi_mask(map_elements: list[Map_Element], map_width: int, map_heigh
             scaled_centers_x.append(element.px_center[0] * fact)
             scaled_centers_y.append(element.px_center[1] * fact)
 
-    scaled_centers_x = np.array(scaled_centers_x)
-    scaled_centers_y = np.array(scaled_centers_y)
+    scaled_centers_x = np.array(scaled_centers_x, dtype=np.float32)
+    scaled_centers_y = np.array(scaled_centers_y, dtype=np.float32)
 
-    x, y = np.meshgrid(np.arange(0, scaled_width), np.arange(0, scaled_height))
-    squared_dist = (x[:, :, np.newaxis] - scaled_centers_x[np.newaxis, np.newaxis, :]) ** 2 + \
-                    (y[:, :, np.newaxis] - scaled_centers_y[np.newaxis, np.newaxis, :]) ** 2
+    # Chunked approach: process rows in chunks to avoid OOM from full 3D array
+    # Full 3D array would be (H, W, N) float64 — e.g. 2000x2000x200 = 6.4 GB
+    # 512 rows keeps peak at ~800 MB worst case while minimizing loop iterations
+    chunk_size = 512
+    indices = np.empty((scaled_height, scaled_width), dtype=np.int32)
 
-        # Find closest center to each pixel location
-    indices = np.argmin(squared_dist, axis=2) 
+    for row_start in range(0, scaled_height, chunk_size):
+        row_end = min(row_start + chunk_size, scaled_height)
+        chunk_h = row_end - row_start
+
+        x = np.arange(scaled_width, dtype=np.float32)[np.newaxis, :, np.newaxis]  # (1, W, 1)
+        y = np.arange(row_start, row_end, dtype=np.float32)[:, np.newaxis, np.newaxis]  # (chunk_h, 1, 1)
+
+        # (chunk_h, W, N) — much smaller than full (H, W, N)
+        squared_dist = (x - scaled_centers_x[np.newaxis, np.newaxis, :]) ** 2 + \
+                        (y - scaled_centers_y[np.newaxis, np.newaxis, :]) ** 2
+
+        indices[row_start:row_end, :] = np.argmin(squared_dist, axis=2)
 
     if debug_save_path:
         draw_and_save_voronoi_mask(indices, debug_save_path)
@@ -458,15 +473,12 @@ def draw_map(map_elements, voronoi_mask, map_width, map_height, progress_updater
     map_elements_batches = [map_elements[i:i + batch_size] for i in range(0, len(map_elements), batch_size)]
     logger.info(f"Processing {len(map_elements)} map elements in {len(map_elements_batches)} batches")
 
-    for i, batch in enumerate(map_elements_batches):
-        MAX_RETRIES = 3
-        
-        # with Pool(processes=8) as pool:
-        #     map_elements_with_images = pool.map(load_and_transform_images, batch)
-        
-        logger.info(f"Starting batch {i + 1}/{len(map_elements_batches)}")
-        for attempt in range(MAX_RETRIES):
-            with Pool(processes=8) as pool:
+    MAX_RETRIES = 3
+    pool = Pool(processes=8)
+    try:
+        for i, batch in enumerate(map_elements_batches):
+            logger.info(f"Starting batch {i + 1}/{len(map_elements_batches)}")
+            for attempt in range(MAX_RETRIES):
                 try:
                     map_elements_with_images = process_batch_with_timeouts(pool, batch)
                     break  # success
@@ -474,40 +486,59 @@ def draw_map(map_elements, voronoi_mask, map_width, map_height, progress_updater
                     logger.error(f"Unexpected failure in batch {i + 1} attempt {attempt + 1}: {e}")
                     pool.terminate()
                     pool.join()
-            if attempt == MAX_RETRIES - 1:
-                logger.error(f"Batch {i + 1} failed after {MAX_RETRIES} attempts")
-                raise TimeoutError("Giving up on this batch")
-        logger.info(f"Completed loading batch {i + 1}")
-        progress_updater.update_progress_of_map("processing", 50 + (i+1 / len(map_elements_batches)*40))
+                    pool = Pool(processes=8)  # replace dead pool
+                if attempt == MAX_RETRIES - 1:
+                    logger.error(f"Batch {i + 1} failed after {MAX_RETRIES} attempts")
+                    raise TimeoutError("Giving up on this batch")
+            logger.info(f"Completed loading batch {i + 1}")
+            progress_updater.update_progress_of_map("processing", 50 + ((i+1) / len(map_elements_batches)*40))
 
+            for element in map_elements_with_images:
+                if element.image_matrix is None:
+                    logger.warning(f"Skipping element {element.image_id} — image failed to load")
+                    continue
+                x1, y1, x2, y2 = element.get_bounds()
+                index = element.index
+                #crop element image matrix to the bounds
+                image = element.image_matrix[:y2 - y1, :x2 - x1]
+                voronoi_roi = voronoi_mask[y1:y2, x1:x2]
+                #repeat voronoi index, as often, as the dimensions of the image (for example a pixel with one, three or 4 values)
+                voronoi_roi = np.repeat(voronoi_roi[:, :, np.newaxis], image.shape[2], axis=2)
 
-        for element in map_elements_with_images:
-            x1, y1, x2, y2 = element.get_bounds()
-            index = element.index
-            #crop element image matrix to the bounds
-            image = element.image_matrix[:y2 - y1, :x2 - x1]
-            voronoi_roi = voronoi_mask[y1:y2, x1:x2]
-            #repeat voronoi index, as often, as the dimensions of the image (for example a pixel with one, three or 4 values)
-            voronoi_roi = np.repeat(voronoi_roi[:, :, np.newaxis], image.shape[2], axis=2)
+                #inside of roi, check voronoi mask index, if index matches, copy pixel data
+                if element.matrix_contains_temperature:
+                    existing = map_img[y1:y2, x1:x2]
+                    temp_ch = 0  # temperature is in channel 0
+                    # pixel-level masks (H, W) — applied uniformly to all channels
+                    is_voronoi = voronoi_mask[y1:y2, x1:x2] == index
+                    undrawn = existing[:, :, 3] == 0  # alpha 0 = never drawn
+                    img_has_data = image[:, :, 3] > 0  # image has actual content (not rotation padding)
+                    existing_much_hotter = existing[:, :, temp_ch] >= image[:, :, temp_ch] + 20
+                    image_much_hotter = image[:, :, temp_ch] >= existing[:, :, temp_ch] + 20
 
-            # logger.info(f"shape of map at roi: {map_img[y1:y2, x1:x2].shape}, shape of voronoi_roi: {voronoi_roi.shape}, shape of image: {image.shape}, index: {index}")
+                    # default: keep existing
+                    use_image = np.zeros_like(is_voronoi)
+                    # voronoi zone: use image
+                    use_image |= is_voronoi & img_has_data
+                    # hotspot outside voronoi: image bleeds through
+                    use_image |= ~is_voronoi & img_has_data & image_much_hotter
+                    # never overwrite with colder overlap when existing is much hotter
+                    use_image &= ~existing_much_hotter
+                    # always fill undrawn pixels with image data
+                    use_image |= undrawn & img_has_data
 
-            #inside of roi, check voronoi mask index, if index matches, copy pixel data
-            if element.matrix_contains_temperature:
-                # merged_roi = np.where(voronoi_roi == index, image, map_img[y1:y2, x1:x2])
-                # merged_roi = np.where(image >= merged_roi + 25, image, merged_roi)
+                    # expand (H, W) mask to (H, W, 4) and apply
+                    mask = use_image[:, :, np.newaxis]
+                    merged_roi = np.where(mask, image, existing)
 
-                #inside of the roi always use image unless map_img has temperature values more than 20°C higher than image
-                merged_roi = np.where(voronoi_roi == index, image, map_img[y1:y2, x1:x2])
-                merged_roi = np.where(map_img[y1:y2, x1:x2] >= merged_roi + 20, map_img[y1:y2, x1:x2], merged_roi)
-                #outside of the roi use map_img unless image has temperature values more than 20°C higher than map_img
-                merged_roi = np.where(image >= merged_roi + 20, image, merged_roi)
-
-            else:
-                merged_roi = np.where(voronoi_roi == index, image, map_img[y1:y2, x1:x2])
-            map_img[y1:y2, x1:x2] = merged_roi
-            element.clear_image_matrix()  # Clear the image matrix to free memory
-        progress_updater.update_progress_of_map("processing", 50 + (i+1 / len(map_elements_batches)*45))
+                else:
+                    merged_roi = np.where(voronoi_roi == index, image, map_img[y1:y2, x1:x2])
+                map_img[y1:y2, x1:x2] = merged_roi
+                element.clear_image_matrix()  # Clear the image matrix to free memory
+            progress_updater.update_progress_of_map("processing", 50 + ((i+1) / len(map_elements_batches)*45))
+    finally:
+        pool.terminate()
+        pool.join()
 
     if thermal_map:
         #convert the temperature map into a colored map
@@ -567,23 +598,23 @@ def load_and_transform_images(element: Map_Element) -> Map_Element:
         if image is None:
             logger.error(f"Failed to load image at {element.image_path}")
             return element
-    
 
-    # Resize the image to the target size
+    # Scale down first so rotation operates on a smaller image (performance)
     target_size = (int(image.shape[1] * element.scale), int(image.shape[0] * element.scale))
     image = cv2.resize(image, target_size, interpolation=cv2.INTER_NEAREST)
 
-    #add alpha channel if not present
-    if image.shape[2] == 3:
+    # Add alpha channel if not present
+    if image.ndim == 2:
+        image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGRA)
+    elif image.shape[2] == 3:
         image = cv2.cvtColor(image, cv2.COLOR_BGR2BGRA)
 
-    # Store the transformed image matrix in the element
+    # Rotate the scaled-down image (much cheaper than rotating the original)
     image = imutils.rotate_bound(image, -1*math.degrees(element.rotation))
 
-    #scale again to make sure the pixel corners are correct
+    # Final resize to exact pixel dimensions from corner calculations
     width, height = element.get_dims()
     element.image_matrix = cv2.resize(image, (width, height), interpolation=cv2.INTER_LINEAR)
-    # Calculate pixel corners based on the scale and position
     return element
 
 def draw_test_map(map_elements, map_width, map_height):
@@ -684,15 +715,19 @@ def rotate_to_north(map: np.ndarray, bounds: dict) -> np.ndarray:
 
 
 
+@lru_cache(maxsize=32)
+def _get_utm_transformer(zone: int, hemisphere: str):
+    """Cached pyproj Transformer for UTM→WGS84 conversion."""
+    utm_crs = f"EPSG:326{zone:02d}" if hemisphere == "N" else f"EPSG:327{zone:02d}"
+    return pyproj.Transformer.from_crs(utm_crs, "EPSG:4326", always_xy=True)
+
+
 def _utm_to_lat_lon(easting: float, northing: float, zone: int, hemisphere: str) -> tuple:
     """
     Converts UTM coordinates to latitude and longitude.
-  
+
     Returns:
-        tuple: (latitude, longitude).
+        tuple: (longitude, latitude).
     """
-    import pyproj
-    wgs84_crs = "EPSG:4326"
-    utm_crs = f"EPSG:326{zone:02d}" if hemisphere == "N" else f"EPSG:327{zone:02d}"
-    transformer = pyproj.Transformer.from_crs(utm_crs, wgs84_crs, always_xy=True)
+    transformer = _get_utm_transformer(zone, hemisphere)
     return transformer.transform(easting, northing)

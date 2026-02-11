@@ -6,4 +6,5 @@ export interface ProcessingSettings {
   default_flight_height: number;
   odm_processing: boolean;
   odm_full: boolean;
+  reread_metadata: boolean;
 }

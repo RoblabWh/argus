@@ -5,6 +5,7 @@ from pathlib import Path
 import shutil
 from datetime import datetime, timezone
 from PIL import Image
+import logging
 
 from app.config import config
 UPLOAD_DIR = Path(config.UPLOAD_DIR)
@@ -14,6 +15,7 @@ import app.crud.report as crud_report
 
 import app.services.image_metadata_extraction as metadata_extraction
 
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 UPLOAD_DIR.mkdir(exist_ok=True)
@@ -189,3 +191,47 @@ def check_mapping_report(report_id: int, db: Session) -> int:
     
     return mapping_report.id
 
+
+def reread_image_metadata(images, db: Session, progress_updater=None):
+    """Re-extract metadata from image files and update DB records.
+
+    Preserves identity fields (id, mapping_report_id, filename, url,
+    thumbnail_url, uploaded_at) but refreshes everything derived from
+    EXIF metadata: dimensions, coordinates, camera model, orientation,
+    mappable/thermal/panoramic flags, and MappingData.
+    """
+    total = len(images)
+    updated = 0
+    for i, image in enumerate(images):
+        try:
+            metadata = metadata_extraction.extract_image_metadata(image.url)
+        except Exception as e:
+            logger.warning(f"Failed to re-read metadata for image {image.id}: {e}")
+            continue
+
+        image.width = metadata["width"]
+        image.height = metadata["height"]
+        image.camera_model = metadata["camera_model"]
+        image.mappable = metadata["mappable"]
+        image.panoramic = metadata["panoramic"]
+        image.thermal = metadata["thermal"]
+        image.created_at = metadata["created_at"]
+        image.preprocessed = False
+        if metadata.get("coord"):
+            image.coord = metadata["coord"]
+
+        # Delete old MappingData and recreate from fresh extraction
+        crud_image.delete_mapping_data(db, image.id)
+        if metadata["mappable"]:
+            mapping_data = metadata.get("mapping_data", {})
+            mapping_data["image_id"] = image.id
+            crud_image.create_mapping_data(db, mapping_data)
+
+        updated += 1
+        if progress_updater:
+            progress_updater.update_progress(
+                "preprocessing", (i + 1) / total * 100
+            )
+
+    db.commit()
+    logger.info(f"Re-read metadata for {updated}/{total} images")
