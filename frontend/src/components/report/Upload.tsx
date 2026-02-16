@@ -18,7 +18,7 @@ import { useWebODM } from '@/hooks/useWebODM';
 interface Props {
   report: Report;
   onProcessingStarted?: () => void; // Optional callback when processing starts
-  isEditing?: boolean; // Optional prop to control editing state
+isEditing?: boolean; // Optional prop to control editing state
   setIsEditing?: (isEditing: boolean) => void; // Optional setter for editing state
 }
 

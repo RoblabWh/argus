@@ -20,6 +20,31 @@ from billiard import Pool
 UPLOAD_DIR = config.UPLOAD_DIR
 logger = logging.getLogger(__name__)
 
+
+class StarmapTimeoutError(Exception):
+    """Raised when process_with_timeouts_starmap encounters timed-out items.
+
+    Carries partial results so callers can use the successful ones while
+    knowing the pool needs to be terminated and replaced.
+    """
+    def __init__(self, results, timed_out_indices):
+        self.results = results
+        self.timed_out_indices = timed_out_indices
+        super().__init__(
+            f"{len(timed_out_indices)} item(s) timed out at indices {timed_out_indices}"
+        )
+
+
+class BatchTimeoutError(Exception):
+    """Raised when process_batch_with_timeouts encounters timed-out items.
+
+    Carries partial results so callers can composite whatever succeeded.
+    """
+    def __init__(self, results, timed_out_count):
+        self.results = results
+        self.timed_out_count = timed_out_count
+        super().__init__(f"{timed_out_count} item(s) timed out in batch")
+
 class Map_Element:
     def __init__(self, utm, utm_corners, rotation, image_path, image_width, creation_timestamp, image_id, matrix_contains_temperature):
         """
@@ -129,6 +154,13 @@ def map_images(report_id: int, mapping_report_id: int, mapping_selection: dict, 
             try:
                 map_elements = process_with_timeouts_starmap(pool, calculate_utm_corners, params, TIMEOUT_PER_ITEM)
                 break  # success
+            except StarmapTimeoutError as e:
+                logger.warning(
+                    f"Attempt {attempt + 1}: {len(e.timed_out_indices)} item(s) timed out, "
+                    f"using partial results"
+                )
+                map_elements = e.results
+                break  # pool terminated by context manager, use partial results
             except Exception as e:
                 logger.error(f"Failure in starmap attempt {attempt + 1}: {e}")
                 pool.terminate()
@@ -197,6 +229,7 @@ def map_images(report_id: int, mapping_report_id: int, mapping_selection: dict, 
 def process_with_timeouts_starmap(pool, func, params, timeout_per_item=5):
     results = []
     async_results = []
+    timed_out_indices = []
 
     for param in params:
         res = pool.apply_async(func, args=param)
@@ -207,11 +240,15 @@ def process_with_timeouts_starmap(pool, func, params, timeout_per_item=5):
             result = res.get(timeout=timeout_per_item)
             results.append(result)
         except TimeoutError:
-            logger.warning(f"Timeout processing item {i} with params {params[i]}")
-            results.append(None)  # or use params[i] or a custom error placeholder
+            logger.warning(f"Timeout processing item {i}")
+            timed_out_indices.append(i)
+            results.append(None)
         except Exception as e:
-            logger.error(f"Error processing item {i} with params {params[i]}: {e}")
-            results.append(None)  # or log/handle differently
+            logger.error(f"Error processing item {i}: {e}")
+            results.append(None)
+
+    if timed_out_indices:
+        raise StarmapTimeoutError(results, timed_out_indices)
     return results
 
     
@@ -253,7 +290,7 @@ def calculate_reference_yaw(images: list[ImageOut]) -> float:
         v_diff_a = np.array((easting2, northing2)) - np.array((easting1, northing1))
         v_diff_b = np.array((easting3, northing3)) - np.array((easting2, northing2))
         if np.linalg.norm(v_diff_a) == 0 or  np.linalg.norm(v_diff_b) == 0: 
-            logger.warning("Zero vector encountered in trajectory calculation, skipping this set of images.")
+            logger.warning(f"Zero vector encountered in trajectory calculation, skipping this set of images. (number of images: {images_len}, index: {i})")
             continue
         angle = np.arccos(np.dot(v_diff_a, v_diff_b) / (np.linalg.norm(v_diff_a) * np.linalg.norm(v_diff_b)))
         angle = np.degrees(angle)
@@ -482,6 +519,16 @@ def draw_map(map_elements, voronoi_mask, map_width, map_height, progress_updater
                 try:
                     map_elements_with_images = process_batch_with_timeouts(pool, batch)
                     break  # success
+                except BatchTimeoutError as e:
+                    logger.warning(
+                        f"Batch {i + 1}: {e.timed_out_count} item(s) timed out, "
+                        f"replacing pool and using partial results"
+                    )
+                    map_elements_with_images = e.results
+                    pool.terminate()
+                    pool.join()
+                    pool = Pool(processes=8)
+                    break  # use partial results, don't retry
                 except Exception as e:
                     logger.error(f"Unexpected failure in batch {i + 1} attempt {attempt + 1}: {e}")
                     pool.terminate()
@@ -564,6 +611,7 @@ def draw_map(map_elements, voronoi_mask, map_width, map_height, progress_updater
 def process_batch_with_timeouts(pool, batch, timeout_per_item=5):
     results = []
     async_results = []
+    timed_out_count = 0
 
     for element in batch:
         res = pool.apply_async(load_and_transform_images, args=(element,))
@@ -575,10 +623,14 @@ def process_batch_with_timeouts(pool, batch, timeout_per_item=5):
             results.append(result)
         except TimeoutError:
             logger.warning(f"Timeout processing element {i} in batch")
-            results.append(batch[i])  # optionally mark as failed
+            timed_out_count += 1
+            results.append(batch[i])  # element without image_matrix
         except Exception as e:
             logger.error(f"Error processing element {i} in batch: {e}")
             results.append(batch[i])
+
+    if timed_out_count:
+        raise BatchTimeoutError(results, timed_out_count)
     return results
 
 def load_and_transform_images(element: Map_Element) -> Map_Element:

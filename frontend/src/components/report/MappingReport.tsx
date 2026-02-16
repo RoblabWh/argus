@@ -1,4 +1,4 @@
-import { use, useEffect, useState } from 'react';
+import { useState } from 'react';
 import type { Report } from '@/types/report';
 import type { Image, ImageBasic } from '@/types/image';
 import { Button } from '../ui/button';
@@ -17,7 +17,7 @@ import { ResponsiveResizableLayout } from "@/components/ResponsiveResizableLayou
 import { Card, CardContent, CardTitle } from "@/components/ui/card";
 import { useDetections, useIsDetectionRunning } from '@/hooks/detectionHooks';
 import { FilteredImagesProvider } from '@/contexts/FileteredImagesContext';
-
+import { useStopProcessing } from '@/hooks/useStartProcessing';
 
 
 
@@ -28,15 +28,17 @@ interface Props {
 }
 
 export function MappingReport({ report, onEditClicked, setReport }: Props) {
-  //const isProcessing = report.status === 'processing' || report.status === 'completed';
-  //const progress = report.progress ? Math.round(report.progress) : 0;
-  //const [filteredImages, setFilteredImages] = useState<ImageBasic[]>([]);
   const [selectedImage, setSelectedImage] = useState<ImageBasic | null>(null);
   const [detectionFilter, setDetectionFilter] = useState<string[]>([]);
   const [tab, setTab] = useState("map");
   //const { data: detections } = useDetections(report.report_id);
   const [thresholds, setThresholds] = useState<{ [key: string]: number }>({});
   const [visibleCategories, setVisibleCategories] = useState<{ [key: string]: boolean }>({});
+  const stopProcessingMutation = useStopProcessing(report.report_id);
+
+  const handleStopProcessing = () => {
+    stopProcessingMutation.mutate();
+  };
 
 
   const selectImageFromGallery = (image: ImageBasic | null) => {
@@ -54,7 +56,7 @@ export function MappingReport({ report, onEditClicked, setReport }: Props) {
           left={
             <div className="flex flex-col gap-4 h-full">
               <div className='flex flex-wrap gap-4'>
-                <GeneralDataCard report={report} onReprocessClicked={onEditClicked} />
+                <GeneralDataCard report={report} onReprocessClicked={onEditClicked} onStopProcessing={handleStopProcessing} />
                 <WeatherCard data={report.mapping_report?.weather[0]} onReload={() => { alert("Reload Weather Data"); }} />
                 <FlightCard data={report.mapping_report} />
                 <AutoDescriptionCard reportID={report.report_id} description={report.auto_description} />

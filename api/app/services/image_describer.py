@@ -33,7 +33,7 @@ NUMBER_OF_KEYWORDS = 5
 MAX_DESCRIPTION_LENGTH = 180  # in characters
 MAX_FINAL_DESCRIPTION_LENGTH = 500  # in characters
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.WARNING)
 logger = logging.getLogger(__name__)
 
 r = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, db=0)

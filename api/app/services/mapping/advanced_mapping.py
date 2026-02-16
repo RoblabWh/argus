@@ -30,6 +30,8 @@ from app.services.mapping.fast_mapping import (
     process_with_timeouts_starmap,
     _calculate_utm_grid_north_diverence,
     _utm_to_lat_lon,
+    StarmapTimeoutError,
+    BatchTimeoutError,
 )
 import app.crud.map as crud
 
@@ -47,17 +49,19 @@ class MapElement:
     __slots__ = (
         "image_id", "image_path", "utm", "utm_corners", "creation_timestamp",
         "matrix_contains_temperature", "index", "px_corners", "px_center",
-        "image_matrix",
+        "image_matrix", "use_lower_half",
     )
 
     def __init__(self, image_id, image_path, utm, utm_corners,
-                 creation_timestamp, matrix_contains_temperature):
+                 creation_timestamp, matrix_contains_temperature,
+                 use_lower_half=False):
         self.image_id = image_id
         self.image_path = image_path
         self.utm = utm
         self.utm_corners = utm_corners          # 4 UTM (easting, northing) tuples
         self.creation_timestamp = creation_timestamp
         self.matrix_contains_temperature = matrix_contains_temperature
+        self.use_lower_half = use_lower_half    # True if only bottom half is usable
         self.index = None
         self.px_corners = None                  # 4 pixel (x, y) tuples
         self.px_center = None                   # pixel (x, y)
@@ -217,13 +221,43 @@ def _compute_ground_footprint(image_dict, reference_yaw):
     # Sanity check: reject footprints > 20× the nadir footprint diagonal
     nadir_diag_m = 2.0 * math.tan(math.radians(fov / 2.0)) * altitude
     max_dist = 20.0 * nadir_diag_m
-    for e, n in utm_corners:
-        if abs(e - cam_pos[0]) > max_dist or abs(n - cam_pos[1]) > max_dist:
+    use_lower_half = False
+
+    def _footprint_too_large(corners):
+        for e, n in corners:
+            if abs(e - cam_pos[0]) > max_dist or abs(n - cam_pos[1]) > max_dist:
+                return True
+        return False
+
+    if _footprint_too_large(utm_corners):
+        # Try lower half of image (ground-facing portion for tilted gimbals)
+        half_h = height / 2.0
+        half_corners_px = [
+            (0, half_h), (width, half_h), (width, height), (0, height)
+        ]
+        half_utm_corners = []
+        for u, v in half_corners_px:
+            d_cam = np.array([(u - cx) / focal_px, (v - cy_img) / focal_px, 1.0])
+            d_world = R @ d_cam
+            hit = _ray_ground_intersect(cam_pos, d_world)
+            if hit is None:
+                d_world[2] = -1e-3
+                hit = _ray_ground_intersect(cam_pos, d_world)
+            half_utm_corners.append(hit)
+
+        if _footprint_too_large(half_utm_corners):
             logger.warning(
-                f"Image {image_dict['id']}: footprint too large "
-                f"(>{max_dist:.0f}m from camera), skipping"
+                f"Image {image_dict['id']}: footprint too large even with "
+                f"lower half (>{max_dist:.0f}m from camera), skipping"
             )
             return None
+        else:
+            logger.info(
+                f"Image {image_dict['id']}: using lower half — full footprint "
+                f"exceeded {max_dist:.0f}m limit"
+            )
+            utm_corners = half_utm_corners
+            use_lower_half = True
 
     # Resolve thermal path
     matrix_contains_temperature = False
@@ -245,6 +279,7 @@ def _compute_ground_footprint(image_dict, reference_yaw):
         utm_corners=utm_corners,
         creation_timestamp=image_dict["created_at"],
         matrix_contains_temperature=matrix_contains_temperature,
+        use_lower_half=use_lower_half,
     )
 
 
@@ -317,6 +352,11 @@ def _load_and_warp_image(element):
 
     h, w = image.shape[:2]
 
+    # Crop to lower half if the full footprint was too large
+    if element.use_lower_half:
+        image = image[h // 2:, :]
+        h = image.shape[0]
+
     # --- Perspective warp to ROI ---
     x1, y1, x2, y2 = element.get_bounds()
     roi_w, roi_h = x2 - x1, y2 - y1
@@ -345,15 +385,20 @@ def _process_batch(pool, batch, timeout=5):
         pool.apply_async(_load_and_warp_image, (el,)) for el in batch
     ]
     results = []
+    timed_out_count = 0
     for i, ar in enumerate(async_results):
         try:
             results.append(ar.get(timeout=timeout))
         except TimeoutError:
             logger.warning(f"Timeout loading element {i} in batch")
-            results.append(batch[i])
+            timed_out_count += 1
+            results.append(batch[i])  # element without image_matrix
         except Exception as e:
             logger.error(f"Error loading element {i} in batch: {e}")
             results.append(batch[i])
+
+    if timed_out_count:
+        raise BatchTimeoutError(results, timed_out_count)
     return results
 
 
@@ -381,6 +426,16 @@ def _draw_map(elements, voronoi_mask, map_w, map_h, progress_updater):
                 try:
                     warped = _process_batch(pool, batch)
                     break
+                except BatchTimeoutError as e:
+                    logger.warning(
+                        f"Batch {bi + 1}: {e.timed_out_count} item(s) timed out, "
+                        f"replacing pool and using partial results"
+                    )
+                    warped = e.results
+                    pool.terminate()
+                    pool.join()
+                    pool = Pool(processes=8)
+                    break  # use partial results, don't retry
                 except Exception as e:
                     logger.error(
                         f"Batch {bi + 1} attempt {attempt + 1} failed: {e}"
@@ -565,6 +620,13 @@ def map_images_advanced(report_id, mapping_report_id, mapping_selection, setting
                     pool, _compute_ground_footprint, params, timeout_per_item=2
                 )
                 break
+            except StarmapTimeoutError as e:
+                logger.warning(
+                    f"Attempt {attempt + 1}: {len(e.timed_out_indices)} footprint(s) "
+                    f"timed out, using partial results"
+                )
+                elements = e.results
+                break  # pool terminated by context manager, use partial results
             except Exception as e:
                 logger.error(
                     f"Ground footprint attempt {attempt + 1} failed: {e}"

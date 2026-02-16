@@ -84,6 +84,7 @@ export function ReportTable({ reports }: Props) {
             completed: "bg-green-200 text-green-800 dark:bg-green-600 dark:text-green-100",
             error: "bg-red-200 text-red-800 dark:bg-red-600 dark:text-red-100",
             failed: "bg-red-200 text-red-800 dark:bg-red-800 dark:text-red-100",
+            cancelled: "bg-orange-200 text-orange-800 dark:bg-orange-600 dark:text-orange-100",
         }
         const defaultColor = "bg-gray-100 text-gray-800";
 

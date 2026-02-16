@@ -26,7 +26,7 @@ import os
 import subprocess
 
 from app.config import config
-from app.services.mapping.fast_mapping import process_with_timeouts_starmap
+from app.services.mapping.fast_mapping import process_with_timeouts_starmap, StarmapTimeoutError
 UPLOAD_DIR = config.UPLOAD_DIR
 
 
@@ -237,21 +237,28 @@ def scale_images(images, report_id, proxy_size):
     params = [(img.url, proxy_path, proxy_size) for img in images]
 
     for attempt in range(MAX_RETRIES):
-        logger.info(f"Attempt {attempt + 1} to calculate UTM corners")
+        logger.info(f"Attempt {attempt + 1} to scale images")
         with Pool(processes=nmbr_of_processes) as pool:
             try:
                 scaled_image_paths = process_with_timeouts_starmap(
                     pool, scale_image, params, TIMEOUT_PER_ITEM
                 )
                 break  # success
+            except StarmapTimeoutError as e:
+                logger.warning(
+                    f"Attempt {attempt + 1}: {len(e.timed_out_indices)} image(s) "
+                    f"timed out during scaling, using partial results"
+                )
+                scaled_image_paths = [r for r in e.results if r is not None]
+                break  # pool terminated by context manager
             except Exception as e:
                 logger.error(f"Failure in starmap attempt {attempt + 1}: {e}")
                 pool.terminate()
                 pool.join()
 
         if attempt == MAX_RETRIES - 1:
-            logger.error("Failed to generate map elements after all retries")
-            raise TimeoutError("Giving up on calculate_utm_corners")
+            logger.error("Failed to scale images after all retries")
+            raise TimeoutError("Giving up on scale_images")
 
     print("scaling done")
     return scaled_image_paths

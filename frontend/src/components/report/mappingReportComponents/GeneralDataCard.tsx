@@ -9,7 +9,7 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, Share } from "lucide-react";
+import { MoreHorizontal, Share, Square } from "lucide-react";
 import type { Report } from '@/types/report';
 import { EditReportPopup } from "../EditReportPopup";
 import { ShareMapImagesPopup } from './ShareMapImagesPopup';
@@ -17,9 +17,20 @@ import { ShareMapImagesPopup } from './ShareMapImagesPopup';
 interface Props {
     report: Report;
     onReprocessClicked: () => void;
+    onStopProcessing?: () => void;
 }
 
-export function GeneralDataCard({ report, onReprocessClicked }: Props) {
+const statusColorMap: Record<string, string> = {
+    queued: "text-gray-500",
+    preprocessing: "text-yellow-600 dark:text-yellow-400",
+    processing: "text-yellow-600 dark:text-yellow-400",
+    completed: "text-green-600 dark:text-green-400",
+    cancelled: "text-orange-600 dark:text-orange-400",
+    failed: "text-red-600 dark:text-red-400",
+    error: "text-red-600 dark:text-red-400",
+};
+
+export function GeneralDataCard({ report, onReprocessClicked, onStopProcessing }: Props) {
     const isProcessing = report.status === 'processing' || report.status === 'preprocessing';
     const [editPopupOpen, setEditPopupOpen] = useState(false);
     const [sharePopupOpen, setSharePopupOpen] = useState(false);
@@ -70,23 +81,30 @@ export function GeneralDataCard({ report, onReprocessClicked }: Props) {
                 <div className="flex flex-row items-end justify-between mt-4">
                     <div className="w-full">
                         {isProcessing ? (
-                            <>
-                                {report.progress !== undefined && (
-                                    <>
-                                        <Progress value={report.progress} />
-                                        <p className="text-sm text-muted-foreground mt-1">
-                                            {report.status} — {Math.round(report.progress)}%
-                                        </p>
-                                    </>
+                            <div className="flex items-center gap-2">
+                                <div className="flex-1">
+                                    {report.progress !== undefined && (
+                                        <>
+                                            <Progress value={report.progress} />
+                                            <p className={`text-sm mt-1 ${statusColorMap[report.status] || "text-muted-foreground"}`}>
+                                                {report.status} — {Math.round(report.progress)}%
+                                            </p>
+                                        </>
+                                    )}
+                                </div>
+                                {onStopProcessing && (
+                                    <Button variant="destructive" size="icon" onClick={onStopProcessing} className="shrink-0 group">
+                                        <Square className="w-4 h-4 group-hover:fill-current" />
+                                    </Button>
                                 )}
-                            </>
+                            </div>
                         ) : (
                             <>
                                 <p className="text-sm text-muted-foreground">
                                     Created: {new Date(report.created_at).toLocaleDateString()} at{" "}
                                     {new Date(report.created_at).toLocaleTimeString()}
                                 </p>
-                                <p className="text-[10px] text-muted-foreground mt-0">
+                                <p className={`text-[10px] mt-0 ${statusColorMap[report.status] || "text-muted-foreground"}`}>
                                     Status: {report.status}
                                 </p>
                             </>
@@ -94,7 +112,7 @@ export function GeneralDataCard({ report, onReprocessClicked }: Props) {
                     </div>
 
                     {/* Menu Button */}
-                    {report.status === 'completed' && (
+                    {(report.status === 'completed' || report.status === 'cancelled') && (
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                                 <Button variant="ghost" size="icon" className="ml-2">

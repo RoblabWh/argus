@@ -366,13 +366,14 @@ def _split_mapping_jobs(images: list[ImageOut]) -> list:
     # separate sequences based on time differences
     image_sequences = _separate_sequences(images)
     logger.info(f"Separated {len(image_sequences)} sequences from {len(images)} images.")
+    logger.info(f"Sequence lengths: {[len(seq) for seq in image_sequences]}")
 
     mapping_jobs = []
     for seq in image_sequences:
-        if len(seq) > 3:
+        if len(seq) >= 4:
             type = "ir" if seq[0].thermal else "rgb"
             mapping_jobs.append({"type": type, "images": seq})
-
+    logger.info(f"Created {len(mapping_jobs)} mapping jobs from {len(image_sequences)} sequences.")
     return mapping_jobs
 
 def _separate_sequences(images: list[ImageOut]) -> list[list[ImageOut]]:
@@ -402,14 +403,18 @@ def _separate_sequences(images: list[ImageOut]) -> list[list[ImageOut]]:
     delta_distances = [d[1] for d in deltas]
 
     median_time_diff = sorted(delta_times)[len(delta_times) // 2] if delta_times else 0
+    if median_time_diff <= 3.0:  # if median time difference is very small, use a fixed threshold
+        median_time_diff = 3.0
     median_distance = sorted(delta_distances)[len(delta_distances) // 2] if delta_distances else 0
+    if median_distance <= 2.0:  # if median distance is very small, use a fixed threshold (5m distance squared)
+        median_distance = 2.0
     logger.info(f"Median time difference: {median_time_diff}, Median distance: {median_distance}")
 
     sequences = []
     current_sequence = [images[0]]
 
     for i in range(len(deltas)):
-        if deltas[i][0] > 2 * median_time_diff or deltas[i][1] > 5 * median_distance:
+        if deltas[i][0] > 10 * median_time_diff or deltas[i][1] > 15 * median_distance:
             sequences.append(current_sequence)
             current_sequence = [images[i + 1]]
         else:

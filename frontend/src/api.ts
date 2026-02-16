@@ -112,6 +112,10 @@ export const startReportProcessing = (
 ): Promise<Report> =>
   postJson(`/reports/${reportId}/process`, settings);
 
+// POST: Stop report processing
+export const stopReportProcessing = (reportId: number): Promise<Report> =>
+  postJson(`/reports/${reportId}/process/stop`, {});
+
 // GET: Poll processing status
 export const getReportProcessStatus = (
   reportId: number

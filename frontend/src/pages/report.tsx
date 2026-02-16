@@ -29,7 +29,7 @@ export default function ReportOverview() {
   const [hasRefetchedAfterStatusChange, setHasRefetchedAfterStatusChange] = useState(true);
 
 
-  const isMappingMode = liveReport?.status === "processing" || liveReport?.status === "completed" && !isEditing;
+  const isMappingMode = liveReport?.status === "processing" || liveReport?.status === "completed" && !isEditing || liveReport?.status === "cancelled" && !isEditing;
 
 
 
@@ -177,6 +177,7 @@ export default function ReportOverview() {
         );
       case "processing":
       case "completed":
+      case "cancelled":
         return (
           <MappingReport
             report={report}

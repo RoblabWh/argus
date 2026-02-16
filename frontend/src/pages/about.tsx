@@ -12,6 +12,7 @@ import { Instagram, Youtube, Github, Mail } from "lucide-react";
 import bmftrLogo from "@/assets/Logo-BMFTR.png";
 import whLogoLight from "@/assets/Westfälische_Hochschule_Logo.svg";
 import whLogoDark from "@/assets/w-hs_pagelogo-inv.png";
+import argusLogolarge from "@/assets/Argus_icon_dark_title-long_white_BG_scaled.PNG"; 
 import drzLogo from "@/assets/DRZ_Logo.jpg"; // TODO: update path/name if needed
 
 export default function About() {
@@ -23,6 +24,8 @@ export default function About() {
 
   return (
     <div className="container mx-auto px-4 pt-6 pb-12">
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <div>
       <header className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <h1 className="text-3xl font-bold tracking-tight">
           About <span className="text-primary">Argus</span>
@@ -44,6 +47,13 @@ export default function About() {
         a fitting reference for a system that brings comprehensive, situational awareness to
         complex missions.
       </p>
+      </div>
+      <img
+        src={argusLogolarge}
+        alt="Screenshot of Argus application"
+        className="mt-6 rounded-md border object-cover max-w-[50%] max-h-69"
+      />
+      </div>
 
       <div className="mt-8 grid gap-6 md:grid-cols-1">
 

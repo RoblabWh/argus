@@ -3,8 +3,8 @@ import logging
 from app.config import config
 
 logging.basicConfig(
-    level=logging.INFO,  # Or DEBUG
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    level=logging.WARNING,  # Or DEBUG < INFO < WARNING < ERROR < CRITICAL
+    format="%(name)s - %(levelname)s - %(message)s",
 )
 
 celery_app = Celery(

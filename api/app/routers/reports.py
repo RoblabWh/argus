@@ -20,7 +20,7 @@ from app.schemas.report import (
 )
 
 from app.schemas.map import MapOut, MapSharingData
-from app.services.celery_app import task_is_really_active
+from app.services.celery_app import celery_app, task_is_really_active
 
 import app.services.mapping.processing_manager as process_report_service
 import app.services.image_describer as image_describer_service
@@ -93,6 +93,35 @@ def process_report(report_id: int, processing_settings: ProcessingSettings, db: 
     r.set(f"report:{report_id}:task_id", task.id)
     r.set(f"report:{report_id}:progress", 0)
     return returnval
+
+@router.post("/{report_id}/process/stop", response_model=ReportOut)
+def stop_processing(report_id: int, db: Session = Depends(get_db)):
+    """Stop a currently processing report by revoking its Celery task."""
+    report = crud.get_basic_report(db, report_id)
+    if not report:
+        raise HTTPException(status_code=404, detail="Report not found")
+
+    active_states = {"queued", "preprocessing", "processing"}
+    if report.status not in active_states:
+        raise HTTPException(status_code=409, detail=f"Report is not being processed (status: {report.status})")
+
+    # Revoke the Celery task if we have a task ID
+    task_id = r.get(f"report:{report_id}:task_id")
+    if task_id:
+        celery_app.control.revoke(task_id.decode(), terminate=True, signal='SIGTERM')
+
+    # Read current progress before cleaning up Redis keys
+    current_progress = r.get(f"report:{report_id}:progress")
+    progress = float(current_progress) if current_progress else 0.0
+
+    # Update report status to cancelled
+    result = crud.update_process(db, report_id, "cancelled", progress)
+
+    # Clean up Redis keys
+    r.delete(f"report:{report_id}:task_id", f"report:{report_id}:progress")
+
+    return result
+
 
 @router.get("/{report_id}/process/", response_model=ReportOut)
 def get_process_status(report_id: int, db: Session = Depends(get_db)):
