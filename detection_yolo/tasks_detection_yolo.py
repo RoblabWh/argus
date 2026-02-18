@@ -11,7 +11,7 @@ from huggingface_hub import hf_hub_download
 
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.WARNING)
 
 REDIS_HOST = os.getenv("HOST_REDIS", "redis")
 REDIS_PORT = int(os.getenv("PORT_REDIS", 6379))
@@ -46,17 +46,21 @@ def run_detection_yolo(report_id: int, images: list[dict]):
         #     repo_id="StephanST/WALDO30",
         #     filename="WALDO30_yolov8m_640x640.pt"
         # )
-        # model_path = hf_hub_download(
-        #     repo_id="erbayat/yolov11n-visdrone",
-        #     filename="best.pt"
-        # )
-        # model_path = "yolo11l.pt"
         model_path = hf_hub_download(
-            repo_id="mshamrai/yolov8l-visdrone",
+            repo_id="erbayat/yolov11n-visdrone",
             filename="best.pt"
         )
-        infer = YOLOInferencer(model_name=model_path, progress_callback=set_progress, device=DEVICE)
-
+        # model_path = "yolo11l.pt"
+        # model_path = hf_hub_download(
+        #     repo_id="mshamrai/yolov8l-visdrone",
+        #     filename="best.pt"
+        # )
+        #infer = YOLOInferencer(model_name=model_path, progress_callback=set_progress, device=DEVICE)
+        # model_path = "./yolo11l-p2-visdrone-argus-best.pt"
+        #model_path = "./yolo11l-p2-visdrone_phase2_finetune_Argus-1280_best.pt"
+        #model_path = "./yolo11l-p2-visdrone-argus-1280-best.pt"
+        imgsz = 1280
+        infer = YOLOInferencer(model_name=model_path, imgsz=imgsz, progress_callback=set_progress, device=DEVICE)
         r.set(f"detection:{report_id}:message", "Running YOLOv11 inference…")
 
         # create 4 image long batches for progress tracking

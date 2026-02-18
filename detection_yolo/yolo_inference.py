@@ -7,16 +7,17 @@ import logging
 import math
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.WARNING)
 
 class YOLOInferencer:
-    def __init__(self, model_name="yolo11m.pt", device="cuda:0", progress_callback=None):
+    def __init__(self, model_name="yolo11m.pt", imgsz=640, device="cuda:0", progress_callback=None):
         self.model = YOLO(model_name)
+        self.imgsz = imgsz
         self.device = device
         self.progress_callback = progress_callback
 
 
-    def generate_sliding_windows(self, img, depths=2, overlap=0.20, min_tile=96):
+    def generate_sliding_windows(self, img, depths=1, overlap=0.20, min_tile=96):
         """
         Returns:
             tiles:   [PIL.Image]
@@ -203,7 +204,7 @@ class YOLOInferencer:
         return out
     
 
-    def infer_image(self, img, depths=3, overlap=0.20, batch_size=2):
+    def infer_image(self, img, depths=2, overlap=0.20, batch_size=2):
         """
         Run YOLO:
           1) once on the full-res image
@@ -213,7 +214,7 @@ class YOLOInferencer:
         # ----------------------------
         # 1) Full-image inference
         # ----------------------------
-        full_res = self.model(img, device=self.device)[0]
+        full_res = self.model(img, device=self.device, imgsz=self.imgsz)[0]
         class_map = full_res.names
 
         results = self.convert_yolo_boxes(full_res, 0, 0, class_map)

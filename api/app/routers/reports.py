@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import List
 
 import app.crud.report as crud
+import app.crud.groups as crud_groups
 from app.database import get_db
 from app.schemas.report import (
     ReportCreate, 
@@ -183,6 +184,23 @@ def get_auto_description(report_id: int, db: Session = Depends(get_db)):
         "progress": 100.0,
         "description": report.auto_description
     }
+
+@router.patch("/{report_id}/move", response_model=ReportOut)
+def move_report(report_id: int, group_id: int = Query(..., description="Target group ID"), db: Session = Depends(get_db)):
+    """Move a report to a different group."""
+    report = crud.get_basic_report(db, report_id)
+    if not report:
+        raise HTTPException(status_code=404, detail="Report not found")
+
+    group = crud_groups.get(db, group_id)
+    if not group:
+        raise HTTPException(status_code=404, detail="Target group not found")
+
+    report.group_id = group_id
+    db.commit()
+    db.refresh(report)
+    return report
+
 
 @router.post("/{report_id}/send_map", response_model=dict)
 def send_map(report_id: int, payload: MapSharingData, db:Session = Depends(get_db)):

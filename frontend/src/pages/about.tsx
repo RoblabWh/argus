@@ -12,7 +12,7 @@ import { Instagram, Youtube, Github, Mail } from "lucide-react";
 import bmftrLogo from "@/assets/Logo-BMFTR.png";
 import whLogoLight from "@/assets/Westfälische_Hochschule_Logo.svg";
 import whLogoDark from "@/assets/w-hs_pagelogo-inv.png";
-import argusLogolarge from "@/assets/Argus_icon_dark_title-long_white_BG_scaled.PNG"; 
+import argusLogolarge from "@/assets/Argus_icon_dark_title-long_white_BG_scaled.PNG";
 import drzLogo from "@/assets/DRZ_Logo.jpg"; // TODO: update path/name if needed
 
 export default function About() {
@@ -24,35 +24,38 @@ export default function About() {
 
   return (
     <div className="container mx-auto px-4 pt-6 pb-12">
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <div>
-      <header className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-        <h1 className="text-3xl font-bold tracking-tight">
-          About <span className="text-primary">Argus</span>
-        </h1>
+      <div className="flex flex-wrap items-center gap-6 text-sm text-muted-foreground">
+        <div className="min-w-[220px] flex-[1_1_20rem]">
+          <img
+            src={argusLogolarge}
+            alt="Screenshot of Argus application"
+            className="mt-2 w-full rounded-md border object-contain md:mt-6"
+          />
+        </div>
+        <div className="min-w-[320px] flex-[2_1_32rem]">
+          <header className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <h1 className="text-3xl font-bold tracking-tight">
+              About <span className="text-primary">Argus</span>
+            </h1>
 
-      </header>
+          </header>
 
-      <p className="mt-4 text-muted-foreground">
-        Argus is a modern, reliable tool for <em>documenting</em> and <em>analyzing</em> UAV
-        datasets from fire and rescue operations. It evolved from an internal tool that generated
-        simple HTML flight reports and stitched images into coarse orthomosaics. Today, Argus
-        offers a growing set of features, supports more UAV platforms, and provides a
-        user-friendly interface for incident documentation, quality assurance, and analysis.
-      </p>
+          <p className="mt-4 text-muted-foreground">
+            Argus is a modern, reliable tool for <em>documenting</em> and <em>analyzing</em> UAV
+            datasets from fire and rescue operations. It evolved from an internal tool that generated
+            simple HTML flight reports and stitched images into coarse orthomosaics. Today, Argus
+            offers a growing set of features, supports more UAV platforms, and provides a
+            user-friendly interface for incident documentation, quality assurance, and analysis.
+          </p>
 
-      <p className="mt-4 text-sm text-muted-foreground">
-        <strong>What’s in a name?</strong> ARGUS stands for <em>Aerial Rescue and Geospatial
-        Utility System</em> and nods to the many-eyed guardian from Greek mythology —
-        a fitting reference for a system that brings comprehensive, situational awareness to
-        complex missions.
-      </p>
-      </div>
-      <img
-        src={argusLogolarge}
-        alt="Screenshot of Argus application"
-        className="mt-6 rounded-md border object-cover max-w-[50%] max-h-69"
-      />
+          <p className="mt-4 text-sm text-muted-foreground">
+            <strong>What’s in a name?</strong> ARGUS stands for <em>Aerial Rescue and Geospatial
+              Utility System</em> and nods to the many-eyed guardian from Greek mythology —
+            a fitting reference for a system that brings comprehensive, situational awareness to
+            complex missions.
+          </p>
+        </div>
+
       </div>
 
       <div className="mt-8 grid gap-6 md:grid-cols-1">
@@ -137,8 +140,8 @@ export default function About() {
         <CardContent className="text-sm text-muted-foreground space-y-4">
           <p>
             <strong> Westfälischen Hochschule Gelsenkirchen</strong>, Robotics Lab unter{" "}
-          <strong>Prof. Surmann</strong>, im Rahmen des Forschungsprojekts{" "}
-          <strong>E-DRZ</strong>.
+            <strong>Prof. Surmann</strong>, im Rahmen des Forschungsprojekts{" "}
+            <strong>E-DRZ</strong>.
           </p>
 
           <div className="flex flex-wrap items-center gap-3">
@@ -172,7 +175,7 @@ export default function About() {
               aria-label="GitHub"
             >
               <Github className="h-4 w-4" />
-              GitHub 
+              GitHub
             </a>
 
             {/* <a
@@ -189,4 +192,3 @@ export default function About() {
     </div>
   );
 }
-

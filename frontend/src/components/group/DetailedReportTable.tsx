@@ -15,17 +15,21 @@ import { Badge } from "@/components/ui/badge"
 import { MoreHorizontal, ChevronUp, ChevronDown, ChevronsUpDown, Blocks, CircleQuestionMark, Globe, CircleCheck, CircleX } from "lucide-react"
 import { format } from "date-fns"
 import { useDeleteReport } from "@/hooks/reportHooks"
+import { EditReportPopup } from "@/components/report/EditReportPopup"
+import { ExportPopup } from "@/components/report/mappingReportComponents/ShareMapImagesPopup"
+import { MoveReportPopup } from "@/components/overview/MoveReportPopup"
 
 import type { Report, ReportSummary } from "@/types/report"
 
 type Props = {
     reports: ReportSummary[]
+    groupId: number
 }
 
 type SortField = "report_id" | "title" | "flight_timestamp" | "created_at" | "status" | "type"
 type SortDirection = "asc" | "desc"
 
-export function DetailedReportTable({ reports }: Props) {
+export function DetailedReportTable({ reports, groupId }: Props) {
     const { mutate: deleteReport } = useDeleteReport()
     const tableContainerRef = useRef<HTMLDivElement>(null);
     const [compactMode, setCompactMode] = useState(false);
@@ -33,6 +37,12 @@ export function DetailedReportTable({ reports }: Props) {
         field: "report_id",
         direction: "asc"
     })
+
+    // Popup state — single instance shared across all rows
+    const [editTarget, setEditTarget] = useState<ReportSummary | null>(null)
+    const [exportTargetId, setExportTargetId] = useState<number | null>(null)
+    const [isExporting, setIsExporting] = useState(false)
+    const [moveTarget, setMoveTarget] = useState<ReportSummary | null>(null)
 
     const handleSort = (field: SortField) => {
         setSortConfig((prev) => ({
@@ -240,8 +250,9 @@ export function DetailedReportTable({ reports }: Props) {
                                             </Button>
                                         </DropdownMenuTrigger>
                                         <DropdownMenuContent align="end">
-                                            <DropdownMenuItem onClick={() => console.log("Edit", report.report_id)}>Edit</DropdownMenuItem>
-                                            <DropdownMenuItem onClick={() => console.log("Export", report.report_id)}>Export</DropdownMenuItem>
+                                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setEditTarget(report); }}>Edit</DropdownMenuItem>
+                                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setMoveTarget(report); }}>Move</DropdownMenuItem>
+                                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setExportTargetId(report.report_id); }}>Export</DropdownMenuItem>
                                             <DropdownMenuItem
                                                 variant="destructive"
                                                 onClick={(e) => handleDelete(e, report.report_id)}
@@ -259,6 +270,36 @@ export function DetailedReportTable({ reports }: Props) {
                     <div className="p-4 text-center text-muted-foreground">No reports found.</div>
                 )}
             </div>
+
+            {editTarget && (
+                <EditReportPopup
+                    open={!!editTarget}
+                    onOpenChange={(open) => { if (!open) setEditTarget(null); }}
+                    reportId={editTarget.report_id}
+                    initialTitle={editTarget.title}
+                    initialDescription={editTarget.description}
+                />
+            )}
+
+            {moveTarget && (
+                <MoveReportPopup
+                    open={!!moveTarget}
+                    onOpenChange={(open) => { if (!open) setMoveTarget(null); }}
+                    reportId={moveTarget.report_id}
+                    reportTitle={moveTarget.title}
+                    currentGroupId={groupId}
+                />
+            )}
+
+            {exportTargetId != null && (
+                <ExportPopup
+                    open={exportTargetId != null}
+                    onOpenChange={(open) => { if (!open) setExportTargetId(null); }}
+                    reportId={exportTargetId}
+                    isExporting={isExporting}
+                    onExportingChange={setIsExporting}
+                />
+            )}
         </div>
     )
 }

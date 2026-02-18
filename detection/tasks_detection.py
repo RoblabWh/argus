@@ -15,7 +15,7 @@ REDIS_PORT = int(os.getenv("PORT_REDIS", 6379))
 r = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, db=0)
 BACKEND_URL = os.getenv("BACKEND_URL", "http://127.0.0.1:8008")
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.WARNING)
 logger = logging.getLogger(__name__)
 
 def preload_models():

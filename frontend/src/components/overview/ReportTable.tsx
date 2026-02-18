@@ -14,6 +14,9 @@ import { Badge } from "@/components/ui/badge"
 import { MoreHorizontal, ChevronUp, ChevronDown, ChevronsUpDown } from "lucide-react"
 import { format } from "date-fns"
 import { useDeleteReport } from "@/hooks/reportHooks"
+import { EditReportPopup } from "@/components/report/EditReportPopup"
+import { ExportPopup } from "@/components/report/mappingReportComponents/ShareMapImagesPopup"
+import { MoveReportPopup } from "@/components/overview/MoveReportPopup"
 
 import type { Report } from "@/types/report"
 
@@ -31,6 +34,12 @@ export function ReportTable({ reports }: Props) {
         field: "report_id",
         direction: "asc"
     })
+
+    // Popup state — single instance shared across all rows
+    const [editTarget, setEditTarget] = useState<Report | null>(null)
+    const [exportTargetId, setExportTargetId] = useState<number | null>(null)
+    const [isExporting, setIsExporting] = useState(false)
+    const [moveTarget, setMoveTarget] = useState<Report | null>(null)
 
     const handleSort = (field: SortField) => {
         setSortConfig((prev) => ({
@@ -197,8 +206,9 @@ export function ReportTable({ reports }: Props) {
                                             </Button>
                                         </DropdownMenuTrigger>
                                         <DropdownMenuContent align="end">
-                                            <DropdownMenuItem onClick={() => console.log("Edit", report.report_id)}>Edit</DropdownMenuItem>
-                                            <DropdownMenuItem onClick={() => console.log("Export", report.report_id)}>Export</DropdownMenuItem>
+                                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setEditTarget(report); }}>Edit</DropdownMenuItem>
+                                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setMoveTarget(report); }}>Move</DropdownMenuItem>
+                                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setExportTargetId(report.report_id); }}>Export</DropdownMenuItem>
                                             <DropdownMenuItem
                                                 variant="destructive"
                                                 onClick={(e) => handleDelete(e, report.report_id)}
@@ -216,6 +226,36 @@ export function ReportTable({ reports }: Props) {
                     <div className="p-4 text-center text-muted-foreground">No reports found.</div>
                 )}
             </div>
+
+            {editTarget && (
+                <EditReportPopup
+                    open={!!editTarget}
+                    onOpenChange={(open) => { if (!open) setEditTarget(null); }}
+                    reportId={editTarget.report_id}
+                    initialTitle={editTarget.title}
+                    initialDescription={editTarget.description}
+                />
+            )}
+
+            {moveTarget && (
+                <MoveReportPopup
+                    open={!!moveTarget}
+                    onOpenChange={(open) => { if (!open) setMoveTarget(null); }}
+                    reportId={moveTarget.report_id}
+                    reportTitle={moveTarget.title}
+                    currentGroupId={moveTarget.group_id ?? 0}
+                />
+            )}
+
+            {exportTargetId != null && (
+                <ExportPopup
+                    open={exportTargetId != null}
+                    onOpenChange={(open) => { if (!open) setExportTargetId(null); }}
+                    reportId={exportTargetId}
+                    isExporting={isExporting}
+                    onExportingChange={setIsExporting}
+                />
+            )}
         </div>
     )
 }

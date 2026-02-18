@@ -9,10 +9,10 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, Share, Square } from "lucide-react";
+import { MoreHorizontal, Square } from "lucide-react";
 import type { Report } from '@/types/report';
 import { EditReportPopup } from "../EditReportPopup";
-import { ShareMapImagesPopup } from './ShareMapImagesPopup';
+import { ExportPopup } from './ShareMapImagesPopup';
 
 interface Props {
     report: Report;
@@ -33,16 +33,17 @@ const statusColorMap: Record<string, string> = {
 export function GeneralDataCard({ report, onReprocessClicked, onStopProcessing }: Props) {
     const isProcessing = report.status === 'processing' || report.status === 'preprocessing';
     const [editPopupOpen, setEditPopupOpen] = useState(false);
-    const [sharePopupOpen, setSharePopupOpen] = useState(false);
+    const [exportPopupOpen, setExportPopupOpen] = useState(false);
+    const [isExporting, setIsExporting] = useState(false);
 
     const onEditDetailsClick = () => {
         setEditPopupOpen(true);
     };
 
-    const onShareMapClicked = () => {
-        setSharePopupOpen(true);
+    const onExportClicked = () => {
+        setExportPopupOpen(true);
     }
-    
+
     return (
         <>
         <Card className="min-w-70 max-w-257 w-full flex-2 px-4 py-3 m-0">
@@ -122,8 +123,7 @@ export function GeneralDataCard({ report, onReprocessClicked, onStopProcessing }
                             <DropdownMenuContent align="end">
                                 <DropdownMenuItem onClick={onEditDetailsClick}> Edit details</DropdownMenuItem>
                                 <DropdownMenuItem onClick={onReprocessClicked}>Reprocess</DropdownMenuItem>
-                                <DropdownMenuItem onClick={onShareMapClicked}>Share Map Images</DropdownMenuItem>
-                                <DropdownMenuItem>Export</DropdownMenuItem>
+                                <DropdownMenuItem onClick={onExportClicked}>Export/Share</DropdownMenuItem>
                                 <DropdownMenuItem className="text-red-600">Delete</DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
@@ -138,11 +138,13 @@ export function GeneralDataCard({ report, onReprocessClicked, onStopProcessing }
             initialTitle={report.title}
             initialDescription={report.description}
         />
-        <ShareMapImagesPopup
-            open={sharePopupOpen}
-            onOpenChange={setSharePopupOpen}
+        <ExportPopup
+            open={exportPopupOpen}
+            onOpenChange={setExportPopupOpen}
             reportId={report.report_id}
             drzBackendApi="https://lets.try.this"
+            isExporting={isExporting}
+            onExportingChange={setIsExporting}
         />
         </>
     );

@@ -80,18 +80,18 @@ export function EditReportPopup({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <form className="hidden">
-        <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[425px]">
+        <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>Edit Report</DialogTitle>
             <DialogDescription>Update the title and description of your report.</DialogDescription>
           </DialogHeader>
 
-          <div className="grid gap-4">
+          <div className="grid gap-4 mt-4">
             <div className="grid gap-3">
-              <Label htmlFor="title">Title</Label>
+              <Label htmlFor="edit-title">Title</Label>
               <Input
-                id="title"
+                id="edit-title"
                 name="title"
                 value={formData.title}
                 onChange={handleChange}
@@ -101,9 +101,9 @@ export function EditReportPopup({
             </div>
 
             <div className="grid gap-3">
-              <Label htmlFor="description">Description</Label>
+              <Label htmlFor="edit-description">Description</Label>
               <Input
-                id="description"
+                id="edit-description"
                 name="description"
                 value={formData.description}
                 onChange={handleChange}
@@ -119,18 +119,18 @@ export function EditReportPopup({
             )}
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="mt-4">
             <DialogClose asChild>
               <Button variant="outline" type="button">
                 Cancel
               </Button>
             </DialogClose>
-            <Button disabled={isPending} type="submit" onClick={handleSubmit}>
+            <Button disabled={isPending} type="submit">
               {isPending ? "Saving..." : "Save Changes"}
             </Button>
           </DialogFooter>
-        </DialogContent>
-      </form>
+        </form>
+      </DialogContent>
     </Dialog>
   )
 }

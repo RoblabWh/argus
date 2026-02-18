@@ -8,9 +8,10 @@ import { GroupMapTab } from './GroupMapTab';
 
 interface Props {
     summaryReports: ReportSummary[];
+    groupId: number;
 }
 
-export function GroupTabArea({ summaryReports }: Props) {
+export function GroupTabArea({ summaryReports, groupId }: Props) {
     const [activeTab, setActiveTab] = useState<string>("map");
 
     const onTabChange = (value: string) => {
@@ -40,7 +41,7 @@ export function GroupTabArea({ summaryReports }: Props) {
 
             <TabsContent value="reports">
                 <div className="w-full overflow-auto max-h-[calc(100vh-80px)]">
-                    <DetailedReportTable reports={summaryReports} />
+                    <DetailedReportTable reports={summaryReports} groupId={groupId} />
                 </div>
             </TabsContent>
 

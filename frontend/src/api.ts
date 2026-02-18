@@ -125,3 +125,27 @@ export const getReportProcessStatus = (
 
 //export api Url
 export const getApiUrl = () => API_URL;
+export const getExportReportUrl = (reportId: number): string => `${API_URL}/transfer/export/${reportId}`;
+
+export const moveReport = async (reportId: number, groupId: number): Promise<Report> => {
+  const res = await fetch(`${API_URL}/reports/${reportId}/move?group_id=${groupId}`, { method: "PATCH" });
+  if (!res.ok) {
+    const err = await res.json().catch(() => null);
+    throw new Error(err?.detail || `Move failed: ${res.status}`);
+  }
+  return res.json();
+};
+
+export const importReport = async (groupId: number, file: File): Promise<Report> => {
+  const formData = new FormData();
+  formData.append("file", file);
+  const res = await fetch(`${API_URL}/transfer/import?group_id=${groupId}`, {
+    method: "POST",
+    body: formData,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => null);
+    throw new Error(err?.detail || `Import failed: ${res.status}`);
+  }
+  return res.json();
+};

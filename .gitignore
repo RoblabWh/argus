@@ -12,5 +12,6 @@ api/app/config.json
 
 depthanyting/
 
-#CLAUDE.md files
+detection_yolo/*.pt
+
 *CLAUDE.md

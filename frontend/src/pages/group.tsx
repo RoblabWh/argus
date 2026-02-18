@@ -57,7 +57,7 @@ export default function Group() {
                     </div>
                 }
                 right={
-                    <GroupTabArea summaryReports={summaryReports} />
+                    <GroupTabArea summaryReports={summaryReports} groupId={group.id} />
                 }
             />
         </div>

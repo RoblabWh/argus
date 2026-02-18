@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getReport, createReport, deleteReport, editReport } from "@/api"; 
+import { getReport, createReport, deleteReport, editReport, importReport, moveReport } from "@/api"; 
 
 const useReport = (id: number) => 
     useQuery({
@@ -40,12 +40,35 @@ const useUpdateReport = () => {
   return useMutation({
     mutationFn: editReport,
     onSuccess: () => {
-      // Invalidate and refetch the reports query to reflect the updated report
-      console.log("Report updated successfully");
       queryClient.invalidateQueries({ queryKey: ["report"] });
+      queryClient.invalidateQueries({ queryKey: ["groups"] });
     },
   });
 };
 
 
-export { useReport, useCreateReport, useDeleteReport, useUpdateReport };
+const useImportReport = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ groupId, file }: { groupId: number; file: File }) =>
+      importReport(groupId, file),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["groups"] });
+    },
+  });
+};
+
+const useMoveReport = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ reportId, groupId }: { reportId: number; groupId: number }) =>
+      moveReport(reportId, groupId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["groups"] });
+    },
+  });
+};
+
+export { useReport, useCreateReport, useDeleteReport, useUpdateReport, useImportReport, useMoveReport };
