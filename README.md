@@ -20,9 +20,9 @@ ARGUS runs as a multi-container Docker application and is accessible from any de
 - [Configuration](#configuration)
 - [Usage](#usage)
 - [WebODM Integration (Optional)](#webodm-integration-optional)
-- [Image & Metadata Requirements](#image--metadata-requirements)
 - [Architecture Overview](#architecture-overview)
 - [Known Issues](#known-issues)
+   - [Image & Metadata Requirements](#image--metadata-requirements)
 - [Example Data](#example-data)
 - [Papers](#papers)
 
@@ -98,7 +98,7 @@ After editing `.env` manually, restart the containers for changes to take effect
 
 # Stop all services
 ./argus.sh down
-#or simply in the running terminal
+# or simply in the running terminal
 crtl + c
 
 # Windows
@@ -127,27 +127,6 @@ For high-quality orthophoto generation via [OpenDroneMap](https://www.opendronem
    ```
 3. `argus.sh` will start WebODM automatically alongside ARGUS.
 
-## Image & Metadata Requirements
-
-ARGUS can display images from various cameras/drones. For orthophoto generation, the following EXIF metadata is used:
-
-| Required | Field | Notes |
-|---|---|---|
-| Yes | GPS latitude & longitude | |
-| Yes | Image width & height | Extracted automatically |
-| Yes | Creation date/time | |
-| Recommended | Relative altitude (AGL) | If missing, a default can be set on upload |
-| Recommended | Field of view (FOV) | |
-| Recommended | Gimbal yaw, pitch, roll | Camera/gimbal orientation |
-| Recommended | UAV yaw, pitch, roll | Drone body orientation |
-| Optional | Camera model name | Used to look up per-model EXIF key mappings in `api/app/cameramodels.json` |
-| Optional | Projection type | Used to filter out panoramic images |
-
-**Thermal/IR images** are identified by:
-- An `ImageSource` EXIF tag containing "thermal" or "infrared" (preferred)
-- Alternatively: image dimensions or filename pattern (configurable per camera model)
-
-Currently tested with DJI drones (M30T, Mavic Enterprise, Mavic 2, Mavic 3). Other drones may work if they provide the required metadata.
 
 ## Architecture Overview
 
@@ -173,6 +152,28 @@ Database migrations are handled automatically via Alembic on startup.
 - Running multiple processing tasks simultaneously can lead to unexpected behavior.
 - Primarily tested with DJI drones. Other manufacturers may require adding camera model definitions to `api/app/cameramodels.json`.
 - Some older Linux distributions use `docker-compose` (hyphenated) instead of `docker compose`. ARGUS requires the modern `docker compose` plugin syntax.
+
+### Image & Metadata Requirements
+
+ARGUS can display images from various cameras/drones. For orthophoto generation, the following EXIF metadata is used:
+
+| Required | Field | Notes |
+|---|---|---|
+| Yes | GPS latitude & longitude | |
+| Yes | Image width & height | Extracted automatically |
+| Yes | Creation date/time | |
+| Recommended | Relative altitude (AGL) | If missing, a default can be set on upload |
+| Recommended | Field of view (FOV) | |
+| Recommended | Gimbal yaw, pitch, roll | Camera/gimbal orientation |
+| Recommended | UAV yaw, pitch, roll | Drone body orientation |
+| Optional | Camera model name | Used to look up per-model EXIF key mappings in `api/app/cameramodels.json` |
+| Optional | Projection type | Used to filter out panoramic images |
+
+**Thermal/IR images** are identified by:
+- An `ImageSource` EXIF tag containing "thermal" or "infrared" (preferred)
+- Alternatively: image dimensions or filename pattern (configurable per camera model)
+
+Currently tested with DJI drones (M30T, Mavic Enterprise, Mavic 2, Mavic 3). Other drones may work if they provide the required metadata.
 
 ## Example Data
 
