@@ -8,7 +8,7 @@ ARGUS runs as a multi-container Docker application and is accessible from any de
 
 > **Note:** ARGUS is developed at [Westphalian University of Applied Sciences](https://www.w-hs.de/) as part of the [E-DRZ](https://rettungsrobotik.de/e-drz/) research project. It is intended for scientific use and does not offer the reliability of commercial software.
 
-> **360 Video Support:** The previous version of ARGUS supported 360 video processing (path reconstruction, partial point clouds, panoramic tours). This feature is being ported to the new architecture and will be available soon. If you need 360 support now, use the [previous version](https://github.com/RoblabWh/argus/tree/b3577000c26dcc3b26be9e8dd48b6b99623cfd73).
+> **360 Video Support:** The previous version of ARGUS supported 360 video processing (path reconstruction, partial point clouds, panoramic tours). This feature is being ported to the new architecture and will be available soon. If you need 360 support now, use the [previous version](https://github.com/RoblabWh/argus/tree/legacy-v1).
 
 ---
 
