@@ -37,6 +37,8 @@ class MapElement(Base):
     corners = Column(JSONB)
     px_coord = Column(JSONB)
     px_corners = Column(JSONB)
+    voronoi_gps = Column(JSONB, nullable=True)
+    voronoi_image_px = Column(JSONB, nullable=True)
 
     # relationships
     map = relationship("Map", back_populates="map_elements")

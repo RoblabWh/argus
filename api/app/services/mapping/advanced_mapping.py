@@ -17,6 +17,8 @@ import time
 import cv2
 import numpy as np
 from billiard import Pool
+from scipy.spatial import Voronoi
+
 
 from app.config import config
 from app.schemas.image import ImageOut, MappingDataOut
@@ -50,11 +52,13 @@ class MapElement:
         "image_id", "image_path", "utm", "utm_corners", "creation_timestamp",
         "matrix_contains_temperature", "index", "px_corners", "px_center",
         "image_matrix", "use_lower_half",
+        "image_width", "image_height",
+        "voronoi_gps", "voronoi_image_px",
     )
 
     def __init__(self, image_id, image_path, utm, utm_corners,
                  creation_timestamp, matrix_contains_temperature,
-                 use_lower_half=False):
+                 use_lower_half=False, image_width=None, image_height=None):
         self.image_id = image_id
         self.image_path = image_path
         self.utm = utm
@@ -62,10 +66,14 @@ class MapElement:
         self.creation_timestamp = creation_timestamp
         self.matrix_contains_temperature = matrix_contains_temperature
         self.use_lower_half = use_lower_half    # True if only bottom half is usable
+        self.image_width = image_width          # full image width (pixels)
+        self.image_height = image_height        # full image height (pixels)
         self.index = None
         self.px_corners = None                  # 4 pixel (x, y) tuples
         self.px_center = None                   # pixel (x, y)
         self.image_matrix = None                # loaded & warped image ROI
+        self.voronoi_gps = None                 # [[lat, lon], ...] polygon
+        self.voronoi_image_px = None            # [[x, y], ...] in full image space
 
     def get_bounds(self):
         """Pixel-space bounding box (x1, y1, x2, y2)."""
@@ -100,6 +108,8 @@ class MapElement:
             corners={"utm": self.utm_corners, "gps": corners_gps},
             px_coord={"px": self.px_center},
             px_corners={"px": self.px_corners},
+            voronoi_gps=self.voronoi_gps,
+            voronoi_image_px=self.voronoi_image_px,
         )
 
 
@@ -280,6 +290,8 @@ def _compute_ground_footprint(image_dict, reference_yaw):
         creation_timestamp=image_dict["created_at"],
         matrix_contains_temperature=matrix_contains_temperature,
         use_lower_half=use_lower_half,
+        image_width=width,
+        image_height=height,
     )
 
 
@@ -313,7 +325,7 @@ def _calculate_px_coords(elements, target_resolution):
             int(sum(px[1] for px in el.px_corners) / 4)
         )
 
-    return map_w, map_h
+    return map_w, map_h, scale, min_e, min_n
 
 
 # ---------------------------------------------------------------------------
@@ -582,6 +594,155 @@ def _find_map_bounds(elements):
 
 
 # ---------------------------------------------------------------------------
+# Voronoi polygon helpers
+# ---------------------------------------------------------------------------
+
+def _compute_voronoi_polygons(elements, map_w, map_h):
+    """
+    Compute vector Voronoi cell polygon for each element in pixel space,
+    clipped to the map canvas [0, map_w] × [0, map_h].
+
+    Returns a list of polygon vertex lists ([[x,y],...]) or None entries
+    for cells that are empty after clipping.
+    """
+    map_bounds = [[0, 0], [map_w, 0], [map_w, map_h], [0, map_h]]
+
+    if len(elements) == 0:
+        return []
+    if len(elements) == 1:
+        return [map_bounds]
+
+    pts = np.array([[el.px_center[0], el.px_center[1]] for el in elements],
+                   dtype=np.float64)
+    far = max(map_w, map_h) * 10.0
+    padding = np.array([
+        [-far, -far],
+        [map_w + far, -far],
+        [-far, map_h + far],
+        [map_w + far, map_h + far],
+    ], dtype=np.float64)
+    all_pts = np.vstack([pts, padding])
+
+    vor = Voronoi(all_pts)
+    result = []
+    for i in range(len(elements)):
+        region_idx = vor.point_region[i]
+        region = vor.regions[region_idx]
+        if not region or -1 in region:
+            poly = None
+        else:
+            poly = _sutherland_hodgman(vor.vertices[region].tolist(), map_bounds)
+            if len(poly) < 3:
+                poly = None
+        result.append(poly)
+    return result
+
+
+def _sutherland_hodgman(subject, clip):
+    """
+    Clip a convex subject polygon against a convex clip polygon.
+
+    Both are sequences of [x, y] pairs (or indexable 2-tuples).
+    The clip polygon is normalised to CCW winding before clipping.
+    Returns a list of [x, y] pairs, possibly empty.
+    """
+    def _inside(p, a, b):
+        # True if p is on the left of (or on) directed edge a→b (CCW convention)
+        return ((b[0] - a[0]) * (p[1] - a[1])
+                - (b[1] - a[1]) * (p[0] - a[0])) >= 0
+
+    def _intersect(p1, p2, p3, p4):
+        dx12 = p2[0] - p1[0]; dy12 = p2[1] - p1[1]
+        dx34 = p4[0] - p3[0]; dy34 = p4[1] - p3[1]
+        denom = dx12 * dy34 - dy12 * dx34
+        if abs(denom) < 1e-10:
+            return [p2[0], p2[1]]
+        t = ((p3[0] - p1[0]) * dy34 - (p3[1] - p1[1]) * dx34) / denom
+        return [p1[0] + t * dx12, p1[1] + t * dy12]
+
+    clip = [list(v) for v in clip]
+    # Ensure CCW winding (signed area > 0 in standard math coords)
+    n = len(clip)
+    area = sum(clip[i][0] * clip[(i + 1) % n][1]
+               - clip[(i + 1) % n][0] * clip[i][1]
+               for i in range(n))
+    if area < 0:
+        clip = list(reversed(clip))
+
+    output = [list(v) for v in subject]
+    if not output:
+        return []
+
+    for i in range(len(clip)):
+        if not output:
+            break
+        input_list = output
+        output = []
+        a = clip[i]
+        b = clip[(i + 1) % len(clip)]
+        for j in range(len(input_list)):
+            curr = input_list[j]
+            prev = input_list[j - 1]
+            if _inside(curr, a, b):
+                if not _inside(prev, a, b):
+                    output.append(_intersect(prev, curr, a, b))
+                output.append(curr)
+            elif _inside(prev, a, b):
+                output.append(_intersect(prev, curr, a, b))
+
+    return output
+
+
+def _voronoi_poly_to_gps(polygon, scale, min_e, min_n, map_h, zone, hemisphere):
+    """Convert Voronoi pixel polygon to GPS [[lat, lon], ...] list."""
+    result = []
+    for x, y in polygon:
+        e = x / scale + min_e
+        n = (map_h - y) / scale + min_n
+        lon, lat = _utm_to_lat_lon(e, n, zone, hemisphere)
+        result.append([lat, lon])
+    return result
+
+
+def _voronoi_poly_to_image_px(polygon, element):
+    """
+    Map a Voronoi pixel polygon back into the original image's pixel space.
+
+    1. Clips the polygon to the element's footprint (px_corners).
+    2. Builds the same perspective homography used in _load_and_warp_image.
+    3. Inverts H and back-projects clipped vertices to image pixel coords.
+    4. If use_lower_half, adds image_height//2 to convert to full-image coords.
+
+    Returns [[x, y], ...] or None if the clipped polygon is degenerate.
+    """
+    if element.image_width is None or element.image_height is None:
+        return None
+
+    clipped = _sutherland_hodgman(polygon, element.px_corners)
+    if len(clipped) < 3:
+        return None
+
+    w = element.image_width
+    h = element.image_height // 2 if element.use_lower_half else element.image_height
+    x1, y1, x2, y2 = element.get_bounds()
+
+    src_pts = np.float32([[0, 0], [w, 0], [w, h], [0, h]])
+    dst_pts = np.float32([(px - x1, py - y1) for px, py in element.px_corners])
+
+    H = cv2.getPerspectiveTransform(src_pts, dst_pts)
+    _, H_inv = cv2.invert(H)
+
+    pts = np.array([[x - x1, y - y1] for x, y in clipped],
+                   dtype=np.float32).reshape(-1, 1, 2)
+    img_pts = cv2.perspectiveTransform(pts, H_inv).reshape(-1, 2)
+
+    if element.use_lower_half:
+        img_pts[:, 1] += element.image_height // 2
+
+    return img_pts.tolist()
+
+
+# ---------------------------------------------------------------------------
 # Main entry point
 # ---------------------------------------------------------------------------
 
@@ -646,7 +807,7 @@ def map_images_advanced(report_id, mapping_report_id, mapping_selection, setting
     progress_updater.update_progress_of_map("processing", 25.0)
 
     # Pixel coordinates
-    map_w, map_h = _calculate_px_coords(
+    map_w, map_h, scale, min_e, min_n = _calculate_px_coords(
         elements, settings["target_map_resolution"]
     )
     progress_updater.update_progress_of_map("processing", 30.0)
@@ -654,6 +815,22 @@ def map_images_advanced(report_id, mapping_report_id, mapping_selection, setting
     # Voronoi seam mask (reuse from fast_mapping — same algorithm)
     voronoi = calc_voronoi_mask(elements, map_w, map_h, performance_factor=8)
     progress_updater.update_progress_of_map("processing", 50.0)
+
+    time_a = time.time()
+    # Compute vector Voronoi cell polygons
+    voronoi_polygons = _compute_voronoi_polygons(elements, map_w, map_h)
+    zone = elements[0].utm["zone"]
+    hemi = elements[0].utm["hemisphere"]
+    for i, el in enumerate(elements):
+        poly = voronoi_polygons[i]
+        if poly is None:
+            continue
+        el.voronoi_gps = _voronoi_poly_to_gps(
+            poly, scale, min_e, min_n, map_h, zone, hemi
+        )
+        el.voronoi_image_px = _voronoi_poly_to_image_px(poly, el)
+    time_b = time.time()
+    logger.warning(f"===============> Voronoi polygon computation took {time_b - time_a:.1f} seconds")
 
     # Composite
     map_img = _draw_map(elements, voronoi, map_w, map_h, progress_updater)

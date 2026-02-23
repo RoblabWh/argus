@@ -1,5 +1,5 @@
 import React from "react";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import type { ImageBasic, GPSCoord } from "@/types/image";
 import type { Detection } from "@/types/detection";
 import { getDetectionColor } from "@/types/detection";
@@ -144,7 +144,9 @@ function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCatego
         }
     }, [maps]);
 
-    const handleOverlayClick = (mapId: number, elementId: string, image_id: number) => {
+    const cornerRefs = useRef<Map<number, L.Polygon>>(new Map());
+
+    const handleOverlayClick = (mapId: number, elementId: number, image_id: number) => {
         selectImageOnMap(image_id);
     };
 
@@ -367,32 +369,61 @@ function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCatego
                                         />
                                     )}
 
+                                    {/* Pass 1: corner polygons (below) — registered via ref for cross-hover */}
                                     {map.map_elements?.map((element) => {
                                         const corners = element.corners.gps;
+                                        const hasVoronoi = element.voronoi_gps && element.voronoi_gps.length > 0;
 
                                         return (
                                             <Polygon
-                                                key={`map-${map.id}_element-${element.id}`}
-                                                positions={[
-                                                    corners[0],
-                                                    corners[1],
-                                                    corners[2],
-                                                    corners[3],
-                                                ]}
+                                                key={`map-${map.id}_corner-${element.id}`}
+                                                ref={(layer) => {
+                                                    if (layer) cornerRefs.current.set(element.id, layer);
+                                                    else cornerRefs.current.delete(element.id);
+                                                }}
+                                                positions={[corners[0], corners[1], corners[2], corners[3]]}
                                                 pathOptions={{
                                                     color: 'blue',
-                                                    weight: 1,
+                                                    weight: 0,
                                                     fillOpacity: 0,
                                                     stroke: false,
                                                 }}
-                                                eventHandlers={{
+                                                eventHandlers={!hasVoronoi ? {
                                                     mouseover: (e) => {
-                                                        const layer = e.target as L.Path;
-                                                        layer.setStyle({ fillOpacity: 0.2 });
+                                                        (e.target as L.Path).setStyle({ fillOpacity: 0.3, stroke: true });
                                                     },
                                                     mouseout: (e) => {
-                                                        const layer = e.target as L.Path;
-                                                        layer.setStyle({ fillOpacity: 0 });
+                                                        (e.target as L.Path).setStyle({ fillOpacity: 0, stroke: false });
+                                                    },
+                                                    click: () => {
+                                                        handleOverlayClick(map.id, element.id, element.image_id);
+                                                    },
+                                                } : undefined}
+                                            />
+                                        );
+                                    })}
+                                    {/* Pass 2: Voronoi polygons (on top) — receive mouse events, update corner fill via ref */}
+                                    {map.map_elements?.map((element) => {
+                                        const voronoi_cell = element.voronoi_gps;
+                                        if (!voronoi_cell || voronoi_cell.length === 0) return null;
+
+                                        return (
+                                            <Polygon
+                                                key={`map-${map.id}_voronoi-${element.id}`}
+                                                positions={voronoi_cell}
+                                                pathOptions={{
+                                                    color: 'blue',
+                                                    weight: 0,
+                                                    fillOpacity: 0.0,
+                                                }}
+                                                eventHandlers={{
+                                                    mouseover: (e) => {
+                                                        (e.target as L.Path).setStyle({ weight: 2 });
+                                                        cornerRefs.current.get(element.id)?.setStyle({ fillOpacity: 0.3, stroke: true });
+                                                    },
+                                                    mouseout: (e) => {
+                                                        (e.target as L.Path).setStyle({ weight: 0 });
+                                                        cornerRefs.current.get(element.id)?.setStyle({ fillOpacity: 0, stroke: false });
                                                     },
                                                     click: () => {
                                                         handleOverlayClick(map.id, element.id, element.image_id);
