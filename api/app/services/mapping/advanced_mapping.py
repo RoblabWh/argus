@@ -27,7 +27,6 @@ from app.schemas.report import ProcessingSettings
 from app.services.mapping.progress_updater import ProgressUpdater
 from app.services.mapping.fast_mapping import (
     calculate_reference_yaw,
-    calc_voronoi_mask,
     save_map_image,
     process_with_timeouts_starmap,
     _calculate_utm_grid_north_diverence,
@@ -638,6 +637,23 @@ def _compute_voronoi_polygons(elements, map_w, map_h):
     return result
 
 
+def _rasterize_voronoi_mask(voronoi_polygons, elements, map_w, map_h):
+    """
+    Rasterize vector Voronoi cell polygons to a (map_h, map_w) int32 label map.
+
+    Each pixel is assigned the index of its owning element, or -1 if uncovered.
+    Uses cv2.fillPoly for pixel-exact polygon edges (no stepping artifacts).
+    """
+    mask = np.full((map_h, map_w), -1, dtype=np.int32)
+    for i, el in enumerate(elements):
+        poly = voronoi_polygons[i]
+        if poly is None:
+            continue
+        pts = np.array(poly, dtype=np.int32).reshape((-1, 1, 2))
+        cv2.fillPoly(mask, [pts], color=el.index)
+    return mask
+
+
 def _sutherland_hodgman(subject, clip):
     """
     Clip a convex subject polygon against a convex clip polygon.
@@ -812,13 +828,14 @@ def map_images_advanced(report_id, mapping_report_id, mapping_selection, setting
     )
     progress_updater.update_progress_of_map("processing", 30.0)
 
-    # Voronoi seam mask (reuse from fast_mapping — same algorithm)
-    voronoi = calc_voronoi_mask(elements, map_w, map_h, performance_factor=8)
+    # Compute vector Voronoi cell polygons (clipped to map bounds)
+    voronoi_polygons = _compute_voronoi_polygons(elements, map_w, map_h)
+
+    # Rasterize polygons to label mask for compositing (sharp edges, no upscaling)
+    voronoi = _rasterize_voronoi_mask(voronoi_polygons, elements, map_w, map_h)
     progress_updater.update_progress_of_map("processing", 50.0)
 
-    time_a = time.time()
-    # Compute vector Voronoi cell polygons
-    voronoi_polygons = _compute_voronoi_polygons(elements, map_w, map_h)
+    # Assign GPS and image-pixel polygon fields for DB storage
     zone = elements[0].utm["zone"]
     hemi = elements[0].utm["hemisphere"]
     for i, el in enumerate(elements):
@@ -829,8 +846,6 @@ def map_images_advanced(report_id, mapping_report_id, mapping_selection, setting
             poly, scale, min_e, min_n, map_h, zone, hemi
         )
         el.voronoi_image_px = _voronoi_poly_to_image_px(poly, el)
-    time_b = time.time()
-    logger.warning(f"===============> Voronoi polygon computation took {time_b - time_a:.1f} seconds")
 
     # Composite
     map_img = _draw_map(elements, voronoi, map_w, map_h, progress_updater)
