@@ -14,7 +14,8 @@ import {
     Funnel,
     Info,
     Eye,
-    EyeOff
+    EyeOff,
+    Scissors
 } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import type { Detection } from '@/types/detection';
@@ -34,6 +35,7 @@ import {
     updateThresholds,
     updateCategoryVisibility,
 } from "@/utils/detectionUtils";
+import { useMaps } from "@/hooks/useMaps";
 
 
 interface Props {
@@ -44,12 +46,18 @@ interface Props {
     filters: string[];
     visibleCategories: { [key: string]: boolean };
     setVisibleCategories: (visibility: { [key: string]: boolean }) => void;
+    clipDetections: boolean;
+    setClipDetections: (v: boolean) => void;
 }
 
-export function DetectionCard({ report_id, setThresholds, thresholds, setFilter, filters, visibleCategories, setVisibleCategories }: Props) {
+export function DetectionCard({ report_id, setThresholds, thresholds, setFilter, filters, visibleCategories, setVisibleCategories, clipDetections, setClipDetections }: Props) {
     const [pollingEnabled, setPollingEnabled] = useState(false);
     const isRunning = useIsDetectionRunning(report_id);
     const { data: detections, isLoading: isLoadingDetections, isError: isErrorDetections } = useDetections(report_id);
+    const { data: maps } = useMaps(report_id);
+    const hasVoronoi = useMemo(() =>
+        maps?.some(m => m.map_elements?.some(el => el.voronoi_gps?.length)) ?? false
+    , [maps]);
     const queryClient = useQueryClient();
     const detectionSummary = useMemo(() => { if (detections) return countDetections(detections, thresholds); }, [detections, thresholds]);
     var [hasDetections, setHasDetections] = useState(detections && detections.length > 0);
@@ -177,7 +185,6 @@ export function DetectionCard({ report_id, setThresholds, thresholds, setFilter,
 
                     <div className="flex justify-between items-start w-full">
                         <div className="text-xl font-bold leading-none">Object Detection</div>
-
                     </div>
 
                     {/* Description */}
@@ -315,18 +322,37 @@ export function DetectionCard({ report_id, setThresholds, thresholds, setFilter,
                                         </SelectContent>
                                     </Select>
 
-                                    <Tooltip>
-                                        <TooltipTrigger>
-
-                                            <Button variant={`${detectionMode === undefined ? "outline" : "default"}`} size="sm" onClick={() => { handleStart() }} disabled={!pollingEnabled && (!detectionMode)}>
-                                                Run Detection
-                                            </Button>
-                                        </TooltipTrigger>
-                                        <TooltipContent>
-                                            {detectionMode === undefined ? "Select analysis mode first" : "Start AI detection processing"}
-                                        </TooltipContent>
-
-                                    </Tooltip>
+                                    <div className="flex items-center gap-2">
+                                        {hasDetections && hasVoronoi && (
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <Button
+                                                        variant={clipDetections ? "outline": "default"}
+                                                        size="sm"
+                                                        onClick={() => setClipDetections(!clipDetections)}
+                                                    >
+                                                        <Scissors className="w-4 h-4 mr-1" />
+                                                        {clipDetections ? "Show all" : "Clip"}
+                                                    </Button>
+                                                </TooltipTrigger>
+                                                <TooltipContent>
+                                                    {clipDetections
+                                                        ? "Showing detections clipped by each image's center region (like the map view)"
+                                                        : "Showing all detections (may include duplicates from overlapping images)"}
+                                                </TooltipContent>
+                                            </Tooltip>
+                                        )}
+                                        <Tooltip>
+                                            <TooltipTrigger>
+                                                <Button variant={`${detectionMode === undefined ? "outline" : "default"}`} size="sm" onClick={() => { handleStart() }} disabled={!pollingEnabled && (!detectionMode)}>
+                                                    Run Detection
+                                                </Button>
+                                            </TooltipTrigger>
+                                            <TooltipContent>
+                                                {detectionMode === undefined ? "Select analysis mode first" : "Start AI detection processing"}
+                                            </TooltipContent>
+                                        </Tooltip>
+                                    </div>
                                 </div>
                                 {detectionMode && (
                                     <div className="rounded-md border p-2 mt-2 text-sm border-gray-400 bg-gray-200 text-muted-foreground dark:bg-gray-800 dark:border-gray-700">

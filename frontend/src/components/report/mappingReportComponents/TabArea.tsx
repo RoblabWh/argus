@@ -17,9 +17,11 @@ interface Props {
   setTab: (value: string) => void;
   thresholds: { [key: string]: number };
   visibleCategories: { [key: string]: boolean };
+  clipDetections: boolean;
+  setClipDetections: (v: boolean) => void;
 }
 
-export function TabArea({ report, selectedImage, setSelectedImage, tab, setTab, thresholds, visibleCategories }: Props) {
+export function TabArea({ report, selectedImage, setSelectedImage, tab, setTab, thresholds, visibleCategories, clipDetections, setClipDetections }: Props) {
   const api_url = getApiUrl();
   const { data: images } = useImages(report.report_id);
   const [visibleMapOverlays, setVisibleMapOverlays] = useState<{ [mapId: number]: boolean }>({});
@@ -103,6 +105,8 @@ export function TabArea({ report, selectedImage, setSelectedImage, tab, setTab, 
             visibleCategories={visibleCategories}
             visibleMapOverlays={visibleMapOverlays}
             setVisibleMapOverlays={setVisibleMapOverlays}
+            clipDetections={clipDetections}
+            setClipDetections={setClipDetections}
           />
         </div>
       </TabsContent>

@@ -34,6 +34,7 @@ export function MappingReport({ report, onEditClicked, setReport }: Props) {
   //const { data: detections } = useDetections(report.report_id);
   const [thresholds, setThresholds] = useState<{ [key: string]: number }>({});
   const [visibleCategories, setVisibleCategories] = useState<{ [key: string]: boolean }>({});
+  const [clipDetections, setClipDetections] = useState(true);
   const stopProcessingMutation = useStopProcessing(report.report_id);
 
   const handleStopProcessing = () => {
@@ -61,7 +62,7 @@ export function MappingReport({ report, onEditClicked, setReport }: Props) {
                 <FlightCard data={report.mapping_report} />
                 <AutoDescriptionCard reportID={report.report_id} description={report.auto_description} />
                 <WebOdmCard webODMProjectID={report.mapping_report?.webodm_project_id} reportID={report.report_id} progress={report.progress} />
-                <DetectionCard report_id={report.report_id} setThresholds={setThresholds} thresholds={thresholds} setFilter={setDetectionFilter} filters={detectionFilter} visibleCategories={visibleCategories} setVisibleCategories={setVisibleCategories} />
+                <DetectionCard report_id={report.report_id} setThresholds={setThresholds} thresholds={thresholds} setFilter={setDetectionFilter} filters={detectionFilter} visibleCategories={visibleCategories} setVisibleCategories={setVisibleCategories} clipDetections={clipDetections} setClipDetections={setClipDetections} />
               </div>
               <GalleryCard reportId={report.report_id} setSelectedImage={selectImageFromGallery} detectionFilter={detectionFilter} setDetectionFilter={setDetectionFilter} thresholds={thresholds} />
             </div>
@@ -72,7 +73,7 @@ export function MappingReport({ report, onEditClicked, setReport }: Props) {
             //     <p>Selected Image: {selectedImage ? selectedImage.id : "None"}</p>
             //   </CardContent>
             // </Card>
-            <TabArea report={report} selectedImage={selectedImage} setSelectedImage={setSelectedImage} tab={tab} setTab={setTab} thresholds={thresholds} visibleCategories={visibleCategories} />
+            <TabArea report={report} selectedImage={selectedImage} setSelectedImage={setSelectedImage} tab={tab} setTab={setTab} thresholds={thresholds} visibleCategories={visibleCategories} clipDetections={clipDetections} setClipDetections={setClipDetections} />
           }
         />
       </FilteredImagesProvider>
