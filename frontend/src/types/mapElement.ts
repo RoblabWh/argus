@@ -7,9 +7,13 @@ export type MapElement = {
   image_id: number;
   index: number;
   coord: Record<string, unknown>;
-  corners: Record<string, unknown>;
+  corners: {
+    gps: [number, number][];
+    utm?: [number, number][];
+  };
   px_coord: Record<string, unknown>;
   px_corners: Record<string, unknown>;
+  voronoi_gps?: [number, number][];
   map?: Map;
   // image?: ImageOut;
 };

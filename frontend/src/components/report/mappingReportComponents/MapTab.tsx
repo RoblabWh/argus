@@ -1,5 +1,5 @@
 import React from "react";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import type { ImageBasic, GPSCoord } from "@/types/image";
 import type { Detection } from "@/types/detection";
 import { getDetectionColor } from "@/types/detection";
@@ -31,7 +31,7 @@ import panoPinSVG from '@/assets/panorama.svg';
 import { useImages } from "@/hooks/imageHooks";
 import { useMaps } from "@/hooks/useMaps";
 import { useDetections, useUpdateDetectionBatch } from "@/hooks/detectionHooks";
-import { extractFlightTrajectory, computeDetectionGps } from "@/utils/coordinateUtils";
+import { extractFlightTrajectory, computeDetectionGps, isPointInPolygon } from "@/utils/coordinateUtils";
 
 // Re-export for backward compatibility if other components import from here
 export { extractFlightTrajectory } from "@/utils/coordinateUtils";
@@ -45,9 +45,11 @@ interface Props {
     visibleCategories: { [key: string]: boolean };
     visibleMapOverlays: { [mapId: number]: boolean };
     setVisibleMapOverlays: (overlays: { [mapId: number]: boolean }) => void;
+    clipDetections: boolean;
+    setClipDetections: (v: boolean) => void;
 }
 
-function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCategories, visibleMapOverlays, setVisibleMapOverlays }: Props) {
+function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCategories, visibleMapOverlays, setVisibleMapOverlays, clipDetections }: Props) {
     const [overlayOpacity, setOverlayOpacity] = useState(1.0);
     const [map, setMap] = useState<LeafletMap | null>(null);
     const { data: images } = useImages(reportId);
@@ -59,6 +61,7 @@ function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCatego
     const [showTrajectory, setShowTrajectory] = useState(true);
     const [showPanoMarkers, setShowPanoMarkers] = useState(true);
     const [showDetections, setShowDetections] = useState(true);
+    const [showPolygons, setShowPolygons] = useState(true);
     const current = theme === "system"
         ? window.matchMedia("(prefers-color-scheme: dark)").matches
             ? "dark"
@@ -106,6 +109,17 @@ function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCatego
         return getIcon;
     }, []);
 
+    // Build a lookup from image_id → Voronoi polygon (GPS coords)
+    const voronoiIndex = useMemo(() => {
+        const index = new Map<number, [number, number][]>();
+        maps?.forEach(m =>
+            m.map_elements?.forEach(el => {
+                if (el.voronoi_gps?.length) index.set(el.image_id, el.voronoi_gps);
+            })
+        );
+        return index;
+    }, [maps]);
+
     // Memoize filtered detections with their GPS coordinates pre-computed
     const visibleDetections = useMemo(() => {
         if (!detections?.length || !images?.length || !maps?.length) return [];
@@ -119,8 +133,17 @@ function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCatego
                 const gps = det.coord?.gps || computeDetectionGps(det, images, maps);
                 return gps ? { ...det, computedGps: gps } : null;
             })
-            .filter(Boolean) as (Detection & { computedGps: GPSCoord })[];
-    }, [detections, images, maps, visibleCategories, thresholds]);
+            .filter(Boolean)
+            .filter(det => {
+                if (!clipDetections) return true;
+                const voronoi = voronoiIndex.get(det!.image_id);
+                if (!voronoi) return true;  // no Voronoi data → always show
+                return isPointInPolygon(
+                    [det!.computedGps.lat, det!.computedGps.lon],
+                    voronoi
+                );
+            }) as (Detection & { computedGps: GPSCoord })[];
+    }, [detections, images, maps, visibleCategories, thresholds, clipDetections, voronoiIndex]);
 
     useEffect(() => {
         let first_image_with_gps = images?.find((image) => image.coord);
@@ -144,7 +167,9 @@ function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCatego
         }
     }, [maps]);
 
-    const handleOverlayClick = (mapId: number, elementId: string, image_id: number) => {
+    const cornerRefs = useRef<Map<number, L.Polygon>>(new Map());
+
+    const handleOverlayClick = (mapId: number, elementId: number, image_id: number) => {
         selectImageOnMap(image_id);
     };
 
@@ -367,32 +392,61 @@ function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCatego
                                         />
                                     )}
 
-                                    {map.map_elements?.map((element) => {
+                                    {/* Pass 1: corner polygons (below) — registered via ref for cross-hover */}
+                                    {showPolygons && map.map_elements?.map((element) => {
                                         const corners = element.corners.gps;
+                                        const hasVoronoi = element.voronoi_gps && element.voronoi_gps.length > 0;
 
                                         return (
                                             <Polygon
-                                                key={`map-${map.id}_element-${element.id}`}
-                                                positions={[
-                                                    corners[0],
-                                                    corners[1],
-                                                    corners[2],
-                                                    corners[3],
-                                                ]}
+                                                key={`map-${map.id}_corner-${element.id}`}
+                                                ref={(layer) => {
+                                                    if (layer) cornerRefs.current.set(element.id, layer);
+                                                    else cornerRefs.current.delete(element.id);
+                                                }}
+                                                positions={[corners[0], corners[1], corners[2], corners[3]]}
                                                 pathOptions={{
                                                     color: 'blue',
-                                                    weight: 1,
+                                                    weight: 0,
                                                     fillOpacity: 0,
                                                     stroke: false,
                                                 }}
-                                                eventHandlers={{
+                                                eventHandlers={!hasVoronoi ? {
                                                     mouseover: (e) => {
-                                                        const layer = e.target as L.Path;
-                                                        layer.setStyle({ fillOpacity: 0.2 });
+                                                        (e.target as L.Path).setStyle({ fillOpacity: 0.3, stroke: true });
                                                     },
                                                     mouseout: (e) => {
-                                                        const layer = e.target as L.Path;
-                                                        layer.setStyle({ fillOpacity: 0 });
+                                                        (e.target as L.Path).setStyle({ fillOpacity: 0, stroke: false });
+                                                    },
+                                                    click: () => {
+                                                        handleOverlayClick(map.id, element.id, element.image_id);
+                                                    },
+                                                } : undefined}
+                                            />
+                                        );
+                                    })}
+                                    {/* Pass 2: Voronoi polygons (on top) — receive mouse events, update corner fill via ref */}
+                                    {showPolygons && map.map_elements?.map((element) => {
+                                        const voronoi_cell = element.voronoi_gps;
+                                        if (!voronoi_cell || voronoi_cell.length === 0) return null;
+
+                                        return (
+                                            <Polygon
+                                                key={`map-${map.id}_voronoi-${element.id}`}
+                                                positions={voronoi_cell}
+                                                pathOptions={{
+                                                    color: 'blue',
+                                                    weight: 0,
+                                                    fillOpacity: 0.0,
+                                                }}
+                                                eventHandlers={{
+                                                    mouseover: (e) => {
+                                                        (e.target as L.Path).setStyle({ weight: 2 });
+                                                        cornerRefs.current.get(element.id)?.setStyle({ fillOpacity: 0.3, stroke: true });
+                                                    },
+                                                    mouseout: (e) => {
+                                                        (e.target as L.Path).setStyle({ weight: 0 });
+                                                        cornerRefs.current.get(element.id)?.setStyle({ fillOpacity: 0, stroke: false });
                                                     },
                                                     click: () => {
                                                         handleOverlayClick(map.id, element.id, element.image_id);
@@ -434,6 +488,17 @@ function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCatego
                             className="w-8"
                         />
                     </div>
+                    <Separator orientation="vertical" className="mx-4 h-6" />
+                    {maps && maps.length > 0 && (
+                        <div className="flex flex-col items-center w-15">
+                            <label className="text-sm font-medium mb-1 block text-center">Overlays</label>
+                            <Switch
+                                checked={showPolygons}
+                                onCheckedChange={(checked) => setShowPolygons(checked)}
+                                className="w-8"
+                            />
+                        </div>
+                    )}
                     {(images && images.length > 0 && images.some(image => image.panoramic)) && (
                         <>
                             <Separator orientation="vertical" className="mx-4 h-6" />
@@ -460,6 +525,7 @@ function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCatego
                             </div>
                         </>
                     )}
+                    
                 </div>
             )}
         </div>

@@ -245,6 +245,8 @@ def import_report(db: Session, zip_path: str, group_id: int):
                     corners=me.get("corners"),
                     px_coord=me.get("px_coord"),
                     px_corners=me.get("px_corners"),
+                    voronoi_gps=me.get("voronoi_gps"),
+                    voronoi_image_px=me.get("voronoi_image_px"),
                 )
                 db.add(map_element)
 
@@ -435,6 +437,8 @@ def _build_manifest(report, mr, pr, image_id_map, map_id_map):
                     "corners": me.corners,
                     "px_coord": me.px_coord,
                     "px_corners": me.px_corners,
+                    "voronoi_gps": me.voronoi_gps,
+                    "voronoi_image_px": me.voronoi_image_px,
                 })
 
             maps_list.append(map_data)

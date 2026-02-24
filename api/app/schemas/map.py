@@ -54,6 +54,8 @@ class MapElementBase(BaseModel):
     corners: dict  # JSONB as dict
     px_coord: dict  # JSONB as dict
     px_corners: dict  # JSONB as dict
+    voronoi_gps: Optional[list] = None
+    voronoi_image_px: Optional[list] = None
 
 class MapElementCreate(MapElementBase):
     pass
@@ -66,6 +68,8 @@ class MapElementUpdate(BaseModel):
     corners: Optional[dict] = None  # JSONB as dict
     px_coord: Optional[dict] = None  # JSONB as dict
     px_corners: Optional[dict] = None  # JSONB as dict
+    voronoi_gps: Optional[list] = None
+    voronoi_image_px: Optional[list] = None
 
 class MapElementOut(MapElementBase):
     id: int

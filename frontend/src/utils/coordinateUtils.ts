@@ -99,12 +99,44 @@ export function computeDetectionGps(
 
     // Interpolate GPS position within map element corners
     // c0 = top-right, c1 = bottom-right, c2 = bottom-left, c3 = top-left
-    const c0 = cornersGps[0];
-    const c2 = cornersGps[2];
-    const c3 = cornersGps[3];
+    const c0 = cornersGps[1];
+    const c1 = cornersGps[2]; 
+    const c2 = cornersGps[3];
+    const c3 = cornersGps[0];
 
-    const lat = c3[0] + relX * (c0[0] - c3[0]) + relY * (c2[0] - c3[0]);
-    const lon = c3[1] + relX * (c0[1] - c3[1]) + relY * (c2[1] - c3[1]);
+    //interpolate first horizontally between c3-c0 and c2-c1, then vertically between those results
+    const top = [
+        c3[0] * (1 - relX) + c0[0] * relX,
+        c3[1] * (1 - relX) + c0[1] * relX,
+    ];
+    const bottom = [
+        c2[0] * (1 - relX) + c1[0] * relX,
+        c2[1] * (1 - relX) + c1[1] * relX,
+    ];
+    
+    const lat = top[0] * (1 - relY) + bottom[0] * relY;
+    const lon = top[1] * (1 - relY) + bottom[1] * relY;
+
+    
+    // const lat = c3[0] + relX * (c0[0] - c3[0]) + relY * (c2[0] - c3[0]);
+    // const lon = c3[1] + relX * (c0[1] - c3[1]) + relY * (c2[1] - c3[1]);
 
     return { lat, lon };
+}
+
+/**
+ * Ray-casting point-in-polygon test for GPS coordinates
+ * Works correctly for small geographic polygons (no projection needed)
+ */
+export function isPointInPolygon(point: [number, number], polygon: [number, number][]): boolean {
+    const [px, py] = point;
+    let inside = false;
+    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+        const [xi, yi] = polygon[i];
+        const [xj, yj] = polygon[j];
+        const intersect = ((yi > py) !== (yj > py)) &&
+            (px < (xj - xi) * (py - yi) / (yj - yi) + xi);
+        if (intersect) inside = !inside;
+    }
+    return inside;
 }

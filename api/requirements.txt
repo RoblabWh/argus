@@ -20,4 +20,5 @@ rasterio
 psutil
 langchain-ollama
 geoserver-rest
+scipy
 

@@ -1,24 +1,55 @@
 #!/bin/bash
 set -e
 
+echo "
+:::'###::::'########:::'######:::'##::::'##::'######::
+::'## ##::: ##.... ##:'##... ##:: ##:::: ##:'##... ##:
+:'##:. ##:: ##:::: ##: ##:::..::: ##:::: ##: ##:::..::
+'##:::. ##: ########:: ##::'####: ##:::: ##:. ######::
+ #########: ##.. ##::: ##::: ##:: ##:::: ##::..... ##:
+ ##.... ##: ##::. ##:: ##::: ##:: ##:::: ##:'##::: ##:
+ ##:::: ##: ##:::. ##:. ######:::. #######::. ######::
+..:::::..::..:::::..:::......:::::.......::::......:::
+"
+
+
+#######################################
+# Parse CLI args
+#######################################
+UPDATE_API_URL=false
+UPDATE_WEBODM_URL=false
+ARGS=()
+for arg in "$@"; do
+  case "$arg" in
+    -h|--help)
+      echo "Usage: ./argus.sh [OPTIONS] [docker compose args]"
+      echo ""
+      echo "Options:"
+      echo "  --update-api-url      Rewrite VITE_API_URL in .env using the current local IP"
+      echo "  --update-webodm-url   Rewrite WEBODM_URL in .env using the current local IP (port 8000)"
+      echo "  --update-all-urls     Rewrite both VITE_API_URL and WEBODM_URL"
+      echo "  -h, --help            Show this help message and exit"
+      echo ""
+      echo "Any unrecognized options are passed through to docker compose."
+      echo ""
+      echo "Examples:"
+      echo "  ./argus.sh up -d                  Start Argus in detached mode"
+      echo "  ./argus.sh --update-webodm-url up Start Argus and reset the WebODM URL to local IP"
+      echo "  ./argus.sh --update-all-urls up   Reset all URLs to local IP and start"
+      exit 0
+      ;;
+    --update-api-url)    UPDATE_API_URL=true ;;
+    --update-webodm-url) UPDATE_WEBODM_URL=true ;;
+    --update-all-urls)   UPDATE_API_URL=true; UPDATE_WEBODM_URL=true ;;
+    *) ARGS+=("$arg") ;;
+  esac
+done
+
 #######################################
 # Resolve Argus path
 #######################################
 ARGUS_PATH="$(dirname "$(realpath "${BASH_SOURCE[0]}")")"
 echo "Argus path: $ARGUS_PATH"
-
-#######################################
-# Parse CLI args
-#######################################
-FORCE_UPDATE_IP=true
-ARGS=()
-for arg in "$@"; do
-  if [ "$arg" == "--keep-ip" ]; then
-    FORCE_UPDATE_IP=false
-  else
-    ARGS+=("$arg")
-  fi
-done
 
 #######################################
 # Create .env if missing
@@ -48,13 +79,18 @@ fi
 PORT_API=${PORT_API:-8008}
 COMPUTED_VITE_API_URL="http://${LOCAL_IP}:${PORT_API}"
 
-if [[ -z "$VITE_API_URL" || "$FORCE_UPDATE_IP" == true ]]; then
-  echo "Setting or updating VITE_API_URL to $COMPUTED_VITE_API_URL"
+if [[ -z "$VITE_API_URL" ]]; then
+  echo "VITE_API_URL not set, initializing to $COMPUTED_VITE_API_URL"
+  sed -i "s|^VITE_API_URL=.*|VITE_API_URL=$COMPUTED_VITE_API_URL|" "$ARGUS_PATH/.env" || \
+    echo "VITE_API_URL=$COMPUTED_VITE_API_URL" >> "$ARGUS_PATH/.env"
+  export VITE_API_URL="$COMPUTED_VITE_API_URL"
+elif [ "$UPDATE_API_URL" = true ]; then
+  echo "Updating VITE_API_URL to $COMPUTED_VITE_API_URL"
   sed -i "s|^VITE_API_URL=.*|VITE_API_URL=$COMPUTED_VITE_API_URL|" "$ARGUS_PATH/.env" || \
     echo "VITE_API_URL=$COMPUTED_VITE_API_URL" >> "$ARGUS_PATH/.env"
   export VITE_API_URL="$COMPUTED_VITE_API_URL"
 else
-  echo "VITE_API_URL is already set to $VITE_API_URL. Use --refresh-ip to update it."
+  echo "VITE_API_URL is set to $VITE_API_URL (use --update-api-url to override with local IP)"
 fi
 
 #######################################
@@ -99,14 +135,19 @@ WEBODM_PATH=${WEBODM_PATH:-"$HOME/WebODM"}
 WEBODM_IMAGE_NAME="opendronemap/webodm_webapp"
 COMPUTED_WEBODM_URL="http://${LOCAL_IP}:8000"  # WebODM defaults to port 8000
 
-# Update or set WEBODM_URL
-if [[ -z "$WEBODM_URL" || "$FORCE_UPDATE_IP" == true ]]; then
-  echo "Setting or updating WEBODM_URL to $COMPUTED_WEBODM_URL"
+# Update WEBODM_URL only if not set, or --update-webodm-url/--update-all-urls was passed
+if [[ -z "$WEBODM_URL" ]]; then
+  echo "WEBODM_URL not set, initializing to $COMPUTED_WEBODM_URL"
+  sed -i "s|^WEBODM_URL=.*|WEBODM_URL=$COMPUTED_WEBODM_URL|" "$ARGUS_PATH/.env" || \
+    echo "WEBODM_URL=$COMPUTED_WEBODM_URL" >> "$ARGUS_PATH/.env"
+  export WEBODM_URL="$COMPUTED_WEBODM_URL"
+elif [ "$UPDATE_WEBODM_URL" = true ]; then
+  echo "Updating WEBODM_URL to $COMPUTED_WEBODM_URL"
   sed -i "s|^WEBODM_URL=.*|WEBODM_URL=$COMPUTED_WEBODM_URL|" "$ARGUS_PATH/.env" || \
     echo "WEBODM_URL=$COMPUTED_WEBODM_URL" >> "$ARGUS_PATH/.env"
   export WEBODM_URL="$COMPUTED_WEBODM_URL"
 else
-  echo "WEBODM_URL is already set to $WEBODM_URL. Use --refresh-ip to update it."
+  echo "WEBODM_URL is set to $WEBODM_URL (use --update-webodm-url to override with local IP)"
 fi
 WEBODM_URL=${WEBODM_URL:-http://localhost:8000}
 WEBODM_STARTED=false
@@ -126,30 +167,42 @@ cleanup() {
 
 trap cleanup SIGINT SIGTERM EXIT
 
-# Start WebODM in background and keep track of PID
+# Start WebODM only if enabled and not already reachable
 if [ "$ENABLE_WEBODM" = true ]; then
-  if [ -d "$WEBODM_PATH" ] && [ -f "$WEBODM_PATH/webodm.sh" ]; then
-    echo "Starting WebODM..."
-    
-    if docker ps --format '{{.Image}}' | grep -q "^${WEBODM_IMAGE_NAME}$"; then
-      echo "WebODM container running from image '$WEBODM_IMAGE_NAME' is already running."
-    else
-      (cd "$WEBODM_PATH" && ./webodm.sh start &) 
-      WEBODM_STARTED=true
-    fi
+  echo "Checking WebODM reachability at $WEBODM_URL..."
+  WEBODM_REACHABLE=false
+  if curl -s --max-time 3 --head "$WEBODM_URL/login/" | grep -q "200 OK"; then
+    WEBODM_REACHABLE=true
+    echo "WebODM is already reachable at $WEBODM_URL, skipping startup."
+  fi
 
-    echo "Waiting for WebODM API at $WEBODM_URL..."
-    for i in {1..10}; do
-      if curl -s --head "$WEBODM_URL/login/" | grep "200 OK" > /dev/null; then
-        echo "WebODM is ready!"
-        break
+  if [ "$WEBODM_REACHABLE" = false ]; then
+    if [ -d "$WEBODM_PATH" ] && [ -f "$WEBODM_PATH/webodm.sh" ]; then
+      echo "WebODM not reachable, starting from $WEBODM_PATH..."
+
+      if docker ps --format '{{.Image}}' | grep -q "^${WEBODM_IMAGE_NAME}$"; then
+        echo "WebODM container already running, skipping start."
+      else
+        (cd "$WEBODM_PATH" && ./webodm.sh start &)
+        WEBODM_STARTED=true
       fi
-      echo "Still waiting... ($i)"
-      sleep 2
-    done
+
+      echo "Waiting for WebODM API at $WEBODM_URL..."
+      for i in {1..10}; do
+        if curl -s --head "$WEBODM_URL/login/" | grep "200 OK" > /dev/null; then
+          echo "WebODM is ready!"
+          break
+        fi
+        echo "Still waiting... ($i)"
+        sleep 2
+      done
+    else
+      echo "Warning: WebODM not reachable at $WEBODM_URL and WEBODM_PATH not found or not set."
+      echo "  If WebODM is hosted remotely, ensure WEBODM_URL in .env points to the correct address."
+      echo "  If WebODM is local, set WEBODM_PATH to its installation directory."
+    fi
   fi
 fi
-
 
 #######################################
 # Compose file selection
