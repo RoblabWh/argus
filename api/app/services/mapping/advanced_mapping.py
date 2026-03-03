@@ -777,10 +777,10 @@ def map_images_advanced(report_id, mapping_report_id, mapping_selection, setting
     # Serialize ORM images to dicts (required for multiprocessing)
     dicts = []
     for image in mapping_selection["images"]:
-        md_out = (MappingDataOut.from_orm(image.mapping_data)
+        md_out = (MappingDataOut.model_validate(image.mapping_data)
                   if image.mapping_data else None)
-        img_dict = ImageOut.from_orm(image).dict()
-        img_dict["mapping_data"] = md_out.dict() if md_out else None
+        img_dict = ImageOut.model_validate(image).model_dump()
+        img_dict["mapping_data"] = md_out.model_dump() if md_out else None
         dicts.append(img_dict)
     progress_updater.update_progress_of_map("processing", 3.0)
 

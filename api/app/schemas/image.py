@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import List, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 ##################
@@ -29,7 +29,7 @@ class ImageCreate(ImageBase):
     pass
 
 class ImageUpdate(BaseModel):
-    report_id: Optional[int] = None
+    mapping_report_id: Optional[int] = None
     url: Optional[str] = None
     thumbnail_url: Optional[str] = None
     created_at: Optional[datetime] = None
@@ -47,19 +47,13 @@ class ImageOut(ImageBase):
     mapping_data: Optional["MappingDataOut"] = None
     thermal_data: Optional["ThermalDataOut"] = None
     detections: List["DetectionOut"] = []
-
-    class Config:
-        orm_mode = True    
-        from_attributes=True
+    model_config = ConfigDict(from_attributes=True)
 
 class ImageBasicPlusOut(ImageBase):
     id: int
     mapping_data: Optional["MappingDataOut"] = None
     thermal_data: Optional["ThermalDataOut"] = None
-
-    class Config:
-        orm_mode = True    
-        from_attributes=True
+    model_config = ConfigDict(from_attributes=True)
 
 class ImageUploadResult(BaseModel):
     status: str  # "success" | "error" | "duplicate"
@@ -104,10 +98,7 @@ class MappingDataUpdate(BaseModel):
 
 class MappingDataOut(MappingDataBase):
     id: int
-
-    class Config:
-        orm_mode = True
-        from_attributes=True
+    model_config = ConfigDict(from_attributes=True)
 
 
 
@@ -142,11 +133,7 @@ class ThermalDataUpdate(BaseModel):
 
 class ThermalDataOut(ThermalDataBase):
     id: int
-    #image: Optional[ImageOut] = None
-
-    class Config:
-        orm_mode = True
-        from_attributes=True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ThermalMatrixResponse(BaseModel):
@@ -182,11 +169,7 @@ class DetectionUpdate(BaseModel):
 
 class DetectionOut(DetectionBase):
     id: int
-    #image: Optional[ImageOut] = None
-
-    class Config:
-        orm_mode = True
-        from_attributes=True
+    model_config = ConfigDict(from_attributes=True)
 
 
 

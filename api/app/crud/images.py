@@ -1,12 +1,22 @@
 from sqlalchemy.orm import Session, joinedload
+from sqlalchemy import select
 from datetime import datetime
 
 from app import models
-from app.schemas.image import ImageCreate, ImageUpdate, ImageUploadResult, MappingDataCreate, ThermalDataCreate, DetectionUpdate
+from app.schemas.image import (
+    ImageCreate,
+    ImageUpdate,
+    ImageUploadResult,
+    MappingDataCreate,
+    ThermalDataCreate,
+    DetectionUpdate,
+)
 from app.services.cleanup import delete_image_file
+
 
 def get_all(db: Session):
     return db.query(models.Image).all()
+
 
 def get_full_image(db: Session, image_id: int):
     return (
@@ -20,8 +30,13 @@ def get_full_image(db: Session, image_id: int):
         .first()
     )
 
+
 def get_by_report(db: Session, report_id: int):
-    mapping_report = db.query(models.MappingReport).filter(models.MappingReport.report_id == report_id).first()
+    mapping_report = (
+        db.query(models.MappingReport)
+        .filter(models.MappingReport.report_id == report_id)
+        .first()
+    )
     if not mapping_report:
         return []
     return (
@@ -34,8 +49,13 @@ def get_by_report(db: Session, report_id: int):
         .all()
     )
 
+
 def get_by_report_full(db: Session, report_id: int):
-    mapping_report = db.query(models.MappingReport).filter(models.MappingReport.report_id == report_id).first()
+    mapping_report = (
+        db.query(models.MappingReport)
+        .filter(models.MappingReport.report_id == report_id)
+        .first()
+    )
     if not mapping_report:
         return []
     return (
@@ -51,45 +71,47 @@ def get_by_report_full(db: Session, report_id: int):
 
 
 def create(db: Session, data: ImageCreate):
-    img_in = ImageCreate(**data)
+    # img_in = ImageCreate(**data)
     new_image = models.Image(
-        **img_in.dict(),
+        **data.model_dump(),
     )
     db.add(new_image)
     db.commit()
     db.refresh(new_image)
     return new_image
 
+
 def update(db: Session, image_id: int, update_data: ImageUpdate):
-    image = db.query(models.Image).filter(models.Image.image_id == image_id).first()
+    image = db.query(models.Image).filter(models.Image.id == image_id).first()
     if not image:
         raise ValueError("Image not found")
 
-    for key, value in update_data.dict(exclude_unset=True).items():
+    for key, value in update_data.model_dump(exclude_unset=True).items():
         setattr(image, key, value)
 
     db.commit()
     db.refresh(image)
     return image
 
+
 def delete(db: Session, image_id: int):
     image = db.query(models.Image).filter(models.Image.id == image_id).first()
     if not image:
         raise ValueError("Image not found")
-    
+
     # delete the image file if it exists
     if not delete_image_file(image):
         return {"status": "error", "message": "Failed to delete image file"}
-    
+
     db.delete(image)
     db.commit()
     return {"status": "success", "message": "Image deleted successfully"}
 
 
 def create_mapping_data(db: Session, data: MappingDataCreate):
-    mapping_data_in = MappingDataCreate(**data)
+    # mapping_data_in = MappingDataCreate(**data)
     new_mapping_data = models.MappingData(
-        **mapping_data_in.dict(),
+        **data.model_dump(),
     )
     db.add(new_mapping_data)
     db.commit()
@@ -98,7 +120,9 @@ def create_mapping_data(db: Session, data: MappingDataCreate):
 
 
 def delete_mapping_data(db: Session, image_id: int):
-    db.query(models.MappingData).filter(models.MappingData.image_id == image_id).delete()
+    db.query(models.MappingData).filter(
+        models.MappingData.image_id == image_id
+    ).delete()
     db.commit()
 
 
@@ -109,33 +133,49 @@ def delete_mapping_data(db: Session, image_id: int):
 
 def create_multiple_thermal_data(db: Session, data: list[ThermalDataCreate]):
     image_ids = [td.image_id for td in data]
-    db.query(models.ThermalData).filter(models.ThermalData.image_id.in_(image_ids)).delete(synchronize_session=False)
+    db.query(models.ThermalData).filter(
+        models.ThermalData.image_id.in_(image_ids)
+    ).delete(synchronize_session=False)
     db.commit()
 
-    new_thermal_data_list = [models.ThermalData(**thermal_data.dict()) for thermal_data in data]
+    new_thermal_data_list = [
+        models.ThermalData(**thermal_data.model_dump()) for thermal_data in data
+    ]
     db.add_all(new_thermal_data_list)
     db.commit()
     return new_thermal_data_list
 
+
 def get_all_thermal_data(db: Session):
     return db.query(models.ThermalData).all()
 
+
 def delete_thermal_data(db: Session, thermal_data_id: int):
-    thermal_data = db.query(models.ThermalData).filter(models.ThermalData.id == thermal_data_id).first()
+    thermal_data = (
+        db.query(models.ThermalData)
+        .filter(models.ThermalData.id == thermal_data_id)
+        .first()
+    )
     if not thermal_data:
         raise ValueError("Thermal data not found")
-    
+
     db.delete(thermal_data)
     db.commit()
     return {"status": "success", "message": "Thermal data deleted successfully"}
+
 
 def delete_all_thermal_data(db: Session):
     db.query(models.ThermalData).delete()
     db.commit()
     return {"status": "success", "message": "All thermal data deleted successfully"}
 
+
 def update_thermal_matrix_path(db: Session, image_id: int, new_path: str):
-    thermal_data = db.query(models.ThermalData).filter(models.ThermalData.image_id == image_id).first()
+    thermal_data = (
+        db.query(models.ThermalData)
+        .filter(models.ThermalData.image_id == image_id)
+        .first()
+    )
     if not thermal_data:
         raise ValueError("Thermal data not found for this image")
 
@@ -145,19 +185,24 @@ def update_thermal_matrix_path(db: Session, image_id: int, new_path: str):
     return thermal_data
 
 
-
 ######################
 ########### Detections
 ######################
 
+
 def get_images_for_detection(db: Session, mapping_report_id: int):
-    images = db.query(models.Image).filter(models.Image.mapping_report_id == mapping_report_id).all()
+    images = (
+        db.query(models.Image)
+        .filter(models.Image.mapping_report_id == mapping_report_id)
+        .all()
+    )
     # filter out thermal images
     images = [image for image in images if not image.thermal]
-    # return [{"path": image.url, "id": image.id} for image in images if not image.thermal]
-    #convert images to list of dicts
-    images = [{"url": image.url, "id": image.id, "coord": image.coord} for image in images]
+    images = [
+        {"url": image.url, "id": image.id, "coord": image.coord} for image in images
+    ]
     return images
+
 
 def get_detections_by_mapping_report_id(db: Session, mapping_report_id: int):
     # 1. load images from the mapping report with their detections
@@ -174,7 +219,9 @@ def get_detections_by_mapping_report_id(db: Session, mapping_report_id: int):
     return detections
 
 
-def get_incremental_detections(db: Session, mapping_report_id: int, known_ids: list[int]):
+def get_incremental_detections(
+    db: Session, mapping_report_id: int, known_ids: list[int]
+):
     images = (
         db.query(models.Image)
         .filter(models.Image.mapping_report_id == mapping_report_id)
@@ -192,7 +239,11 @@ def get_incremental_detections(db: Session, mapping_report_id: int, known_ids: l
 
 
 def save_detections(db: Session, mapping_report_id: int, detections: dict):
-    images = db.query(models.Image).filter(models.Image.mapping_report_id == mapping_report_id).all()
+    images = (
+        db.query(models.Image)
+        .filter(models.Image.mapping_report_id == mapping_report_id)
+        .all()
+    )
     image_id_map = {image.id: image for image in images}
 
     for det in detections.get("detections", []):
@@ -203,63 +254,101 @@ def save_detections(db: Session, mapping_report_id: int, detections: dict):
                 class_name=det.get("category_name"),
                 bbox=det.get("bbox"),
                 score=det.get("score"),
-                manually_verified=False
+                manually_verified=False,
             )
             db.add(new_detection)
 
     db.commit()
     return {"status": "success", "message": "Detections saved successfully"}
 
+
 def get_all_detections(db: Session):
     return db.query(models.Detection).all()
 
+
 def delete_all_detections_by_mapping_report_id(db: Session, mapping_report_id: int):
-    db.query(models.Detection).filter(models.Detection.image.has(mapping_report_id=mapping_report_id)).delete(synchronize_session=False)
+    # db.query(models.Detection).filter(models.Detection.image.has(mapping_report_id=mapping_report_id)).delete(synchronize_session=False)
+    # db.query(models.Detection).join(models.Image).filter(
+    #     models.Image.mapping_report_id == mapping_report_id
+    # ).delete(synchronize_session=False)
+    image_ids = select(models.Image.id).where(
+        models.Image.mapping_report_id == mapping_report_id
+    )
+    db.query(models.Detection).filter(
+        models.Detection.image_id.in_(image_ids)
+    ).delete(synchronize_session=False)
     db.commit()
     return {"status": "success", "message": "All detections deleted successfully"}
 
+
 def update_detection(db: Session, detection_id: int, update_data: DetectionUpdate):
-    detection = db.query(models.Detection).filter(models.Detection.id == detection_id).first()
+    detection = (
+        db.query(models.Detection).filter(models.Detection.id == detection_id).first()
+    )
     if not detection:
         raise ValueError("Detection not found")
 
-    for key, value in update_data.dict(exclude_unset=True).items():
+    for key, value in update_data.model_dump(exclude_unset=True).items():
         setattr(detection, key, value)
 
     db.commit()
     db.refresh(detection)
     return detection
 
+
 def delete_detection(db: Session, detection_id: int):
-    detection = db.query(models.Detection).filter(models.Detection.id == detection_id).first()
+    detection = (
+        db.query(models.Detection).filter(models.Detection.id == detection_id).first()
+    )
     if not detection:
         raise ValueError("Detection not found")
-    
+
     db.delete(detection)
     db.commit()
     return {"status": "success", "message": "Detection deleted successfully"}
 
+
 def update_detections_coords_by_mapping_report_id(db: Session, mapping_report_id: int):
-    images = db.query(models.Image).filter(models.Image.mapping_report_id == mapping_report_id).all()
+    images = (
+        db.query(models.Image)
+        .filter(models.Image.mapping_report_id == mapping_report_id)
+        .all()
+    )
     for image in images:
         for detection in image.detections:
             detection.coord = image.coord
     db.commit()
-    return {"status": "success", "message": "Detection coordinates updated successfully"}
+    return {
+        "status": "success",
+        "message": "Detection coordinates updated successfully",
+    }
 
-def update_detections_batch(db: Session, mapping_report_id: int, updates: list[DetectionUpdate]):
-    mapping_report = db.query(models.MappingReport).filter(models.MappingReport.id == mapping_report_id).first()
+
+def update_detections_batch(
+    db: Session, mapping_report_id: int, updates: list[DetectionUpdate]
+):
+    mapping_report = (
+        db.query(models.MappingReport)
+        .filter(models.MappingReport.id == mapping_report_id)
+        .first()
+    )
     if not mapping_report:
         raise ValueError("Mapping report not found for this report ID")
 
-    images = db.query(models.Image).filter(models.Image.mapping_report_id == mapping_report.id).all()
+    images = (
+        db.query(models.Image)
+        .filter(models.Image.mapping_report_id == mapping_report.id)
+        .all()
+    )
     image_id_map = {image.id: image for image in images}
 
     updated_count = 0
     for update in updates:
-        detection = db.query(models.Detection).filter(models.Detection.id == update.id).first()
+        detection = (
+            db.query(models.Detection).filter(models.Detection.id == update.id).first()
+        )
         if detection and detection.image_id in image_id_map:
-            for key, value in update.dict(exclude_unset=True).items():
+            for key, value in update.model_dump(exclude_unset=True).items():
                 if key != "id":  # Skip the id field
                     setattr(detection, key, value)
             updated_count += 1

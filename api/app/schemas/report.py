@@ -4,7 +4,7 @@ from .image import ImageOut
 from .map import MapOut, MapOutSlim
 from .weather import WeatherOut
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 ##################
@@ -40,9 +40,7 @@ class ReportOut(ReportCreate):
     report_id: int
     created_at: datetime
     updated_at: datetime
-
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 class ReportDetailOut(ReportOut):
     mapping_report: Optional["MappingReportOut"] = None
@@ -89,8 +87,17 @@ class MappingReportCreate(MappingReportBase):
     pass
 
 
-class MappingReportUpdate(MappingReportBase):
-    pass
+class MappingReportUpdate(BaseModel):
+    flight_timestamp: Optional[datetime] = None
+    coord: Optional[dict] = None
+    address: Optional[str] = None
+    flight_duration: Optional[float] = None
+    flight_height: Optional[float] = None
+    default_flight_height: Optional[float] = None
+    covered_area: Optional[float] = None
+    uav: Optional[str] = None
+    image_count: Optional[int] = None
+    webodm_project_id: Optional[str] = None
 
 
 class MappingReportOut(MappingReportBase):
@@ -98,24 +105,16 @@ class MappingReportOut(MappingReportBase):
     images: List[ImageOut] = []
     maps: List[MapOut] = []
     weather: List[WeatherOut] = []
-
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 class MappingReportSimpleOut(MappingReportBase):
     id: int
-
-    class Config:
-        orm_mode = True
-
+    model_config = ConfigDict(from_attributes=True)
 
 class MappingReportSimplePlusOut(MappingReportBase):
     id: int
     weather: List[WeatherOut] = []
-
-
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 
@@ -136,9 +135,7 @@ class PanoReportUpdate(PanoReportBase):
 
 class PanoReportOut(PanoReportBase):
     id: int
-
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 

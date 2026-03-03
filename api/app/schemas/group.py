@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import List, Optional
 from .report import ReportOut, ReportDetailOut, ReportSmallDetailOut
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 ##################
@@ -26,14 +26,10 @@ class GroupOut(GroupBase):
     id: int
     created_at: datetime
     reports: List[ReportOut] = []
-
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 class GroupOutReportMetadata(GroupBase):
     id: int
     created_at: datetime
     reports: List[ReportSmallDetailOut] = []
-
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
