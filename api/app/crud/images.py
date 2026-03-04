@@ -126,6 +126,18 @@ def delete_mapping_data(db: Session, image_id: int):
     db.commit()
 
 
+def update_manual_images_altitude(db: Session, image_ids: list[int], altitude: float):
+    """For images with rel_altitude_method='manual': set rel_altitude and mark as mappable."""
+    db.query(models.MappingData).filter(
+        models.MappingData.image_id.in_(image_ids),
+        models.MappingData.rel_altitude_method == "manual"
+    ).update({"rel_altitude": altitude}, synchronize_session=False)
+    db.query(models.Image).filter(
+        models.Image.id.in_(image_ids)
+    ).update({"mappable": True}, synchronize_session=False)
+    db.commit()
+
+
 ######################
 ############## Thermal
 ######################

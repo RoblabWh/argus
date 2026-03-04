@@ -17,7 +17,7 @@ def _read_metadata(image_path: str) -> dict:
     strings = json.dumps(data, sort_keys=True, indent=4, separators=(",", ": "))
     python_dict = json.loads(strings)[0]
 
-    #print(f"Metadata for {image_path}:\n{strings}", flush=True)
+    logger.debug(f"Metadata for {image_path}:\n{strings}")
 
     return python_dict
 
@@ -29,7 +29,7 @@ def _get_keys(model_name: str) -> dict:
         all_keys = json.load(file)
         keys = all_keys.get(model_name, {})
         if keys == {}:
-            #print(f"No keys found for {model_name}, falling back to default.", flush=True)
+            logger.debug(f"No keys found for {model_name}, falling back to default.")
             keys = all_keys.get("default", {})
     return keys
 
@@ -39,7 +39,7 @@ def extract_image_metadata(image_path: str) -> dict:
     model_name = metadata.get("EXIF:Model", "Unknown Camera")
     datakeys = _get_keys(model_name)
 
-    #print(f"keys for {model_name}: {datakeys}", flush=True)
+    logger.debug(f"keys for {model_name}: {datakeys}")
 
 
 
@@ -295,7 +295,7 @@ def _extract_mapping_data(metadata: dict, datakeys: dict, data: dict) -> tuple:
     #     return False, None
     # elif mapping_data["rel_altitude"] is None:
     if mapping_data["rel_altitude"] is None:
-        #TODO check for google API key and set the method to googleelevationapi or similar
+        #Later TODO check for google API key and set the method to googleelevationapi or similar for getting rel altitude based on difference between gps altitude and ground elevation
         mapping_data["rel_altitude_method"] = "manual"
     else:
         mapping_data["rel_altitude_method"] = "exif"
@@ -305,15 +305,18 @@ def _extract_mapping_data(metadata: dict, datakeys: dict, data: dict) -> tuple:
     if fov is None:
         if thermal:
             fov = _load_fallback('fov', data['camera_model'], thermal)
-            print(f"FOV not found in metadata, using fallback value: {fov}", flush=True)
+            logger.debug(f"FOV not found in metadata, using fallback value: {fov}")
         if fov is None:
-            return False, None
+            logger.warning("FOV metadata is missing in the image file and no fallback value available, cannot extract mapping data.")
+            fov = 82.0 #Default -> TODO let user input
+            #return False, None
         mapping_data["fov"] = fov
     else:
         fov = fov.split()[0]
         try:
             fov = float(fov)
         except ValueError:
+            logger.warning(f"FOV value '{fov}' is not a valid float, skipping FOV for mapping data.")
             raise ValueError(f"FOV value '{fov}' is not a valid float.")
         mapping_data["fov"] = fov
 
@@ -324,10 +327,12 @@ def _extract_mapping_data(metadata: dict, datakeys: dict, data: dict) -> tuple:
     for key in ("uav_roll", "uav_yaw", "uav_pitch"):
         value = metadata.get(orientation_keys[key], None)
         if value is None:
+            logger.warning(f"Orientation value for {key} is missing, cannot extract mapping data.")
             return False, None
         try:
             mapping_data[key] = float(value)
         except (TypeError, ValueError):
+            logger.warning(f"Orientation value for {key} is not a valid float, cannot extract mapping data.")
             return False, None
 
     for key in ("cam_roll", "cam_yaw", "cam_pitch"):
@@ -337,6 +342,7 @@ def _extract_mapping_data(metadata: dict, datakeys: dict, data: dict) -> tuple:
         try:
             mapping_data[key] = float(value)
         except (TypeError, ValueError):
+            logger.warning(f"Orientation value for {key} is not a valid float, skipping this value.")
             continue
     
     for uav_key, cam_key in [("uav_yaw", "cam_yaw"), ("uav_roll", "cam_roll")]:
@@ -345,9 +351,8 @@ def _extract_mapping_data(metadata: dict, datakeys: dict, data: dict) -> tuple:
             if abs(yaw_diff) > 140:
                 mapping_data[cam_key] = _normalize_angle(mapping_data[cam_key] + 180)
 
-
-
-    return True, mapping_data
+    mappable = mapping_data.get("rel_altitude") is not None
+    return mappable, mapping_data
 
 def _load_fallback(key: str, model_name: str, thermal: bool) -> float:
     # Load fallback values from a JSON file

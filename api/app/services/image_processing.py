@@ -96,8 +96,8 @@ def process_image(report_id: int, file: UploadFile, mapping_report_id: int, db: 
 
         # Store metadata in the database
         img = crud_image.create(db, ImageCreate(**data))
-        if metadata['mappable']:
-            mapping_data = metadata.get("mapping_data", {})
+        if metadata.get("mapping_data"):
+            mapping_data = metadata["mapping_data"]
             mapping_data["image_id"] = img.id
             img = crud_image.create_mapping_data(db, MappingDataCreate(**mapping_data))
         else:
@@ -223,8 +223,8 @@ def reread_image_metadata(images, db: Session, progress_updater=None):
 
         # Delete old MappingData and recreate from fresh extraction
         crud_image.delete_mapping_data(db, image.id)
-        if metadata["mappable"]:
-            mapping_data = metadata.get("mapping_data", {})
+        if metadata.get("mapping_data"):
+            mapping_data = metadata["mapping_data"]
             mapping_data["image_id"] = image.id
             crud_image.create_mapping_data(db, MappingDataCreate(**mapping_data))
 

@@ -32,7 +32,11 @@ def preprocess_report(report_id: int, images: list[ImageOut], settings: Processi
     # Step 1 process thermal images (30%)
     images = _process_thermal_images(images, report_id, db, progress_updater)
     progress_updater.update_progress("preprocessing", 33.0)
-    
+
+    # Apply user-supplied default altitude for images missing EXIF altitude
+    default_flight_height = settings.get("default_flight_height")
+    if default_flight_height is not None:
+        _apply_default_altitude(images, default_flight_height, db)
 
 
     # Step 2 extract Flight Data (33-50%)
@@ -279,6 +283,28 @@ def _get_uav_data(images: list[ImageOut]) -> dict:
     return {"camera_models": list(camera_models)}
 
 
+def _apply_default_altitude(images: list, altitude: float, db: Session):
+    """
+    For images missing EXIF altitude (rel_altitude_method='manual'):
+    - persist rel_altitude = altitude and mappable = True to DB
+    - patch in-memory ORM objects so the rest of the pipeline sees the values immediately
+    """
+    manual_images = [
+        img for img in images
+        if img.mapping_data and img.mapping_data.rel_altitude_method == "manual"
+    ]
+    if not manual_images:
+        return
+    manual_ids = [img.id for img in manual_images]
+    crud_image.update_manual_images_altitude(db, manual_ids, altitude)
+    for img in manual_images:
+        img.mapping_data.rel_altitude = altitude
+        img.mappable = True
+    logger.info(
+        f"Applied default altitude {altitude}m to {len(manual_images)} images with manual rel_altitude"
+    )
+
+
 def _check_altitude(images: list[ImageOut], settings: dict) -> tuple:
     """
     Check the altitude of the images and calculate the average altitude and covered area.
@@ -291,7 +317,7 @@ def _check_altitude(images: list[ImageOut], settings: dict) -> tuple:
     easting_max = float('-inf')
     easting_min = float('inf')
 
-    default_altitude = settings.get("default_altitude", 100.0)  # Default altitude if none found
+    default_altitude = settings.get("default_flight_height", 50.0)  # Default altitude if none found
 
     for image in images:
         if image.mapping_data:
@@ -345,7 +371,13 @@ def _filter_mapping_images(images: list[ImageOut], settings: dict) -> list:
     for image in images:
         if not image.mappable or not image.mapping_data:
             continue
-
+        
+        if image.mapping_data.cam_pitch is None:
+            image.mapping_data.cam_pitch = -90.0  # Assume nadir if pitch is missing
+            if image.mapping_data.cam_yaw is None:
+                image.mapping_data.cam_yaw = image.mapping_data.uav_yaw  # Default yaw if missing
+            if image.mapping_data.cam_roll is None:
+                image.mapping_data.cam_roll = image.mapping_data.uav_roll  # Default roll if missing
         if abs(90+image.mapping_data.cam_pitch) <= settings.get("accepted_gimbal_tilt_deviation", 7.5):
             if image.thermal:
                 mapping_images_ir.append(image)

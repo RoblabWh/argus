@@ -70,7 +70,7 @@ class ImageUploadResult(BaseModel):
 class MappingDataBase(BaseModel):
     image_id: int
     fov: float
-    rel_altitude: Optional[float] = 100.0
+    rel_altitude: Optional[float] = None
     altitude: Optional[float] = None  
     rel_altitude_method: Optional[str] = "exif"  
     cam_pitch: Optional[float] = None

@@ -46,7 +46,7 @@ class MappingData(Base):
     id = Column(Integer, primary_key=True, index=True)
     image_id = Column(Integer, ForeignKey("images.id"), index=True)
     fov = Column(Float)
-    rel_altitude = Column(Float, default=100.0)
+    rel_altitude = Column(Float, nullable=True)
     rel_altitude_method = Column(String, default="exif") # alternative would be 'googleapi' or 'manual'
     altitude = Column(Float, nullable=True)  # altitude in meters (only needed for googleapi method)
     cam_pitch = Column(Float, nullable=True)

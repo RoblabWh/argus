@@ -86,7 +86,6 @@ def get_mapping_report_webodm_project_id(report_id: int, db: Session = Depends(g
 @router.post("/{report_id}/process", response_model=ReportOut)
 def process_report(report_id: int, processing_settings: ProcessingSettings, db: Session = Depends(get_db)):
     returnval = crud.update_process(db, report_id, "queued", 0.0)
-    settings_json = processing_settings.json()
     processing_settings_dict = processing_settings.dict()
     # print(f"Starting processing for report {report_id} with settings: {processing_settings}")
     # print(f"Settings JSON: {settings_json}")
