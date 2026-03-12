@@ -140,3 +140,57 @@ export function isPointInPolygon(point: [number, number], polygon: [number, numb
     }
     return inside;
 }
+
+export function polygonIntersection(subjectPolygon: [number, number][], clipPolygon: [number, number][]): [number, number][] {
+
+  function inside(p: [number, number], cp1: [number, number], cp2: [number, number]): boolean {
+    return (cp2[0] - cp1[0]) * (p[1] - cp1[1]) >
+           (cp2[1] - cp1[1]) * (p[0] - cp1[0]);
+  }
+
+  function intersection(cp1: [number, number], cp2: [number, number], s: [number, number], e: [number, number]): [number, number] {
+    const dc = [cp1[0] - cp2[0], cp1[1] - cp2[1]];
+    const dp = [s[0] - e[0], s[1] - e[1]];
+    const n1 = cp1[0] * cp2[1] - cp1[1] * cp2[0];
+    const n2 = s[0] * e[1] - s[1] * e[0];
+    const n3 = dc[0] * dp[1] - dc[1] * dp[0];
+
+    return [
+      (n1 * dp[0] - n2 * dc[0]) / n3,
+      (n1 * dp[1] - n2 * dc[1]) / n3
+    ];
+  }
+
+  let outputList = subjectPolygon;
+
+  for (let j = 0; j < clipPolygon.length; j++) {
+
+    const cp1 = clipPolygon[j];
+    const cp2 = clipPolygon[(j + 1) % clipPolygon.length];
+    const inputList = outputList;
+
+    outputList = [];
+    if (inputList.length === 0) break;
+
+    let s = inputList[inputList.length - 1];
+
+    for (const e of inputList) {
+
+      if (inside(e, cp1, cp2)) {
+
+        if (!inside(s, cp1, cp2)) {
+          outputList.push(intersection(cp1, cp2, s, e));
+        }
+
+        outputList.push(e);
+
+      } else if (inside(s, cp1, cp2)) {
+        outputList.push(intersection(cp1, cp2, s, e));
+      }
+
+      s = e;
+    }
+  }
+
+  return outputList;
+}

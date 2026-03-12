@@ -29,17 +29,22 @@ import {
 } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
-import { useState, useEffect } from "react";
-import { Info, Blocks, Drone } from "lucide-react";
+import { useEffect, useRef } from "react";
+import { Info, Blocks } from "lucide-react";
 import { WebODMLogo } from "@/components/report/mappingReportComponents/WebOdmCard";
 import { MappingTile } from "@/components/report/upload/SettingsTile";
 import type { ProcessingSettings } from "@/types/processing";
 import { useReportSettings } from "@/hooks/useReportSettingsCache";
+import { getProcessingSettings } from "@/api";
+import { useQuery } from "@tanstack/react-query";
 
 type MappingSettingsProps = {
     reportId: number;
     weatherAvailable: boolean;
     showManualAltitudeField: boolean;
+    showFovField: boolean;
+    showCamPitchField: boolean;
+    showCamOrientationField: boolean;
     handleStartProcessing: (settings: ProcessingSettings) => void;
     processButtonActive: boolean;
     status: string;
@@ -48,12 +53,14 @@ type MappingSettingsProps = {
     isEditing?: boolean; // Optional prop to control editing state
     isWebODMAvailable?: boolean; // Optional prop to check if WebODM is available
 };
-// ...imports remain the same
 
 export function MappingSettingsCard({
     reportId,
     weatherAvailable,
     showManualAltitudeField,
+    showFovField,
+    showCamPitchField,
+    showCamOrientationField,
     handleStartProcessing,
     processButtonActive,
     status,
@@ -64,24 +71,97 @@ export function MappingSettingsCard({
 }: MappingSettingsProps) {
     const { settings, setSettings } = useReportSettings(reportId, {
         keep_weather: weatherAvailable,
-        default_flight_height: showManualAltitudeField ? 100.0 : 120.0,
     });
+
+    // Fetch last-used settings from backend and seed the form once
+    const { data: backendSettings, isFetching: isBackendSettingsFetching } = useQuery({
+        queryKey: ["processing-settings", reportId],
+        queryFn: () => getProcessingSettings(reportId),
+        refetchOnMount: 'always',
+        staleTime: 0,
+    });
+
+    const hasInitialized = useRef(false);
+    useEffect(() => {
+        if (backendSettings && !isBackendSettingsFetching && !hasInitialized.current) {
+            hasInitialized.current = true;
+            const overrides: Partial<ProcessingSettings> = {};
+            for (const [k, v] of Object.entries(backendSettings)) {
+                if (v !== null && v !== undefined) {
+                    (overrides as Record<string, unknown>)[k] = v;
+                }
+            }
+            if (Object.keys(overrides).length > 0) {
+                setSettings({ ...settings, ...overrides });
+            }
+        }
+    }, [backendSettings, isBackendSettingsFetching, settings, setSettings]);
+
+    useEffect(() => {
+        if (!settings.apply_manual_defaults) return;
+
+        const partial: Partial<ProcessingSettings> = {};
+        if (showManualAltitudeField && settings.default_flight_height == null) {
+            partial.default_flight_height = 100.0;
+        }
+        if (showFovField && settings.default_fov == null) {
+            partial.default_fov = 82.0;
+        }
+        if (showCamPitchField && settings.default_cam_pitch == null) {
+            partial.default_cam_pitch = -90.0;
+        }
+
+        if (Object.keys(partial).length > 0) {
+            setSettings({ ...settings, ...partial });
+        }
+    }, [
+        settings,
+        setSettings,
+        showManualAltitudeField,
+        showFovField,
+        showCamPitchField,
+    ]);
 
     const processingButtonLabel = isEditing ? "Reprocess" : "Start Processing";
 
-    const update = (partial: Partial<ProcessingSettings>) =>
-        {
-            console.log("Updating settings:", partial);
-            setSettings({ ...settings, ...partial });
-        };
-
-    const handleStartProcessingWithSettings = () => {
-        handleStartProcessing(settings);
+    const update = (partial: Partial<ProcessingSettings>) => {
+        console.log("Updating settings:", partial);
+        setSettings({ ...settings, ...partial });
     };
 
+    const handleToggleAll = (val: boolean) => {
+        const partial: Partial<ProcessingSettings> = { apply_manual_defaults: val };
+        if (showManualAltitudeField) partial.default_flight_height = val ? (settings.default_flight_height ?? 100.0) : null;
+        if (showFovField) partial.default_fov = val ? (settings.default_fov ?? 82.0) : null;
+        if (showCamPitchField) partial.default_cam_pitch = val ? (settings.default_cam_pitch ?? -90.0) : null;
+        update(partial);
+    };
 
+    const withVisibleManualDefaults = (current: ProcessingSettings): ProcessingSettings => {
+        if (!current.apply_manual_defaults) return current;
 
-    const tileBaseClasses = "rounded-2xl border-2 border-primary p-4"// bg-muted bg-gradient-to-tl from-primary/15 via-white/0 to-white/0 dark:from-gray-700/70 dark:via-gray-900/0 dark:to-gray-900/0";
+        return {
+            ...current,
+            default_flight_height:
+                showManualAltitudeField && current.default_flight_height == null
+                    ? 100.0
+                    : current.default_flight_height,
+            default_fov:
+                showFovField && current.default_fov == null
+                    ? 82.0
+                    : current.default_fov,
+            default_cam_pitch:
+                showCamPitchField && current.default_cam_pitch == null
+                    ? -90.0
+                    : current.default_cam_pitch,
+        };
+    };
+
+    const handleStartProcessingWithSettings = () => {
+        handleStartProcessing(withVisibleManualDefaults(settings));
+    };
+
+    const tileBaseClasses = "rounded-2xl border-2 border-primary p-4";
 
     return (
         <Card className="w-full">
@@ -146,9 +226,6 @@ export function MappingSettingsCard({
                         enabled={settings.fast_mapping}
                         onToggle={(val) => update({ fast_mapping: val })}
                     >
-                        {/* Fast Mapping */}
-
-
                         <div className="relative grid md:grid-cols-2 gap-4 z-10">
                             <div className="relative flex flex-col space-y-1">
                                 <div className="flex items-center gap-2">
@@ -162,7 +239,7 @@ export function MappingSettingsCard({
                                         </TooltipContent>
                                     </Tooltip>
                                 </div>
-                                <Select value={"" + settings.target_map_resolution} onValueChange={(val) => { let v = parseInt(val, 10); update({ target_map_resolution: v }) }}>
+                                <Select value={"" + settings.target_map_resolution} onValueChange={(val) => { const v = parseInt(val, 10); update({ target_map_resolution: v }) }}>
                                     <SelectTrigger id="map-size" className="bg-white/70 dark:bg-gray-800/70 cursor-pointer">
                                         <SelectValue />
                                     </SelectTrigger>
@@ -200,30 +277,152 @@ export function MappingSettingsCard({
                             </div>
                         </div>
 
-                        {showManualAltitudeField && (
-                            <div className="relative z-10 flex flex-col space-y-1">
-                                <div className="flex items-center gap-2">
-
-                                    <Label htmlFor="default-altitude">Default Altitude (m)</Label>
-                                    <Tooltip>
-                                        <TooltipTrigger asChild>
-                                            <Info className="w-4 h-4 text-muted-foreground cursor-help" />
-                                        </TooltipTrigger>
-                                        <TooltipContent side="right">
-                                            Used to map images without exif data about the relative altitude above ground level.
-                                        </TooltipContent>
-                                    </Tooltip>
+                        {/* Missing Mapping Data — single master toggle */}
+                        {(showManualAltitudeField || showFovField || showCamPitchField || showCamOrientationField) && (
+                            <div className="relative z-10 flex flex-col space-y-3">
+                                <div className="flex items-center justify-between gap-4">
+                                    <div className="flex items-center gap-2">
+                                        <Label>Missing Mapping Data</Label>
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <Info className="w-4 h-4 text-muted-foreground cursor-help" />
+                                            </TooltipTrigger>
+                                            <TooltipContent side="right">
+                                                Some images are missing required mapping data. Provide fallback values here so these images can still be included in the map.
+                                            </TooltipContent>
+                                        </Tooltip>
+                                    </div>
+                                    <Switch
+                                        checked={settings.apply_manual_defaults}
+                                        onCheckedChange={handleToggleAll}
+                                    />
                                 </div>
-                                <Input
-                                    id="default-altitude"
-                                    type="number"
-                                    min={1}
-                                    max={9999}
-                                    step={0.1}
-                                    value={settings.default_flight_height}
-                                    onChange={(e) => update({ default_flight_height: Number(e.target.value) })}
-                                    className="bg-white/70 dark:bg-gray-800/70"
-                                />
+                                {settings.apply_manual_defaults && (
+                                    <div className="space-y-3 pl-1">
+                                        {showManualAltitudeField && (
+                                            <div className="flex flex-col space-y-1">
+                                                <div className="flex items-center gap-2">
+                                                    <Label htmlFor="default-altitude">Default Altitude (m)</Label>
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                            <Info className="w-4 h-4 text-muted-foreground cursor-help" />
+                                                        </TooltipTrigger>
+                                                        <TooltipContent side="right">
+                                                            Used to map images without exif data about the relative altitude above ground level.
+                                                        </TooltipContent>
+                                                    </Tooltip>
+                                                </div>
+                                                <Input
+                                                    id="default-altitude"
+                                                    type="number"
+                                                    min={1}
+                                                    max={9999}
+                                                    step={0.1}
+                                                    value={settings.default_flight_height ?? 100.0}
+                                                    onChange={(e) => update({ default_flight_height: Number(e.target.value) })}
+                                                    className="bg-white/70 dark:bg-gray-800/70"
+                                                />
+                                            </div>
+                                        )}
+                                        {showFovField && (
+                                            <div className="flex flex-col space-y-1">
+                                                <div className="flex items-center gap-2">
+                                                    <Label htmlFor="default-fov">Default FOV (°)</Label>
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                            <Info className="w-4 h-4 text-muted-foreground cursor-help" />
+                                                        </TooltipTrigger>
+                                                        <TooltipContent side="right">
+                                                            Camera field-of-view in degrees — applied to images where FOV was missing.
+                                                        </TooltipContent>
+                                                    </Tooltip>
+                                                </div>
+                                                <Input
+                                                    id="default-fov"
+                                                    type="number"
+                                                    min={1}
+                                                    max={180}
+                                                    step={0.1}
+                                                    value={settings.default_fov ?? 82.0}
+                                                    onChange={(e) => update({ default_fov: Number(e.target.value) })}
+                                                    className="bg-white/70 dark:bg-gray-800/70"
+                                                />
+                                            </div>
+                                        )}
+                                        {showCamPitchField && (
+                                            <div className="flex flex-col space-y-1">
+                                                <div className="flex items-center gap-2">
+                                                    <Label htmlFor="default-cam-pitch">Default Camera Pitch (°)</Label>
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                            <Info className="w-4 h-4 text-muted-foreground cursor-help" />
+                                                        </TooltipTrigger>
+                                                        <TooltipContent side="right">
+                                                            Camera tilt in degrees. -90 = straight down (nadir).
+                                                        </TooltipContent>
+                                                    </Tooltip>
+                                                </div>
+                                                <Input
+                                                    id="default-cam-pitch"
+                                                    type="number"
+                                                    min={-90}
+                                                    max={90}
+                                                    step={0.1}
+                                                    value={settings.default_cam_pitch ?? -90.0}
+                                                    onChange={(e) => update({ default_cam_pitch: Number(e.target.value) })}
+                                                    className="bg-white/70 dark:bg-gray-800/70"
+                                                />
+                                            </div>
+                                        )}
+                                        {showCamOrientationField && (
+                                            <div className="flex flex-col space-y-1">
+                                                <Label htmlFor="cam-orientation-source">Camera Orientation Source</Label>
+                                                <Select
+                                                    value={settings.cam_orientation_source}
+                                                    onValueChange={(val: "uav" | "manual") => update({ cam_orientation_source: val })}
+                                                >
+                                                    <SelectTrigger id="cam-orientation-source" className="bg-white/70 dark:bg-gray-800/70 cursor-pointer">
+                                                        <SelectValue />
+                                                    </SelectTrigger>
+                                                    <SelectContent className="bg-white dark:bg-gray-900">
+                                                        <SelectItem value="uav">UAV (from telemetry)</SelectItem>
+                                                        <SelectItem value="manual">Manual</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                                {settings.cam_orientation_source === "manual" && (
+                                                    <div className="grid grid-cols-2 gap-3 mt-2">
+                                                        <div className="flex flex-col space-y-1">
+                                                            <Label htmlFor="default-cam-yaw">Yaw (°)</Label>
+                                                            <Input
+                                                                id="default-cam-yaw"
+                                                                type="number"
+                                                                min={-180}
+                                                                max={180}
+                                                                step={0.1}
+                                                                value={settings.default_cam_yaw ?? ""}
+                                                                onChange={(e) => update({ default_cam_yaw: e.target.value === "" ? null : Number(e.target.value) })}
+                                                                className="bg-white/70 dark:bg-gray-800/70"
+                                                            />
+                                                        </div>
+                                                        <div className="flex flex-col space-y-1">
+                                                            <Label htmlFor="default-cam-roll">Roll (°)</Label>
+                                                            <Input
+                                                                id="default-cam-roll"
+                                                                type="number"
+                                                                min={-180}
+                                                                max={180}
+                                                                step={0.1}
+                                                                value={settings.default_cam_roll ?? ""}
+                                                                onChange={(e) => update({ default_cam_roll: e.target.value === "" ? null : Number(e.target.value) })}
+                                                                className="bg-white/70 dark:bg-gray-800/70"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
                             </div>
                         )}
                     </MappingTile>

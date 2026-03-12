@@ -31,7 +31,7 @@ import panoPinSVG from '@/assets/panorama.svg';
 import { useImages } from "@/hooks/imageHooks";
 import { useMaps } from "@/hooks/useMaps";
 import { useDetections, useUpdateDetectionBatch } from "@/hooks/detectionHooks";
-import { extractFlightTrajectory, computeDetectionGps, isPointInPolygon } from "@/utils/coordinateUtils";
+import { extractFlightTrajectory, computeDetectionGps, isPointInPolygon, polygonIntersection } from "@/utils/coordinateUtils";
 
 // Re-export for backward compatibility if other components import from here
 export { extractFlightTrajectory } from "@/utils/coordinateUtils";
@@ -427,13 +427,17 @@ function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCatego
                                     })}
                                     {/* Pass 2: Voronoi polygons (on top) — receive mouse events, update corner fill via ref */}
                                     {showPolygons && map.map_elements?.map((element) => {
-                                        const voronoi_cell = element.voronoi_gps;
-                                        if (!voronoi_cell || voronoi_cell.length === 0) return null;
+                                        const voronoiCell = element.voronoi_gps;
+                                        if (!voronoiCell || voronoiCell.length === 0) return null;
+                                        const corners = element.corners.gps;
+                                        const displayPolygon = polygonIntersection(voronoiCell, corners);
 
+                                        
+                                        //const randomColor = `hsl(${Math.random() * 100+160}, 80%, 60%)`;
                                         return (
                                             <Polygon
                                                 key={`map-${map.id}_voronoi-${element.id}`}
-                                                positions={voronoi_cell}
+                                                positions={displayPolygon}
                                                 pathOptions={{
                                                     color: 'blue',
                                                     weight: 0,

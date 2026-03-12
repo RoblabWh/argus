@@ -185,6 +185,7 @@ export const UploadArea: React.FC<UploadAreaProps> = ({ report, uploads, setUplo
                 : undefined
             }
             showDelete={!!upload.imageObject}
+            showWarning={!!upload.imageObject && !upload.imageObject.mapping_data}
           >
             {!upload.isExisting && (
               <Progress value={upload.progress} className="w-full mt-2" />

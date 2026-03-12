@@ -9,3 +9,4 @@ export type { MappingReport } from "@/types/report";
 export type { PanoReport } from "@/types/report";
 export type { ThermalData } from "@/types/thermalData";
 export type { Group } from "@/types/group";
+export type { CameraConfigSummary, CameraConfig } from "@/types/cameraConfig";

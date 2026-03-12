@@ -7,7 +7,8 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Lock, Unlock, Info } from 'lucide-react';
+import { Lock, Unlock, Info, Camera } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { useSettings, useUpdateDetectionColors, useUpdateDrzSettings, useUpdateWeatherSettings, useUpdateWebodmSettings } from '@/hooks/settingsHooks';
 import type { SettingsData } from '@/types/settings';
 
@@ -319,6 +320,25 @@ export default function Settings() {
                 <Button onClick={saveAppearance}>Save Appearance Settings</Button>
               </div>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* CAMERA CONFIGS */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Camera className="h-4 w-4" />
+              Camera Configurations
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="flex items-center justify-between">
+            <p className="text-sm text-muted-foreground max-w-sm">
+              Manage per-model EXIF key mappings used during image metadata extraction.
+              Upload a sample image to inspect its metadata keys.
+            </p>
+            <Button asChild>
+              <Link to="/settings/camera_configs">Open</Link>
+            </Button>
           </CardContent>
         </Card>
       </div>

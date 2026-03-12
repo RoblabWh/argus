@@ -12,6 +12,7 @@ UPLOAD_DIR = Path(config.UPLOAD_DIR)
 
 import app.crud.images as crud_image
 import app.crud.report as crud_report
+from app.schemas.image import ImageCreate, MappingDataCreate
 
 import app.services.image_metadata_extraction as metadata_extraction
 
@@ -94,11 +95,11 @@ def process_image(report_id: int, file: UploadFile, mapping_report_id: int, db: 
             
 
         # Store metadata in the database
-        img = crud_image.create(db, data)
-        if metadata['mappable']:
-            mapping_data = metadata.get("mapping_data", {})
+        img = crud_image.create(db, ImageCreate(**data))
+        if metadata.get("mapping_data"):
+            mapping_data = metadata["mapping_data"]
             mapping_data["image_id"] = img.id
-            img = crud_image.create_mapping_data(db, mapping_data)
+            img = crud_image.create_mapping_data(db, MappingDataCreate(**mapping_data))
         else:
             img = crud_image.get_full_image(db, img.id)
             
@@ -222,10 +223,10 @@ def reread_image_metadata(images, db: Session, progress_updater=None):
 
         # Delete old MappingData and recreate from fresh extraction
         crud_image.delete_mapping_data(db, image.id)
-        if metadata["mappable"]:
-            mapping_data = metadata.get("mapping_data", {})
+        if metadata.get("mapping_data"):
+            mapping_data = metadata["mapping_data"]
             mapping_data["image_id"] = image.id
-            crud_image.create_mapping_data(db, mapping_data)
+            crud_image.create_mapping_data(db, MappingDataCreate(**mapping_data))
 
         updated += 1
         if progress_updater:

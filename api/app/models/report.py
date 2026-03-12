@@ -48,6 +48,7 @@ class MappingReport(Base):
     uav = Column(String, default="Unknown")
     image_count = Column(Integer, default=0)
     webodm_project_id = Column(String, nullable=True)  # Store the WebODM project ID
+    processing_settings = Column(JSONB, nullable=True)
 
     #relationships
     report = relationship("Report", back_populates="mapping_report")

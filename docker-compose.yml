@@ -27,6 +27,7 @@ services:
       WEBODM_PASSWORD: ${WEBODM_PASSWORD}
       WEBODM_URL: ${WEBODM_URL}
       OPEN_WEATHER_API_KEY: ${OPEN_WEATHER_API_KEY}
+      LOG_LEVEL: ${LOG_LEVEL}
     links:
       - db
       - redis
@@ -55,7 +56,7 @@ services:
     working_dir: /api
     container_name: argusII_mapping_worker
     entrypoint: celery
-    command: -A app.services.mapping.processing_manager worker -Q mapping --loglevel=warning
+    command: -A app.services.mapping.processing_manager worker -Q mapping --loglevel=${LOG_LEVEL}
     volumes:
       - ./api:/api
       - argus_uploaded_files:/api/reports_data
@@ -78,7 +79,7 @@ services:
     working_dir: /detection
     container_name: argusII_detection_worker
     entrypoint: celery
-    command: -A tasks_detection worker -Q detection --loglevel=warning
+    command: -A tasks_detection worker -Q detection --loglevel=${LOG_LEVEL}
     volumes:
       - argus_uploaded_files:/detection/reports_data
     depends_on:
@@ -95,7 +96,7 @@ services:
     working_dir: /detection_yolo
     container_name: argusII_yolo_worker
     entrypoint: celery
-    command: -A tasks_detection_yolo worker -Q detection_yolo --loglevel=warning
+    command: -A tasks_detection_yolo worker -Q detection_yolo --loglevel=${LOG_LEVEL}
     volumes:
       - argus_uploaded_files:/detection_yolo/reports_data
     depends_on:
@@ -120,7 +121,7 @@ services:
     working_dir: /api
     container_name: argusII_ollama_worker
     entrypoint: celery
-    command: -A app.services.image_describer worker -Q description --loglevel=warning
+    command: -A app.services.image_describer worker -Q description --loglevel=${LOG_LEVEL}
     volumes:
       - ./api:/api
       - argus_uploaded_files:/api/reports_data

@@ -1,6 +1,5 @@
 from sqlalchemy.orm import Session, joinedload
 from datetime import datetime
-import redis
 
 from app import models
 from app.schemas.weather import WeatherCreate, WeatherUpdate
@@ -29,7 +28,7 @@ def get_weather_data_by_mapping_report_id(db: Session, mapping_report_id: int):
 def create_weather_data(db: Session, mapping_report_id: int, data: WeatherCreate):
     """Create new weather data for a mapping report."""
     new_weather = models.Weather(
-        **data.dict(),
+        **data.model_dump(),
     )
     db.add(new_weather)
     db.commit()
@@ -44,7 +43,7 @@ def update_weather_data(db: Session, weather_id: int, update_data: WeatherUpdate
     if not weather:
         return None
 
-    for key, value in update_data.dict(exclude_unset=True).items():
+    for key, value in update_data.model_dump(exclude_unset=True).items():
         setattr(weather, key, value)
 
     weather.timestamp = datetime.utcnow()

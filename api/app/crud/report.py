@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session, joinedload, selectinload, aliased
 from sqlalchemy import select, func, case
-from datetime import datetime
+from datetime import datetime, timezone
 import redis
 
 from app import models
@@ -82,9 +82,9 @@ def get_basic_report(db: Session, report_id: int, r: redis.Redis = None):
 
 def create(db: Session, data: ReportCreate):
     new_report = models.Report(
-        **data.dict(),
-        created_at=datetime.utcnow(),
-        updated_at=datetime.utcnow()
+        **data.model_dump(),
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc)
     )
     db.add(new_report)
     db.commit()
@@ -97,10 +97,10 @@ def update(db: Session, report_id: int, update_data: ReportUpdate):
     if not report:
         raise ValueError("Report not found")
 
-    for key, value in update_data.dict(exclude_unset=True).items():
+    for key, value in update_data.model_dump(exclude_unset=True).items():
         setattr(report, key, value)
 
-    report.updated_at = datetime.utcnow()
+    report.updated_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(report)
     return report
@@ -200,7 +200,7 @@ def get_summaries(db: Session, group_id: int):
 
     for mp in map_results:
         # Attach MapOutSlim
-        slim = MapOutSlim.from_orm(mp)
+        slim = MapOutSlim.model_validate(mp)
         summaries[mp.mapping_report.report_id]["maps"].append(slim)
 
     return list(summaries.values())
@@ -237,7 +237,7 @@ def update_mapping_report(db: Session, report_id: int, data: MappingReportUpdate
     if not mapping:
         raise ValueError("Mapping report not found")
 
-    for key, value in data.dict(exclude_unset=True).items():
+    for key, value in data.model_dump(exclude_unset=True).items():
         setattr(mapping, key, value)
 
     db.commit()
@@ -289,7 +289,6 @@ def update_process(db: Session, report_id: int, status: str = "queued", progress
     report.status = status
     report.progress = progress
     db.commit()
-    #print(f"Report {report_id} status updated to {status} with progress {progress}")
 
     return report
 
@@ -338,11 +337,6 @@ def get_process_status(db: Session, report_id: int, r: redis.Redis):
                 report.progress = 0.0
                 db.commit()
                 return {"status": "failed", "progress": 0.0}
-            # elif float(task_status) == 0.0:
-            #     report.status = "failed"
-            #     report.progress = float(task_status)
-            #     db.commit()
-            #     return {"status": "failed", "progress": float(task_status)}
         except redis.RedisError as e:
             print(f"Redis error: {e}")
             # if redis is not available, set status to failed
@@ -362,6 +356,22 @@ def set_auto_description(db: Session, report_id: int, description: str):
     db.commit()
     db.refresh(report)
     return report.auto_description
+
+
+def save_processing_settings(db: Session, report_id: int, settings: dict):
+    mapping = db.query(models.MappingReport).filter(
+        models.MappingReport.report_id == report_id
+    ).first()
+    if mapping:
+        mapping.processing_settings = settings
+        db.commit()
+
+
+def get_processing_settings(db: Session, report_id: int) -> dict:
+    mapping = db.query(models.MappingReport).filter(
+        models.MappingReport.report_id == report_id
+    ).first()
+    return mapping.processing_settings or {} if mapping else {}
 
 
 def get_mapping_report_map(db: Session, map_id: int, report_id:int):

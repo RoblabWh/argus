@@ -1,0 +1,40 @@
+{
+  "_model": "XT711",
+  "_auto_discovered": true,
+  "created_at": "EXIF:CreateDate",
+  "width": "File:ImageWidth",
+  "height": "File:ImageHeight",
+  "projection_type": null,
+  "gps": {
+    "lat": "Composite:GPSLatitude",
+    "lon": "Composite:GPSLongitude",
+    "rel_alt": null,
+    "alt": "Composite:GPSAltitude"
+  },
+  "ir": {
+    "ir": null,
+    "ir_value": null,
+    "ir_image_width": 640,
+    "ir_image_height": 512,
+    "ir_filename_pattern": "_T(?=\\.\\w+$)",
+    "ir_scale": 0.65
+  },
+  "camera_properties": {
+    "focal_length": "EXIF:FocalLength",
+    "fov": "Composite:FOV"
+  },
+  "orientation": {
+    "cam_roll": null,
+    "cam_yaw": null,
+    "cam_pitch": null,
+    "uav_roll": "XMP:Roll",
+    "uav_yaw": "XMP:Yaw",
+    "uav_pitch": "XMP:Pitch"
+  },
+  "fov_correction": 1.0,
+  "adjust_data": false,
+  "rgb_orientation_offset": null,
+  "fallbacks": {
+    "thermal": {}
+  }
+}

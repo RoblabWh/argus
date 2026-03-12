@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import List
+import logging
 
 import app.crud.report as crud
 import app.crud.groups as crud_groups
@@ -14,10 +15,10 @@ from app.schemas.report import (
     MapOutSlim
 )
 from app.schemas.report import (
-    MappingReportCreate, 
+    MappingReportCreate,
     MappingReportUpdate,
     MappingReportOut,
-    ProcessingSettings
+    ProcessingSettings,
 )
 
 from app.schemas.map import MapOut, MapSharingData
@@ -32,6 +33,8 @@ import redis
 router = APIRouter(prefix="/reports", tags=["Reports"])
 
 r = redis.Redis(host=config.REDIS_HOST, port=config.REDIS_PORT, db=0)
+
+logger = logging.getLogger(__name__)
 
 @router.get("/", response_model=List[ReportOut])
 def list_reports(db: Session = Depends(get_db)):
@@ -86,14 +89,18 @@ def get_mapping_report_webodm_project_id(report_id: int, db: Session = Depends(g
 @router.post("/{report_id}/process", response_model=ReportOut)
 def process_report(report_id: int, processing_settings: ProcessingSettings, db: Session = Depends(get_db)):
     returnval = crud.update_process(db, report_id, "queued", 0.0)
-    settings_json = processing_settings.json()
-    processing_settings_dict = processing_settings.dict()
-    # print(f"Starting processing for report {report_id} with settings: {processing_settings}")
-    # print(f"Settings JSON: {settings_json}")
+    processing_settings_dict = processing_settings.model_dump()
+    logger.warning(f"Starting processing for report {report_id} with settings: {processing_settings_dict}")
     task = process_report_service.process_report.delay(report_id, processing_settings_dict)
     r.set(f"report:{report_id}:task_id", task.id)
     r.set(f"report:{report_id}:progress", 0)
     return returnval
+
+@router.get("/{report_id}/processing_settings", response_model=ProcessingSettings)
+def get_processing_settings(report_id: int, db: Session = Depends(get_db)):
+    """Return the last-used ProcessingSettings for prefilling the process dialog."""
+    return ProcessingSettings(**crud.get_processing_settings(db, report_id))
+
 
 @router.post("/{report_id}/process/stop", response_model=ReportOut)
 def stop_processing(report_id: int, db: Session = Depends(get_db)):

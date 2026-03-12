@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import List, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 ##################
@@ -28,17 +28,12 @@ class MapOut(MapBase):
     id: int
     created_at: datetime
     map_elements: List["MapElementOut"] = []
-
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 class MapOutSlim(MapBase):
     id: int
     created_at: datetime
-
-    class Config:
-        orm_mode = True
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 
@@ -74,9 +69,7 @@ class MapElementUpdate(BaseModel):
 class MapElementOut(MapElementBase):
     id: int
     # image: Optional["ImageOut"] = None
-
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 

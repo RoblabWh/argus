@@ -1,0 +1,31 @@
+{
+  "created_at": ["EXIF:CreateDate"],
+  "width": ["File:ImageWidth"],
+  "height": ["File:ImageHeight"],
+  "projection_type": ["XMP:ProjectionType"],
+  "gps": {
+    "lat": ["Composite:GPSLatitude"],
+    "lon": ["Composite:GPSLongitude"],
+    "rel_alt": ["XMP:RelativeAltitude"],
+    "alt": ["XMP:AbsoluteAltitude"]
+  },
+  "ir": {
+    "tag_value_candidates": [
+      {"tag": "XMP:ImageSource", "value": "InfraredCamera"}
+    ],
+    "filename_pattern_default": "_T(?=\\.\\w+$)",
+    "ir_scale_default": 0.5
+  },
+  "camera_properties": {
+    "focal_length": ["EXIF:FocalLength"],
+    "fov": ["Composite:FOV"]
+  },
+  "orientation": {
+    "cam_roll": ["XMP:GimbalRollDegree"],
+    "cam_yaw": ["XMP:GimbalYawDegree"],
+    "cam_pitch": ["XMP:GimbalPitchDegree"],
+    "uav_roll": ["XMP:FlightRollDegree", "XMP:Roll"],
+    "uav_yaw": ["XMP:FlightYawDegree", "XMP:Yaw"],
+    "uav_pitch": ["XMP:FlightPitchDegree", "XMP:Pitch"]
+  }
+}

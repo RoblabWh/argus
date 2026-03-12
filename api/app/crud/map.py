@@ -1,6 +1,5 @@
 from sqlalchemy.orm import Session, joinedload
-from datetime import datetime
-import redis
+from datetime import datetime, timezone
 from pathlib import Path
 
 from app import models
@@ -27,8 +26,8 @@ def get_maps_by_mapping_report(db: Session, mapping_report_id: int):
 
 def create(db: Session, data: MapCreate):
     new_map = models.Map(
-        **data.dict(),
-        created_at=datetime.utcnow(),
+        **data.model_dump(),
+        created_at=datetime.now(timezone.utc),
     )
     db.add(new_map)
     db.commit()

@@ -1,12 +1,14 @@
-import os
 import json
 import pyproj
 import pyexifinfo as p
 import re
 from datetime import datetime, timezone
+from pathlib import Path
 import logging
 
 logger = logging.getLogger(__name__)
+
+CAMERA_CONFIGS_DIR = Path("app/camera_configs")
 
 
 def _read_metadata(image_path: str) -> dict:
@@ -17,35 +19,107 @@ def _read_metadata(image_path: str) -> dict:
     strings = json.dumps(data, sort_keys=True, indent=4, separators=(",", ": "))
     python_dict = json.loads(strings)[0]
 
-    #print(f"Metadata for {image_path}:\n{strings}", flush=True)
+    logger.debug(f"Metadata for {image_path}:\n{strings}")
 
     return python_dict
 
 
+def _model_name_to_filename(model_name: str) -> str:
+    """Sanitize camera model name to a valid filename."""
+    safe = re.sub(r"[^\w\-]", "_", model_name)
+    return safe + ".json"
 
-def _get_keys(model_name: str) -> dict:
-    # load data from json file
-    with open("app/cameramodels.json", "r") as file:
-        all_keys = json.load(file)
-        keys = all_keys.get(model_name, {})
-        if keys == {}:
-            #print(f"No keys found for {model_name}, falling back to default.", flush=True)
-            keys = all_keys.get("default", {})
-    return keys
+
+def _load_model_config(model_name: str, metadata: dict) -> dict:
+    """Load per-model config, auto-discovering and saving if not found."""
+    config_path = CAMERA_CONFIGS_DIR / _model_name_to_filename(model_name)
+    if config_path.exists():
+        with config_path.open() as f:
+            return json.load(f)
+    logger.info(f"No config for '{model_name}', running auto-discovery.")
+    return _auto_discover_config(model_name, metadata)
+
+
+def _auto_discover_config(model_name: str, metadata: dict) -> dict:
+    """Try all candidate keys from _default.json against actual metadata, save result."""
+    default_path = CAMERA_CONFIGS_DIR / "_default.json"
+    with default_path.open() as f:
+        template = json.load(f)
+
+    config = {
+        "_model": model_name,
+        "_auto_discovered": True,
+        "adjust_data": False,
+        "fov_correction": 1.0,
+        "fallbacks": {"thermal": {}},
+    }
+
+    # Simple scalar fields
+    for field in ("created_at", "width", "height", "projection_type"):
+        for candidate in template.get(field, []):
+            if candidate in metadata:
+                config[field] = candidate
+                break
+        else:
+            logger.warning(f"Could not auto-discover field '{field}' for model '{model_name}'")
+            config[field] = None
+
+    # Nested dict fields (gps, camera_properties, orientation)
+    for section in ("gps", "camera_properties", "orientation"):
+        config[section] = {}
+        for key, candidates in template.get(section, {}).items():
+            for candidate in candidates:
+                if candidate in metadata:
+                    config[section][key] = candidate
+                    break
+            if key not in config[section]:
+                logger.warning(f"Could not auto-discover {section} field '{key}' for model '{model_name}'")
+                config[section][key] = None
+
+    # IR — special handling
+    ir_template = template.get("ir", {})
+    ir_config = {}
+    for pair in ir_template.get("tag_value_candidates", []):
+        if pair["tag"] in metadata:
+            ir_config["ir"] = pair["tag"]
+            ir_config["ir_value"] = pair["value"]
+            break
+    ir_config["ir_filename_pattern"] = ir_template.get("filename_pattern_default", "")
+    ir_config["ir_scale"] = ir_template.get("ir_scale_default", 0.5)
+    config["ir"] = ir_config
+
+    # Save
+    save_path = CAMERA_CONFIGS_DIR / _model_name_to_filename(model_name)
+    CAMERA_CONFIGS_DIR.mkdir(exist_ok=True)
+    with save_path.open("w") as f:
+        json.dump(config, f, indent=2)
+    logger.info(f"Saved auto-discovered config to {save_path}")
+
+    return config
+
+
+def get_ir_scale(model_name: str) -> float:
+    """Return ir_scale for a known model config, or 0.5 default."""
+    config_path = CAMERA_CONFIGS_DIR / _model_name_to_filename(model_name)
+    if config_path.exists():
+        with config_path.open() as f:
+            return json.load(f).get("ir", {}).get("ir_scale", 0.5)
+    return 0.5
 
 
 def extract_image_metadata(image_path: str) -> dict:
     metadata = _read_metadata(image_path)
     model_name = metadata.get("EXIF:Model", "Unknown Camera")
-    datakeys = _get_keys(model_name)
+    config = _load_model_config(model_name, metadata)
 
-    #print(f"keys for {model_name}: {datakeys}", flush=True)
+    logger.debug(f"keys for {model_name}: {config}")
 
-
-
-    creation_date = _extract_creation_date(metadata, datakeys)
-    width, height = _extract_dimensions(metadata, datakeys)
-    coord = _extract_coordinates(metadata, datakeys)
+    creation_date = _extract_creation_date(metadata, config)
+    logger.debug(f"extracted creation_date for {model_name}: {creation_date}")
+    width, height = _extract_dimensions(metadata, config)
+    logger.debug(f"extracted dimensions for {model_name}: width={width}, height={height}")
+    coord = _extract_coordinates(metadata, config)
+    logger.debug(f"extracted coordinates for {model_name}: {coord}")    
 
 
     data = {
@@ -54,30 +128,30 @@ def extract_image_metadata(image_path: str) -> dict:
         "height": height,
         "camera_model": model_name,
         "coord": coord,
-        "panoramic": _check_panoramic(metadata, datakeys),
+        "panoramic": _check_panoramic(metadata, config),
         "thermal": False,  # will be set later
         "mappable": False,  # will be set later
     }
     logger.debug(f"extracted data for {model_name}: {data}")
-    
+
     data["thermal"] = _check_thermal(
-        metadata, datakeys, data, os.path.basename(image_path)
+        metadata, config, data, Path(image_path).name
     )
     logger.debug(f"Image thermal check for {model_name}: {data['thermal']}")
 
     try:
-        mappable, mapping_data = _extract_mapping_data(metadata, datakeys, data)
+        mappable, mapping_data = _extract_mapping_data(metadata, config, data)
         if mapping_data:
             data["mappable"] = mappable
             data["mapping_data"] = mapping_data
     except Exception as e:
         logger.warning(f"Error extracting mapping data: {e}")
         mapping_data = None
-    
+
     logger.debug(f"Image mappable check for {model_name}: {data['mappable']}")
 
     # check if some values need adjustment
-    if datakeys.get("adjust_data", False):
+    if config.get("adjust_data", False):
         data = _adjust_data(model_name, data)
     logger.debug(f"adjusted data for {model_name}: {data}")
     logger.debug(f"final data for {model_name}: {data}")
@@ -85,9 +159,8 @@ def extract_image_metadata(image_path: str) -> dict:
     return data
 
 
-
-def _extract_creation_date(metadata: dict, datakeys: dict) -> str:
-    creation_date = metadata.get(datakeys["created_at"], None)
+def _extract_creation_date(metadata: dict, config: dict) -> str:
+    creation_date = metadata.get(config.get("created_at"), None)
     if creation_date is None:
         return datetime.now(timezone.utc).isoformat()
     elif isinstance(creation_date, str):
@@ -99,9 +172,10 @@ def _extract_creation_date(metadata: dict, datakeys: dict) -> str:
 
     return None
 
-def _extract_dimensions(metadata: dict, datakeys: dict) -> tuple:
-    width = metadata.get(datakeys["width"], None)
-    height = metadata.get(datakeys["height"], None)
+
+def _extract_dimensions(metadata: dict, config: dict) -> tuple:
+    width = metadata.get(config.get("width"), None)
+    height = metadata.get(config.get("height"), None)
 
     if width is None or height is None:
         raise ValueError("Width or height metadata is missing in the image file.")
@@ -120,11 +194,12 @@ def _extract_dimensions(metadata: dict, datakeys: dict) -> tuple:
 
     return width, height
 
-def _extract_coordinates(metadata: dict, datakeys: dict) -> dict:
-    gps_lat = metadata.get(datakeys["gps"]["lat"], None)
-    gps_lon = metadata.get(datakeys["gps"]["lon"], None)
-    gps_alt = metadata.get(datakeys["gps"]["alt"], None)
-    gps_rel_alt = metadata.get(datakeys["gps"]["rel_alt"], None)
+
+def _extract_coordinates(metadata: dict, config: dict) -> dict:
+    gps_lat = metadata.get(config["gps"]["lat"], None)
+    gps_lon = metadata.get(config["gps"]["lon"], None)
+    gps_alt = metadata.get(config["gps"]["alt"], None)
+    gps_rel_alt = metadata.get(config["gps"]["rel_alt"], None)
     if gps_lat is None or gps_lon is None:
         coord = None
     else:
@@ -133,24 +208,9 @@ def _extract_coordinates(metadata: dict, datakeys: dict) -> dict:
     return coord
 
 
-# def extract_mapping_metadata(image_path: str) -> dict:
-#     metadata = _read_metadata(image_path)
-#     model_name = metadata.get("EXIF:Model", "Unknown Camera")
-#     datakeys = _get_keys(model_name)
-#     data_selection = select_mapping_data(metadata, datakeys)
-#     if datakeys.adjust_data:
-#         data_selection = adjust_data(model_name, data_selection)
-
-#     return data_selection
-
-
-# def select_mapping_data(metadata: dict, datakeys: dict) -> dict:
-#     pass
-
-
 def _check_mappable(data: dict) -> bool:
     # TODO add  check for orientation data
-    if data["coord"]is not None:
+    if data["coord"] is not None:
         if data["coord"].get("rel_alt", None) is not None and data["coord"].get("utm", None) is not None:
             if data["coord"]["rel_alt"] > 0:
                 return True
@@ -158,30 +218,31 @@ def _check_mappable(data: dict) -> bool:
         return False
 
 
-def _check_panoramic(metadata: dict, datakeys: dict) -> bool:
-    if "projection_type" not in datakeys:
+def _check_panoramic(metadata: dict, config: dict) -> bool:
+    if "projection_type" not in config:
         return False
-    projection_type = metadata.get(datakeys["projection_type"], None)
+    projection_type = metadata.get(config["projection_type"], None)
     if projection_type:
         if projection_type.lower() in ["equirectangular", "spherical"]:
             return True
     return False
 
 
-def _check_thermal(metadata: dict, datakeys: dict, data: dict, filename: str) -> bool:
-    if "ir" not in datakeys:
+def _check_thermal(metadata: dict, config: dict, data: dict, filename: str) -> bool:
+    logger.debug(f"comparing: has ir config: {'ir' in config}, ir_value: {config.get('ir', {}).get('ir_value', None)}, ")
+    if "ir" not in config:
         return False
-    if "ir_value" in datakeys['ir']:
+    if config['ir'].get('ir_value', None) is not None:
         logger.info(f"Checking if image {filename} is thermal based on ir_value")
-        image_source = metadata.get(datakeys["ir"]["ir"], None)
+        image_source = metadata.get(config["ir"]["ir"], None)
         logger.info(f"Image source: {image_source}")
         if image_source:
-            if image_source.lower() == datakeys["ir"]["ir_value"].lower():
+            if image_source.lower() == config["ir"]["ir_value"].lower():
                 return True
-    elif datakeys["ir"].get("ir_image_width", 0) == data["width"] \
-        and datakeys["ir"].get("ir_image_height", 0) == data["height"]:
+    elif config["ir"].get("ir_image_width", 0) == data["width"] \
+        and config["ir"].get("ir_image_height", 0) == data["height"]:
         return True
-    elif re.search(datakeys["ir"]["ir_filename_pattern"], filename) is not None:
+    elif re.search(config["ir"]["ir_filename_pattern"], filename) is not None:
         return True
     return False
 
@@ -214,7 +275,7 @@ def _convert_coord(lat: str, lon: str, alt: str, rel_alt: str) -> dict:
         except ValueError:
             alt = None
 
-    # if rel alt is a tring convert it to float
+    # if rel alt is a string convert it to float
     if rel_alt is not None:
         try:
             rel_alt = float(rel_alt)
@@ -240,7 +301,7 @@ def _convert_coord(lat: str, lon: str, alt: str, rel_alt: str) -> dict:
             "crs": utm_crs,
         },
         "alt": alt,
-        "rel_alt": rel_alt,  
+        "rel_alt": rel_alt,
     }
 
 
@@ -275,6 +336,7 @@ def _latlon_to_utm(long: float, lat: float, zone: int) -> tuple:
 def _calculate_zone(long):
     return int((long + 180) / 6) + 1
 
+
 def _latitude_to_utm_band_letter(lat: float) -> str:
     bands = "CDEFGHJKLMNPQRSTUVWX"
     if not -80 <= lat <= 84:
@@ -283,7 +345,7 @@ def _latitude_to_utm_band_letter(lat: float) -> str:
     return bands[index]
 
 
-def _extract_mapping_data(metadata: dict, datakeys: dict, data: dict) -> tuple:
+def _extract_mapping_data(metadata: dict, config: dict, data: dict) -> tuple:
     mapping_data = {}
     coord = data["coord"]
     thermal = data["thermal"]
@@ -291,43 +353,41 @@ def _extract_mapping_data(metadata: dict, datakeys: dict, data: dict) -> tuple:
     mapping_data["rel_altitude"] = coord.get("rel_alt", None)
     mapping_data["altitude"] = coord.get("alt", None)
 
-    # if mapping_data["rel_altitude"] is None and mapping_data["altitude"] is None:
-    #     return False, None
-    # elif mapping_data["rel_altitude"] is None:
     if mapping_data["rel_altitude"] is None:
-        #TODO check for google API key and set the method to googleelevationapi or similar
         mapping_data["rel_altitude_method"] = "manual"
     else:
         mapping_data["rel_altitude_method"] = "exif"
 
-    
-    fov = metadata.get(datakeys["camera_properties"]["fov"], None)
+    fov = metadata.get(config["camera_properties"]["fov"], None)
     if fov is None:
+        fallback_fov = None
         if thermal:
-            fov = _load_fallback('fov', data['camera_model'], thermal)
-            print(f"FOV not found in metadata, using fallback value: {fov}", flush=True)
-        if fov is None:
-            return False, None
-        mapping_data["fov"] = fov
+            fallback_fov = _load_fallback('fov', config, thermal)
+            logger.debug(f"FOV not found in metadata, using fallback value: {fallback_fov}")
+        if fallback_fov is None:
+            logger.warning("FOV missing and no fallback available — marking as manual")
+            mapping_data["fov"] = None
+            mapping_data["fov_method"] = "manual"
+        else:
+            mapping_data["fov"] = fallback_fov
+            mapping_data["fov_method"] = "fallback"
     else:
-        fov = fov.split()[0]
-        try:
-            fov = float(fov)
-        except ValueError:
-            raise ValueError(f"FOV value '{fov}' is not a valid float.")
+        fov = float(fov.split()[0])
+        if config.get("fov_correction", 1.0) != 1.0:
+            fov *= config["fov_correction"]
         mapping_data["fov"] = fov
+        mapping_data["fov_method"] = "exif"
 
-        if datakeys.get("fov_correction", 1.0) != 1.0:
-            mapping_data["fov"] *= datakeys["fov_correction"]
-
-    orientation_keys = datakeys["orientation"]
+    orientation_keys = config["orientation"]
     for key in ("uav_roll", "uav_yaw", "uav_pitch"):
         value = metadata.get(orientation_keys[key], None)
         if value is None:
+            logger.warning(f"Orientation value for {key} is missing, cannot extract mapping data.")
             return False, None
         try:
             mapping_data[key] = float(value)
         except (TypeError, ValueError):
+            logger.warning(f"Orientation value for {key} is not a valid float, cannot extract mapping data.")
             return False, None
 
     for key in ("cam_roll", "cam_yaw", "cam_pitch"):
@@ -337,30 +397,27 @@ def _extract_mapping_data(metadata: dict, datakeys: dict, data: dict) -> tuple:
         try:
             mapping_data[key] = float(value)
         except (TypeError, ValueError):
+            logger.warning(f"Orientation value for {key} is not a valid float, skipping this value.")
             continue
-    
+
     for uav_key, cam_key in [("uav_yaw", "cam_yaw"), ("uav_roll", "cam_roll")]:
-         if uav_key in mapping_data and cam_key in mapping_data:
+        if uav_key in mapping_data and cam_key in mapping_data:
             yaw_diff = mapping_data[uav_key] - mapping_data[cam_key]
             if abs(yaw_diff) > 140:
                 mapping_data[cam_key] = _normalize_angle(mapping_data[cam_key] + 180)
 
+    mapping_data["cam_pitch_method"] = "exif" if "cam_pitch" in mapping_data else "manual"
+    mapping_data["cam_yaw_method"]   = "exif" if "cam_yaw"   in mapping_data else "uav"
+    mapping_data["cam_roll_method"]  = "exif" if "cam_roll"  in mapping_data else "uav"
+
+    mappable = (
+        mapping_data.get("rel_altitude") is not None
+        and mapping_data.get("fov") is not None
+        and mapping_data.get("cam_pitch") is not None
+    )
+    return mappable, mapping_data
 
 
-    return True, mapping_data
-
-def _load_fallback(key: str, model_name: str, thermal: bool) -> float:
-    # Load fallback values from a JSON file
-    with open("app/fallback_camera_properties.json", "r") as file:
-        fallbacks = json.load(file)
-        logger.info(f"Fallbacks loaded for {model_name}: {fallbacks.get(model_name, {})}")
-    
-    if model_name in fallbacks:
-        values = fallbacks[model_name].get("thermal" if thermal else "optical", {})
-    else:
-        return None
-
-    if key in values:
-        return values[key]
-    else:
-        return None
+def _load_fallback(key: str, config: dict, thermal: bool) -> float | None:
+    section = "thermal" if thermal else "optical"
+    return config.get("fallbacks", {}).get(section, {}).get(key)

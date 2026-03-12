@@ -3,7 +3,7 @@ import logging
 from app.config import config
 
 logging.basicConfig(
-    level=logging.WARNING,  # Or DEBUG < INFO < WARNING < ERROR < CRITICAL
+    level=getattr(logging, config._env_vars.get('LOG_LEVEL', 'WARNING').upper(), logging.WARNING),# Or DEBUG < INFO < WARNING < ERROR < CRITICAL
     format="%(name)s - %(levelname)s - %(message)s",
 )
 
