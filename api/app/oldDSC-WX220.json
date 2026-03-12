@@ -1,0 +1,37 @@
+{
+  "_model": "DSC-WX220",
+  "_auto_discovered": false,
+  "created_at": "EXIF:CreateDate",
+  "width": "File:ImageWidth",
+  "height": "File:ImageHeight",
+  "projection_type": "XMP:ProjectionType",
+  "gps": {
+    "lat": "Composite:GPSLatitude",
+    "lon": "Composite:GPSLongitude",
+    "rel_alt": "XMP:RelativeAltitude",
+    "alt": "XMP:AbsoluteAltitude"
+  },
+  "ir": {
+    "ir": "XMP:ImageSource",
+    "ir_value": "InfraredCamera",
+    "ir_filename_pattern": "_T(?=\\.\\w+$)",
+    "ir_scale": 0.475
+  },
+  "camera_properties": {
+    "focal_length": "EXIF:FocalLength",
+    "fov": "Composite:FOV"
+  },
+  "orientation": {
+    "cam_roll": "XMP:GimbalRollDegree",
+    "cam_yaw": "XMP:GimbalYawDegree",
+    "cam_pitch": "XMP:GimbalPitchDegree",
+    "uav_roll": "XMP:Roll",
+    "uav_yaw": "XMP:Yaw",
+    "uav_pitch": "XMP:Pitch"
+  },
+  "fov_correction": 1.0,
+  "adjust_data": false,
+  "fallbacks": {
+    "thermal": {}
+  }
+}

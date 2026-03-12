@@ -6,6 +6,7 @@ import type { ProcessingSettings } from "@/types/processing";
 import type { Image, ImageBasic } from "@/types/image";
 import type { Detection, Geometry, Properties } from "./types/detection";
 import type { SettingsData } from "@/types/settings";
+import type { CameraConfigSummary, CameraConfig } from "@/types/cameraConfig";
 
 import { data } from "react-router-dom";
 
@@ -122,6 +123,12 @@ export const getReportProcessStatus = (
 ): Promise<Report> =>
   fetchJson(`/reports/${reportId}/process/`);
 
+// GET: Last-used processing settings for a report
+export const getProcessingSettings = (
+  reportId: number
+): Promise<Partial<ProcessingSettings>> =>
+  fetchJson(`/reports/${reportId}/processing_settings`);
+
 
 //export api Url
 export const getApiUrl = () => API_URL;
@@ -147,5 +154,36 @@ export const importReport = async (groupId: number, file: File): Promise<Report>
     const err = await res.json().catch(() => null);
     throw new Error(err?.detail || `Import failed: ${res.status}`);
   }
+  return res.json();
+};
+
+// Camera Configs
+export const getCameraConfigList = () =>
+  fetchJson<CameraConfigSummary[]>("/settings/camera_configs");
+
+export const getCameraConfig = (model_name: string) =>
+  fetchJson<CameraConfig>(`/settings/camera_configs/${encodeURIComponent(model_name)}`);
+
+export const updateCameraConfig = (model_name: string, config: CameraConfig) =>
+  postJson<CameraConfig>(
+    `/settings/camera_configs/${encodeURIComponent(model_name)}`,
+    config,
+    "PUT"
+  );
+
+export const createCameraConfig = (data: {
+  model_name: string;
+  exif_dump?: Record<string, unknown> | null;
+  initial_data?: CameraConfig | null;
+}) => postJson<CameraConfig>("/settings/camera_configs", data);
+
+export const getExifDump = async (file: File): Promise<Record<string, unknown>> => {
+  const formData = new FormData();
+  formData.append("file", file);
+  const res = await fetch(`${API_URL}/settings/camera_configs/exif_dump`, {
+    method: "POST",
+    body: formData,
+  });
+  if (!res.ok) throw new Error(`EXIF dump failed: ${res.status}`);
   return res.json();
 };

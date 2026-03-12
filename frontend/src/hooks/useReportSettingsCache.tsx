@@ -12,10 +12,16 @@ export function useReportSettings(
     fast_mapping: true,
     target_map_resolution: 6144,
     accepted_gimbal_tilt_deviation: 7.5,
-    default_flight_height: 100.0,
+    default_flight_height: null,
+    default_fov: null,
+    default_cam_pitch: null,
+    cam_orientation_source: "uav",
+    default_cam_yaw: null,
+    default_cam_roll: null,
     odm_processing: false,
     odm_full: false,
     reread_metadata: false,
+    apply_manual_defaults: true,
     ...dynamicDefaults,
   };
 

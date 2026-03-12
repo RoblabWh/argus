@@ -59,10 +59,17 @@ class ProcessingSettings(BaseModel):
     fast_mapping: bool = True
     target_map_resolution: Optional[int] = None
     accepted_gimbal_tilt_deviation: Optional[float] = None
+    apply_manual_defaults: bool = True              # if False, images with manual method fields are marked non-mappable
     default_flight_height: Optional[float] = None
+    default_fov: Optional[float] = None
+    default_cam_pitch: Optional[float] = None
+    cam_orientation_source: Optional[str] = "uav"   # "uav" | "manual"
+    default_cam_yaw: Optional[float] = None          # used when source="manual"
+    default_cam_roll: Optional[float] = None         # used when source="manual"
     odm_processing: bool = False
     odm_full: bool = False
     reread_metadata: Optional[bool] = False
+
 
 
 ##################
@@ -81,6 +88,7 @@ class MappingReportBase(BaseModel):
     uav: Optional[str] = "Unknown"
     image_count: Optional[int] = 0
     webodm_project_id: Optional[str] = None
+    processing_settings: Optional[dict] = None
 
 
 class MappingReportCreate(MappingReportBase):

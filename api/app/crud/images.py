@@ -1,5 +1,7 @@
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import select
+from sqlalchemy import update as sa_update
+
 from datetime import datetime
 
 from app import models
@@ -126,15 +128,34 @@ def delete_mapping_data(db: Session, image_id: int):
     db.commit()
 
 
-def update_manual_images_altitude(db: Session, image_ids: list[int], altitude: float):
-    """For images with rel_altitude_method='manual': set rel_altitude and mark as mappable."""
-    db.query(models.MappingData).filter(
-        models.MappingData.image_id.in_(image_ids),
-        models.MappingData.rel_altitude_method == "manual"
-    ).update({"rel_altitude": altitude}, synchronize_session=False)
+def mark_images_non_mappable(db: Session, image_ids: list[int]) -> None:
+    """Force mappable=False for images whose manual fields are not being applied this run."""
     db.query(models.Image).filter(
         models.Image.id.in_(image_ids)
-    ).update({"mappable": True}, synchronize_session=False)
+    ).update({"mappable": False}, synchronize_session=False)
+    db.commit()
+
+
+def persist_mapping_defaults(db: Session, affected_images: list) -> None:
+    """Bulk-write fov, rel_altitude, cam_pitch, and mappable for images that had defaults applied.
+    Values are read from the already-updated in-memory ORM objects — no separate value passing needed."""
+
+    db.execute(
+        sa_update(models.MappingData),
+        [
+            {
+                "id": img.mapping_data.id,
+                "fov": img.mapping_data.fov,
+                "rel_altitude": img.mapping_data.rel_altitude,
+                "cam_pitch": img.mapping_data.cam_pitch,
+            }
+            for img in affected_images
+        ],
+    )
+    db.execute(
+        sa_update(models.Image),
+        [{"id": img.id, "mappable": img.mappable} for img in affected_images],
+    )
     db.commit()
 
 

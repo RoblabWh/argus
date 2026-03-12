@@ -4,6 +4,7 @@ import TopMenuBar from "@/components/menubar"
 import Home from "@/pages/home";
 import About from "@/pages/about";
 import Settings from "@/pages/settings";
+import CameraConfigs from "@/pages/CameraConfigs";
 import Overview from "@/pages/overview";
 import Report from "@/pages/report";
 import Group from "./pages/group";
@@ -23,6 +24,7 @@ function App() {
             <Route path="/" element={<Home />} />
             <Route path="/about" element={<About />} />
             <Route path="/settings" element={<Settings />} />
+            <Route path="/settings/camera_configs" element={<CameraConfigs />} />
             <Route path="/overview" element={<Overview />} />
             <Route path="/group/:id" element={<Group />} />
             <Route path="/report/:report_id" element={<Report />} />

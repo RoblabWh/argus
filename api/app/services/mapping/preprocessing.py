@@ -1,5 +1,4 @@
 import requests
-import json
 from datetime import datetime
 from geopy.geocoders import Nominatim
 from sqlalchemy.orm import Session
@@ -20,11 +19,12 @@ import app.crud.weather as crud_weather
 import app.crud.images as crud_image
 import app.services.thermal.thermal_processing as thermal_processing
 from app.services.mapping.progress_updater import ProgressUpdater
+from app.services.image_metadata_extraction import get_ir_scale
 
 logger = logging.getLogger(__name__)
 
 def preprocess_report(report_id: int, images: list[ImageOut], settings: ProcessingSettings, db, progress_updater: ProgressUpdater):
-    settings = settings.dict() if isinstance(settings, ProcessingSettings) else settings
+    settings = settings.model_dump() if isinstance(settings, ProcessingSettings) else settings
     # crud_image.delete_all_thermal_data(db)  # Clear old thermal data before processing new images
     if not images or len(images) == 0:
         raise ValueError("No images provided for preprocessing.")
@@ -33,10 +33,11 @@ def preprocess_report(report_id: int, images: list[ImageOut], settings: Processi
     images = _process_thermal_images(images, report_id, db, progress_updater)
     progress_updater.update_progress("preprocessing", 33.0)
 
-    # Apply user-supplied default altitude for images missing EXIF altitude
-    default_flight_height = settings.get("default_flight_height")
-    if default_flight_height is not None:
-        _apply_default_altitude(images, default_flight_height, db)
+    # Persist settings so the frontend can pre-populate on reprocessing
+    crud_report.save_processing_settings(db, report_id, settings)
+
+    # Apply user-supplied defaults for fields missing from EXIF
+    _apply_default_mapping_settings(images, settings, db)
 
 
     # Step 2 extract Flight Data (33-50%)
@@ -283,26 +284,90 @@ def _get_uav_data(images: list[ImageOut]) -> dict:
     return {"camera_models": list(camera_models)}
 
 
-def _apply_default_altitude(images: list, altitude: float, db: Session):
+def _apply_default_mapping_settings(images: list, settings: dict, db: Session):
+    """Apply user-provided defaults for fields missing from EXIF.
+    fov, rel_altitude, and cam_pitch are persisted to DB (they affect mappable).
+    cam_yaw/roll are applied in-memory only.
+
+    If apply_manual_defaults=False, images with any required manual field are marked
+    non-mappable — preventing previously persisted values from silently being reused.
     """
-    For images missing EXIF altitude (rel_altitude_method='manual'):
-    - persist rel_altitude = altitude and mappable = True to DB
-    - patch in-memory ORM objects so the rest of the pipeline sees the values immediately
-    """
-    manual_images = [
-        img for img in images
-        if img.mapping_data and img.mapping_data.rel_altitude_method == "manual"
-    ]
-    if not manual_images:
-        return
-    manual_ids = [img.id for img in manual_images]
-    crud_image.update_manual_images_altitude(db, manual_ids, altitude)
-    for img in manual_images:
-        img.mapping_data.rel_altitude = altitude
-        img.mappable = True
-    logger.info(
-        f"Applied default altitude {altitude}m to {len(manual_images)} images with manual rel_altitude"
-    )
+    apply_manual_defaults = settings.get("apply_manual_defaults", True)
+    default_fov = settings.get("default_fov")
+    default_altitude = settings.get("default_flight_height")
+    default_cam_pitch = settings.get("default_cam_pitch")
+    cam_orientation_source = settings.get("cam_orientation_source", "uav")
+    default_cam_yaw = settings.get("default_cam_yaw")
+    default_cam_roll = settings.get("default_cam_roll")
+
+    affected = []
+    forced_non_mappable_ids = []
+
+    for img in images:
+        if not img.mapping_data:
+            continue
+        md = img.mapping_data
+
+        # cam_yaw/roll — always filled in-memory regardless of apply_manual_defaults
+        # (they don't affect mappable; UAV data is always an acceptable fallback)
+        if md.cam_yaw_method != "exif":
+            if cam_orientation_source == "manual":
+                md.cam_yaw = default_cam_yaw
+                md.cam_roll = default_cam_roll
+            else:
+                md.cam_yaw = md.uav_yaw
+                md.cam_roll = md.uav_roll
+
+        if not apply_manual_defaults:
+            # If any required field relies on manual input, mark non-mappable so that
+            # values persisted from a previous run don't silently get reused.
+            has_manual_required = (
+                md.fov_method == "manual"
+                or md.rel_altitude_method == "manual"
+                or md.cam_pitch_method == "manual"
+            )
+            if has_manual_required:
+                img.mappable = False
+                forced_non_mappable_ids.append(img.id)
+            else:
+                img.mappable = (
+                    md.fov is not None
+                    and md.rel_altitude is not None
+                    and md.cam_pitch is not None
+                )
+            continue
+
+        # apply_manual_defaults=True: apply provided values and persist
+        changed = False
+
+        if md.fov_method == "manual" and default_fov is not None:
+            md.fov = default_fov
+            changed = True
+
+        if md.rel_altitude_method == "manual" and default_altitude is not None:
+            md.rel_altitude = default_altitude
+            changed = True
+
+        if md.cam_pitch_method == "manual" and default_cam_pitch is not None:
+            md.cam_pitch = default_cam_pitch
+            changed = True
+
+        img.mappable = (
+            md.fov is not None
+            and md.rel_altitude is not None
+            and md.cam_pitch is not None
+        )
+
+        if changed:
+            affected.append(img)
+
+    if affected:
+        crud_image.persist_mapping_defaults(db, affected)
+        logger.info(f"Applied mapping defaults to {len(affected)} images")
+
+    if forced_non_mappable_ids:
+        crud_image.mark_images_non_mappable(db, forced_non_mappable_ids)
+        logger.info(f"Marked {len(forced_non_mappable_ids)} images non-mappable (apply_manual_defaults=False)")
 
 
 def _check_altitude(images: list[ImageOut], settings: dict) -> tuple:
@@ -325,8 +390,11 @@ def _check_altitude(images: list[ImageOut], settings: dict) -> tuple:
             rel_altitude = None
             if image.mapping_data.rel_altitude is not None:
                 rel_altitude = image.mapping_data.rel_altitude
+                logger.debug(f"Image {image.id} has relative altitude: {rel_altitude}")
             else:
                 rel_altitude = default_altitude  # Use default altitude if not set
+                logger.debug(f"Image {image.id} has no relative altitude, using default: {default_altitude}")
+            logger.debug(f"Using relative altitude for image {image.id}: {rel_altitude}")
             altitude_sum += rel_altitude
             altitude_count += 1
 
@@ -371,13 +439,6 @@ def _filter_mapping_images(images: list[ImageOut], settings: dict) -> list:
     for image in images:
         if not image.mappable or not image.mapping_data:
             continue
-        
-        if image.mapping_data.cam_pitch is None:
-            image.mapping_data.cam_pitch = -90.0  # Assume nadir if pitch is missing
-            if image.mapping_data.cam_yaw is None:
-                image.mapping_data.cam_yaw = image.mapping_data.uav_yaw  # Default yaw if missing
-            if image.mapping_data.cam_roll is None:
-                image.mapping_data.cam_roll = image.mapping_data.uav_roll  # Default roll if missing
         if abs(90+image.mapping_data.cam_pitch) <= settings.get("accepted_gimbal_tilt_deviation", 7.5):
             if image.thermal:
                 mapping_images_ir.append(image)
@@ -575,9 +636,6 @@ def _process_thermal_images(images: List[ImageOut], report_id: int, db: Session,
     thermal_images = [img for img in images if img.thermal]
     rgb_images = [img for img in images if not img.thermal]
 
-    with open("app/cameramodels.json", "r") as file:
-        camera_specific_keys = json.load(file)
-
     total_ir_images = len(thermal_images)
     thermal_metadata_list = []
 
@@ -618,8 +676,7 @@ def _process_thermal_images(images: List[ImageOut], report_id: int, db: Session,
             rgb_start = discard_to_index  # advance pointer past too-old entries
 
         camera_model = thermal_image.camera_model
-        scale = camera_specific_keys.get(camera_model, {}).get("ir", {}).get("ir_scale") or \
-                camera_specific_keys.get("default", {}).get("ir", {}).get("ir_scale", 0.4)
+        scale = get_ir_scale(camera_model)
 
         target_path = config.UPLOAD_DIR / str(report_id) / "thermal" / f"{thermal_image.id}.npy"
 

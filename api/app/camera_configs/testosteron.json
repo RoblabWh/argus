@@ -1,0 +1,40 @@
+{
+  "_model": "testosteron",
+  "_auto_discovered": true,
+  "created_at": "EXIF:CreationDate",
+  "width": null,
+  "height": null,
+  "projection_type": null,
+  "gps": {
+    "lat": null,
+    "lon": null,
+    "rel_alt": null,
+    "alt": null
+  },
+  "ir": {
+    "ir": null,
+    "ir_value": null,
+    "ir_image_width": null,
+    "ir_image_height": null,
+    "ir_filename_pattern": "_T(?=\\.\\w+$)",
+    "ir_scale": 0.5
+  },
+  "camera_properties": {
+    "focal_length": null,
+    "fov": null
+  },
+  "orientation": {
+    "cam_roll": null,
+    "cam_yaw": null,
+    "cam_pitch": null,
+    "uav_roll": null,
+    "uav_yaw": null,
+    "uav_pitch": null
+  },
+  "fov_correction": 1.0,
+  "adjust_data": false,
+  "rgb_orientation_offset": null,
+  "fallbacks": {
+    "thermal": {}
+  }
+}

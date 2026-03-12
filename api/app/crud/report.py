@@ -358,6 +358,22 @@ def set_auto_description(db: Session, report_id: int, description: str):
     return report.auto_description
 
 
+def save_processing_settings(db: Session, report_id: int, settings: dict):
+    mapping = db.query(models.MappingReport).filter(
+        models.MappingReport.report_id == report_id
+    ).first()
+    if mapping:
+        mapping.processing_settings = settings
+        db.commit()
+
+
+def get_processing_settings(db: Session, report_id: int) -> dict:
+    mapping = db.query(models.MappingReport).filter(
+        models.MappingReport.report_id == report_id
+    ).first()
+    return mapping.processing_settings or {} if mapping else {}
+
+
 def get_mapping_report_map(db: Session, map_id: int, report_id:int):
     map = db.query(models.Map).filter(models.Map.id == map_id).first()
     if not map:

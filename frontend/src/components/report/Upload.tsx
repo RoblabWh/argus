@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import type { Report } from "@/types/report";
 import type { ProcessingSettings } from "@/types/processing";
-import type { Image, UploadFile } from "@/types/image";
+import type { UploadFile } from "@/types/image";
 import type { Weather } from "@/types/weather";
 import { UploadArea } from "@/components/report/upload/UploadArea";
 import { Button } from "@/components/ui/button";
@@ -39,21 +39,6 @@ function checkWeatherAvailability(report: Report): boolean {
   return true;
 }
 
-function checkShowManualAltitudeField(report: Report): boolean {
-  const mapping_report = report.mapping_report;
-  if (!mapping_report || mapping_report === undefined) return false;
-  const images = mapping_report.images;
-  if (!images || images === undefined || images.length === 0) return false;
-  // loop over images
-  for (const image of images) {
-    const mapping_data = image.mapping_data;
-    if (!mapping_data || mapping_data === undefined) continue;
-    if (mapping_data.rel_altitude_method === "manual") return true;
-    // else if (mapping_data.rel_altitude_method === "googleelevationapi") return false;
-    else if (mapping_data.rel_altitude_method === "exif") continue;
-  }
-  return false;
-}
 
 export function Upload({ report, onProcessingStarted, isEditing, setIsEditing }: Props) {
   const startProcessingMutation = useStartReportProcess(report.report_id);
@@ -61,28 +46,41 @@ export function Upload({ report, onProcessingStarted, isEditing, setIsEditing }:
   const weatherAvailable = checkWeatherAvailability(report); // Replace with actual logic to determine if weather data is available
   const [uploads, setUploads] = useState<UploadFile[]>([]);
   const [isUploading, setIsUploading] = useState(false);
-  const [showManualAltitudeField, setShowManualAltitudeField] = useState(
-    checkShowManualAltitudeField(report)
-  );
+  const [showManualAltitudeField, setShowManualAltitudeField] = useState(false);
+  const [showFovField, setShowFovField] = useState(false);
+  const [showCamPitchField, setShowCamPitchField] = useState(false);
+  const [showCamOrientationField, setShowCamOrientationField] = useState(false);
   const { data: webODMData } = useWebODM();
-  
+
 
   useEffect(() => {
-    // Recheck when uploads change
     const allImages = uploads
       .map((u) => u.imageObject)
       .filter((img): img is NonNullable<typeof img> => !!img);
 
-    const needsManualAltitude = allImages.some((img) =>
-      img.mapping_data?.rel_altitude_method === "manual"
+    setShowManualAltitudeField(
+      allImages.some((img) => img.mapping_data?.rel_altitude_method === "manual")
     );
-
-    setShowManualAltitudeField(needsManualAltitude);
+    setShowFovField(
+      allImages.some((img) => img.mapping_data?.fov_method === "manual")
+    );
+    setShowCamPitchField(
+      allImages.some((img) => img.mapping_data?.cam_pitch_method === "manual")
+    );
+    setShowCamOrientationField(
+      allImages.some(
+        (img) =>
+          img.mapping_data?.cam_yaw_method === "uav" ||
+          img.mapping_data?.cam_roll_method === "uav"
+      )
+    );
   }, [uploads]);
 
   const handleStartProcessing = (settings: ProcessingSettings) => {
 
     queryClient.invalidateQueries({ queryKey: ["report", report.report_id] });
+    queryClient.removeQueries({ queryKey: ["report-settings", report.report_id] });
+    queryClient.invalidateQueries({ queryKey: ["processing-settings", report.report_id] });
 
     startProcessingMutation.mutate(settings, {
       onSuccess: () => {
@@ -123,6 +121,9 @@ export function Upload({ report, onProcessingStarted, isEditing, setIsEditing }:
         reportId={report.report_id}
         weatherAvailable={weatherAvailable}
         showManualAltitudeField={showManualAltitudeField}
+        showFovField={showFovField}
+        showCamPitchField={showCamPitchField}
+        showCamOrientationField={showCamOrientationField}
         handleStartProcessing={handleStartProcessing}
         processButtonActive={startProcessingMutation.isPending || report.status === "processing" || report.status === "preprocessing" || report.status === "queued" || isUploading}
         status={report.status}

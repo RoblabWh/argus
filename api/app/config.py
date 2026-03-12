@@ -177,6 +177,7 @@ class Config:
         self.WEBODM_USERNAME = self._get_env("WEBODM_USERNAME", "admin")
         self.WEBODM_PASSWORD = self._get_env("WEBODM_PASSWORD", "admin")
         self.WEBODM_URL = self._get_env("WEBODM_URL", "http://127.0.0.1:8000")
+        self.LOG_LEVEL = self._get_env("LOG_LEVEL", "WARNING")
 
     def _set_variables_local(self):        
         # Local config.json settings

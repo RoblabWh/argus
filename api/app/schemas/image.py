@@ -69,13 +69,17 @@ class ImageUploadResult(BaseModel):
 
 class MappingDataBase(BaseModel):
     image_id: int
-    fov: float
+    fov: Optional[float] = None
+    fov_method: Optional[str] = None
     rel_altitude: Optional[float] = None
-    altitude: Optional[float] = None  
-    rel_altitude_method: Optional[str] = "exif"  
+    altitude: Optional[float] = None
+    rel_altitude_method: Optional[str] = "exif"
     cam_pitch: Optional[float] = None
+    cam_pitch_method: Optional[str] = None
     cam_roll: Optional[float] = None
+    cam_roll_method: Optional[str] = None
     cam_yaw: Optional[float] = None
+    cam_yaw_method: Optional[str] = None
     uav_pitch: float
     uav_roll: float
     uav_yaw: float
@@ -86,12 +90,16 @@ class MappingDataCreate(MappingDataBase):
 class MappingDataUpdate(BaseModel):
     image_id: Optional[int] = None
     fov: Optional[float] = None
+    fov_method: Optional[str] = None
     rel_altitude: Optional[float] = None
     altitude: Optional[float] = None
     rel_altitude_method: Optional[str] = None
     cam_pitch: Optional[float] = None
+    cam_pitch_method: Optional[str] = None
     cam_roll: Optional[float] = None
+    cam_roll_method: Optional[str] = None
     cam_yaw: Optional[float] = None
+    cam_yaw_method: Optional[str] = None
     uav_pitch: Optional[float] = None
     uav_roll: Optional[float] = None
     uav_yaw: Optional[float] = None

@@ -10,6 +10,7 @@ type Props = {
   filename?: string;
   onDelete?: () => void;
   showDelete?: boolean;
+  showWarning?: boolean;
   children?: React.ReactNode; // for progress bar or extras
 };
 
@@ -19,12 +20,23 @@ export const GalleryImage: React.FC<Props> = ({
   filename,
   onDelete,
   showDelete = true,
+  showWarning = false,
   children,
 }) => {
   return (
     <Card
       className="relative p-0 flex flex-col justify-between items-center h-full gap-0 rounded-sm"
     >
+
+      {/* Warning Badge */}
+      {showWarning && (
+        <div
+          title="No mapping data — this image cannot be used for mapping"
+          className="absolute top-2 left-2 z-10 bg-amber-400 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold leading-none"
+        >
+          !
+        </div>
+      )}
 
       {/* Delete Button */}
       {showDelete && onDelete && (
