@@ -108,6 +108,18 @@ services:
       BACKEND_URL: ${VITE_API_URL}
       DEVICE: "cpu"
 
+  argus_stella_worker:
+    build: ./reconstruction_stella
+    container_name: argusII_stella_worker
+    volumes:
+      - argus_uploaded_files:/data/reports
+    depends_on:
+      - redis
+      - api
+    environment:
+      REDIS_PORT: ${PORT_REDIS}
+      REDIS_HOST: ${HOST_REDIS}
+      BACKEND_URL: ${VITE_API_URL}
 
   ollama:
     image: ollama/ollama

@@ -23,6 +23,16 @@ services:
               count: 1
               capabilities: [gpu]
 
+  argus_stella_worker:
+    runtime: nvidia
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
   ollama:
     runtime: nvidia
     environment:
