@@ -4,6 +4,7 @@
   "created_at": "EXIF:CreateDate",
   "width": "File:ImageWidth",
   "height": "File:ImageHeight",
+  "projection_type": "XMP:ProjectionType",
   "gps": {
     "lat": "Composite:GPSLatitude",
     "lon": "Composite:GPSLongitude",
@@ -11,6 +12,8 @@
     "alt": "XMP:AbsoluteAltitude"
   },
   "ir": {
+    "ir": null,
+    "ir_value": null,
     "ir_image_width": 640,
     "ir_image_height": 512,
     "ir_filename_pattern": "_T(?=\\.\\w+$)",
@@ -28,8 +31,9 @@
     "uav_yaw": "XMP:FlightYawDegree",
     "uav_pitch": "XMP:FlightPitchDegree"
   },
-  "adjust_data": false,
   "fov_correction": 1.0,
+  "adjust_data": false,
+  "rgb_orientation_offset": null,
   "fallbacks": {
     "thermal": {
       "fov": 60.5
