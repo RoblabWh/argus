@@ -30,7 +30,7 @@ def cleanup_lost_tasks():
                 #if it has a mapping report object, set the type to "mapping"
                 crud.update_report_type(db, report.report_id, "mapping")
 
-        try: 
+        try:
             detection_task_id = r.get(f"detection:{report.report_id}:task_id")
             if detection_task_id:
                 # Check if the task is still running
@@ -40,6 +40,19 @@ def cleanup_lost_tasks():
                 r.delete(f"detection:{report.report_id}:progress")
                 r.delete(f"detection:{report.report_id}:status")
                 r.delete(f"detection:{report.report_id}:message")
+        except Exception as e:
+            pass
+
+        try:
+            reconstruction_task_id = r.get(f"reconstruction:{report.report_id}:task_id")
+            if reconstruction_task_id:
+                print(f"Cleaning up lost reconstruction task for report {report.report_id}", flush=True)
+                r.delete(f"reconstruction:{report.report_id}:task_id")
+                r.delete(f"reconstruction:{report.report_id}:progress")
+                r.delete(f"reconstruction:{report.report_id}:status")
+                r.delete(f"reconstruction:{report.report_id}:message")
+                if report.status in ["queued", "processing", "preprocessing"]:
+                    crud.update_process(db, report.report_id, "failed", 0.0)
         except Exception as e:
             pass
 

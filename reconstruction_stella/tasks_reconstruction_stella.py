@@ -4,6 +4,7 @@ import logging
 import tempfile
 
 import redis
+import requests
 import yaml
 import numpy as np
 
@@ -141,7 +142,7 @@ def run_reconstruction_stella(
                 if frame_idx % progress_interval == 0:
                     r.set(
                         f"reconstruction:{report_id}:progress",
-                        int((frame_idx / total_steps) * 100),
+                        int((frame_idx / total_steps) * 95),
                     )
                     r.set(
                         f"reconstruction:{report_id}:message",
@@ -150,7 +151,7 @@ def run_reconstruction_stella(
 
             cap.release()
 
-            r.set(f"reconstruction:{report_id}:progress", 100)
+            r.set(f"reconstruction:{report_id}:progress", 95)
             r.set(f"reconstruction:{report_id}:message", "Finalizing reconstruction…")
 
             # Shutdown SLAM
@@ -161,6 +162,9 @@ def run_reconstruction_stella(
             slam.save_point_cloud(os.path.join(results_path, "sparse.ply"))
             if config["PatchMatch"]["enabled"]:
                 slam.save_dense_point_cloud(os.path.join(results_path, "dense.ply"))
+            
+            r.set(f"reconstruction:{report_id}:progress", 98)
+            
             keyframes_dir = os.path.join(results_path, "keyframes")
             os.mkdir(keyframes_dir)
             slam.save_keyframes(keyframes_dir)
@@ -171,11 +175,21 @@ def run_reconstruction_stella(
                 os.path.join(results_path, "keyframe_trajectory.txt"), "TUM"
             )
 
+            r.set(f"reconstruction:{report_id}:progress", 100)
             r.set(f"reconstruction:{report_id}:status", "finished")
             r.set(
                 f"reconstruction:{report_id}:message",
                 "Reconstruction completed successfully",
             )
+
+            # Notify API to finalize DB entry
+            try:
+                requests.post(
+                    f"{BACKEND_URL}/reconstruction/{report_id}/complete",
+                    timeout=30,
+                )
+            except Exception as callback_err:
+                logger.warning(f"[STELLA] Callback to API failed: {callback_err}")
 
     except Exception as e:
         logger.error(e)

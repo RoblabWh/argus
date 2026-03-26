@@ -45,14 +45,17 @@ class ReportOut(ReportCreate):
 class ReportDetailOut(ReportOut):
     mapping_report: Optional["MappingReportOut"] = None
     pano_report: Optional["PanoReportOut"] = None
+    reconstruction_report: Optional["ReconstructionReportOut"] = None
 
 class ReportSmallDetailOut(ReportOut):
     mapping_report: Optional["MappingReportSimpleOut"] = None
     pano_report: Optional["PanoReportOut"] = None
+    reconstruction_report: Optional["ReconstructionReportOut"] = None
 
 class ReportSmallDetailPlusOut(ReportOut):
     mapping_report: Optional["MappingReportSimplePlusOut"] = None
     pano_report: Optional["PanoReportOut"] = None
+    reconstruction_report: Optional["ReconstructionReportOut"] = None
 
 class ProcessingSettings(BaseModel):
     keep_weather: Optional[bool] = False
@@ -125,6 +128,26 @@ class MappingReportSimplePlusOut(MappingReportBase):
     model_config = ConfigDict(from_attributes=True)
 
 
+
+
+##################
+## Reconstruction Report (360° video)
+##################
+
+class ReconstructionSettings(BaseModel):
+    preset: str = "sparse"          # "sparse" | "dense_fast" | "dense_detail"
+    frame_step: int = 1             # process every Nth frame
+    config_overrides: dict = {}
+
+class ReconstructionReportOut(BaseModel):
+    id: int
+    report_id: int
+    video_path: Optional[str] = None
+    video_duration: Optional[float] = None
+    keyframe_count: int = 0
+    processing_settings: Optional[dict] = None
+    has_dense_pointcloud: bool = False
+    model_config = ConfigDict(from_attributes=True)
 
 
 ##################

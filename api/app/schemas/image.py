@@ -62,6 +62,18 @@ class ImageUploadResult(BaseModel):
     image_object: Optional[ImageOut] = None
 
 
+class VideoUploadResult(BaseModel):
+    status: str           # "uploaded" | "skipped" | "error"
+    filename: Optional[str] = None
+    message: Optional[str] = None
+
+
+class UploadSummary(BaseModel):
+    report_type: str                        # "mapping" | "reconstruction_360" | "unchanged"
+    images: List[ImageUploadResult] = []
+    video: Optional[VideoUploadResult] = None
+    warnings: List[str] = []
+
 
 ##################
 ## Mapping Data

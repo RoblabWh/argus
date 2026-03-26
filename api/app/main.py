@@ -16,6 +16,7 @@ from app.routers import (
     detection,
     settings,
     transfer,
+    reconstruction,
 )
 
 models.Base.metadata.create_all(bind=engine)
@@ -48,6 +49,7 @@ app.include_router(odm.router)
 app.include_router(detection.router)
 app.include_router(settings.router)
 app.include_router(transfer.router)
+app.include_router(reconstruction.router)
 
 cleanup_lost_tasks()  # Cleanup lost tasks on startup
 

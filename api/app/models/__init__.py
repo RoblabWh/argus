@@ -1,5 +1,5 @@
 from .group import Group
-from .report import Report, MappingReport, PanoReport
+from .report import Report, MappingReport, PanoReport, ReconstructionReport
 from .weather import Weather
 from .image import Image, MappingData, ThermalData, Detection
 from .map import Map, MapElement
@@ -11,6 +11,7 @@ __all__ = [
     "Report",
     "MappingReport",
     "PanoReport",
+    "ReconstructionReport",
     "Weather",
     "Image",
     "MappingData",

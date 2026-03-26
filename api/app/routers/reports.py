@@ -1,4 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+import os
+import shutil
+from concurrent.futures import ThreadPoolExecutor
+
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
 from sqlalchemy.orm import Session
 from typing import List
 import logging
@@ -7,9 +11,9 @@ import app.crud.report as crud
 import app.crud.groups as crud_groups
 from app.database import get_db
 from app.schemas.report import (
-    ReportCreate, 
-    ReportUpdate, 
-    ReportOut, 
+    ReportCreate,
+    ReportUpdate,
+    ReportOut,
     ReportDetailOut,
     ReportSmallDetailPlusOut,
     MapOutSlim
@@ -20,15 +24,19 @@ from app.schemas.report import (
     MappingReportOut,
     ProcessingSettings,
 )
-
+from app.schemas.image import UploadSummary, VideoUploadResult, ImageUploadResult
 from app.schemas.map import MapOut, MapSharingData
 from app.services.celery_app import celery_app, task_is_really_active
+from app.services.image_processing import process_image, check_mapping_report, UPLOAD_DIR
 
 import app.services.mapping.processing_manager as process_report_service
 import app.services.image_describer as image_describer_service
 import app.services.drz_backend_sharing as drz_service
 from app.config import config
 import redis
+
+IMAGE_EXTENSIONS = {"jpg", "jpeg", "png"}
+VIDEO_EXTENSIONS = {"mp4", "mov", "avi", "mkv", "webm", "m4v", "ts", "mts"}
 
 router = APIRouter(prefix="/reports", tags=["Reports"])
 
@@ -62,6 +70,115 @@ def update_report(report_id: int, update: ReportUpdate, db: Session = Depends(ge
 @router.delete("/{report_id}")
 def delete_report(report_id: int, db: Session = Depends(get_db)):
     return crud.delete(db, report_id)
+
+
+# ── Unified upload ────────────────────────────────────────────────────────────
+
+@router.post("/{report_id}/upload", response_model=UploadSummary)
+def upload_files(
+    report_id: int,
+    files: List[UploadFile] = File(...),
+    db: Session = Depends(get_db),
+):
+    """
+    Auto-detecting upload endpoint. Accepts any mix of image and video files.
+
+    - Images only  → creates/reuses a MappingReport and processes images.
+    - Video only, no MappingReport exists → creates a ReconstructionReport, saves video.
+    - Video + images, OR video with existing MappingReport → processes images, discards video with warning.
+    - Unknown file types → per-file error in the images list.
+    """
+    if not files:
+        raise HTTPException(status_code=400, detail="No files provided")
+
+    report = crud.get_short_report(db, report_id)
+    if not report:
+        raise HTTPException(status_code=404, detail="Report not found")
+
+    def _ext(f: UploadFile) -> str:
+        return (f.filename or "").rsplit(".", 1)[-1].lower()
+
+    image_files = [f for f in files if _ext(f) in IMAGE_EXTENSIONS]
+    video_files = [f for f in files if _ext(f) in VIDEO_EXTENSIONS]
+    unknown_files = [f for f in files if f not in image_files and f not in video_files]
+
+    warnings: list[str] = []
+    video_result: VideoUploadResult | None = None
+    image_results: list[ImageUploadResult] = []
+    report_type = "unchanged"
+
+    has_mapping = report.mapping_report is not None
+
+    # ── Video handling ──────────────────────────────────────────────────────
+    if video_files:
+        video_file = video_files[0]
+        if len(video_files) > 1:
+            extra = ", ".join(f.filename or "" for f in video_files[1:])
+            warnings.append(f"Only one video can be uploaded at a time. Extra videos ignored: {extra}")
+
+        if image_files or has_mapping:
+            reason = (
+                "images were also uploaded" if image_files
+                else "a mapping report already exists for this report"
+            )
+            msg = (
+                f"Video '{video_file.filename}' was discarded: {reason}. "
+                "A report cannot contain both a mapping and a reconstruction."
+            )
+            warnings.append(msg)
+            video_result = VideoUploadResult(status="skipped", filename=video_file.filename, message=msg)
+        else:
+            # Save video and create/update ReconstructionReport
+            report_dir = UPLOAD_DIR / str(report_id)
+            report_dir.mkdir(parents=True, exist_ok=True)
+
+            ext = os.path.splitext(video_file.filename or "")[1] or ".mp4"
+            video_filename = f"video{ext}"
+            video_path = report_dir / video_filename
+
+            with video_path.open("wb") as f:
+                shutil.copyfileobj(video_file.file, f)
+
+            relative_path = os.path.join(str(report_id), video_filename)
+
+            # Auto-create ReconstructionReport if it doesn't exist yet
+            if not crud.get_reconstruction_report(db, report_id):
+                crud.create_reconstruction_report(db, report_id)
+            crud.update_reconstruction_report(db, report_id, video_path=relative_path)
+
+            video_result = VideoUploadResult(status="uploaded", filename=video_file.filename)
+            report_type = "reconstruction_360"
+
+    # ── Image handling ──────────────────────────────────────────────────────
+    if image_files:
+        mapping_report_id = check_mapping_report(report_id, db)
+
+        def _process(file: UploadFile):
+            db_local = next(get_db())
+            try:
+                return process_image(report_id, file, mapping_report_id, db_local)
+            except Exception as e:
+                db_local.rollback()
+                return ImageUploadResult(status="error", filename=file.filename, error=str(e))
+            finally:
+                db_local.close()
+
+        with ThreadPoolExecutor(max_workers=12) as executor:
+            image_results = list(executor.map(_process, image_files))
+        report_type = "mapping"
+
+    # ── Unknown files ───────────────────────────────────────────────────────
+    for f in unknown_files:
+        image_results.append(
+            ImageUploadResult(status="error", filename=f.filename, error="Unsupported file type")
+        )
+
+    return UploadSummary(
+        report_type=report_type,
+        images=image_results,
+        video=video_result,
+        warnings=warnings,
+    )
 
 
 # MappingReport endpoints

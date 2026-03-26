@@ -374,6 +374,45 @@ def get_processing_settings(db: Session, report_id: int) -> dict:
     return mapping.processing_settings or {} if mapping else {}
 
 
+def create_reconstruction_report(db: Session, report_id: int):
+    existing = db.query(models.ReconstructionReport).filter(
+        models.ReconstructionReport.report_id == report_id
+    ).first()
+    if existing:
+        raise ValueError("Reconstruction report already exists for this report")
+
+    update_report_type(db, report_id, "reconstruction_360")
+
+    reconstruction = models.ReconstructionReport(report_id=report_id)
+    db.add(reconstruction)
+    db.commit()
+    db.refresh(reconstruction)
+    return reconstruction
+
+
+def get_reconstruction_report(db: Session, report_id: int):
+    return (
+        db.query(models.ReconstructionReport)
+        .filter(models.ReconstructionReport.report_id == report_id)
+        .first()
+    )
+
+
+def update_reconstruction_report(db: Session, report_id: int, **kwargs):
+    reconstruction = db.query(models.ReconstructionReport).filter(
+        models.ReconstructionReport.report_id == report_id
+    ).first()
+    if not reconstruction:
+        raise ValueError("Reconstruction report not found")
+
+    for key, value in kwargs.items():
+        setattr(reconstruction, key, value)
+
+    db.commit()
+    db.refresh(reconstruction)
+    return reconstruction
+
+
 def get_mapping_report_map(db: Session, map_id: int, report_id:int):
     map = db.query(models.Map).filter(models.Map.id == map_id).first()
     if not map:

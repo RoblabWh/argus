@@ -31,6 +31,7 @@ class Report(Base):
     group = relationship("Group", back_populates="reports")
     mapping_report = relationship("MappingReport", back_populates="report", uselist=False, cascade="all, delete")
     pano_report = relationship("PanoReport", back_populates="report", uselist=False, cascade="all, delete")
+    reconstruction_report = relationship("ReconstructionReport", back_populates="report", uselist=False, cascade="all, delete")
 
 
 
@@ -68,3 +69,18 @@ class PanoReport(Base):
 
     # relationships
     report = relationship("Report", back_populates="pano_report")
+
+
+class ReconstructionReport(Base):
+    __tablename__ = "reconstruction_reports"
+
+    id = Column(Integer, primary_key=True, index=True)
+    report_id = Column(Integer, ForeignKey("reports.report_id"), index=True)
+    video_path = Column(String, nullable=True)          # relative path inside reports_data/
+    video_duration = Column(Float, nullable=True)
+    keyframe_count = Column(Integer, default=0)
+    processing_settings = Column(JSONB, nullable=True)  # preset, frame_step, config_overrides
+    has_dense_pointcloud = Column(Boolean, default=False)
+
+    # relationships
+    report = relationship("Report", back_populates="reconstruction_report")
