@@ -18,6 +18,7 @@ interface Props {
     report: Report;
     onReprocessClicked: () => void;
     onStopProcessing?: () => void;
+    disableExport?: boolean;
 }
 
 const statusColorMap: Record<string, string> = {
@@ -30,7 +31,7 @@ const statusColorMap: Record<string, string> = {
     error: "text-red-600 dark:text-red-400",
 };
 
-export function GeneralDataCard({ report, onReprocessClicked, onStopProcessing }: Props) {
+export function GeneralDataCard({ report, onReprocessClicked, onStopProcessing, disableExport }: Props) {
     const isProcessing = report.status === 'processing' || report.status === 'preprocessing';
     const [editPopupOpen, setEditPopupOpen] = useState(false);
     const [exportPopupOpen, setExportPopupOpen] = useState(false);
@@ -123,7 +124,9 @@ export function GeneralDataCard({ report, onReprocessClicked, onStopProcessing }
                             <DropdownMenuContent align="end">
                                 <DropdownMenuItem onClick={onEditDetailsClick}> Edit details</DropdownMenuItem>
                                 <DropdownMenuItem onClick={onReprocessClicked}>Reprocess</DropdownMenuItem>
-                                <DropdownMenuItem onClick={onExportClicked}>Export/Share</DropdownMenuItem>
+                                {!disableExport && (
+                                    <DropdownMenuItem onClick={onExportClicked}>Export/Share</DropdownMenuItem>
+                                )}
                                 <DropdownMenuItem className="text-red-600">Delete</DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>

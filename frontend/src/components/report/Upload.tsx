@@ -2,48 +2,50 @@ import React, { useEffect, useState } from "react";
 import type { Report } from "@/types/report";
 import type { ProcessingSettings } from "@/types/processing";
 import type { UploadFile } from "@/types/image";
-import type { Weather } from "@/types/weather";
+import type { UploadSummary, ReconstructionSettings } from "@/types/reconstruction";
 import { UploadArea } from "@/components/report/upload/UploadArea";
-import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress"; // From shadcn
-import { useStartReportProcess } from "@/hooks/useStartProcessing"
-import { Toaster } from "@/components/ui/sonner"
-import { toast } from "sonner"; // Assuming you have sonner for notifications
-import { useQueryClient } from "@tanstack/react-query"; // Adjust the import based on your project structure
-import { MappingSettingsCard } from "@/components/report/upload/MappingSettingsCard"; // Import the new settings card
+import { useStartReportProcess } from "@/hooks/useStartProcessing";
+import { useStartReconstructionProcess } from "@/hooks/useStartReconstruction";
+import { Toaster } from "@/components/ui/sonner";
+import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
+import { MappingSettingsCard } from "@/components/report/upload/MappingSettingsCard";
+import { ReconstructionSettingsCard } from "@/components/report/upload/ReconstructionSettingsCard";
 import { Separator } from "@/components/ui/separator";
-import { useWebODM } from '@/hooks/useWebODM';
+import { useWebODM } from "@/hooks/useWebODM";
+import { Card, CardContent } from "@/components/ui/card";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Settings } from "lucide-react";
 
 
 interface Props {
   report: Report;
-  onProcessingStarted?: () => void; // Optional callback when processing starts
-isEditing?: boolean; // Optional prop to control editing state
-  setIsEditing?: (isEditing: boolean) => void; // Optional setter for editing state
+  onProcessingStarted?: () => void;
+  isEditing?: boolean;
+  setIsEditing?: (isEditing: boolean) => void;
 }
 
 
 function checkWeatherAvailability(report: Report): boolean {
   const mapping_report = report.mapping_report;
-  if (!mapping_report || mapping_report === undefined) return false;
+  if (!mapping_report) return false;
   const weather = mapping_report.weather;
-  if (!weather || weather === undefined || weather.length === 0) return false;
+  if (!weather || weather.length === 0) return false;
   try {
-    // Check if the first weather object has a temperature property
     const temp = weather[0].temperature;
     if (temp === undefined || temp === null) return false;
-  } catch (error) {
-    console.error("Error checking weather availability:", error);
-    return false; // If there's an error accessing the temperature, assume weather is not available
+  } catch {
+    return false;
   }
   return true;
 }
 
 
 export function Upload({ report, onProcessingStarted, isEditing, setIsEditing }: Props) {
-  const startProcessingMutation = useStartReportProcess(report.report_id);
+  const startMappingMutation = useStartReportProcess(report.report_id);
+  const startReconstructionMutation = useStartReconstructionProcess(report.report_id);
   const queryClient = useQueryClient();
-  const weatherAvailable = checkWeatherAvailability(report); // Replace with actual logic to determine if weather data is available
+  const weatherAvailable = checkWeatherAvailability(report);
   const [uploads, setUploads] = useState<UploadFile[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [showManualAltitudeField, setShowManualAltitudeField] = useState(false);
@@ -52,6 +54,16 @@ export function Upload({ report, onProcessingStarted, isEditing, setIsEditing }:
   const [showCamOrientationField, setShowCamOrientationField] = useState(false);
   const { data: webODMData } = useWebODM();
 
+  // Track which report type was determined (initialised from existing report type)
+  const [detectedType, setDetectedType] = useState<string>(report.type);
+  // Keeps button disabled after processing starts, until the view switches away
+  const [processingStarted, setProcessingStarted] = useState(false);
+
+  const handleUploadComplete = (summary: UploadSummary) => {
+    if (summary.report_type !== "unchanged") {
+      setDetectedType(summary.report_type);
+    }
+  };
 
   useEffect(() => {
     const allImages = uploads
@@ -61,9 +73,7 @@ export function Upload({ report, onProcessingStarted, isEditing, setIsEditing }:
     setShowManualAltitudeField(
       allImages.some((img) => img.mapping_data?.rel_altitude_method === "manual")
     );
-    setShowFovField(
-      allImages.some((img) => img.mapping_data?.fov_method === "manual")
-    );
+    setShowFovField(allImages.some((img) => img.mapping_data?.fov_method === "manual"));
     setShowCamPitchField(
       allImages.some((img) => img.mapping_data?.cam_pitch_method === "manual")
     );
@@ -76,79 +86,132 @@ export function Upload({ report, onProcessingStarted, isEditing, setIsEditing }:
     );
   }, [uploads]);
 
-  const handleStartProcessing = (settings: ProcessingSettings) => {
-
+  const handleStartMappingProcessing = (settings: ProcessingSettings) => {
     queryClient.invalidateQueries({ queryKey: ["report", report.report_id] });
     queryClient.removeQueries({ queryKey: ["report-settings", report.report_id] });
     queryClient.invalidateQueries({ queryKey: ["processing-settings", report.report_id] });
 
-    startProcessingMutation.mutate(settings, {
+    startMappingMutation.mutate(settings, {
       onSuccess: () => {
-        console.log("Processing started successfully");
-        if (onProcessingStarted) {
-
-          onProcessingStarted(); // Call the callback if provided
-          console.log("onProcessingStarted callback called");
-        }
+        if (onProcessingStarted) onProcessingStarted();
       },
       onError: (error) => {
-        console.error("Error starting processing:", error);
+        console.error("Error starting mapping processing:", error);
         toast("There was an error starting the processing.", {
           description: "Please try again later.",
           duration: 5000,
           action: {
             label: "Retry",
-            onClick: () => handleStartProcessing(settings), // Retry with the same settings
+            onClick: () => handleStartMappingProcessing(settings),
           },
         });
       },
     });
+  };
 
+  const handleStartReconstructionProcessing = (settings: ReconstructionSettings) => {
+    startReconstructionMutation.mutate(settings, {
+      onSuccess: () => {
+        setProcessingStarted(true);
+        if (onProcessingStarted) onProcessingStarted();
+      },
+      onError: (error) => {
+        console.error("Error starting reconstruction processing:", error);
+        toast("There was an error starting the reconstruction.", {
+          description: "Please try again later.",
+          duration: 5000,
+          action: {
+            label: "Retry",
+            onClick: () => handleStartReconstructionProcessing(settings),
+          },
+        });
+      },
+    });
   };
 
   const cancelEditing = () => {
-    setIsEditing(false);
-    console.log("Editing cancelled, isEditing set to false");
+    if (setIsEditing) setIsEditing(false);
   };
 
-  console.log("Upload component rendered with report:", report);
+  const isMappingActive =
+    startMappingMutation.isPending ||
+    report.status === "processing" ||
+    report.status === "preprocessing" ||
+    report.status === "queued" ||
+    isUploading;
+
+  const isReconstructionActive =
+    processingStarted ||
+    startReconstructionMutation.isPending ||
+    report.status === "processing" ||
+    report.status === "queued" ||
+    isUploading;
 
   return (
-    <div className="w-full ">
+    <div className="w-full">
       <Toaster />
 
-      <MappingSettingsCard
-        reportId={report.report_id}
-        weatherAvailable={weatherAvailable}
-        showManualAltitudeField={showManualAltitudeField}
-        showFovField={showFovField}
-        showCamPitchField={showCamPitchField}
-        showCamOrientationField={showCamOrientationField}
-        handleStartProcessing={handleStartProcessing}
-        processButtonActive={startProcessingMutation.isPending || report.status === "processing" || report.status === "preprocessing" || report.status === "queued" || isUploading}
-        status={report.status}
-        progress={report.progress}
-        onCancelEditing={cancelEditing}
-        isEditing={isEditing}
-        isWebODMAvailable={webODMData?.is_available}
+      {/* ── Settings section (always at top) ── */}
+      {detectedType === "unset" ? (
+        <Card className="w-full mb-0">
+          <CardContent className="py-6 flex flex-col items-center gap-2 text-muted-foreground">
+            <Settings className="w-6 h-6" />
+            <p className="text-sm">Upload files to configure processing settings</p>
+          </CardContent>
+        </Card>
+      ) : detectedType === "reconstruction_360" ? (
+        <ReconstructionSettingsCard
+          status={report.status}
+          progress={report.progress}
+          isEditing={isEditing}
+          onCancelEditing={cancelEditing}
+          handleStartProcessing={handleStartReconstructionProcessing}
+          processButtonActive={isReconstructionActive}
+          existingSettings={report.reconstruction_report?.processing_settings}
+        />
+      ) : (
+        <MappingSettingsCard
+          reportId={report.report_id}
+          weatherAvailable={weatherAvailable}
+          showManualAltitudeField={showManualAltitudeField}
+          showFovField={showFovField}
+          showCamPitchField={showCamPitchField}
+          showCamOrientationField={showCamOrientationField}
+          handleStartProcessing={handleStartMappingProcessing}
+          processButtonActive={isMappingActive}
+          status={report.status}
+          progress={report.progress}
+          onCancelEditing={cancelEditing}
+          isEditing={isEditing}
+          isWebODMAvailable={webODMData?.is_available}
+        />
+      )}
+
+      <Separator orientation="horizontal" className="my-8" />
+
+      {/* ── Upload area ── */}
+      <UploadArea
+        report={report}
+        uploads={uploads}
+        setUploads={setUploads}
+        setIsUploading={setIsUploading}
+        onUploadComplete={handleUploadComplete}
+        detectedType={detectedType}
       />
 
-      <div className="mt-4">
-
-        <Separator orientation={"horizontal"} className=" my-8" />
-
-      </div>
-
-     <UploadArea report={report} uploads={uploads} setUploads={setUploads} setIsUploading={setIsUploading} />
-
-
-      <div className="text-sm text-muted-foreground mt-4">
-        {/* Print every property of the report object */}
-        <pre>{JSON.stringify(report, null, 2)}</pre>
-      </div>
-
+      {/* ── Debug data (collapsible) ── */}
+      <Accordion type="single" collapsible className="mt-8">
+        <AccordionItem value="debug">
+          <AccordionTrigger className="text-xs text-muted-foreground hover:no-underline">
+            Debug: Report Data
+          </AccordionTrigger>
+          <AccordionContent>
+            <pre className="text-xs overflow-auto max-h-96 bg-muted/50 rounded p-3">
+              {JSON.stringify(report, null, 2)}
+            </pre>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
     </div>
   );
 }
-
-
