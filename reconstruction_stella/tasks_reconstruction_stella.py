@@ -172,11 +172,10 @@ def run_reconstruction_stella(
 
             # Save all outputs
             slam.save_map_database(os.path.join(results_path, "map.db"))
-            slam.save_point_cloud(os.path.join(results_path, "sparse.ply"))
             if config["PatchMatch"]["enabled"]:
-                slam.save_dense_point_cloud(os.path.join(results_path, "dense.ply"))
-            
-            r.set(f"reconstruction:{report_id}:progress", 97)
+                slam.save_point_cloud(os.path.join(results_path, "dense.ply"))
+
+            r.set(f"reconstruction:{report_id}:progress", 98)
 
             keyframes_dir = os.path.join(results_path, "keyframes")
             os.mkdir(keyframes_dir)

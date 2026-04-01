@@ -75,12 +75,9 @@ RUN cd /tmp && \
     cd /tmp && \
     rm -rf *
 
-# copy project files
-COPY . /reconstruction_stella
-WORKDIR /reconstruction_stella
-
 # stella
-RUN cd stella_vslam_dense && \
+COPY stella_vslam_dense /reconstruction_stella/stella_vslam_dense
+RUN cd /reconstruction_stella/stella_vslam_dense && \
     export PYTHONPATH=/reconstruction_stella/stella_vslam_dense/build/lib && \
     cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release && \
     cmake --build build --parallel $(test ${NUM_THREADS} -eq 0 && nproc || (printf ${NUM_THREADS})) && \
@@ -88,7 +85,10 @@ RUN cd stella_vslam_dense && \
     ldconfig
 
 # celery
-RUN pip install --no-cache-dir --break-system-packages -r requirements.txt
+COPY requirements.txt /reconstruction_stella/requirements.txt
+RUN pip install --no-cache-dir --break-system-packages -r /reconstruction_stella/requirements.txt
 
-# start celery worker
+# setup worker
+COPY --exclude=stella_vslam_dense --exclude=requirements.txt . /reconstruction_stella
+WORKDIR /reconstruction_stella
 ENTRYPOINT ["celery", "-A", "tasks_reconstruction_stella", "worker", "-Q", "reconstruction_stella", "--loglevel=info"]
