@@ -147,6 +147,8 @@ class ReconstructionReportOut(BaseModel):
     keyframe_count: int = 0
     processing_settings: Optional[dict] = None
     has_dense_pointcloud: bool = False
+    flight_timestamp: Optional[datetime] = None
+    camera_model: Optional[str] = None
     model_config = ConfigDict(from_attributes=True)
 
 

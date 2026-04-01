@@ -1,3 +1,14 @@
+import logging
+import os
+
+# Configure the root logger once here so all app module loggers (which propagate
+# to root) respect the LOG_LEVEL env variable. Done before app imports so every
+# logger created during module load already inherits the correct level.
+logging.basicConfig(
+    level=getattr(logging, os.getenv("LOG_LEVEL", "WARNING").upper(), logging.WARNING),
+    format="[%(levelname)s] %(asctime)s %(name)s - %(message)s",
+)
+
 from fastapi import FastAPI
 from . import models, schemas
 from .database import SessionLocal, engine

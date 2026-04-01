@@ -48,6 +48,19 @@ def deep_update(base: dict, override: dict) -> dict:
     return base
 
 
+def generate_thumbnails(keyframes_dir: str, thumbnail_dir: str, size=(320, 240)):
+    """Generate thumbnails for keyframes."""
+    os.makedirs(thumbnail_dir, exist_ok=True)
+    for filename in os.listdir(keyframes_dir):
+        if filename.lower().endswith((".jpg", ".jpeg", ".png")):
+            img_path = os.path.join(keyframes_dir, filename)
+            img = cv.imread(img_path)
+            if img is not None:
+                thumbnail = cv.resize(img, size)
+                thumbnail_path = os.path.join(thumbnail_dir, filename)
+                cv.imwrite(thumbnail_path, thumbnail)
+
+
 @celery_app.task(name="reconstruction_stella.run")
 def run_reconstruction_stella(
     report_id: int,
@@ -58,7 +71,7 @@ def run_reconstruction_stella(
 ):
     logger.info(f"[STELLA] Starting reconstruction for report {report_id}")
 
-    r.set(f"reconstruction:{report_id}:status", "running")
+    r.set(f"reconstruction:{report_id}:status", "processing")
     r.set(f"reconstruction:{report_id}:progress", 0)
     r.set(f"reconstruction:{report_id}:message", "Initializing StellaVSLAM…")
 
@@ -163,11 +176,13 @@ def run_reconstruction_stella(
             if config["PatchMatch"]["enabled"]:
                 slam.save_dense_point_cloud(os.path.join(results_path, "dense.ply"))
             
-            r.set(f"reconstruction:{report_id}:progress", 98)
-            
+            r.set(f"reconstruction:{report_id}:progress", 97)
+
             keyframes_dir = os.path.join(results_path, "keyframes")
             os.mkdir(keyframes_dir)
             slam.save_keyframes(keyframes_dir)
+            r.set(f"reconstruction:{report_id}:progress", 99)
+            generate_thumbnails(keyframes_dir, os.path.join(keyframes_dir, "thumbnails"))
             slam.save_frame_trajectory(
                 os.path.join(results_path, "frame_trajectory.txt"), "TUM"
             )
@@ -176,7 +191,7 @@ def run_reconstruction_stella(
             )
 
             r.set(f"reconstruction:{report_id}:progress", 100)
-            r.set(f"reconstruction:{report_id}:status", "finished")
+            r.set(f"reconstruction:{report_id}:status", "completed")
             r.set(
                 f"reconstruction:{report_id}:message",
                 "Reconstruction completed successfully",
@@ -197,3 +212,4 @@ def run_reconstruction_stella(
         r.set(f"reconstruction:{report_id}:message", str(e))
         r.set(f"reconstruction:{report_id}:progress", 0)
         raise
+

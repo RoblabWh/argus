@@ -1,8 +1,11 @@
 import os
 import logging
-from typing import Optional
+from datetime import datetime, timezone
+from typing import Optional, Tuple
 
+import pyexifinfo as p
 import redis
+import json
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -12,16 +15,17 @@ from app.database import get_db
 from app.config import config
 from app.schemas.report import ReportCreate, ReportOut, ReconstructionSettings, ReconstructionReportOut
 from app.services.celery_app import celery_app
+from app.services.camera_config_service import extract_video_metadata
 
-logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/reconstruction", tags=["Reconstruction"])
 
 r = redis.Redis(host=config.REDIS_HOST, port=config.REDIS_PORT, db=0)
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 # Paths as seen from inside each container (same shared volume, different mount points)
 API_REPORTS_PATH = "/api/reports_data"
 STELLA_REPORTS_PATH = "/data/reports"
-
 
 class ReconstructionReportCreate(BaseModel):
     group_id: int
@@ -43,34 +47,6 @@ def create_reconstruction_report(data: ReconstructionReportCreate, db: Session =
     ))
     report_crud.create_reconstruction_report(db, report.report_id)
     return report
-
-
-# ── Video upload ──────────────────────────────────────────────────────────────
-
-@router.post("/{report_id}/upload", response_model=ReconstructionReportOut)
-def upload_video(report_id: int, file: UploadFile = File(...), db: Session = Depends(get_db)):
-    """Upload a 360° video for the given report."""
-    reconstruction = report_crud.get_reconstruction_report(db, report_id)
-    if not reconstruction:
-        raise HTTPException(status_code=404, detail="Reconstruction report not found")
-
-    report_dir = os.path.join(API_REPORTS_PATH, str(report_id))
-    os.makedirs(report_dir, exist_ok=True)
-
-    # Preserve original extension; fallback to .mp4
-    ext = os.path.splitext(file.filename or "")[1] or ".mp4"
-    video_filename = f"video{ext}"
-    video_path = os.path.join(report_dir, video_filename)
-
-    with open(video_path, "wb") as f:
-        f.write(file.file.read())
-
-    # Store relative path (relative to reports_data/)
-    relative_path = os.path.join(str(report_id), video_filename)
-    reconstruction = report_crud.update_reconstruction_report(
-        db, report_id, video_path=relative_path
-    )
-    return reconstruction
 
 
 # ── Start processing ──────────────────────────────────────────────────────────
@@ -118,7 +94,7 @@ def start_reconstruction(
 # ── Status polling ────────────────────────────────────────────────────────────
 
 @router.get("/{report_id}/status", response_model=dict)
-def get_reconstruction_status(report_id: int):
+def get_reconstruction_status(report_id: int, db: Session = Depends(get_db)):
     """Poll the current status and progress from Redis."""
     status = r.get(f"reconstruction:{report_id}:status")
     progress = r.get(f"reconstruction:{report_id}:progress")
@@ -126,7 +102,9 @@ def get_reconstruction_status(report_id: int):
 
     if not status and not progress:
         raise HTTPException(status_code=404, detail="No reconstruction status found for this report")
-
+    
+    report_crud.update_process(db, report_id, status.decode() if status else "unknown", float(progress) if progress else 0.0)
+    
     return {
         "report_id": report_id,
         "status": status.decode() if status else "unknown",

@@ -81,6 +81,8 @@ class ReconstructionReport(Base):
     keyframe_count = Column(Integer, default=0)
     processing_settings = Column(JSONB, nullable=True)  # preset, frame_step, config_overrides
     has_dense_pointcloud = Column(Boolean, default=False)
+    flight_timestamp = Column(DateTime, index=True, nullable=True)
+    camera_model = Column(String, nullable=True)
 
     # relationships
     report = relationship("Report", back_populates="reconstruction_report")
