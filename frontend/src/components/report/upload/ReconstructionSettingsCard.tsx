@@ -3,7 +3,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/componen
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import { Progress } from "@/components/ui/progress";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import type { ReconstructionSettings } from "@/types/reconstruction";
 import type { ReconstructionReport } from "@/types/report";
 
@@ -32,6 +34,7 @@ const PRESET_OPTIONS: {
 type Props = {
   status: string;
   progress?: number;
+  statusMessage?: string;
   isEditing?: boolean;
   onCancelEditing?: () => void;
   handleStartProcessing: (settings: ReconstructionSettings) => void;
@@ -43,6 +46,7 @@ export function ReconstructionSettingsCard({
   status,
   progress,
   isEditing,
+  statusMessage,
   onCancelEditing,
   handleStartProcessing,
   processButtonActive,
@@ -54,15 +58,19 @@ export function ReconstructionSettingsCard({
   const [frameStep, setFrameStep] = useState<number>(
     existingSettings?.frame_step ?? 5
   );
+  const [flipVideo, setFlipVideo] = useState<boolean>(
+    existingSettings?.flip_video ?? false
+  );
 
   const isActive =
-    status === "queued" || status === "processing" || status === "running";
+    status === "queued" || status === "preprocessing" || status === "processing" || status === "running";
 
   const handleStart = () => {
     handleStartProcessing({
       preset,
       frame_step: frameStep,
       config_overrides: {},
+      flip_video: flipVideo,
     });
   };
 
@@ -122,13 +130,32 @@ export function ReconstructionSettingsCard({
           </p>
         </div>
 
+        {/* Flip video */}
+        <div className="flex items-center justify-between">
+          <div>
+            <Label className="text-sm font-medium">Flip video 180°</Label>
+            <p className="text-xs text-muted-foreground">For upside-down camera mounts.</p>
+          </div>
+          <Switch checked={flipVideo} onCheckedChange={setFlipVideo} />
+        </div>
+
         {/* Progress bar */}
         {isActive && progress !== undefined && (
           <div className="flex flex-col gap-1">
             <Progress value={progress} />
-            <p className="text-xs text-muted-foreground">
-              {status} — {Math.round(progress)}%
-            </p>
+            <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+              <span>{status} — {Math.round(progress)}%</span>
+              {statusMessage && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="truncate max-w-[12rem] text-right cursor-default">
+                      {statusMessage}
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">{statusMessage}</TooltipContent>
+                </Tooltip>
+              )}
+            </div>
           </div>
         )}
       </CardContent>

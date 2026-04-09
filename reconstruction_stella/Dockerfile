@@ -9,6 +9,7 @@ RUN apt-get update --yes && \
         git \
         curl \
         cmake \
+        ffmpeg \
         ninja-build \
         clang \
         pkg-config \

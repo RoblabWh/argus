@@ -28,6 +28,7 @@ from app.routers import (
     settings,
     transfer,
     reconstruction,
+    export,
 )
 
 models.Base.metadata.create_all(bind=engine)
@@ -61,6 +62,7 @@ app.include_router(detection.router)
 app.include_router(settings.router)
 app.include_router(transfer.router)
 app.include_router(reconstruction.router)
+app.include_router(export.router)
 
 cleanup_lost_tasks()  # Cleanup lost tasks on startup
 

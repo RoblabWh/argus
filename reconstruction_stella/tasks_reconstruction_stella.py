@@ -1,6 +1,7 @@
 from celery import Celery
 import os
 import logging
+import shutil
 import tempfile
 
 import redis
@@ -10,6 +11,8 @@ import numpy as np
 
 from stellapy import StellaVSLAM
 import cv2 as cv
+
+from preprocess import check_h264_codec, convert_to_h264, flip_video_180
 
 
 logger = logging.getLogger(__name__)
@@ -60,6 +63,51 @@ def generate_thumbnails(keyframes_dir: str, thumbnail_dir: str, size=(320, 240))
                 thumbnail_path = os.path.join(thumbnail_dir, filename)
                 cv.imwrite(thumbnail_path, thumbnail)
 
+def preprocess(report_id: int, video_path: str, results_path: str, options: dict):
+    try:
+        r.set(f"reconstruction:{report_id}:progress", 1)
+        r.set(f"reconstruction:{report_id}:message", "Initializing…")
+        # Clean up any outputs from a previous run
+        shutil.rmtree(os.path.join(results_path, "keyframes"), ignore_errors=True)
+        for fname in ["map.db", "sparse.ply", "dense.ply", "keyframe_trajectory.txt", "frame_trajectory.txt"]:
+            fpath = os.path.join(results_path, fname)
+            if os.path.isfile(fpath):
+                os.remove(fpath)
+
+        # Codec normalization: convert HEVC → H.264 in-place for browser compatibility
+        r.set(f"reconstruction:{report_id}:message", "Checking video codec…")
+        r.set(f"reconstruction:{report_id}:progress", 4)
+        if check_h264_codec(video_path):
+            r.set(f"reconstruction:{report_id}:message", "Converting video to H.264 (this may take a while)…")
+            r.set(f"reconstruction:{report_id}:progress", 5)
+            if convert_to_h264(video_path):
+                logger.info(f"[STELLA] Video converted to H.264: {video_path}")
+            else:
+                raise RuntimeError("Video codec conversion failed")
+        r.set(f"reconstruction:{report_id}:progress", 50)
+        
+        # Flip: create a 180°-rotated copy if requested (upside-down camera mounts)
+        flip_video = options.get("flip_video", False)
+        if flip_video:
+            r.set(f"reconstruction:{report_id}:message", "Flipping video 180°…")
+            video_path = flip_video_180(video_path)
+            # Notify API to update DB video_path to the flipped file.
+            # Stella path: /data/reports/{report_id}/video_flipped.mp4
+            # API relative path: {report_id}/video_flipped.mp4
+            relative_path = "/".join(video_path.split("/")[-2:])
+            try:
+                requests.post(
+                    f"{BACKEND_URL}/reconstruction/{report_id}/set_video_path",
+                    json={"video_path": relative_path},
+                    timeout=10,
+                )
+            except Exception as e:
+                logger.warning(f"[STELLA] Failed to update video path in DB: {e}")
+        r.set(f"reconstruction:{report_id}:progress", 100)
+    except Exception as e:
+        logger.error(f"[STELLA] Preprocessing error: {e}")
+        raise RuntimeError(f"Preprocessing failed: {e}")
+
 
 @celery_app.task(name="reconstruction_stella.run")
 def run_reconstruction_stella(
@@ -71,11 +119,17 @@ def run_reconstruction_stella(
 ):
     logger.info(f"[STELLA] Starting reconstruction for report {report_id}")
 
-    r.set(f"reconstruction:{report_id}:status", "processing")
+    r.set(f"reconstruction:{report_id}:status", "preprocessing")
     r.set(f"reconstruction:{report_id}:progress", 0)
     r.set(f"reconstruction:{report_id}:message", "Initializing StellaVSLAM…")
 
     try:
+        preprocess(report_id, video_path, results_path, options)
+        
+        r.set(f"reconstruction:{report_id}:progress", 0)
+        r.set(f"reconstruction:{report_id}:status", "processing")
+        r.set(f"reconstruction:{report_id}:message", "Initializing StellaVSLAM…")
+
         # Open video and auto-detect properties
         logger.debug(f"Opening video at path: {video_path}")
         cap = cv.VideoCapture(video_path)

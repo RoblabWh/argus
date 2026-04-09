@@ -1,0 +1,35 @@
+{
+  "_model": "L1D-20c",
+  "_auto_discovered": true,
+  "adjust_data": false,
+  "fov_correction": 1.0,
+  "fallbacks": {
+    "thermal": {}
+  },
+  "created_at": "EXIF:CreateDate",
+  "width": "File:ImageWidth",
+  "height": "File:ImageHeight",
+  "projection_type": null,
+  "gps": {
+    "lat": "Composite:GPSLatitude",
+    "lon": "Composite:GPSLongitude",
+    "rel_alt": "XMP:RelativeAltitude",
+    "alt": "XMP:AbsoluteAltitude"
+  },
+  "camera_properties": {
+    "focal_length": "EXIF:FocalLength",
+    "fov": "Composite:FOV"
+  },
+  "orientation": {
+    "cam_roll": "XMP:GimbalRollDegree",
+    "cam_yaw": "XMP:GimbalYawDegree",
+    "cam_pitch": "XMP:GimbalPitchDegree",
+    "uav_roll": "XMP:FlightRollDegree",
+    "uav_yaw": "XMP:FlightYawDegree",
+    "uav_pitch": "XMP:FlightPitchDegree"
+  },
+  "ir": {
+    "ir_filename_pattern": "_T(?=\\.\\w+$)",
+    "ir_scale": 0.5
+  }
+}

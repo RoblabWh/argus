@@ -23,6 +23,7 @@ interface Props {
   onProcessingStarted?: () => void;
   isEditing?: boolean;
   setIsEditing?: (isEditing: boolean) => void;
+  statusMessage?: string;
 }
 
 
@@ -41,7 +42,7 @@ function checkWeatherAvailability(report: Report): boolean {
 }
 
 
-export function Upload({ report, onProcessingStarted, isEditing, setIsEditing }: Props) {
+export function Upload({ report, onProcessingStarted, isEditing, setIsEditing, statusMessage }: Props) {
   const startMappingMutation = useStartReportProcess(report.report_id);
   const startReconstructionMutation = useStartReconstructionProcess(report.report_id);
   const queryClient = useQueryClient();
@@ -163,6 +164,7 @@ export function Upload({ report, onProcessingStarted, isEditing, setIsEditing }:
         <ReconstructionSettingsCard
           status={report.status}
           progress={report.progress}
+          statusMessage={statusMessage}
           isEditing={isEditing}
           onCancelEditing={cancelEditing}
           handleStartProcessing={handleStartReconstructionProcessing}

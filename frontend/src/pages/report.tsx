@@ -27,6 +27,7 @@ export default function ReportOverview() {
   const [shouldPoll, setShouldPoll] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [hasRefetchedAfterStatusChange, setHasRefetchedAfterStatusChange] = useState(true);
+  const [reconstructionMessage, setReconstructionMessage] = useState<string | undefined>(undefined);
 
   const isFullscreenMode =
     (liveReport?.status === "processing" ||
@@ -159,6 +160,7 @@ export default function ReportOverview() {
     if (!reconstructionStatus || !isReconstructionType) return;
 
     console.log(`[Reconstruction] ${reconstructionStatus.status} (${reconstructionStatus.progress}%) — ${reconstructionStatus.message}`);
+    setReconstructionMessage(reconstructionStatus.message || undefined);
 
     // Feed progress into live report state
     if (reconstructionStatus.progress !== undefined) {
@@ -194,6 +196,7 @@ export default function ReportOverview() {
           }}
           isEditing={isEditing}
           setIsEditing={setIsEditing}
+          statusMessage={reconstructionMessage}
         />
       );
     }
@@ -208,6 +211,7 @@ export default function ReportOverview() {
           <Upload
             report={report}
             onProcessingStarted={() => { setShouldPoll(true); }}
+            statusMessage={reconstructionMessage}
           />
         );
       case "processing":

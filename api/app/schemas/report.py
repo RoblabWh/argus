@@ -138,6 +138,7 @@ class ReconstructionSettings(BaseModel):
     preset: str = "sparse"          # "sparse" | "dense_fast" | "dense_detail"
     frame_step: int = 1             # process every Nth frame
     config_overrides: dict = {}
+    flip_video: bool = False        # rotate 180° — for upside-down camera mounts
 
 class ReconstructionReportOut(BaseModel):
     id: int

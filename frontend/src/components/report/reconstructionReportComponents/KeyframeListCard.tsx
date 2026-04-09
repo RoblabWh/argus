@@ -1,5 +1,6 @@
 import { useRef, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
+import { Play } from "lucide-react";
 import type { Keyframe } from "@/types/reconstruction";
 
 function toThumbnailUrl(url: string): string {
@@ -17,10 +18,11 @@ interface Props {
   keyframes: Keyframe[];
   selectedIndex: number;
   onSelect: (index: number) => void;
+  onPlayFromHere?: (index: number) => void;
   apiUrl: string;
 }
 
-export function KeyframeListCard({ keyframes, selectedIndex, onSelect, apiUrl }: Props) {
+export function KeyframeListCard({ keyframes, selectedIndex, onSelect, onPlayFromHere, apiUrl }: Props) {
   const selectedRef = useRef<HTMLButtonElement | null>(null);
 
   // Scroll selected thumbnail into view when index changes programmatically
@@ -44,39 +46,54 @@ export function KeyframeListCard({ keyframes, selectedIndex, onSelect, apiUrl }:
             {keyframes.map((kf, idx) => {
               const isSelected = idx === selectedIndex;
               return (
-                <button
-                  key={kf.filename}
-                  ref={isSelected ? selectedRef : null}
-                  onClick={() => onSelect(idx)}
-                  className={`relative rounded-md overflow-hidden aspect-video focus:outline-none transition-all ${
-                    isSelected
-                      ? "ring-2 ring-primary ring-offset-1"
-                      : "ring-1 ring-border hover:ring-primary/50"
-                  }`}
-                  title={`Keyframe ${idx + 1} — ${formatTimestamp(kf.timestamp)}`}
-                >
-                  <img
-                    src={`${apiUrl}${toThumbnailUrl(kf.url)}`}
-                    onError={(e) => {
-                      const img = e.currentTarget;
-                      img.onerror = null;
-                      img.src = `${apiUrl}${kf.url}`;
-                    }}
-                    alt={`Keyframe ${idx + 1}`}
-                    className="w-full h-full object-cover"
-                    loading="lazy"
-                  />
-                  {/* Timestamp badge */}
-                  <span className="absolute bottom-0.5 right-0.5 bg-black/60 text-white text-[9px] leading-none px-1 py-0.5 rounded">
-                    {formatTimestamp(kf.timestamp)}
-                  </span>
-                  {/* Index badge on selected */}
-                  {isSelected && (
-                    <span className="absolute top-0.5 left-0.5 bg-primary text-primary-foreground text-[9px] leading-none px-1 py-0.5 rounded">
-                      {idx + 1}
+                <div key={kf.filename} className="relative group">
+                  <button
+                    ref={isSelected ? selectedRef : null}
+                    onClick={() => onSelect(idx)}
+                    className={`relative w-full rounded-md overflow-hidden aspect-video focus:outline-none transition-all ${
+                      isSelected
+                        ? "ring-2 ring-primary ring-offset-1"
+                        : "ring-1 ring-border hover:ring-primary/50"
+                    }`}
+                    title={`Keyframe ${idx + 1} — ${formatTimestamp(kf.timestamp)}`}
+                  >
+                    <img
+                      src={`${apiUrl}${toThumbnailUrl(kf.url)}`}
+                      onError={(e) => {
+                        const img = e.currentTarget;
+                        img.onerror = null;
+                        img.src = `${apiUrl}${kf.url}`;
+                      }}
+                      alt={`Keyframe ${idx + 1}`}
+                      className="w-full h-full object-cover"
+                      loading="lazy"
+                    />
+                    {/* Timestamp badge */}
+                    <span className="absolute bottom-0.5 right-0.5 bg-black/60 text-white text-[9px] leading-none px-1 py-0.5 rounded">
+                      {formatTimestamp(kf.timestamp)}
                     </span>
+                    {/* Index badge on selected */}
+                    {isSelected && (
+                      <span className="absolute top-0.5 left-0.5 bg-primary text-primary-foreground text-[9px] leading-none px-1 py-0.5 rounded">
+                        {idx + 1}
+                      </span>
+                    )}
+                  </button>
+
+                  {/* Play-from-here button — shown on hover when callback is provided */}
+                  {onPlayFromHere && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onPlayFromHere(idx);
+                      }}
+                      title={`Watch video from ${formatTimestamp(kf.timestamp)}`}
+                      className="absolute top-0.5 right-0.5 opacity-0 group-hover:opacity-100 transition-opacity bg-black/70 hover:bg-black/90 text-white rounded p-0.5"
+                    >
+                      <Play className="w-2.5 h-2.5 fill-current" />
+                    </button>
                   )}
-                </button>
+                </div>
               );
             })}
           </div>

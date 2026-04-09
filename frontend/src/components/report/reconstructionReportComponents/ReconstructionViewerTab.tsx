@@ -1,10 +1,12 @@
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useState } from "react";
 import { Viewer } from "@photo-sphere-viewer/core";
 import "@photo-sphere-viewer/core/index.css";
 import { MarkersPlugin } from "@photo-sphere-viewer/markers-plugin";
 import "@photo-sphere-viewer/markers-plugin/index.css";
+import { SettingsPlugin } from "@photo-sphere-viewer/settings-plugin";
+import "@photo-sphere-viewer/settings-plugin/index.css";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, Clapperboard } from "lucide-react";
+import { ChevronLeft, ChevronRight, Clapperboard, Play } from "lucide-react";
 import type { Keyframe } from "@/types/reconstruction";
 
 function formatTimestamp(seconds: number): string {
@@ -14,9 +16,9 @@ function formatTimestamp(seconds: number): string {
 }
 
 /**
- * Rotates world-space vector (vx,vy,vz) into camera space using TUM-format
- * quaternion (qx,qy,qz,qw) representing the world-to-camera rotation.
- * Uses the quaternion sandwich product: v' = q v q*
+ * Applies rotation q to vector (vx,vy,vz) using the quaternion sandwich
+ * product: v' = q v q*. To rotate a world-space vector into camera space,
+ * pass the conjugate (-qx,-qy,-qz,qw) of the TUM camera-to-world quaternion.
  */
 function quatRotate(
   qx: number, qy: number, qz: number, qw: number,
@@ -55,9 +57,9 @@ function computeMarkerAngles(
   const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
   if (dist < 1e-6) return null;
 
+  // TUM quaternion is q_wc (camera→world); conjugate gives q_cw (world→camera).
   const cam = quatRotate(
-    // 0,0,0,1.0,
-   current.qx, current.qy, current.qz, current.qw,
+    -current.qx, -current.qy, -current.qz, current.qw,
     dx / dist, dy / dist, dz / dist
   );
 
@@ -88,12 +90,34 @@ function colorBetween(startHue: number, endHue: number, factor: number): string 
   return `hsl(${hue * 360}, 100%, 55%)`;
 }
 
-function computeMarkersForIndex(keyframes: Keyframe[], selectedIndex: number) {
+const MARKER_SCALE_OPTIONS = [
+  { id: "0.25", label: "×0.25" },
+  { id: "0.5",  label: "×0.5"  },
+  { id: "1",    label: "×1"    },
+  { id: "1.5",  label: "×1.5"  },
+  { id: "2",    label: "×2"    },
+];
+
+function computeMarkersForIndex(keyframes: Keyframe[], selectedIndex: number, scaleFactor: number = 1) {
   const currentKf = keyframes[selectedIndex];
   const timestamps = keyframes.map((kf) => kf.timestamp);
   const minTs = Math.min(...timestamps);
   const maxTs = Math.max(...timestamps);
   const tsRange = maxTs - minTs || 1;
+
+  // Compute half the bounding-box diagonal as the adaptive scale reference.
+  // Distances up to this value map to large markers; beyond it they shrink to min size.
+  const poseKfs = keyframes.filter((kf) => kf.tx != null);
+  let sceneMidDist = 2; // fallback matching the old hardcoded value
+  if (poseKfs.length >= 2) {
+    const xs = poseKfs.map((kf) => kf.tx!);
+    const ys = poseKfs.map((kf) => kf.ty!);
+    const zs = poseKfs.map((kf) => kf.tz!);
+    const diagX = Math.max(...xs) - Math.min(...xs);
+    const diagY = Math.max(...ys) - Math.min(...ys);
+    const diagZ = Math.max(...zs) - Math.min(...zs);
+    sceneMidDist = Math.sqrt(diagX * diagX + diagY * diagY + diagZ * diagZ) * 0.6;
+  }
 
   return keyframes.flatMap((targetKf, targetIdx) => {
     if (targetIdx === selectedIndex) return [];
@@ -101,7 +125,7 @@ function computeMarkersForIndex(keyframes: Keyframe[], selectedIndex: number) {
 
     const angles = computeMarkerAngles(currentKf, targetKf);
     if (!angles) return [];
-    const size = scale(angles.distance, 8, 55, 2);
+    const size = Math.round(scale(angles.distance, 7, 45, sceneMidDist) * scaleFactor);
     const color = colorBetween(0.5, 0.8, (targetKf.timestamp - minTs) / tsRange);
 
     return [{
@@ -124,10 +148,11 @@ interface Props {
   keyframes: Keyframe[];
   selectedIndex: number;
   onNavigate: (index: number) => void;
+  onPlayFromHere?: (index: number, orientation?: { yaw: number; pitch: number }) => void;
   apiUrl: string;
 }
 
-export function ReconstructionViewerTab({ keyframes, selectedIndex, onNavigate, apiUrl }: Props) {
+export function ReconstructionViewerTab({ keyframes, selectedIndex, onNavigate, onPlayFromHere, apiUrl }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const viewerRef = useRef<Viewer | null>(null);
   const currentIndexRef = useRef<number>(-1);
@@ -140,7 +165,12 @@ export function ReconstructionViewerTab({ keyframes, selectedIndex, onNavigate, 
   // True once PSV has fired its 'ready' event — guards setMarkers from running during initial panorama load
   const viewerReadyRef = useRef<boolean>(false);
 
+  const [markerScale, setMarkerScale] = useState(1);
+  const markerScaleRef = useRef(markerScale);
+  markerScaleRef.current = markerScale;
+
   const markersPluginRef = useRef<MarkersPlugin | null>(null);
+  const settingsPluginRef = useRef<SettingsPlugin | null>(null);
 
   const currentKeyframe = keyframes[selectedIndex];
   const total = keyframes.length;
@@ -178,12 +208,23 @@ export function ReconstructionViewerTab({ keyframes, selectedIndex, onNavigate, 
         minFov: 20,
         maxFov: 150,
         navbar: true,
-        plugins: [MarkersPlugin],
+        plugins: [MarkersPlugin, SettingsPlugin],
       });
       viewerRef.current = viewer;
       currentIndexRef.current = startIdx;
 
       markersPluginRef.current = viewer.getPlugin(MarkersPlugin);
+
+      settingsPluginRef.current = viewer.getPlugin(SettingsPlugin);
+      settingsPluginRef.current?.addSetting({
+        id: "marker-scale",
+        label: "Marker size",
+        type: "options",
+        options: () => MARKER_SCALE_OPTIONS,
+        current: () => String(markerScaleRef.current),
+        apply: (id: string) => setMarkerScale(Number(id)),
+        badge: () => markerScaleRef.current === 1 ? "" : `×${markerScaleRef.current}`,
+      });
 
       // Register click listener once; onNavigateRef keeps it from going stale
       markersPluginRef.current.addEventListener("select-marker", ({ marker }) => {
@@ -197,7 +238,7 @@ export function ReconstructionViewerTab({ keyframes, selectedIndex, onNavigate, 
         console.log("[PSV] ready event fired — setting initial markers");
         viewerReadyRef.current = true;
         const plugin = markersPluginRef.current;
-        if (plugin) plugin.setMarkers(computeMarkersForIndex(keyframes, selectedIndexRef.current));
+        if (plugin) plugin.setMarkers(computeMarkersForIndex(keyframes, selectedIndexRef.current, markerScaleRef.current));
       }, { once: true });
 
       viewer.addEventListener("error", (e) => {
@@ -206,12 +247,15 @@ export function ReconstructionViewerTab({ keyframes, selectedIndex, onNavigate, 
     }, 0);
 
     return () => {
-      clearTimeout(timeout);  // cancels deferred init if StrictMode cleanup fires first
-      viewer?.destroy();      // destroys viewer if it was already created
+      clearTimeout(timeout);
+      // Null all refs before destroying so any in-flight PSV callbacks see nulls
+      const toDestroy = viewer;
       viewerRef.current = null;
       markersPluginRef.current = null;
+      settingsPluginRef.current = null;
       currentIndexRef.current = -1;
       viewerReadyRef.current = false;
+      try { toDestroy?.destroy(); } catch { /* ignore PSV cleanup errors during navigation */ }
     };
   }, [keyframes]); // only re-run when keyframes arrive or change
 
@@ -233,8 +277,8 @@ export function ReconstructionViewerTab({ keyframes, selectedIndex, onNavigate, 
     if (!plugin || total === 0 || !viewerReadyRef.current) return;
 
     console.log("[PSV] setMarkers called for index", selectedIndex, "| markerCount:", keyframes.length - 1);
-    plugin.setMarkers(computeMarkersForIndex(keyframes, selectedIndex));
-  }, [selectedIndex, keyframes, total]);
+    plugin.setMarkers(computeMarkersForIndex(keyframes, selectedIndex, markerScale));
+  }, [selectedIndex, keyframes, total, markerScale]);
 
   // Keyboard navigation
   useEffect(() => {
@@ -301,6 +345,26 @@ export function ReconstructionViewerTab({ keyframes, selectedIndex, onNavigate, 
           Next
           <ChevronRight className="w-4 h-4 ml-1" />
         </Button>
+
+        {onPlayFromHere && (
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => {
+              const pos = viewerRef.current?.getPosition();
+              onPlayFromHere(
+                selectedIndex,
+                pos ? { yaw: pos.yaw, pitch: pos.pitch } : undefined
+              );
+            }}
+            className="bg-black/50 hover:bg-black/70 text-white border-white/20 backdrop-blur-sm"
+            title="Watch video from this point"
+          >
+            <Play className="w-4 h-4 mr-1 fill-current" />
+            Watch Video
+          </Button>
+        )}
+
       </div>
     </div>
   );

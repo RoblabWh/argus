@@ -2,6 +2,7 @@ export interface ReconstructionSettings {
   preset: "sparse" | "dense_fast" | "dense_detail";
   frame_step: number;
   config_overrides: Record<string, unknown>;
+  flip_video: boolean;
 }
 
 export interface Keyframe {

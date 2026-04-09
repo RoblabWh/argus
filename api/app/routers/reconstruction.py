@@ -74,6 +74,7 @@ def start_reconstruction(
     options = {
         "preset": settings.preset,
         "frame_step": settings.frame_step,
+        "flip_video": settings.flip_video,
     }
 
     task = celery_app.signature(
@@ -111,6 +112,21 @@ def get_reconstruction_status(report_id: int, db: Session = Depends(get_db)):
         "progress": int(progress) if progress else 0,
         "message": message.decode() if message else "",
     }
+
+
+# ── Video path update (called by stella worker after preprocessing) ───────────
+
+class SetVideoPathRequest(BaseModel):
+    video_path: str
+
+@router.post("/{report_id}/set_video_path")
+def set_video_path(report_id: int, body: SetVideoPathRequest, db: Session = Depends(get_db)):
+    """Called by the stella worker to update the DB video_path after flip preprocessing."""
+    reconstruction = report_crud.get_reconstruction_report(db, report_id)
+    if not reconstruction:
+        raise HTTPException(status_code=404, detail="Reconstruction report not found")
+    report_crud.update_reconstruction_report(db, report_id, video_path=body.video_path)
+    return {"ok": True}
 
 
 # ── Completion callback (called by stella worker) ─────────────────────────────
