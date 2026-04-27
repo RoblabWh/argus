@@ -206,6 +206,7 @@ export default function ReportOverview() {
       case "preprocessing":
       case "testcase":
       case "failed":
+      case "error":
       case "queued":
         return (
           <Upload
