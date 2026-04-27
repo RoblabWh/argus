@@ -226,8 +226,9 @@ def run_reconstruction_stella(
 
             # Save all outputs
             slam.save_map_database(os.path.join(results_path, "map.db"))
+            slam.save_point_cloud(os.path.join(results_path, "sparse.ply"), dense=False)
             if config["PatchMatch"]["enabled"]:
-                slam.save_point_cloud(os.path.join(results_path, "dense.ply"))
+                slam.save_point_cloud(os.path.join(results_path, "dense.ply"), dense=True)
 
             r.set(f"reconstruction:{report_id}:progress", 98)
 
