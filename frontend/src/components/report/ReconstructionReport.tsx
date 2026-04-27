@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import type { Report } from "@/types/report";
 import { getApiUrl } from "@/api";
 import { useReconstructionResults } from "@/hooks/useReconstructionResults";
@@ -12,6 +12,12 @@ import { ReconstructionDataTab } from "@/components/report/reconstructionReportC
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Toaster } from "@/components/ui/sonner";
 import { Loader2 } from "lucide-react";
+
+const ReconstructionPointcloudTab = lazy(() =>
+  import("./reconstructionReportComponents/ReconstructionPointcloudTab").then(
+    (m) => ({ default: m.ReconstructionPointcloudTab }),
+  ),
+);
 
 interface Props {
   report: Report;
@@ -35,10 +41,19 @@ export function ReconstructionReport({ report, onEditClicked }: Props) {
     ? `${apiUrl}/reports_data/${report.reconstruction_report.video_path}`
     : null;
 
+  const hasPointcloud = !!(
+    results?.sparse_pointcloud_url || results?.dense_pointcloud_url
+  );
+
   const handlePlayFromHere = (idx: number, orientation?: { yaw: number; pitch: number }) => {
     setVideoSeekTime(keyframes[idx]?.timestamp ?? 0);
     setVideoOrientation(orientation ?? null);  // null when triggered from sidebar (no orientation)
     setTab("video");
+  };
+
+  const handleOpenViewer = (idx: number) => {
+    setSelectedIndex(idx);
+    setTab("viewer");
   };
 
   return (
@@ -82,6 +97,7 @@ export function ReconstructionReport({ report, onEditClicked }: Props) {
               <TabsList>
                 <TabsTrigger value="viewer">Viewer</TabsTrigger>
                 {videoUrl && <TabsTrigger value="video">Video</TabsTrigger>}
+                {hasPointcloud && <TabsTrigger value="pointcloud">3D View</TabsTrigger>}
                 <TabsTrigger value="data">Data</TabsTrigger>
               </TabsList>
             </div>
@@ -121,6 +137,32 @@ export function ReconstructionReport({ report, onEditClicked }: Props) {
                   orientation={videoOrientation}
                   isActive={tab === "video"}
                 />
+              </TabsContent>
+            )}
+
+            {/* 3D View tab — forceMount keeps WebGL canvas alive when switching tabs */}
+            {hasPointcloud && results && (
+              <TabsContent
+                value="pointcloud"
+                forceMount
+                className={`h-full ${tab !== "pointcloud" ? "hidden" : ""}`}
+              >
+                <Suspense
+                  fallback={
+                    <div className="w-full h-full flex items-center justify-center text-muted-foreground gap-2">
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      <span className="text-sm">Loading 3D viewer…</span>
+                    </div>
+                  }
+                >
+                  <ReconstructionPointcloudTab
+                    results={results}
+                    keyframes={keyframes}
+                    selectedIndex={selectedIndex}
+                    apiUrl={apiUrl}
+                    onOpenViewer={handleOpenViewer}
+                  />
+                </Suspense>
               </TabsContent>
             )}
 

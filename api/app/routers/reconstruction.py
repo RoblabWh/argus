@@ -214,7 +214,7 @@ def get_reconstruction_results(report_id: int, db: Session = Depends(get_db)):
         #ToDo fix: images are saved as image0 image1 image10 image101 ... we need to strip the image prefix and sort by the number, not lexicographically
         image_files = sorted([
             f for f in os.listdir(keyframes_dir)
-            if f.lower().endswith((".jpg", ".jpeg", ".png"))
+            if f.lower().endswith((".jpg", ".jpeg", ".png")) and f.startswith("image")
         ], key=lambda x: int(os.path.splitext(x)[0].replace("image", "")))
         for idx, filename in enumerate(image_files):
             pose = poses[idx] if idx < len(poses) else {}

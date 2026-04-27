@@ -31,7 +31,7 @@
     "uav_yaw": "XMP:FlightYawDegree",
     "uav_pitch": "XMP:FlightPitchDegree"
   },
-  "fov_correction": 1.0,
+  "fov_correction": 1.1,
   "adjust_data": false,
   "rgb_orientation_offset": null,
   "fallbacks": {
