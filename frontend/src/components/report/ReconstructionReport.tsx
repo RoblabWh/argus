@@ -158,7 +158,6 @@ export function ReconstructionReport({ report, onEditClicked }: Props) {
                   <ReconstructionPointcloudTab
                     results={results}
                     keyframes={keyframes}
-                    selectedIndex={selectedIndex}
                     apiUrl={apiUrl}
                     onOpenViewer={handleOpenViewer}
                   />

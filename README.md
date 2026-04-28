@@ -8,7 +8,7 @@ ARGUS runs as a multi-container Docker application and is accessible from any de
 
 > **Note:** ARGUS is developed at [Westphalian University of Applied Sciences](https://www.w-hs.de/) as part of the [E-DRZ](https://rettungsrobotik.de/e-drz/) research project. It is intended for scientific use and does not offer the reliability of commercial software.
 
-> **360 Video Support:** The previous version of ARGUS supported 360 video processing (path reconstruction, partial point clouds, panoramic tours). This feature is being ported to the new architecture and will be available soon. If you need 360 support now, use the [previous version](https://github.com/RoblabWh/argus/tree/legacy-v1).
+> **360 Video Support:** ARGUS now again supports 360° video reconstruction via [Stella VSLAM](https://github.com/stella-cv/stella_vslam). Upload an equirectangular video; the `argus_stella_worker` extracts keyframes and 6-DOF camera poses, and produces a sparse and/or dense point cloud. The result opens in a dedicated reconstruction report with a panoramic keyframe tour, an equirectangular video player, and an interactive 3D point-cloud viewer.
 
 ---
 
@@ -33,6 +33,7 @@ ARGUS runs as a multi-container Docker application and is accessible from any de
 - **Orthophoto Generation** — Built-in fast mapping pipeline that handles both nadir and angled camera orientations using perspective-correct projection
 - **Thermal/IR Analysis** — Temperature matrix extraction, IR overlays, and hotspot detection
 - **Object Detection** — Two detection backends: a custom Transformer-based model trained on rescue scenarios and a YOLO based with models still in development
+- **360° Video Reconstruction** — Stella VSLAM extracts keyframes, 6-DOF camera poses, and sparse/dense point clouds from equirectangular videos; viewable as a panoramic keyframe tour, video player, and interactive 3D scene
 - **AI Scene Descriptions** — Local LLM (Ollama with LLaVA) generates automatic image descriptions
 - **WebODM Integration** — Optional high-quality orthophoto generation via OpenDroneMap
 - **Weather Data** — Automatic weather context via OpenWeatherMap API
@@ -142,6 +143,7 @@ ARGUS consists of the following Docker services:
 | `argus_detection_worker` | Celery worker for Transformer-based detection |
 | `argus_yolo_worker` | Celery worker for experimental YOLO detection |
 | `argus_ollama_worker` | Celery worker for LLM image descriptions |
+| `argus_stella_worker` | Celery worker for 360° video reconstruction (Stella VSLAM) |
 | `ollama` | Local LLM server (LLaVA, Llama 3.2) |
 
 Database migrations are handled automatically via Alembic on startup.
