@@ -146,8 +146,8 @@ def upload_files(
             if not crud.get_reconstruction_report(db, report_id):
                 crud.create_reconstruction_report(db, report_id)
             
-            flight_timestamp, camera_model = extract_video_metadata(video_path)
-            crud.update_reconstruction_report(db, report_id, video_path=relative_path, flight_timestamp=flight_timestamp, camera_model=camera_model)
+            flight_timestamp, camera_model, video_duration = extract_video_metadata(video_path)
+            crud.update_reconstruction_report(db, report_id, video_path=relative_path, flight_timestamp=flight_timestamp, camera_model=camera_model, video_duration=video_duration)
 
             video_result = VideoUploadResult(status="uploaded", filename=video_file.filename)
             report_type = "reconstruction_360"

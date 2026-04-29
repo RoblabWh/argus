@@ -16,6 +16,7 @@ import {
   Line,
   GizmoHelper,
   GizmoViewport,
+  Sky,
 } from "@react-three/drei";
 import { PLYLoader } from "three/examples/jsm/loaders/PLYLoader.js";
 import { BufferAttribute, Vector3 } from "three";
@@ -48,6 +49,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import type { Keyframe } from "@/types/reconstruction";
 
 /* -------------------------------------------------------------------------- */
@@ -110,8 +112,8 @@ const DEFAULT_POINT_SIZE = 2;
 const MIN_POINT_SIZE = 1;
 const MAX_POINT_SIZE = 6;
 
-const DEFAULT_SPHERE_SIZE = 0.05;
-const MIN_SPHERE_SIZE = 0.001;
+const DEFAULT_SPHERE_SIZE = 0.035;
+const MIN_SPHERE_SIZE = 0.0001;
 const MAX_SPHERE_SIZE = 0.02;
 const HIGHLIGHT_SCALE = 1.5;
 
@@ -305,6 +307,7 @@ function WalkControls({
     camera.rotation.order = "YXZ";
     // Auto-level horizon when entering walk mode (Fly mode can leave roll behind).
     camera.rotation.z = 0;
+    camera.near = 0.001;
     invalidate();
 
     const onPointerDown = (e: PointerEvent) => {
@@ -650,13 +653,14 @@ export function ReconstructionPointcloudTab({
   const [hasVertexColor, setHasVertexColor] = useState(false);
   const [colorMode, setColorMode] = useState<ColorMode>("axis-gradient");
   const [singleColor, setSingleColor] = useState("#8ab4f8");
-  const [gradientAxis, setGradientAxis] = useState<GradientAxis>("y");
-  const [gradientStart, setGradientStart] = useState("#0066ff");
-  const [gradientEnd, setGradientEnd] = useState("#ff3300");
+  const [gradientAxis, setGradientAxis] = useState<GradientAxis>("z");
+  const [gradientStart, setGradientStart] = useState("#0059ff");
+  const [gradientEnd, setGradientEnd] = useState("#ffa600");
   const [gradientRange, setGradientRange] = useState<[number, number]>([0, 100]);
   const [gradientInterpolation, setGradientInterpolation] =
-    useState<GradientInterpolation>("oklab");
+    useState<GradientInterpolation>("hsv");
   const [rangeOpen, setRangeOpen] = useState(false);
+  const [skyBackground, setSkyBackground] = useState(false);
 
   // Navigation
   const [navMode, setNavMode] = useState<NavMode>("orbit");
@@ -713,6 +717,7 @@ export function ReconstructionPointcloudTab({
         >
           <ambientLight intensity={0.8} />
           <directionalLight position={[5, 10, 5]} intensity={0.6} />
+          {skyBackground && <Sky distance={450000} sunPosition={[0, 1, 1]} inclination={0} turbidity={0.5} mieCoefficient={0.005} mieDirectionalG={0.85}/>}
           <Suspense
             fallback={
               <Html center>
@@ -841,13 +846,13 @@ export function ReconstructionPointcloudTab({
 
           <Accordion
             type="multiple"
-            defaultValue={["color", "navigation"]}
+            defaultValue={["appearance"]}
             className="-mx-1"
           >
             {/* Display */}
-            <AccordionItem value="display">
+            <AccordionItem value="appearance">
               <AccordionTrigger className="py-2 px-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Display
+                Appearance
               </AccordionTrigger>
               <AccordionContent className="pt-1 pb-2 px-1 flex flex-col gap-3">
                 <div className="flex flex-col gap-1.5">
@@ -865,21 +870,7 @@ export function ReconstructionPointcloudTab({
                     onValueChange={(v) => setPointSize(v[0])}
                   />
                 </div>
-                <div className="flex flex-col gap-1.5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-medium text-muted-foreground">Sphere size</span>
-                    <span className="text-xs tabular-nums text-muted-foreground">
-                      {(sphereSize * 10).toFixed(2)}
-                    </span>
-                  </div>
-                  <Slider
-                    value={[sphereSize * 0.1]}
-                    min={MIN_SPHERE_SIZE}
-                    max={MAX_SPHERE_SIZE}
-                    step={0.001}
-                    onValueChange={(v) => setSphereSize(v[0] * 10)}
-                  />
-                </div>
+
                 <div className="flex flex-col gap-1.5">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-medium text-muted-foreground">Cloud scale</span>
@@ -906,162 +897,173 @@ export function ReconstructionPointcloudTab({
                     onValueChange={(v) => setCloudScale(v[0])}
                   />
                 </div>
-              </AccordionContent>
-            </AccordionItem>
 
-            {/* Color */}
-            <AccordionItem value="color">
-              <AccordionTrigger className="py-2 px-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Color
-              </AccordionTrigger>
-              <AccordionContent className="pt-1 pb-2 px-1 flex flex-col gap-1.5">
-                <div className="flex gap-1">
-                  <Button
-                    size="sm"
-                    variant={colorMode === "single" ? "default" : "outline"}
-                    onClick={() => setColorMode("single")}
-                    className="flex-1 px-2"
-                  >
-                    Single
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant={colorMode === "axis-gradient" ? "default" : "outline"}
-                    onClick={() => setColorMode("axis-gradient")}
-                    className="flex-1 px-2"
-                  >
-                    Gradient
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant={colorMode === "vertex" ? "default" : "outline"}
-                    onClick={() => setColorMode("vertex")}
-                    className="flex-1 px-2"
-                    disabled={!hasVertexColor}
-                    title={hasVertexColor ? "Use baked vertex colors" : "Cloud has no color data"}
-                  >
-                    Vertex
-                  </Button>
-                </div>
+                <div className="flex flex-col gap-1.5">
+                  <span className="text-xs font-medium text-muted-foreground">Color</span>
 
-                {colorMode === "single" && (
-                  <label className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
-                    Color
-                    <input
-                      type="color"
-                      value={singleColor}
-                      onChange={(e) => setSingleColor(e.target.value)}
-                      className="h-7 w-10 rounded cursor-pointer border border-border bg-transparent"
-                    />
-                  </label>
-                )}
-
-                {colorMode === "axis-gradient" && (
-                  <div className="flex flex-col gap-1.5 mt-1">
-                    <div className="flex gap-1">
-                      {(["x", "y", "z"] as GradientAxis[]).map((ax) => (
-                        <Button
-                          key={ax}
-                          size="sm"
-                          variant={gradientAxis === ax ? "default" : "outline"}
-                          onClick={() => setGradientAxis(ax)}
-                          className="flex-1 px-0"
-                        >
-                          {ax.toUpperCase()}
-                        </Button>
-                      ))}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="color"
-                        value={gradientStart}
-                        onChange={(e) => setGradientStart(e.target.value)}
-                        className="h-7 w-10 rounded cursor-pointer border border-border bg-transparent"
-                      />
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="px-1.5 h-7"
-                        onClick={() => {
-                          setGradientStart(gradientEnd);
-                          setGradientEnd(gradientStart);
-                        }}
-                        title="Swap colors"
-                      >
-                        <ArrowLeftRight className="w-3.5 h-3.5" />
-                      </Button>
-                      <input
-                        type="color"
-                        value={gradientEnd}
-                        onChange={(e) => setGradientEnd(e.target.value)}
-                        className="h-7 w-10 rounded cursor-pointer border border-border bg-transparent"
-                      />
-                      <Select
-                        value={gradientInterpolation}
-                        onValueChange={(v) =>
-                          setGradientInterpolation(v as GradientInterpolation)
-                        }
-                      >
-                        <SelectTrigger
-                          className="h-7 flex-1 text-xs px-2"
-                          title="Interpolation mode"
-                        >
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="linear">Linear</SelectItem>
-                          <SelectItem value="hsv">HSV</SelectItem>
-                          <SelectItem value="oklab">OKLab</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    {/* Range disclosure */}
-                    <button
-                      type="button"
-                      onClick={() => setRangeOpen((o) => !o)}
-                      className="mt-1 flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                  <div className="flex gap-1">
+                    <Button
+                      size="sm"
+                      variant={colorMode === "single" ? "default" : "outline"}
+                      onClick={() => setColorMode("single")}
+                      className="flex-1 px-2"
                     >
-                      {rangeOpen ? (
-                        <ChevronDown className="w-3 h-3" />
-                      ) : (
-                        <ChevronRight className="w-3 h-3" />
-                      )}
-                      Range
-                    </button>
-                    {rangeOpen && (
-                      <div className="flex flex-col gap-1.5">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[10px] tabular-nums text-muted-foreground">
-                            {gradientRange[0]}% – {gradientRange[1]}%
-                          </span>
+                      Single
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant={colorMode === "axis-gradient" ? "default" : "outline"}
+                      onClick={() => setColorMode("axis-gradient")}
+                      className="flex-1 px-2"
+                    >
+                      Gradient
+                    </Button>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
                           <Button
-                            size="icon"
-                            variant="ghost"
-                            className="h-5 w-5"
-                            onClick={() => setGradientRange([0, 100])}
-                            title="Reset range"
+                            size="sm"
+                            variant={colorMode === "vertex" ? "default" : "outline"}
+                            onClick={() => setColorMode("vertex")}
+                            className="flex-1 px-2"
+                            disabled={!hasVertexColor}
+                            title={hasVertexColor ? "Use baked vertex colors" : "Cloud has no color data"}
                           >
-                            <RotateCcw className="w-3 h-3" />
+                            Vertex
                           </Button>
-                        </div>
-                        <Slider
-                          value={gradientRange}
-                          min={0}
-                          max={100}
-                          step={1}
-                          minStepsBetweenThumbs={1}
-                          onValueChange={(v) =>
-                            setGradientRange([v[0], v[1]] as [number, number])
-                          }
-                        />
-                        <p className="text-[10px] leading-tight text-muted-foreground">
-                          Reposition the gradient's start/ end.
-                        </p>
-                      </div>
-                    )}
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p className="text-xs">{hasVertexColor ? "Use baked vertex colors" : "Sparse pointclouds have no vertex color data"}.</p>
+                      </TooltipContent>
+                    </Tooltip>
+                    </TooltipProvider>
                   </div>
-                )}
+
+                  {colorMode === "single" && (
+                    <label className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+                      Color
+                      <input
+                        type="color"
+                        value={singleColor}
+                        onChange={(e) => setSingleColor(e.target.value)}
+                        className="h-7 w-10 rounded cursor-pointer border border-border bg-transparent"
+                      />
+                    </label>
+                  )}
+
+                  {colorMode === "axis-gradient" && (
+                    <div className="flex flex-col gap-1.5 mt-1">
+                      <div className="flex gap-1">
+                        {(["x", "y", "z"] as GradientAxis[]).map((ax) => (
+                          <Button
+                            key={ax}
+                            size="sm"
+                            variant={gradientAxis === ax ? "default" : "outline"}
+                            onClick={() => setGradientAxis(ax)}
+                            className="flex-1 px-0"
+                          >
+                            {ax.toUpperCase()}
+                          </Button>
+                        ))}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="color"
+                          value={gradientStart}
+                          onChange={(e) => setGradientStart(e.target.value)}
+                          className="h-7 w-10 rounded cursor-pointer border border-border bg-transparent"
+                        />
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="px-1.5 h-7"
+                          onClick={() => {
+                            setGradientStart(gradientEnd);
+                            setGradientEnd(gradientStart);
+                          }}
+                          title="Swap colors"
+                        >
+                          <ArrowLeftRight className="w-3.5 h-3.5" />
+                        </Button>
+                        <input
+                          type="color"
+                          value={gradientEnd}
+                          onChange={(e) => setGradientEnd(e.target.value)}
+                          className="h-7 w-10 rounded cursor-pointer border border-border bg-transparent"
+                        />
+                        <Select
+                          value={gradientInterpolation}
+                          onValueChange={(v) =>
+                            setGradientInterpolation(v as GradientInterpolation)
+                          }
+                        >
+                          <SelectTrigger
+                            className="h-7 flex-1 text-xs px-2"
+                            title="Interpolation mode"
+                          >
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="linear">Linear</SelectItem>
+                            <SelectItem value="hsv">HSV</SelectItem>
+                            <SelectItem value="oklab">OKLab</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {/* Range disclosure */}
+                      <button
+                        type="button"
+                        onClick={() => setRangeOpen((o) => !o)}
+                        className="mt-1 flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        {rangeOpen ? (
+                          <ChevronDown className="w-3 h-3" />
+                        ) : (
+                          <ChevronRight className="w-3 h-3" />
+                        )}
+                        Range
+                      </button>
+                      {rangeOpen && (
+                        <div className="flex flex-col gap-1.5">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] tabular-nums text-muted-foreground">
+                              {gradientRange[0]}% – {gradientRange[1]}%
+                            </span>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-5 w-5"
+                              onClick={() => setGradientRange([0, 100])}
+                              title="Reset range"
+                            >
+                              <RotateCcw className="w-3 h-3" />
+                            </Button>
+                          </div>
+                          <Slider
+                            value={gradientRange}
+                            min={0}
+                            max={100}
+                            step={1}
+                            minStepsBetweenThumbs={1}
+                            onValueChange={(v) =>
+                              setGradientRange([v[0], v[1]] as [number, number])
+                            }
+                          />
+                          <p className="text-[10px] leading-tight text-muted-foreground">
+                            Reposition the gradient's start/ end.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  <div className="pt-1 pb-2 px-1 flex flex-col gap-2">
+                    <label className="flex items-center justify-between gap-2 text-xs font-medium text-muted-foreground">
+                      Sky background
+                      <Switch checked={skyBackground} onCheckedChange={setSkyBackground} />
+                    </label>
+                  </div>
+                </div>
               </AccordionContent>
             </AccordionItem>
 
@@ -1108,6 +1110,10 @@ export function ReconstructionPointcloudTab({
               </AccordionTrigger>
               <AccordionContent className="pt-1 pb-2 px-1 flex flex-col gap-2">
                 <label className="flex items-center justify-between gap-2 text-xs font-medium text-muted-foreground">
+                  Axes
+                  <Switch checked={showAxes} onCheckedChange={setShowAxes} />
+                </label>
+                <label className="flex items-center justify-between gap-2 text-xs font-medium text-muted-foreground">
                   Camera path
                   <Switch checked={showTrajectory} onCheckedChange={setShowTrajectory} />
                 </label>
@@ -1118,10 +1124,22 @@ export function ReconstructionPointcloudTab({
                     onCheckedChange={setShowKeyframeMarkers}
                   />
                 </label>
-                <label className="flex items-center justify-between gap-2 text-xs font-medium text-muted-foreground">
-                  Axes
-                  <Switch checked={showAxes} onCheckedChange={setShowAxes} />
-                </label>
+
+                <div className="flex flex-col gap-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-medium text-muted-foreground">Sphere size</span>
+                    <span className="text-xs tabular-nums text-muted-foreground">
+                      {(sphereSize * 10).toFixed(2)}
+                    </span>
+                  </div>
+                  <Slider
+                    value={[sphereSize * 0.1]}
+                    min={MIN_SPHERE_SIZE}
+                    max={MAX_SPHERE_SIZE}
+                    step={0.0001}
+                    onValueChange={(v) => setSphereSize(v[0] * 10)}
+                  />
+                </div>
               </AccordionContent>
             </AccordionItem>
           </Accordion>

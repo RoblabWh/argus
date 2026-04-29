@@ -90,10 +90,12 @@ def extract_video_metadata(video_path: str) -> tuple:
     """Extract flight_timestamp (oldest valid date) and camera_model from video via exiftool."""
     DATE_FIELDS = [
         "QuickTime:CreateDate", "QuickTime:MediaCreateDate", "QuickTime:TrackCreateDate",
+        "XMP:MetadataDate",
         "EXIF:DateTimeOriginal", "EXIF:CreateDate",
         "File:FileCreateDate", "File:FileModifyDate",
     ]
     CAMERA_FIELDS = ["XMP:StitchingSoftware", "QuickTime:Make", "EXIF:Model"]
+    DURATION_FIELDS = ["QuickTime:Duration", "QuickTime:MediaDuration", "EXIF:Duration"] 
     logger.info(f"Extracting video metadata from {video_path}")
     metadata = None
     try:
@@ -144,5 +146,31 @@ def extract_video_metadata(video_path: str) -> tuple:
             camera_model = str(val).strip()
             break
 
-    return flight_timestamp, camera_model
+    video_duration = None
+    for field in DURATION_FIELDS:
+        val = None
+        try:
+            val = metadata.get(field)
+        except Exception:
+            continue
+        if val and str(val).strip():
+            logger.info(f"Video duration from {field}: {val}")
+            #in format hh:mm:ss or mm:ss, convert to total seconds
+            video_duration = 0
+            try:
+                parts = str(val).strip().split(":")
+                if len(parts) == 3:
+                    video_duration += int(parts[0]) * 3600  # hours
+                    video_duration += int(parts[1]) * 60    # minutes
+                    video_duration += float(parts[2])       # seconds
+                elif len(parts) == 2:
+                    video_duration += int(parts[0]) * 60    # minutes
+                    video_duration += float(parts[1])       # seconds
+                else:
+                    video_duration = float(parts[0])       # seconds only
+            except ValueError:
+                logger.warning(f"Could not parse video duration from {field}: {val!r}")
+                video_duration = None
+            break
 
+    return flight_timestamp, camera_model, video_duration
