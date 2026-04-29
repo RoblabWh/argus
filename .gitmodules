@@ -1,3 +1,9 @@
 [submodule "detection/transformer_pipeline"]
 	path = detection/transformer_pipeline
 	url = https://github.com/RoblabWh/transformer_pipeline.git
+[submodule "reconstruction_stella/stella_vslam_dense"]
+	path = reconstruction_stella/stella_vslam_dense
+	url = https://github.com/RoblabWh/stella_vslam_dense.git
+[submodule "reconstruction_stella/stella_fbow_vocab"]
+	path = reconstruction_stella/stella_fbow_vocab
+	url = https://github.com/stella-cv/FBoW_orb_vocab.git

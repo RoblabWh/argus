@@ -10,3 +10,12 @@ export type { PanoReport } from "@/types/report";
 export type { ThermalData } from "@/types/thermalData";
 export type { Group } from "@/types/group";
 export type { CameraConfigSummary, CameraConfig } from "@/types/cameraConfig";
+export type { ReconstructionReport } from "@/types/report";
+export type {
+  ReconstructionSettings,
+  Keyframe,
+  ReconstructionResults,
+  VideoUploadResult,
+  ImageUploadResult,
+  UploadSummary,
+} from "@/types/reconstruction";

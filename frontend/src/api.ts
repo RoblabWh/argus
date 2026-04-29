@@ -7,6 +7,7 @@ import type { Image, ImageBasic } from "@/types/image";
 import type { Detection, Geometry, Properties } from "./types/detection";
 import type { SettingsData } from "@/types/settings";
 import type { CameraConfigSummary, CameraConfig } from "@/types/cameraConfig";
+import type { ReconstructionSettings, ReconstructionResults } from "@/types/reconstruction";
 
 import { data } from "react-router-dom";
 
@@ -129,6 +130,28 @@ export const getProcessingSettings = (
 ): Promise<Partial<ProcessingSettings>> =>
   fetchJson(`/reports/${reportId}/processing_settings`);
 
+
+// --- Reconstruction endpoints ---
+
+// URL builder for the XHR-based unified upload hook
+export const getUnifiedUploadUrl = (report_id: number): string =>
+  `${API_URL}/reports/${report_id}/upload`;
+
+export const startReconstructionProcessing = (
+  report_id: number,
+  settings: ReconstructionSettings
+): Promise<Report> =>
+  postJson<Report>(`/reconstruction/${report_id}/process`, settings);
+
+export const getReconstructionStatus = (
+  report_id: number
+): Promise<{ report_id: number; status: string; progress: number; message: string }> =>
+  fetchJson(`/reconstruction/${report_id}/status`);
+
+export const getReconstructionResults = (
+  report_id: number
+): Promise<ReconstructionResults> =>
+  fetchJson(`/reconstruction/${report_id}/results`);
 
 //export api Url
 export const getApiUrl = () => API_URL;

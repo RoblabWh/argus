@@ -140,7 +140,7 @@ def extract_image_metadata(image_path: str) -> dict:
     logger.debug(f"Image thermal check for {model_name}: {data['thermal']}")
 
     try:
-        mappable, mapping_data = _extract_mapping_data(metadata, config, data)
+        mappable, mapping_data = _extract_mapping_data(metadata, config, data, model_name)
         if mapping_data:
             data["mappable"] = mappable
             data["mapping_data"] = mapping_data
@@ -345,7 +345,7 @@ def _latitude_to_utm_band_letter(lat: float) -> str:
     return bands[index]
 
 
-def _extract_mapping_data(metadata: dict, config: dict, data: dict) -> tuple:
+def _extract_mapping_data(metadata: dict, config: dict, data: dict, model_name: str) -> tuple:
     mapping_data = {}
     coord = data["coord"]
     thermal = data["thermal"]
@@ -399,12 +399,15 @@ def _extract_mapping_data(metadata: dict, config: dict, data: dict) -> tuple:
         except (TypeError, ValueError):
             logger.warning(f"Orientation value for {key} is not a valid float, skipping this value.")
             continue
-
-    for uav_key, cam_key in [("uav_yaw", "cam_yaw"), ("uav_roll", "cam_roll")]:
-        if uav_key in mapping_data and cam_key in mapping_data:
+    
+    #only do for specific model names M30T and M30
+    if model_name in ["M30T", "M30"]:#ToDo add to metadta Keys/ settings to be configurable per cameramodel
+        for uav_key, cam_key in [("uav_yaw", "cam_yaw"), ("uav_roll", "cam_roll")]:
+            if uav_key not in mapping_data or cam_key not in mapping_data:
+                continue
             yaw_diff = mapping_data[uav_key] - mapping_data[cam_key]
             if abs(yaw_diff) > 140:
-                mapping_data[cam_key] = _normalize_angle(mapping_data[cam_key] + 180)
+                mapping_data[cam_key] =_normalize_angle(mapping_data[cam_key] + 180)
 
     mapping_data["cam_pitch_method"] = "exif" if "cam_pitch" in mapping_data else "manual"
     mapping_data["cam_yaw_method"]   = "exif" if "cam_yaw"   in mapping_data else "uav"

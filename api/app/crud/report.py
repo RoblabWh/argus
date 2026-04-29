@@ -2,12 +2,15 @@ from sqlalchemy.orm import Session, joinedload, selectinload, aliased
 from sqlalchemy import select, func, case
 from datetime import datetime, timezone
 import redis
+import logging
 
 from app import models
 from app.schemas.report import ReportCreate, ReportUpdate
 from app.schemas.report import MappingReportCreate, MappingReportUpdate
 from app.schemas.map import MapOutSlim
 from app.services.cleanup import cleanup_report_folder
+
+logger = logging.getLogger(__name__)
 
 def get_all(db: Session):
     return db.query(models.Report).all()
@@ -305,7 +308,22 @@ def get_process_status(db: Session, report_id: int, r: redis.Redis):
     status = report.status
 
     if status in ["preprocessing", "processing", "queued"]:
-        # check redis for the task status
+
+        # Reconstruction reports use a separate Redis namespace managed by the Stella worker.
+        # The worker finalises the report via POST /reconstruction/{id}/complete, so we must
+        # NOT apply the mapping liveness check here (report:{id}:task_id is never set for
+        # reconstruction — doing so would immediately mark the report as "failed").
+        if report.type == "reconstruction_360":
+            try:
+                progress_raw = r.get(f"reconstruction:{report_id}:progress")
+                if progress_raw is not None:
+                    report.progress = float(progress_raw)
+                    db.commit()
+            except redis.RedisError as e:
+                print(f"Redis error reading reconstruction progress: {e}")
+            return report
+
+        # Mapping report: check redis for the task status
         try:
             task_id = r.get(f"report:{report_id}:task_id")
             if not task_id:
@@ -372,6 +390,48 @@ def get_processing_settings(db: Session, report_id: int) -> dict:
         models.MappingReport.report_id == report_id
     ).first()
     return mapping.processing_settings or {} if mapping else {}
+
+
+def create_reconstruction_report(db: Session, report_id: int):
+    existing = db.query(models.ReconstructionReport).filter(
+        models.ReconstructionReport.report_id == report_id
+    ).first()
+    if existing:
+        raise ValueError("Reconstruction report already exists for this report")
+
+    update_report_type(db, report_id, "reconstruction_360")
+
+    reconstruction = models.ReconstructionReport(report_id=report_id)
+    db.add(reconstruction)
+    db.commit()
+    db.refresh(reconstruction)
+    return reconstruction
+
+
+def get_reconstruction_report(db: Session, report_id: int):
+    return (
+        db.query(models.ReconstructionReport)
+        .filter(models.ReconstructionReport.report_id == report_id)
+        .first()
+    )
+
+
+def update_reconstruction_report(db: Session, report_id: int, **kwargs):
+    reconstruction = db.query(models.ReconstructionReport).filter(
+        models.ReconstructionReport.report_id == report_id
+    ).first()
+    if not reconstruction:
+        raise ValueError("Reconstruction report not found")
+
+    for key, value in kwargs.items():
+        setattr(reconstruction, key, value)
+    
+    logger.info(f"Updating reconstruction report {report_id} with {kwargs}")
+    logger.info(f"Current state before update: {reconstruction}")
+
+    db.commit()
+    db.refresh(reconstruction)
+    return reconstruction
 
 
 def get_mapping_report_map(db: Session, map_id: int, report_id:int):

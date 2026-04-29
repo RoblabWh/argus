@@ -1,23 +1,20 @@
 {
-  "_model": "MAVIC2-ENTERPRISE-ADVANCED",
-  "_auto_discovered": false,
+  "_model": "L1D-20c",
+  "_auto_discovered": true,
+  "adjust_data": false,
+  "fov_correction": 1.0,
+  "fallbacks": {
+    "thermal": {}
+  },
   "created_at": "EXIF:CreateDate",
   "width": "File:ImageWidth",
   "height": "File:ImageHeight",
-  "projection_type": "XMP:ProjectionType",
+  "projection_type": null,
   "gps": {
     "lat": "Composite:GPSLatitude",
     "lon": "Composite:GPSLongitude",
     "rel_alt": "XMP:RelativeAltitude",
     "alt": "XMP:AbsoluteAltitude"
-  },
-  "ir": {
-    "ir": null,
-    "ir_value": null,
-    "ir_image_width": 640,
-    "ir_image_height": 512,
-    "ir_filename_pattern": "_T(?=\\.\\w+$)",
-    "ir_scale": 0.115
   },
   "camera_properties": {
     "focal_length": "EXIF:FocalLength",
@@ -31,12 +28,8 @@
     "uav_yaw": "XMP:FlightYawDegree",
     "uav_pitch": "XMP:FlightPitchDegree"
   },
-  "fov_correction": 1.0,
-  "adjust_data": false,
-  "rgb_orientation_offset": null,
-  "fallbacks": {
-    "thermal": {
-      "fov": 60.5
-    }
+  "ir": {
+    "ir_filename_pattern": "_T(?=\\.\\w+$)",
+    "ir_scale": 0.5
   }
 }

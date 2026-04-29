@@ -2,6 +2,19 @@
 import type { Image } from "@/types/image";
 import type { Map } from "@/types/map";
 import type { Weather } from "@/types/weather";
+import type { ReconstructionSettings } from "@/types/reconstruction";
+
+export interface ReconstructionReport {
+  id: number;
+  report_id: number;
+  video_path: string;
+  video_duration: number | null;
+  keyframe_count: number;
+  processing_settings: ReconstructionSettings;
+  has_dense_pointcloud: boolean;
+  flight_timestamp?: string;
+  camera_model?: string;
+}
 
 export interface MappingReport {
   id: number;
@@ -58,6 +71,7 @@ export interface Report {
   // Optional detail sub-objects
   mapping_report?: MappingReportSmall;
   pano_report?: PanoReport;
+  reconstruction_report?: ReconstructionReport;
 }
 
 
