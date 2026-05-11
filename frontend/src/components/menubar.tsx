@@ -28,13 +28,13 @@ const TopMenuBar: React.FC = () => {
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start">
           <DropdownMenuItem asChild>
+            <Link to="/overview">Overview</Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
             <Link to="/settings">Settings</Link>
           </DropdownMenuItem>
           <DropdownMenuItem asChild>
             <Link to="/about">About</Link>
-          </DropdownMenuItem>
-          <DropdownMenuItem asChild>
-            <Link to="/overview">Overview</Link>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

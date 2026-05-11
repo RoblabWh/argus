@@ -27,6 +27,13 @@ class AppearanceSettings(BaseModel):
     DETECTION_COLORS: Dict[str, str]  # e.g. {"fire":"#ff0000", "vehicle":"#00ff00"}
 
 
+class SettingsTestResult(BaseModel):
+    success: bool
+    message: str
+    detail: Optional[str] = None
+    latency_ms: Optional[int] = None
+
+
 class CameraConfigGPS(BaseModel):
     lat: Optional[str] = None
     lon: Optional[str] = None

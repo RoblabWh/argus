@@ -79,12 +79,24 @@ The `.env` file in the project root controls all settings. It is created automat
 | `PORT_DB` | `5433` | PostgreSQL port on host |
 | `OPEN_WEATHER_API_KEY` | *(empty)* | [OpenWeatherMap](https://openweathermap.org/) API key for weather data |
 | `ENABLE_WEBODM` | `false` | Enable WebODM integration (see [below](#webodm-integration-optional)) |
-| `VITE_API_URL` | *(auto-detected)* | Backend URL — set automatically by `argus.sh` |
+| `VITE_API_URL` | *(auto-set on first run)* | Backend URL. Preserved on subsequent runs unless `--update-api-url` / `--update-all-urls` is used. |
+| `WEBODM_URL` | *(auto-set on first run)* | WebODM URL. Same auto-detect/preserve behavior as `VITE_API_URL`. |
+| `ARGUS_DEFAULT_FLAGS` | *(empty)* | Flags always prepended to `./argus.sh` / `windows-argus.ps1` on launch. Example: `--update-all-urls` to always rewrite URLs to the current local IP. |
 
-The IP address is auto-detected on every start. Use `--keep-ip` to preserve a manually set `VITE_API_URL`:
-```bash
-./argus.sh up --build --keep-ip
-```
+By default, URLs are written once (on first launch) and then preserved. To rebuild them, pass a flag:
+
+| Flag | Effect |
+|---|---|
+| `--update-api-url` | Rewrite `VITE_API_URL` to the current local IP |
+| `--update-webodm-url` | Rewrite `WEBODM_URL` to the current local IP |
+| `--update-all-urls` | Both of the above |
+| `--keep-api-url` | Override `ARGUS_DEFAULT_FLAGS` — keep `VITE_API_URL` as-is |
+| `--keep-webodm-url` | Override `ARGUS_DEFAULT_FLAGS` — keep `WEBODM_URL` as-is |
+| `--keep-urls` | Override `ARGUS_DEFAULT_FLAGS` — keep both |
+
+To rewrite URLs every launch without typing flags, set `ARGUS_DEFAULT_FLAGS=--update-all-urls` in `.env`. On Windows, the equivalent PowerShell switches are `-UpdateApiUrl`, `-UpdateWebodmUrl`, `-UpdateAllUrls`, `-KeepApiUrl`, `-KeepWebodmUrl`, `-KeepUrls`; `ARGUS_DEFAULT_FLAGS` uses the same `--update-*` / `--keep-*` strings on both platforms.
+
+**Auto-sync from `.env.example`**: On every launch, any key present in `.env.example` but missing from `.env` is appended with the example value, and the script prints which keys were added. This keeps existing `.env` files compatible with new releases without you having to copy them in manually.
 
 After editing `.env` manually, restart the containers for changes to take effect.
 

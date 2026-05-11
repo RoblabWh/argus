@@ -133,7 +133,7 @@ function computeMarkersForIndex(keyframes: Keyframe[], selectedIndex: number, sc
       position: { yaw: angles.yaw, pitch: angles.pitch },
       html: `<div style="width:${size}px;height:${size}px;border-radius:50%;background:${color};opacity:0.4;border:1.5px solid rgba(255,255,255,0.8);box-shadow:0 0 4px rgba(0,0,0,0.5);cursor:pointer;"></div>`,
       size: { width: size, height: size },
-      scale: [0.5, 4],
+      //scale: [0.5, 4],
       // anchor: "center center",
       tooltip: {
         content: `Frame ${targetIdx + 1} — ${formatTimestamp(targetKf.timestamp)}`,
@@ -165,7 +165,7 @@ export function ReconstructionViewerTab({ keyframes, selectedIndex, onNavigate, 
   // True once PSV has fired its 'ready' event — guards setMarkers from running during initial panorama load
   const viewerReadyRef = useRef<boolean>(false);
 
-  const [markerScale, setMarkerScale] = useState(1);
+  const [markerScale, setMarkerScale] = useState(1.0);
   const markerScaleRef = useRef(markerScale);
   markerScaleRef.current = markerScale;
 

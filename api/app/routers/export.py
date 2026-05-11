@@ -104,6 +104,7 @@ def _build_projection(report, mapping_report) -> dict:
             "map_id": m.id,
             "map_filename": f"maps/{map_filename}" if map_filename else None,
             "map_elements": map_elements_data,
+            "map_bounds": m.bounds,
         })
 
     return {

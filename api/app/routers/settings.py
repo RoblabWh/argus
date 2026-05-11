@@ -4,6 +4,7 @@ from pydantic import BaseModel
 from pathlib import Path
 from typing import Dict, Any
 import os
+import time
 import logging
 from app.config import config
 
@@ -12,12 +13,16 @@ from app.schemas.settings import (
     OpenWeatherSettings,
     DRZSettings,
     AppearanceSettings,
+    SettingsTestResult,
     CameraConfigSummary,
     CameraConfig,
     CreateCameraConfigBody,
 )
 import app.services.camera_config_service as camera_config_svc
 from app.services.image_metadata_extraction import _auto_discover_config
+from app.services.odm import try_webodm_authenticate
+from app.services.drz_backend_sharing import try_drz_authenticate
+from app.services.weather_check import try_openweather_key
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/settings", tags=["settings"])
@@ -49,6 +54,50 @@ def get_all_settings():
         "DRZ_BACKEND_PASSWORD": local_vars.get("DRZ_BACKEND_PASSWORD", ""),
         "DETECTION_COLORS": local_vars.get("DETECTION_COLORS", {}),
     }
+
+
+def _run_test(fn, *args) -> SettingsTestResult:
+    start = time.perf_counter()
+    try:
+        success, message, detail = fn(*args)
+    except Exception as e:
+        logger.exception("Unexpected error during settings test")
+        raise HTTPException(status_code=500, detail=f"Test failed unexpectedly: {e}")
+    latency_ms = int((time.perf_counter() - start) * 1000)
+    return SettingsTestResult(
+        success=success, message=message, detail=detail, latency_ms=latency_ms
+    )
+
+
+@router.post("/webodm/test", response_model=SettingsTestResult)
+def test_webodm(settings: WebODMSettings):
+    """Validate WebODM URL + credentials without saving them."""
+    logger.info(f"Testing WebODM settings against {settings.WEBODM_URL}")
+    return _run_test(
+        try_webodm_authenticate,
+        settings.WEBODM_URL,
+        settings.WEBODM_USERNAME,
+        settings.WEBODM_PASSWORD,
+    )
+
+
+@router.post("/openweather/test", response_model=SettingsTestResult)
+def test_openweather(settings: OpenWeatherSettings):
+    """Validate the OpenWeather API key without saving it."""
+    logger.info("Testing OpenWeather API key")
+    return _run_test(try_openweather_key, settings.OPEN_WEATHER_API_KEY)
+
+
+@router.post("/drz/test", response_model=SettingsTestResult)
+def test_drz(settings: DRZSettings):
+    """Validate DRZ backend URL + credentials without saving them."""
+    logger.info(f"Testing DRZ settings against {settings.BACKEND_URL}")
+    return _run_test(
+        try_drz_authenticate,
+        settings.BACKEND_URL,
+        settings.BACKEND_USERNAME,
+        settings.BACKEND_PASSWORD,
+    )
 
 
 @router.put("/webodm")

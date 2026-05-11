@@ -14,38 +14,6 @@ echo "
 
 
 #######################################
-# Parse CLI args
-#######################################
-UPDATE_API_URL=false
-UPDATE_WEBODM_URL=false
-ARGS=()
-for arg in "$@"; do
-  case "$arg" in
-    -h|--help)
-      echo "Usage: ./argus.sh [OPTIONS] [docker compose args]"
-      echo ""
-      echo "Options:"
-      echo "  --update-api-url      Rewrite VITE_API_URL in .env using the current local IP"
-      echo "  --update-webodm-url   Rewrite WEBODM_URL in .env using the current local IP (port 8000)"
-      echo "  --update-all-urls     Rewrite both VITE_API_URL and WEBODM_URL"
-      echo "  -h, --help            Show this help message and exit"
-      echo ""
-      echo "Any unrecognized options are passed through to docker compose."
-      echo ""
-      echo "Examples:"
-      echo "  ./argus.sh up -d                  Start Argus in detached mode"
-      echo "  ./argus.sh --update-webodm-url up Start Argus and reset the WebODM URL to local IP"
-      echo "  ./argus.sh --update-all-urls up   Reset all URLs to local IP and start"
-      exit 0
-      ;;
-    --update-api-url)    UPDATE_API_URL=true ;;
-    --update-webodm-url) UPDATE_WEBODM_URL=true ;;
-    --update-all-urls)   UPDATE_API_URL=true; UPDATE_WEBODM_URL=true ;;
-    *) ARGS+=("$arg") ;;
-  esac
-done
-
-#######################################
 # Resolve Argus path
 #######################################
 ARGUS_PATH="$(dirname "$(realpath "${BASH_SOURCE[0]}")")"
@@ -61,11 +29,107 @@ if [ ! -f "$ARGUS_PATH/.env" ]; then
 fi
 
 #######################################
+# Sync missing keys from .env.example into .env
+# Non-destructive: existing keys are never touched. Keys present in
+# .env.example but absent from .env are appended verbatim so the user
+# can fill in values that need them.
+#######################################
+sync_env_with_example() {
+  local example="$1" envfile="$2" added=0
+  [ -f "$example" ] || return 0
+  # Ensure .env ends with a newline so the first appended key starts on its own line.
+  # tail -c 1 + $(...) returns "" iff the final byte is a newline (command substitution strips it).
+  if [ -s "$envfile" ] && [ -n "$(tail -c 1 "$envfile")" ]; then
+    echo "" >> "$envfile"
+  fi
+  while IFS= read -r line || [ -n "$line" ]; do
+    [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]] && continue
+    local key="${line%%=*}"
+    [[ -z "$key" || "$key" == "$line" ]] && continue
+    if ! grep -q "^${key}=" "$envfile"; then
+      echo "$line" >> "$envfile"
+      echo "  Added missing key from .env.example: $key"
+      added=$((added+1))
+    fi
+  done < "$example"
+  if [ $added -gt 0 ]; then
+    echo "Added $added new key(s) to .env. Edit them if any need values before re-running."
+  fi
+}
+sync_env_with_example "$ARGUS_PATH/.env.example" "$ARGUS_PATH/.env"
+
+#######################################
 # Load .env
 #######################################
 set -a
 source "$ARGUS_PATH/.env"
 set +a
+
+#######################################
+# Prepend ARGUS_DEFAULT_FLAGS to args so they parse alongside CLI flags.
+# CLI args come last, so --keep-* overrides will win via the KEEP_* logic.
+#######################################
+if [ -n "$ARGUS_DEFAULT_FLAGS" ]; then
+  echo "Applying ARGUS_DEFAULT_FLAGS: $ARGUS_DEFAULT_FLAGS"
+  # shellcheck disable=SC2086 # intentional word-splitting
+  set -- $ARGUS_DEFAULT_FLAGS "$@"
+fi
+
+#######################################
+# Parse CLI args
+#######################################
+UPDATE_API_URL=false
+UPDATE_WEBODM_URL=false
+KEEP_API_URL=false
+KEEP_WEBODM_URL=false
+ARGS=()
+for arg in "$@"; do
+  case "$arg" in
+    -h|--help)
+      echo "Usage: ./argus.sh [OPTIONS] [docker compose args]"
+      echo ""
+      echo "URL options:"
+      echo "  --update-api-url      Rewrite VITE_API_URL in .env using the current local IP"
+      echo "  --update-webodm-url   Rewrite WEBODM_URL in .env using the current local IP (port 8000)"
+      echo "  --update-all-urls     Rewrite both VITE_API_URL and WEBODM_URL"
+      echo "  --keep-api-url        Keep VITE_API_URL as-is (overrides ARGUS_DEFAULT_FLAGS)"
+      echo "  --keep-webodm-url     Keep WEBODM_URL as-is (overrides ARGUS_DEFAULT_FLAGS)"
+      echo "  --keep-urls           Keep both URLs as-is (overrides ARGUS_DEFAULT_FLAGS)"
+      echo ""
+      echo "Other:"
+      echo "  -h, --help            Show this help message and exit"
+      echo ""
+      echo ".env knobs:"
+      echo "  ARGUS_DEFAULT_FLAGS   Flags always prepended to invocations. Example:"
+      echo "                        ARGUS_DEFAULT_FLAGS=--update-all-urls"
+      echo ""
+      echo "Any unrecognized options are passed through to docker compose."
+      echo ""
+      echo "Examples:"
+      echo "  ./argus.sh up -d                  Start Argus in detached mode"
+      echo "  ./argus.sh --update-webodm-url up Start Argus and reset the WebODM URL to local IP"
+      echo "  ./argus.sh --update-all-urls up   Reset all URLs to local IP and start"
+      echo "  ./argus.sh --keep-urls up         One-off launch ignoring URL-update env defaults"
+      exit 0
+      ;;
+    --update-api-url)    UPDATE_API_URL=true ;;
+    --update-webodm-url) UPDATE_WEBODM_URL=true ;;
+    --update-all-urls)   UPDATE_API_URL=true; UPDATE_WEBODM_URL=true ;;
+    --keep-api-url)      KEEP_API_URL=true ;;
+    --keep-webodm-url)   KEEP_WEBODM_URL=true ;;
+    --keep-urls)         KEEP_API_URL=true; KEEP_WEBODM_URL=true ;;
+    *) ARGS+=("$arg") ;;
+  esac
+done
+
+# --keep-* always wins over --update-* (so users can do a one-off launch
+# even when ARGUS_DEFAULT_FLAGS contains an --update-* flag).
+if [ "$KEEP_API_URL" = true ]; then
+  UPDATE_API_URL=false
+fi
+if [ "$KEEP_WEBODM_URL" = true ]; then
+  UPDATE_WEBODM_URL=false
+fi
 
 #######################################
 # Detect system IP for VITE_API_URL etc.
@@ -101,7 +165,7 @@ echo "Checking for NVIDIA GPU..."
 
 HAS_NVIDIA_HARDWARE=false
 
-set +e  
+set +e
 # NVIDIA Hardware detection via lspci or nvidia-smi
 if command -v nvidia-smi &>/dev/null; then
     HAS_NVIDIA_HARDWARE=true
@@ -207,7 +271,7 @@ fi
 #######################################
 # Compose file selection
 #######################################
-docker_compose="docker compose -f $ARGUS_PATH/docker-compose.yml -f $ARGUS_PATH/docker-compose.linux.yml" 
+docker_compose="docker compose -f $ARGUS_PATH/docker-compose.yml -f $ARGUS_PATH/docker-compose.linux.yml"
 
 case $GPU_TYPE in
     nvidia)

@@ -8,6 +8,38 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+def try_webodm_authenticate(
+    url: str, username: str, password: str, timeout: float = 5.0
+) -> tuple[bool, str, str | None]:
+    """
+    Single-attempt authentication against a WebODM instance.
+    Returns (success, message, detail). Does not read or write config.
+    """
+    if not url:
+        return False, "WebODM URL is empty", None
+
+    base = url.rstrip("/")
+    try:
+        response = requests.post(
+            f"{base}/api/token-auth/",
+            data={"username": username, "password": password},
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+            timeout=timeout,
+        )
+    except requests.exceptions.Timeout:
+        return False, f"Connection timed out after {timeout}s", "timeout"
+    except requests.exceptions.ConnectionError as e:
+        return False, "Could not connect to WebODM server", str(e)
+    except requests.exceptions.RequestException as e:
+        return False, "Request failed", str(e)
+
+    if response.status_code == 200 and response.json().get("token"):
+        return True, "Authenticated successfully", None
+    if response.status_code in (400, 401, 403):
+        return False, "Invalid WebODM username or password", f"HTTP {response.status_code}"
+    return False, f"Unexpected response from WebODM (HTTP {response.status_code})", response.text[:200]
+
+
 class WebodmManager:
     def __init__(
         self,

@@ -14,3 +14,28 @@ export interface SettingsData {
     human: string;
   };
 };
+
+export type WebODMSettings = {
+  ENABLE_WEBODM: boolean;
+  WEBODM_URL: string;
+  WEBODM_USERNAME: string;
+  WEBODM_PASSWORD: string;
+};
+
+export type OpenWeatherSettings = {
+  OPEN_WEATHER_API_KEY: string;
+};
+
+export type DRZSettings = {
+  BACKEND_URL: string;
+  AUTHOR_NAME: string;
+  BACKEND_USERNAME: string;
+  BACKEND_PASSWORD: string;
+};
+
+export type SettingsTestResult = {
+  success: boolean;
+  message: string;
+  detail: string | null;
+  latency_ms: number | null;
+};

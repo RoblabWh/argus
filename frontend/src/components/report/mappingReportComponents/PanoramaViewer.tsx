@@ -11,19 +11,36 @@ export function PanoramaViewer({ imageUrl }: PanoramaViewerProps) {
   const viewerRef = useRef<Viewer | null>(null);
 
   useEffect(() => {
+    let viewer: Viewer | null = null;
+
+    const timeout = setTimeout(() => {
+      if (!containerRef.current || viewerRef.current) return;
     if (containerRef.current && !viewerRef.current) {
-      viewerRef.current = new Viewer({
+      viewer= new Viewer({
         container: containerRef.current,
         panorama: imageUrl,
         minFov: 8,
         maxFov: 120,
       });
+      viewerRef.current = viewer;
     }
+    }, 0); // Delay to ensure the container is rendered
 
     return () => {
-      viewerRef.current?.destroy();
+      clearTimeout(timeout);
+      const toDestroy = viewer;
       viewerRef.current = null;
+      try {
+        toDestroy?.destroy();
+      } catch (error) {
+        console.error('Error occurred while destroying Viewer:', error);
+      }
     };
+  }, []);
+
+  useEffect(() => {
+    if (!viewerRef.current) return;
+    viewerRef.current.setPanorama(imageUrl);
   }, [imageUrl]);
 
   return <div ref={containerRef} className="w-full h-full" />;

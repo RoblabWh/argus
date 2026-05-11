@@ -113,17 +113,51 @@ def send_geojson_poi_to_iais(geometry: dict, properties: dict):
         print(f"PUT request failed with status code {response.status_code}", flush=True)
         return response.json()
 
-def authenticate_backend(url):
-    username = config.local_settings['DRZ_BACKEND_USERNAME']
-    password = config.local_settings['DRZ_BACKEND_PASSWORD']
+def authenticate_backend(url, username: str | None = None, password: str | None = None):
+    if username is None:
+        username = config.local_settings['DRZ_BACKEND_USERNAME']
+    if password is None:
+        password = config.local_settings['DRZ_BACKEND_PASSWORD']
     response = requests.post(f"{url}token", data={"username": username, "password": password}, timeout=10)
     token = None
     if response.status_code == 200:
         token = response.json().get("access_token")
     else:
         logger.info("token authentication failed:")
-        logger.info(response.status_code)        
+        logger.info(response.status_code)
     return token
+
+
+def try_drz_authenticate(
+    url: str, username: str, password: str, timeout: float = 5.0
+) -> tuple[bool, str, str | None]:
+    """
+    Single-attempt authentication against the DRZ backend.
+    Normalizes the trailing slash on the URL like the save endpoint does.
+    Returns (success, message, detail). Does not read or write config.
+    """
+    if not url:
+        return False, "DRZ backend URL is empty", None
+
+    base = url if url.endswith("/") else url + "/"
+    try:
+        response = requests.post(
+            f"{base}token",
+            data={"username": username, "password": password},
+            timeout=timeout,
+        )
+    except requests.exceptions.Timeout:
+        return False, f"Connection timed out after {timeout}s", "timeout"
+    except requests.exceptions.ConnectionError as e:
+        return False, "Could not connect to DRZ backend", str(e)
+    except requests.exceptions.RequestException as e:
+        return False, "Request failed", str(e)
+
+    if response.status_code == 200 and response.json().get("access_token"):
+        return True, "Authenticated successfully", None
+    if response.status_code in (400, 401, 403):
+        return False, "Invalid DRZ username or password", f"HTTP {response.status_code}"
+    return False, f"Unexpected response from DRZ backend (HTTP {response.status_code})", response.text[:200]
 
 
 def send_map_to_iais(map:Map, layer:str, report_id:int):

@@ -1,5 +1,19 @@
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
-import { getSettings, updateWebodmSettings, updateDrzSettings, updateWeatherSettings, updateDetectionColors } from "@/api";
+import {
+    getSettings,
+    updateWebodmSettings,
+    updateDrzSettings,
+    updateWeatherSettings,
+    updateDetectionColors,
+    testWebodmSettings,
+    testWeatherSettings,
+    testDrzSettings,
+} from "@/api";
+import type {
+    WebODMSettings,
+    OpenWeatherSettings,
+    DRZSettings,
+} from "@/types/settings";
 
 export function useSettings() {
     return useQuery({
@@ -12,8 +26,7 @@ export function useSettings() {
 export function useUpdateWebodmSettings() {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: (newSettings: { ENABLE_WEBODM: boolean; WEBODM_URL: string; WEBODM_USERNAME: string; WEBODM_PASSWORD: string }) =>
-            updateWebodmSettings(newSettings),
+        mutationFn: (newSettings: WebODMSettings) => updateWebodmSettings(newSettings),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["settings"] });
         },
@@ -23,8 +36,7 @@ export function useUpdateWebodmSettings() {
 export function useUpdateWeatherSettings() {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: (newSettings: { OPEN_WEATHER_API_KEY: string }) =>
-            updateWeatherSettings(newSettings),
+        mutationFn: (newSettings: OpenWeatherSettings) => updateWeatherSettings(newSettings),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["settings"] });
         },
@@ -34,8 +46,7 @@ export function useUpdateWeatherSettings() {
 export function useUpdateDrzSettings() {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: (newSettings: { BACKEND_URL: string; AUTHOR_NAME: string; BACKEND_USERNAME: string; BACKEND_PASSWORD: string; }) =>
-            updateDrzSettings(newSettings),
+        mutationFn: (newSettings: DRZSettings) => updateDrzSettings(newSettings),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["settings"] });
         },
@@ -50,5 +61,23 @@ export function useUpdateDetectionColors() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["settings"] });
         },
+    });
+}
+
+export function useTestWebodmSettings() {
+    return useMutation({
+        mutationFn: (s: WebODMSettings) => testWebodmSettings(s),
+    });
+}
+
+export function useTestWeatherSettings() {
+    return useMutation({
+        mutationFn: (s: OpenWeatherSettings) => testWeatherSettings(s),
+    });
+}
+
+export function useTestDrzSettings() {
+    return useMutation({
+        mutationFn: (s: DRZSettings) => testDrzSettings(s),
     });
 }

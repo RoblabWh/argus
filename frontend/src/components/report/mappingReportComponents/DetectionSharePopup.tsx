@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react"
+import { useState, useEffect } from "react"
 import {
     Dialog,
     DialogContent,
@@ -11,9 +11,18 @@ import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from "@/components/ui/popover"
+import { Loader2, X, Info } from "lucide-react"
+import { toast } from "sonner"
 import { ComboButton } from "@/components/ComboButton"
-import type { Detection , Geometry, Properties} from "@/types/detection"
+import type { Geometry, Properties, Detection } from "@/types/detection"
 import { useSendDetectionToDrz } from "@/hooks/poiHook"
+
+type DrzError = { message: string; detail: string | null }
 
 
 
@@ -54,13 +63,14 @@ export function DetectionSharePopup({
     drzBackendApi,
 }: DetectionSharePopupProps) {
     const [sendOption, setSendOption] = useState<"email" | "gps" | "drz">("email")
-    const { mutate: sendToDrz } = useSendDetectionToDrz()
+    const { mutateAsync: sendToDrz, isPending: isSendingDrz } = useSendDetectionToDrz()
     // form states
     const [name, setName] = useState("")
     const [description, setDescription] = useState("")
     const [author, setAuthor] = useState("")
     const [detail, setDetail] = useState<string>("")
     const [subtype, setSubtype] = useState<string>("")
+    const [drzError, setDrzError] = useState<DrzError | null>(null)
 
     // Pre-fill coordinate & type detail based on class
     useEffect(() => {
@@ -83,7 +93,7 @@ export function DetectionSharePopup({
         }
     }, [detection])
 
-    const handleSend = () => {
+    const handleSend = async () => {
         const payload = {
             id: detection.id,
             type: detection.class_name,
@@ -96,33 +106,60 @@ export function DetectionSharePopup({
             timestamp,
         }
 
-        switch (sendOption) {
-            case "email":
-                console.log("Send via Email", payload)
-                shareAsEmail(payload.type, payload.detail, payload.subtype, payload.name, payload.description, JSON.stringify(payload.coordinate), payload.author, payload.timestamp)
-                break
-            case "gps":
-                console.log("Download GPS POI", payload)
-                break
-            case "drz":
-                if (drzBackendApi && payload.coordinate) {
-                    let geometry: Geometry = {
-                        type: "Point",
-                        coordinates: [payload.coordinate.gps.lon, payload.coordinate.gps.lat]
-                    }
-                    let properties: Properties = {
-                        type: payload.detail,
-                        subtype: payload.subtype,
-                        detection: 0,
-                        name: payload.name,
-                        description: payload.description,
-                        datetime: payload.timestamp,
-                    }
-                    sendToDrz({ geometry, properties })
-                }
-                break
+        if (sendOption === "email") {
+            shareAsEmail(
+                payload.type,
+                payload.detail,
+                payload.subtype,
+                payload.name,
+                payload.description,
+                JSON.stringify(payload.coordinate),
+                payload.author,
+                payload.timestamp,
+            )
+            handleClose()
+            return
         }
-        handleClose()
+        if (sendOption === "gps") {
+            console.log("Download GPS POI", payload)
+            handleClose()
+            return
+        }
+        // sendOption === "drz"
+        if (!drzBackendApi || !payload.coordinate) return
+        if (isSendingDrz) return
+
+        setDrzError(null)
+        const geometry: Geometry = {
+            type: "Point",
+            coordinates: [payload.coordinate.gps.lon, payload.coordinate.gps.lat],
+        }
+        const properties: Properties = {
+            type: payload.detail,
+            subtype: payload.subtype,
+            detection: 0,
+            name: payload.name,
+            description: payload.description,
+            datetime: payload.timestamp,
+        }
+
+        try {
+            const resp = await sendToDrz({ geometry, properties })
+            if (resp.error) {
+                setDrzError({
+                    message: resp.message || "Failed to send to DRZ.",
+                    detail: resp.error,
+                })
+                return
+            }
+            toast.success(resp.message || "Detection sent to DRZ.")
+            handleClose()
+        } catch (e) {
+            setDrzError({
+                message: "Could not reach DRZ backend.",
+                detail: e instanceof Error ? e.message : String(e),
+            })
+        }
     }
 
     const handleClose = () => {
@@ -132,15 +169,25 @@ export function DetectionSharePopup({
         // setAuthor("")
         setDetail("")
         setSubtype("")
+        setDrzError(null)
         onClose()
     }
+
+    // Dismiss a stale error whenever the user edits the form or switches send option.
+    useEffect(() => {
+        setDrzError(null)
+    }, [name, description, author, detail, subtype, sendOption])
 
     const cls = detection.class_name?.toLowerCase() ?? ""
     const dateString = new Date(timestamp).toLocaleString()
 
     return (
-        <Dialog open={open} onOpenChange={handleClose}>
-            <DialogContent className="max-w-xl rounded-2xl p-6">
+        <Dialog open={open} onOpenChange={(o) => { if (!o && !isSendingDrz) handleClose() }}>
+            <DialogContent
+                className="max-w-xl rounded-2xl p-6"
+                onPointerDownOutside={(e) => { if (isSendingDrz) e.preventDefault() }}
+                onEscapeKeyDown={(e) => { if (isSendingDrz) e.preventDefault() }}
+            >
                 <DialogHeader>
                     <DialogTitle>Share Object Detection</DialogTitle>
                 </DialogHeader>
@@ -294,8 +341,33 @@ export function DetectionSharePopup({
                         <Input value={author} onChange={(e) => setAuthor(e.target.value)} required />
                     </div>
 
+                    {drzError && (
+                        <div className="inline-flex items-center gap-1.5 self-start rounded-md bg-red-500/10 text-red-700 dark:text-red-400 px-2 py-1 text-sm">
+                            <X className="h-4 w-4 shrink-0" />
+                            <span>{drzError.message}</span>
+                            {drzError.detail && (
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                        <button
+                                            type="button"
+                                            aria-label="Show error detail"
+                                            className="ml-0.5 inline-flex items-center hover:opacity-80"
+                                        >
+                                            <Info className="h-3.5 w-3.5" />
+                                        </button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-96 max-h-80 overflow-auto">
+                                        <div className="text-xs font-mono whitespace-pre-wrap break-words">
+                                            {drzError.detail}
+                                        </div>
+                                    </PopoverContent>
+                                </Popover>
+                            )}
+                        </div>
+                    )}
+
                     <DialogFooter className="pt-4 flex justify-between">
-                        <Button variant="outline" onClick={onClose}>Cancel</Button>
+                        <Button variant="outline" onClick={handleClose} disabled={isSendingDrz}>Cancel</Button>
                         <ComboButton
                             value={sendOption}
                             options={[
@@ -305,7 +377,10 @@ export function DetectionSharePopup({
                             ]}
                             onChange={(key) => setSendOption(key as typeof sendOption)}
                             onAction={handleSend}
-                        />
+                            disabled={isSendingDrz}
+                        >
+                            {isSendingDrz && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
+                        </ComboButton>
                     </DialogFooter>
                 </form>
             </DialogContent>

@@ -5,7 +5,13 @@ import type { Map } from "@/types/map";
 import type { ProcessingSettings } from "@/types/processing";
 import type { Image, ImageBasic } from "@/types/image";
 import type { Detection, Geometry, Properties } from "./types/detection";
-import type { SettingsData } from "@/types/settings";
+import type {
+  SettingsData,
+  WebODMSettings,
+  OpenWeatherSettings,
+  DRZSettings,
+  SettingsTestResult,
+} from "@/types/settings";
 import type { CameraConfigSummary, CameraConfig } from "@/types/cameraConfig";
 import type { ReconstructionSettings, ReconstructionResults } from "@/types/reconstruction";
 
@@ -91,18 +97,33 @@ export const getNewDetections = (report_id: number, knownIds: number[]) => postJ
 export const updateDetection = (detection_id: number, data: Detection) => postJson<any>(`/detections/${detection_id}`, data, "PUT");
 export const deleteDetection = (detection_id: number) => deleteRequest(`/detections/${detection_id}`);
 export const updateDetectionBatch = (report_id: number, data: Detection[]) => postJson<any>(`/detections/r/${report_id}/batch_update`, data, "PUT");
-export const sendDetectionToDrz = (geometry: Geometry, properties: Properties) => postJson<{ message: string }>("/detections/send_to_iais", { geometry, properties });
+export const sendDetectionToDrz = (geometry: Geometry, properties: Properties) =>
+  postJson<{ message: string; error?: string; iais_response?: unknown }>(
+    "/detections/send_to_iais",
+    { geometry, properties }
+  );
 
 export const sendMapToDrz = (reportId: number, data: { map_id: number; layer_name: string } ) => postJson<{success: boolean; message:string}>(`/reports/${reportId}/send_map`, data);
 
 export const startAutoDescription = (report_id: number) => postJson<{ status: string }>(`/reports/${report_id}/auto_description`, {});
 export const getAutoDescription = (report_id: number) => fetchJson<{ report_id: number, status: string, progress: number, description: string }>(`/reports/${report_id}/auto_description`);
 
-export const getSettings = () => fetchJson< SettingsData >("/settings/");
-export const updateWebodmSettings = (settings: { ENABLE_WEBODM: boolean; WEBODM_URL: string; WEBODM_USERNAME: string; WEBODM_PASSWORD: string;}) => postJson<{ message: string }>("/settings/webodm", settings, "PUT");
-export const updateWeatherSettings = (settings: { OPEN_WEATHER_API_KEY: string;}) => postJson<{ message: string }>("/settings/openweather", settings, "PUT");
-export const updateDrzSettings = (settings: { BACKEND_URL: string; AUTHOR_NAME: string;}) => postJson<{ message: string }>("/settings/drz", settings, "PUT");
-export const updateDetectionColors = (settings: { DETECTION_COLORS: { [key: string]: string } }) => postJson<{ message: string }>("/settings/appearance", settings, "PUT");
+export const getSettings = () => fetchJson<SettingsData>("/settings/");
+export const updateWebodmSettings = (settings: WebODMSettings) =>
+  postJson<{ message: string }>("/settings/webodm", settings, "PUT");
+export const updateWeatherSettings = (settings: OpenWeatherSettings) =>
+  postJson<{ message: string }>("/settings/openweather", settings, "PUT");
+export const updateDrzSettings = (settings: DRZSettings) =>
+  postJson<{ message: string }>("/settings/drz", settings, "PUT");
+export const updateDetectionColors = (settings: { DETECTION_COLORS: { [key: string]: string } }) =>
+  postJson<{ message: string }>("/settings/appearance", settings, "PUT");
+
+export const testWebodmSettings = (settings: WebODMSettings) =>
+  postJson<SettingsTestResult>("/settings/webodm/test", settings);
+export const testWeatherSettings = (settings: OpenWeatherSettings) =>
+  postJson<SettingsTestResult>("/settings/openweather/test", settings);
+export const testDrzSettings = (settings: DRZSettings) =>
+  postJson<SettingsTestResult>("/settings/drz/test", settings);
 
 // WebODM integration
 export const getWebODMAvailable = () => fetchJson<{ is_available: boolean, url: string }>("/odm/");
