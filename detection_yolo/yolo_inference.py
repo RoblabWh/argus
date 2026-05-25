@@ -180,6 +180,44 @@ class YOLOInferencer:
 
         return output
     
+    def merge_contained_boxes(self, dets, contain_thresh=0.90):
+        """
+        Drop a box when ≥ contain_thresh of its area is inside a larger same-class box.
+        Resolves the partial-vs-full detection duplicates from edge-of-tile training data.
+        """
+        if not dets:
+            return []
+
+        boxes = np.array([[d["bbox"][0], d["bbox"][1],
+                           d["bbox"][0] + d["bbox"][2],
+                           d["bbox"][1] + d["bbox"][3]] for d in dets])
+        #logger.info(f"[merge_contained_boxes] Before: {len(dets)} boxes")
+        areas = (boxes[:, 2] - boxes[:, 0]) * (boxes[:, 3] - boxes[:, 1])
+        # if len(areas) > 0:
+        #     logger.info(f"[merge_contained_boxes] Boxes: {boxes[:2]}")  # Log first 2 boxes for brevity
+        #     logger.info(f"[merge_contained_boxes] Areas: {areas[:2]}")  # Log first 2 areas for brevity
+        labels = np.array([d["category_name"] for d in dets])
+        suppressed = np.zeros(len(dets), dtype=bool)
+
+        for cls in set(labels):
+            idxs = np.where(labels == cls)[0]
+            order = idxs[np.argsort(-areas[idxs])]
+            for i_pos, i in enumerate(order):
+                if suppressed[i]:
+                    continue
+                for j in order[i_pos + 1:]:
+                    if suppressed[j]:
+                        continue
+                    xx1 = max(boxes[i, 0], boxes[j, 0])
+                    yy1 = max(boxes[i, 1], boxes[j, 1])
+                    xx2 = min(boxes[i, 2], boxes[j, 2])
+                    yy2 = min(boxes[i, 3], boxes[j, 3])
+                    inter = max(0.0, xx2 - xx1) * max(0.0, yy2 - yy1)
+                    if inter / max(areas[j], 1e-6) >= contain_thresh:
+                        suppressed[j] = True
+
+        return [d for d, s in zip(dets, suppressed) if not s]
+
     def convert_yolo_boxes(self, result, x_offset, y_offset, class_map):
         out = []
         for box in result.boxes:
@@ -203,6 +241,29 @@ class YOLOInferencer:
 
         return out
     
+    def infer_images_wo_splitting(self, images_batch):
+        if not images_batch:
+            return []
+        
+        predictions = self.model(images_batch, device=self.device)
+        results_per_image = []
+        for pred in predictions:
+            class_map = pred.names
+            converted = self.convert_yolo_boxes(pred, 0, 0, class_map)
+            results_per_image.append(self.merge_contained_boxes(converted, contain_thresh=0.80))
+
+        # logger.info(f"[YOLOInferencer] Inference completed for batch of {len(images_batch)} images")
+        # logger.info(f"[YOLOInferencer] Sample results: {results_per_image[:]}")  # Log results for first 2 images for brevity
+
+        return results_per_image
+
+        # # Restore global coords
+        # for r in predictions:
+        #     inter = self.convert_yolo_boxes(r, 0,0, r.names)
+        #     logger.info(f"[YOLOInferencer] Inference result for image: {r.names} - {len(r.boxes)} boxes")
+        #     #merge contained boxes to reduce tile edge duplicates
+        #     results.extend(self.merge_contained_boxes(inter, contain_thresh=0.80))
+    
 
     def infer_image(self, img, depths=2, overlap=0.20, batch_size=2):
         """
@@ -223,6 +284,7 @@ class YOLOInferencer:
         # 2) Sliding window inference
         # ----------------------------
         tiles, offsets, W, H = self.generate_sliding_windows(img, depths, overlap)
+        # logger.info(f"[YOLOInferencer] Generated {len(tiles)} tiles for inference, offsets: {offsets[:2]}...")  # Log first 2 offsets for brevity
 
         # for tile, (ox, oy) in zip(tiles, offsets):
         #     r = self.model(tile, device=self.device)[0]
@@ -255,10 +317,30 @@ class YOLOInferencer:
                          "small_vehicle": ["motor", "bicycle"]}
 
         outputs = self.global_nms(results, iou_thresh=0.50, merge_classes=MERGE_CLASSES)
+        outputs = self.merge_contained_boxes(outputs, contain_thresh=0.80)
 
         return outputs
     
     def run(self, images):
+        final_results = []
+        
+        batch_opend = [Image.open(image["url"]).convert("RGB") for image in images]
+        ids = [image["id"] for image in images]
+        
+        batch_results = self.infer_images_wo_splitting(batch_opend)
+        
+        for dets, img_id in zip(batch_results, ids):
+            for det in dets:
+                det["image_id"] = img_id
+        
+            final_results.extend(dets)  
+        
+        
+        return final_results
+
+
+
+    def run_with_splitting(self, images):
         final_results = []
 
         for idx, image in enumerate(images):

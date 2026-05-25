@@ -3,6 +3,8 @@ import os
 import logging
 import redis
 import requests
+import gc
+import torch
 
 from ultralytics import YOLO
 from yolo_inference import YOLOInferencer   # NEW MODULE (see next step)
@@ -72,7 +74,7 @@ def run_detection_yolo(report_id: int, images: list[dict]):
         r.set(f"detection:{report_id}:message", "Running YOLOv11 inference…")
 
         # create 4 image long batches for progress tracking
-        batch_size = 4
+        batch_size = 16
         total_batches = (len(images) + batch_size - 1) // batch_size
         for i in range(total_batches):
             batch_images = images[i*batch_size:(i+1)*batch_size]
@@ -81,6 +83,12 @@ def run_detection_yolo(report_id: int, images: list[dict]):
             resp = requests.put(url, json={"detections": annotations}, timeout=30)
             resp.raise_for_status()
             set_progress(i + 1, total_batches, f"Processed batch {i + 1} of {total_batches}")
+        del infer
+        gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+            torch.cuda.ipc_collect()
+
         # annotations = infer.run(images)
         # logger.info(f"[YOLO] Inference completed for report {report_id}")
         # logger.info(f"[YOLO] Annotations: {annotations[:2]}")  # Log first 2 annotations for brevity

@@ -95,7 +95,7 @@ def set_detections(report_id: int, detections: dict, db: Session = Depends(get_d
     if not mapping_report:
         raise HTTPException(status_code=404, detail="Report not found")
     logger.info(f"Saving {len(detections.get('detections', []))} detections for report {report_id}")
-    logger.info(detections)
+    #logger.info(detections)
     #
     image_crud.save_detections(db, mapping_report.id, detections)  # adapt to your CRUD
     # r.set(f"detection:{report_id}:status", "finished")
@@ -126,7 +126,7 @@ def get_detections_incremental(report_id: int, payload: DetectionIncremental, db
     Get incremental detections for a given report.
     """
     known_ids = payload.known_ids
-    logger.info(f"Fetching incremental detections for report {report_id} excluding known IDs: {known_ids}")
+    # logger.info(f"Fetching incremental detections for report {report_id} excluding known IDs: {known_ids}")
     mapping_report = report_crud.get_short_report(db, report_id).mapping_report
     if not mapping_report:
         raise HTTPException(status_code=404, detail="Report not found")
@@ -205,7 +205,7 @@ def update_detections_batch(report_id: int, data: List[DetectionUpdate], db: Ses
         raise HTTPException(status_code=404, detail="Report not found")
     
     logger.info(f"Updating {len(data)} detections for report {report_id}")
-    logger.info(f"First detection data: {data[0] if data else 'No data'}")
+    #logger.info(f"First detection data: {data[0] if data else 'No data'}")
 
     updated_count = image_crud.update_detections_batch(db, mapping_report.id, data)
     return {"message": f"Updated {updated_count} detections", "report_id": report_id, "updated_count": updated_count}
@@ -216,7 +216,7 @@ def send_detection_to_iais(geometry: dict, properties: dict, db: Session = Depen
     Send a detection to Iais system.
     """
     logger.info(f"Sending detection to Iais with properties: {properties}")
-    logger.info(f"Geometry: {geometry}")
+    #logger.info(f"Geometry: {geometry}")
     try:
         iais_response = send_geojson_poi_to_iais(geometry, properties)
         logger.info(f"Iais response: {iais_response}")

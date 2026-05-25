@@ -8,6 +8,9 @@ from transformer_pipeline.inference.inference_engine import Inferencer
 from transformer_pipeline.inference.progress_tracker import ProgressTracker
 from PIL import Image
 import requests
+import gc
+import torch
+
 
 import redis
 REDIS_HOST = os.getenv("HOST_REDIS", "redis")
@@ -114,6 +117,12 @@ def run_detection(report_id: int, images: list[dict], max_splits: int = 0):
         result = datahandler.postprocess(results)
         datahandler.set_ann_path(annotation_path)
         datahandler.save_annotation(result)
+
+        del inferencer
+        gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+            torch.cuda.ipc_collect()
 
         progress_tracker.set_message("Saving results to database and displaying detections")
 
