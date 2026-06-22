@@ -92,6 +92,9 @@ class Detection(Base):
     bbox = Column(JSONB)
     manually_verified = Column(Boolean, default=False)
     coord = Column(JSONB, nullable=True)
+    # Cluster label grouping detections of the same physical object within a single
+    # report (set by the YOLO reID component). Not row-unique; nullable when unset.
+    unique_object_id = Column(Integer, nullable=True, index=True)
 
     # relationships
     image = relationship("Image", back_populates="detections")

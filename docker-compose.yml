@@ -99,6 +99,7 @@ services:
     command: -A tasks_detection_yolo worker -Q detection_yolo --loglevel=${LOG_LEVEL}
     volumes:
       - argus_uploaded_files:/detection_yolo/reports_data
+      - hf_cache:/root/.cache/huggingface
     depends_on:
       - redis
       - api
@@ -107,6 +108,10 @@ services:
       REDIS_HOST: ${HOST_REDIS}
       BACKEND_URL: ${VITE_API_URL}
       DEVICE: "cpu"
+      # DINOv3 re-identification (reid/). Weights are license-gated on HF:
+      # one-time `huggingface-cli login` + accept the model license, then set HF_TOKEN.
+      HF_REID_MODEL_ID: ${HF_REID_MODEL_ID:-facebook/dinov3-vitb16-pretrain-lvd1689m}
+      HF_TOKEN: ${HF_TOKEN:-}
 
   argus_stella_worker:
     build: ./reconstruction_stella

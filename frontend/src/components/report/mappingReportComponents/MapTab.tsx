@@ -13,6 +13,7 @@ import {
     Popup,
     Polygon,
     Polyline,
+    Circle,
     LayerGroup,
     useMap
 } from 'react-leaflet';
@@ -32,11 +33,40 @@ import { useImages } from "@/hooks/imageHooks";
 import { useMaps } from "@/hooks/useMaps";
 import { useDetections, useUpdateDetectionBatch } from "@/hooks/detectionHooks";
 import { extractFlightTrajectory, computeDetectionGps, isPointInPolygon, polygonIntersection } from "@/utils/coordinateUtils";
+import { groupDetectionsByObject } from "@/utils/detectionUtils";
+import { AssignObjectDialog } from "@/components/report/mappingReportComponents/AssignObjectDialog";
 
 // Re-export for backward compatibility if other components import from here
 export { extractFlightTrajectory } from "@/utils/coordinateUtils";
 
 const { BaseLayer } = LayersControl;
+
+// Cluster count badges are hidden below this zoom (too cluttered when zoomed out)
+const CLUSTER_BADGE_MIN_ZOOM = 20;
+
+// Accent for image-footprint overlay polygons (reads on light + dark basemaps)
+const FOOTPRINT_COLOR = "#0ea5e9"; // sky-500
+
+type DetectionWithGps = Detection & { computedGps: GPSCoord };
+type ClusterMarker = {
+    uid: number;
+    members: DetectionWithGps[];
+    centroid: GPSCoord;
+    className: string;
+};
+
+/** Radius in meters that encloses a cluster's members around its centroid (with padding). */
+function clusterRadiusMeters(cluster: ClusterMarker): number {
+    const { lat, lon } = cluster.centroid;
+    const cosLat = Math.cos((lat * Math.PI) / 180);
+    let rMax = 0;
+    for (const m of cluster.members) {
+        const dy = (m.computedGps.lat - lat) * 111320;
+        const dx = (m.computedGps.lon - lon) * 111320 * cosLat;
+        rMax = Math.max(rMax, Math.hypot(dx, dy));
+    }
+    return Math.max(rMax + 2, 5);
+}
 
 interface Props {
     reportId: number;
@@ -47,9 +77,11 @@ interface Props {
     setVisibleMapOverlays: (overlays: { [mapId: number]: boolean }) => void;
     clipDetections: boolean;
     setClipDetections: (v: boolean) => void;
+    selectedObjectId: number | null;
+    setSelectedObjectId: (id: number | null) => void;
 }
 
-function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCategories, visibleMapOverlays, setVisibleMapOverlays, clipDetections }: Props) {
+function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCategories, visibleMapOverlays, setVisibleMapOverlays, clipDetections, selectedObjectId, setSelectedObjectId }: Props) {
     const [overlayOpacity, setOverlayOpacity] = useState(1.0);
     const [map, setMap] = useState<LeafletMap | null>(null);
     const { data: images } = useImages(reportId);
@@ -62,6 +94,8 @@ function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCatego
     const [showPanoMarkers, setShowPanoMarkers] = useState(true);
     const [showDetections, setShowDetections] = useState(true);
     const [showPolygons, setShowPolygons] = useState(true);
+    const [editDetection, setEditDetection] = useState<Detection | null>(null);
+    const [zoom, setZoom] = useState(18);
     const current = theme === "system"
         ? window.matchMedia("(prefers-color-scheme: dark)").matches
             ? "dark"
@@ -91,20 +125,26 @@ function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCatego
         return extractFlightTrajectory([...images]);
     }, [images]);
 
-    // Cache detection icons by class name - avoids creating new icon objects on every render
+    // Cache detection icons by class name (+ highlighted variant for selected cluster children)
     const detectionIconCache = useMemo(() => {
         const cache = new Map<string, L.DivIcon>();
-        const getIcon = (className: string) => {
-            if (!cache.has(className)) {
-                cache.set(className, L.divIcon({
+        const getIcon = (className: string, highlighted = false) => {
+            const key = `${className}|${highlighted ? 1 : 0}`;
+            if (!cache.has(key)) {
+                const color = getDetectionColor(className);
+                const size = highlighted ? 10 : 8;
+                const shadow = highlighted
+                    ? `0 0 0 3px ${color}80, 0 1px 4px rgba(0,0,0,0.5)`
+                    : `0 1px 3px rgba(0,0,0,0.45)`;
+                cache.set(key, L.divIcon({
                     className: 'custom-div-icon',
-                    html: `<div style="background-color:${getDetectionColor(className)};opacity:0.85;width:12px;height:12px;border-radius:50%;border:2px solid black;"></div>`,
-                    iconSize: [16, 16],
-                    iconAnchor: [8, 8],
-                    popupAnchor: [0, -8],
+                    html: `<div class="marker-dot" style="background-color:${color};width:${size}px;height:${size}px;border-radius:50%;border:3px solid #fff;box-shadow:${shadow};box-sizing:border-box;"></div>`,
+                    iconSize: [size, size],
+                    iconAnchor: [size / 2, size / 2],
+                    popupAnchor: [0, -size / 2],
                 }));
             }
-            return cache.get(className)!;
+            return cache.get(key)!;
         };
         return getIcon;
     }, []);
@@ -120,11 +160,40 @@ function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCatego
         return index;
     }, [maps]);
 
-    // Memoize filtered detections with their GPS coordinates pre-computed
-    const visibleDetections = useMemo(() => {
-        if (!detections?.length || !images?.length || !maps?.length) return [];
+    // Cache merged-cluster icons by class + count + whether the count badge is shown (zoom-gated)
+    const getClusterIcon = useMemo(() => {
+        const cache = new Map<string, L.DivIcon>();
+        return (className: string, count: number, showBadge: boolean) => {
+            const key = `${className}|${count}|${showBadge ? 1 : 0}`;
+            if (!cache.has(key)) {
+                const color = getDetectionColor(className);
+                const centerColor = getDetectionColor(className, true);
+                const badge = showBadge
+                    ? `<span style="position:absolute;top:-7px;right:-7px;background:#111;color:#fff;border-radius:9px;font-size:10px;line-height:14px;min-width:14px;height:14px;text-align:center;padding:0 2px;border:1px solid #fff;box-sizing:border-box;">${count}</span>`
+                    : "";
+                cache.set(key, L.divIcon({
+                    className: 'custom-div-icon',
+                    html: `<div style="position:relative;width:16px;height:16px;">
+                        <div class="marker-dot" style="background-color:${centerColor};width:10px;height:10px;border-radius:50%;border:2px solid ${color};box-shadow:0 1px 4px rgba(0,0,0,0.5);box-sizing:border-box;"></div>
+                        ${badge}
+                    </div>`,
+                    iconSize: [22, 22],
+                    iconAnchor: [11, 11],
+                    popupAnchor: [0, -11],
+                }));
+            }
+            return cache.get(key)!;
+        };
+    }, []);
 
-        return detections
+    // Threshold/visibility-filtered detections with GPS, split into re-id clusters
+    // (merged) and unassigned (rendered individually, with Voronoi clip preserved).
+    const { clusters, unassignedVisible } = useMemo(() => {
+        if (!detections?.length || !images?.length || !maps?.length) {
+            return { clusters: [] as ClusterMarker[], unassignedVisible: [] as DetectionWithGps[] };
+        }
+
+        const withGps = detections
             .filter(det =>
                 visibleCategories[det.class_name] &&
                 det.score >= (thresholds[det.class_name] || 0)
@@ -133,17 +202,40 @@ function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCatego
                 const gps = det.coord?.gps || computeDetectionGps(det, images, maps);
                 return gps ? { ...det, computedGps: gps } : null;
             })
-            .filter(Boolean)
-            .filter(det => {
-                if (!clipDetections) return true;
-                const voronoi = voronoiIndex.get(det!.image_id);
-                if (!voronoi) return true;  // no Voronoi data → always show
-                return isPointInPolygon(
-                    [det!.computedGps.lat, det!.computedGps.lon],
-                    voronoi
-                );
-            }) as (Detection & { computedGps: GPSCoord })[];
+            .filter(Boolean) as DetectionWithGps[];
+
+        const { clusters: rawClusters, unassigned } = groupDetectionsByObject(withGps);
+
+        // One merged marker per cluster at the centroid of its members (no clip — we
+        // intentionally merge the overlapping duplicates).
+        const clusterList: ClusterMarker[] = Array.from(rawClusters.entries()).map(([uid, members]) => {
+            const lat = members.reduce((s, m) => s + m.computedGps.lat, 0) / members.length;
+            const lon = members.reduce((s, m) => s + m.computedGps.lon, 0) / members.length;
+            return { uid, members, centroid: { lat, lon }, className: members[0].class_name };
+        });
+
+        // Unassigned detections keep the existing per-image Voronoi clip behavior.
+        const unassignedVisible = unassigned.filter(det => {
+            if (!clipDetections) return true;
+            const voronoi = voronoiIndex.get(det.image_id);
+            if (!voronoi) return true;  // no Voronoi data → always show
+            return isPointInPolygon([det.computedGps.lat, det.computedGps.lon], voronoi);
+        });
+
+        return { clusters: clusterList, unassignedVisible };
     }, [detections, images, maps, visibleCategories, thresholds, clipDetections, voronoiIndex]);
+
+    const hasDetectionMarkers = clusters.length > 0 || unassignedVisible.length > 0;
+
+    // Spotlight: when a cluster is selected, fade everything that isn't its children
+    const spotlight = selectedObjectId != null;
+    const selectedCluster = spotlight ? clusters.find(c => c.uid === selectedObjectId) : undefined;
+    
+    const getCenter = (corners: [number, number][]): [number, number] => {
+        const lat = (corners[0][0] + corners[1][0] + corners[2][0] + corners[3][0]) / 4;    
+        const lon = (corners[0][1] + corners[1][1] + corners[2][1] + corners[3][1]) / 4;
+        return [lat, lon];
+    }
 
     useEffect(() => {
         let first_image_with_gps = images?.find((image) => image.coord);
@@ -172,6 +264,26 @@ function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCatego
     const handleOverlayClick = (mapId: number, elementId: number, image_id: number) => {
         selectImageOnMap(image_id);
     };
+
+    const renderDetectionPopup = (detection: DetectionWithGps) => (
+        <Popup>
+            <div className="w-36">
+                <strong>{detection.class_name}</strong><br />
+                Confidence: {(detection.score * 100).toFixed(1)}%<br />
+                Image ID: {detection.image_id}
+                <span className="text-xs text-gray-500 my-0">ID {detection.id} /
+                unique object ID {detection.unique_object_id ?? "unset"}</span>
+                <Button onClick={() => {
+                    selectImageOnMap(detection.image_id);
+                }} className="text-sm w-full mt-2">Show</Button>
+                <Button variant="outline" onClick={() => {
+                    setEditDetection(detection);
+                }} className="text-sm w-full mt-1">
+                    {detection.unique_object_id == null ? "Set object ID" : "Change object ID"}
+                </Button>
+            </div>
+        </Popup>
+    );
 
     useEffect(() => {
         if (map !== null && bounds) {
@@ -256,6 +368,24 @@ function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCatego
         }
     }, [map, bounds]);
 
+    // Clicking the empty map background clears the selected re-id cluster (collapses children).
+    // Leaflet markers stop propagation, so this only fires on bare-map clicks.
+    useEffect(() => {
+        if (!map) return;
+        const handler = () => setSelectedObjectId(null);
+        map.on("click", handler);
+        return () => { map.off("click", handler); };
+    }, [map, setSelectedObjectId]);
+
+    // Track zoom so cluster count badges can be hidden when zoomed out
+    useEffect(() => {
+        if (!map) return;
+        setZoom(map.getZoom());
+        const handler = () => setZoom(map.getZoom());
+        map.on("zoomend", handler);
+        return () => { map.off("zoomend", handler); };
+    }, [map]);
+
     return (
         <div className="w-full h-full relative">
             <MapContainer center={center} zoom={18.5} ref={setMap} style={{ zIndex: 0, flex: 1, height: '100%', cursor: 'default' }}>
@@ -298,30 +428,64 @@ function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCatego
                         <LayerGroup>
                             <Polyline
                                 positions={flightTrajectory}
-                                pathOptions={{ color: 'magenta', weight: 2, opacity: 1 }}
+                                pathOptions={{ color: 'magenta', weight: 2, opacity: spotlight ? 0.25 : 1 }}
                             />
                         </LayerGroup>
                     )}
-                    {visibleDetections.length > 0 && showDetections && (
+                    {hasDetectionMarkers && showDetections && (
                         <LayerGroup>
-                            {visibleDetections.map(detection => (
+                            {/* Faint outline grouping the selected cluster's members together */}
+                            {selectedCluster && (
+                                <Circle
+                                    center={[selectedCluster.centroid.lat, selectedCluster.centroid.lon]}
+                                    radius={clusterRadiusMeters(selectedCluster)}
+                                    pathOptions={{
+                                        color: getDetectionColor(selectedCluster.className),
+                                        weight: 2,
+                                        opacity: 0.7,
+                                        fillOpacity: 0.08,
+                                        dashArray: '4 5',
+                                    }}
+                                />
+                            )}
+
+                            {/* Unassigned detections — individual markers (clicking clears any cluster selection) */}
+                            {unassignedVisible.map(detection => (
                                 <Marker
-                                    key={detection.id}
+                                    key={`det-${detection.id}`}
                                     position={[detection.computedGps.lat, detection.computedGps.lon]}
                                     icon={detectionIconCache(detection.class_name)}
+                                    opacity={spotlight ? 0.3 : 1}
+                                    eventHandlers={{ click: () => setSelectedObjectId(null) }}
                                 >
-                                    <Popup>
-                                        <div className="w-36">
-                                            <strong>{detection.class_name}</strong><br />
-                                            Confidence: {(detection.score * 100).toFixed(1)}%<br />
-                                            Image ID: {detection.image_id}
-                                            <Button onClick={() => {
-                                                selectImageOnMap(detection.image_id);
-                                            }} className="text-sm w-full mt-2">Show</Button>
-                                        </div>
-                                    </Popup>
+                                    {renderDetectionPopup(detection)}
                                 </Marker>
                             ))}
+
+                            {/* Re-id clusters — one merged marker per object; expands to child markers when selected */}
+                            {clusters.map(cluster => {
+                                if (cluster.uid === selectedObjectId) {
+                                    // Selected: show the individual member detections (highlighted) instead of the merged marker
+                                    return cluster.members.map(member => (
+                                        <Marker
+                                            key={`obj-${cluster.uid}-det-${member.id}`}
+                                            position={[member.computedGps.lat, member.computedGps.lon]}
+                                            icon={detectionIconCache(member.class_name, true)}
+                                        >
+                                            {renderDetectionPopup(member)}
+                                        </Marker>
+                                    ));
+                                }
+                                return (
+                                    <Marker
+                                        key={`obj-${cluster.uid}`}
+                                        position={[cluster.centroid.lat, cluster.centroid.lon]}
+                                        icon={getClusterIcon(cluster.className, cluster.members.length, zoom >= CLUSTER_BADGE_MIN_ZOOM)}
+                                        opacity={spotlight ? 0.3 : 1}
+                                        eventHandlers={{ click: () => setSelectedObjectId(cluster.uid) }}
+                                    />
+                                );
+                            })}
                         </LayerGroup>
                     )}
                     {(images && images.length > 0 && images.some(image => image.panoramic)) && showPanoMarkers && (
@@ -332,6 +496,7 @@ function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCatego
                                     <Marker
                                         key={image.id}
                                         position={[image.coord.gps.lat, image.coord.gps.lon]}
+                                        opacity={spotlight ? 0.3 : 1}
                                         eventHandlers={{
                                             click: () => {
                                                 selectImageOnMap(image.id);
@@ -396,7 +561,7 @@ function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCatego
                                     {showPolygons && map.map_elements?.map((element) => {
                                         const corners = element.corners.gps;
                                         const hasVoronoi = element.voronoi_gps && element.voronoi_gps.length > 0;
-
+                                        
                                         return (
                                             <Polygon
                                                 key={`map-${map.id}_corner-${element.id}`}
@@ -406,17 +571,20 @@ function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCatego
                                                 }}
                                                 positions={[corners[0], corners[1], corners[2], corners[3]]}
                                                 pathOptions={{
-                                                    color: 'blue',
-                                                    weight: 0,
+                                                    className: 'map-footprint',
+                                                    color: FOOTPRINT_COLOR,
+                                                    fillColor: FOOTPRINT_COLOR,
+                                                    weight: 2,
+                                                    opacity: 0,
                                                     fillOpacity: 0,
-                                                    stroke: false,
+                                                    lineJoin: 'round',
                                                 }}
                                                 eventHandlers={!hasVoronoi ? {
                                                     mouseover: (e) => {
-                                                        (e.target as L.Path).setStyle({ fillOpacity: 0.3, stroke: true });
+                                                        (e.target as L.Path).setStyle({ opacity: 0.9, fillOpacity: 0.18 });
                                                     },
                                                     mouseout: (e) => {
-                                                        (e.target as L.Path).setStyle({ fillOpacity: 0, stroke: false });
+                                                        (e.target as L.Path).setStyle({ opacity: 0, fillOpacity: 0 });
                                                     },
                                                     click: () => {
                                                         handleOverlayClick(map.id, element.id, element.image_id);
@@ -431,26 +599,29 @@ function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCatego
                                         if (!voronoiCell || voronoiCell.length === 0) return null;
                                         const corners = element.corners.gps;
                                         const displayPolygon = polygonIntersection(voronoiCell, corners);
-
-                                        
-                                        //const randomColor = `hsl(${Math.random() * 100+160}, 80%, 60%)`;
+                                        //debug
+                                        //const displayPolygon = voronoiCell //polygonIntersection(voronoiCell, corners);
+                                        //const randomColor = `hsl(${Math.random() * 360}, 95%, 70%)`;
                                         return (
                                             <Polygon
                                                 key={`map-${map.id}_voronoi-${element.id}`}
                                                 positions={displayPolygon}
                                                 pathOptions={{
-                                                    color: 'blue',
-                                                    weight: 0,
-                                                    fillOpacity: 0.0,
+                                                    className: 'map-footprint',
+                                                    color: FOOTPRINT_COLOR,
+                                                    weight: 2,
+                                                    opacity: 0,
+                                                    fillOpacity: 0,
+                                                    lineJoin: 'round',
                                                 }}
                                                 eventHandlers={{
                                                     mouseover: (e) => {
-                                                        (e.target as L.Path).setStyle({ weight: 2 });
-                                                        cornerRefs.current.get(element.id)?.setStyle({ fillOpacity: 0.3, stroke: true });
+                                                        (e.target as L.Path).setStyle({ opacity: 0.95 });
+                                                        cornerRefs.current.get(element.id)?.setStyle({ fillOpacity: 0.18 });
                                                     },
                                                     mouseout: (e) => {
-                                                        (e.target as L.Path).setStyle({ weight: 0 });
-                                                        cornerRefs.current.get(element.id)?.setStyle({ fillOpacity: 0, stroke: false });
+                                                        (e.target as L.Path).setStyle({ opacity: 0 });
+                                                        cornerRefs.current.get(element.id)?.setStyle({ fillOpacity: 0 });
                                                     },
                                                     click: () => {
                                                         handleOverlayClick(map.id, element.id, element.image_id);
@@ -458,6 +629,17 @@ function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCatego
                                                 }}
                                             />
                                         );
+                                            // <>
+                                            //     <Circle
+                                            //     center={getCenter(element.corners.gps)}
+                                            //     radius={1.3}
+                                            //     pathOptions={{
+                                            //         color: 'black',
+                                            //         fillColor: 'white',
+                                            //         weight: 2.35,
+                                            //         fillOpacity: 1,
+                                            //     }}
+                                            // />
                                     })}
                                 </LayerGroup>
                             </LayersControl.Overlay>
@@ -532,6 +714,13 @@ function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCatego
                     
                 </div>
             )}
+
+            <AssignObjectDialog
+                reportId={reportId}
+                open={editDetection != null}
+                onOpenChange={(o) => { if (!o) setEditDetection(null); }}
+                detection={editDetection}
+            />
         </div>
     );
 }

@@ -97,6 +97,15 @@ export const getNewDetections = (report_id: number, knownIds: number[]) => postJ
 export const updateDetection = (detection_id: number, data: Detection) => postJson<any>(`/detections/${detection_id}`, data, "PUT");
 export const deleteDetection = (detection_id: number) => deleteRequest(`/detections/${detection_id}`);
 export const updateDetectionBatch = (report_id: number, data: Detection[]) => postJson<any>(`/detections/r/${report_id}/batch_update`, data, "PUT");
+export const updateDetectionUniqueObject = (
+  report_id: number,
+  unique_object_id: number | null,
+  detection_ids: number[],
+) => postJson<{ updated_count: number }>(
+  `/detections/r/${report_id}/unique_object`,
+  { unique_object_id, detection_ids },
+  "PUT",
+);
 export const sendDetectionToDrz = (geometry: Geometry, properties: Properties) =>
   postJson<{ message: string; error?: string; iais_response?: unknown }>(
     "/detections/send_to_iais",

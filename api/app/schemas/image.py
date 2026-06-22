@@ -173,6 +173,7 @@ class DetectionBase(BaseModel):
     bbox: list  # JSONB as dict
     manually_verified: Optional[bool] = None
     coord: Optional[dict] = None  # JSONB as dict
+    unique_object_id: Optional[int] = None  # per-report object cluster label (reID)
 
 
 class DetectionCreate(DetectionBase):
@@ -186,6 +187,7 @@ class DetectionUpdate(BaseModel):
     bbox: Optional[list] = None  # JSONB as dict
     manually_verified: Optional[bool] = None
     coord: Optional[dict] = None  # JSONB as dict
+    unique_object_id: Optional[int] = None  # explicit null clears the assignment
 
 class DetectionOut(DetectionBase):
     id: int
@@ -198,3 +200,43 @@ class DetectionSettings(BaseModel):
 
 class DetectionIncremental(BaseModel):
     known_ids: List[int]
+
+
+class DetectionUniqueObjectAssign(BaseModel):
+    unique_object_id: Optional[int] = None  # None clears the assignment
+    detection_ids: List[int]
+
+
+class DetectionObjectGroup(BaseModel):
+    unique_object_id: Optional[int] = None  # None = ungrouped bucket
+    detections: List[DetectionOut] = []
+
+
+##################
+## ReID (object re-identification)
+##################
+
+class ReidDetection(BaseModel):
+    id: int
+    image_id: int
+    bbox: list  # [x, y, w, h] in absolute pixels
+    class_name: Optional[str] = None
+
+
+class ReidImage(BaseModel):
+    id: int
+    path: str                              # image path (relative reports_data/...)
+    width: Optional[int] = None
+    height: Optional[int] = None
+    # 4 GPS corners [TL, TR, BR, BL], each [lat, lon]; None if not georeferenced
+    corners_gps: Optional[List[List[float]]] = None
+
+
+class ReidInput(BaseModel):
+    detections: List[ReidDetection] = []
+    images: List[ReidImage] = []
+
+
+class DetectionUniqueObjectsBulk(BaseModel):
+    # {unique_object_id (as string key): [detection_id, ...]}
+    clusters: dict[str, List[int]]

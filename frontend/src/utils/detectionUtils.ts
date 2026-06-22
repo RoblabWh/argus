@@ -94,6 +94,46 @@ export function updateThresholds(
 }
 
 /**
+ * Group detections by their re-identification cluster label (unique_object_id).
+ *
+ * Detections sharing the same non-null `unique_object_id` are duplicate views of one
+ * physical object across overlapping images. Returns the clusters keyed by id, plus the
+ * leftover unassigned detections (unique_object_id null/undefined).
+ */
+export function groupDetectionsByObject<T extends Detection>(
+    detections: T[] | undefined
+): { clusters: Map<number, T[]>; unassigned: T[] } {
+    const clusters = new Map<number, T[]>();
+    const unassigned: T[] = [];
+
+    for (const det of detections ?? []) {
+        const uid = det.unique_object_id;
+        if (uid === null || uid === undefined) {
+            unassigned.push(det);
+            continue;
+        }
+        const arr = clusters.get(uid);
+        if (arr) arr.push(det);
+        else clusters.set(uid, [det]);
+    }
+
+    return { clusters, unassigned };
+}
+
+/**
+ * Compute the next free re-identification object id for manual assignment.
+ * Ids are arbitrary ints chosen by the client (the backend applies them without checks).
+ */
+export function getNextObjectId(detections: Detection[] | undefined): number {
+    let max = 0;
+    for (const det of detections ?? []) {
+        const uid = det.unique_object_id;
+        if (typeof uid === "number" && uid > max) max = uid;
+    }
+    return max + 1;
+}
+
+/**
  * Merge new detection classes into existing visibility map, preserving current values
  */
 export function updateCategoryVisibility(

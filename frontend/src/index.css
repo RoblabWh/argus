@@ -137,3 +137,23 @@
     @apply bg-muted-foreground/60;
   }
 }
+
+/* Detection / cluster map markers — smooth fade on spotlight, grow on hover.
+   Leaflet owns the transform on .leaflet-marker-icon (positioning), so the hover
+   scale is applied to the inner .marker-dot, never the icon element itself. */
+.leaflet-marker-icon {
+  transition: opacity 0.2s ease;
+}
+.custom-div-icon .marker-dot {
+  transition: transform 0.15s ease;
+}
+.custom-div-icon:hover .marker-dot {
+  transform: scale(1.18);
+}
+
+/* Image-footprint overlay polygons — smooth fade in/out of the hover highlight.
+   weight stays constant; only stroke/fill opacity animate (Leaflet writes these as
+   SVG presentation attributes, which transition in Chromium/Firefox). */
+.map-footprint {
+  transition: fill-opacity 0.2s ease, stroke-opacity 0.2s ease;
+}

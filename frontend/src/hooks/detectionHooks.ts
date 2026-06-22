@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
-import { startDetection, getDetectionStatus, getDetections, updateDetection, deleteDetection, updateDetectionBatch, getNewDetections } from "@/api";
+import { startDetection, getDetectionStatus, getDetections, updateDetection, deleteDetection, updateDetectionBatch, updateDetectionUniqueObject, getNewDetections } from "@/api";
 import type { Detection } from "@/types/detection";
 import type { Report } from "@/types/report";
 
@@ -84,6 +84,18 @@ export function useDeleteDetection(reportId: number) {
         onSuccess: () => {
             // Invalidate and refetch
             console.log("successfully deleted detection");
+        },
+    });
+}
+
+export function useUpdateUniqueObject(reportId: number) {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ uniqueObjectId, detectionIds }: { uniqueObjectId: number | null; detectionIds: number[] }) =>
+            updateDetectionUniqueObject(reportId, uniqueObjectId, detectionIds),
+        onSuccess: () => {
+            // Re-cluster map + gallery once the assignment changes
+            queryClient.invalidateQueries({ queryKey: ["detections", reportId] });
         },
     });
 }

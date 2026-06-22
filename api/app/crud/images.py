@@ -288,6 +288,7 @@ def save_detections(db: Session, mapping_report_id: int, detections: dict):
                 bbox=det.get("bbox"),
                 score=det.get("score"),
                 manually_verified=False,
+                unique_object_id=det.get("unique_object_id"),
             )
             db.add(new_detection)
 
@@ -388,3 +389,147 @@ def update_detections_batch(
 
     db.commit()
     return updated_count
+
+
+def set_unique_object_id_batch(
+    db: Session,
+    mapping_report_id: int,
+    unique_object_id: int | None,
+    detection_ids: list[int],
+):
+    # Restrict the update to detections that belong to this report's images, so a
+    # caller cannot (accidentally) re-label detections from another report.
+    image_ids = select(models.Image.id).where(
+        models.Image.mapping_report_id == mapping_report_id
+    )
+    updated_count = (
+        db.query(models.Detection)
+        .filter(
+            models.Detection.id.in_(detection_ids),
+            models.Detection.image_id.in_(image_ids),
+        )
+        .update(
+            {models.Detection.unique_object_id: unique_object_id},
+            synchronize_session=False,
+        )
+    )
+    db.commit()
+    return updated_count
+
+
+def get_reid_input(db: Session, mapping_report_id: int):
+    """Assemble the payload the YOLO reID worker needs to cluster detections.
+
+    Returns detections (with DB ids) plus, per non-thermal image, its pixel
+    dimensions and 4 GPS corners. Corners come from the report's map elements
+    (computed during mapping), stored as [TL, TR, BR, BL] each [lat, lon] —
+    exactly the order the worker's bilinear interpolation expects, so they are
+    passed through unchanged. Images without a map element get corners_gps=None
+    (their detections become singletons).
+    """
+    images = (
+        db.query(models.Image)
+        .filter(
+            models.Image.mapping_report_id == mapping_report_id,
+            models.Image.thermal.is_(False),
+        )
+        .options(joinedload(models.Image.detections))
+        .all()
+    )
+
+    # image_id -> [TL, TR, BR, BL] of [lat, lon], pulled from map elements.
+    corners_by_image: dict[int, list] = {}
+    map_elements = (
+        db.query(models.MapElement)
+        .join(models.Map, models.MapElement.map_id == models.Map.id)
+        .filter(models.Map.mapping_report_id == mapping_report_id)
+        .all()
+    )
+    for el in map_elements:
+        if el.image_id in corners_by_image:
+            continue
+        gps = (el.corners or {}).get("gps") if el.corners else None
+        if gps and len(gps) == 4:
+            # Stored order is already [TL, TR, BR, BL] each [lat, lon] — see the
+            # production frontend interpolation computeDetectionGps in
+            # frontend/src/utils/coordinateUtils.ts. The worker's
+            # interpolate_detection_gps expects exactly this order, so pass through.
+            corners_by_image[el.image_id] = gps
+
+    detections: list = []
+    images_out: list = []
+    for image in images:
+        images_out.append(
+            {
+                "id": image.id,
+                "path": image.url,
+                "width": image.width,
+                "height": image.height,
+                "corners_gps": corners_by_image.get(image.id),
+            }
+        )
+        for det in image.detections:
+            detections.append(
+                {
+                    "id": det.id,
+                    "image_id": det.image_id,
+                    "bbox": det.bbox,
+                    "class_name": det.class_name,
+                }
+            )
+
+    return {"detections": detections, "images": images_out}
+
+
+def assign_unique_object_clusters(
+    db: Session, mapping_report_id: int, clusters: dict[int, list[int]]
+):
+    """Bulk-assign reID clusters to a report's detections.
+
+    Clears any previous assignment for the report first, then writes each
+    cluster's unique_object_id onto its detections. Returns the count updated.
+    """
+    image_ids = select(models.Image.id).where(
+        models.Image.mapping_report_id == mapping_report_id
+    )
+    # Reset previous assignments so re-runs are clean.
+    db.query(models.Detection).filter(
+        models.Detection.image_id.in_(image_ids)
+    ).update({models.Detection.unique_object_id: None}, synchronize_session=False)
+
+    updated_count = 0
+    for unique_object_id, detection_ids in clusters.items():
+        if not detection_ids:
+            continue
+        updated_count += (
+            db.query(models.Detection)
+            .filter(
+                models.Detection.id.in_(detection_ids),
+                models.Detection.image_id.in_(image_ids),
+            )
+            .update(
+                {models.Detection.unique_object_id: unique_object_id},
+                synchronize_session=False,
+            )
+        )
+    db.commit()
+    return updated_count
+
+
+def get_detections_grouped_by_object(db: Session, mapping_report_id: int):
+    images = (
+        db.query(models.Image)
+        .filter(models.Image.mapping_report_id == mapping_report_id)
+        .options(joinedload(models.Image.detections))
+        .all()
+    )
+
+    groups: dict[int | None, list] = {}
+    for image in images:
+        for detection in image.detections:
+            groups.setdefault(detection.unique_object_id, []).append(detection)
+
+    return [
+        {"unique_object_id": uid, "detections": detections}
+        for uid, detections in groups.items()
+    ]

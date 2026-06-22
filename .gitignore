@@ -15,3 +15,9 @@ depthanyting/
 detection_yolo/*.pt
 
 *CLAUDE.md
+
+pytorch_model.bin
+model.safetensors
+*.safetensors
+.cache/huggingface/
+HF_TOKEN

@@ -3,7 +3,11 @@ redis==7.1.0
 celery==5.6.0
 pillow==12.2.0
 numpy==1.26.3
-huggingface_hub==1.2.1
+# DINOv3 appearance re-identification (reid/) — torch comes from the base image
+transformers==5.9.0
+#huggingface_hub
+scipy==1.13.1
+pyproj==3.6.1
 # ultralytics
 # redis
 # celery

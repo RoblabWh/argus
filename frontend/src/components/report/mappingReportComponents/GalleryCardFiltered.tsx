@@ -9,14 +9,20 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
-import { X, Filter as FilterIcon, Thermometer, Info } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import { X, Filter as FilterIcon, Thermometer, Info, Images as ImagesIcon, Boxes, ZoomIn, Pencil } from "lucide-react";
+import { toast } from "sonner";
 import { getApiUrl } from "@/api";
 import type { ImageBasic } from "@/types/image";
 import type { Detection } from "@/types/detection";
 import { useImages } from "@/hooks/imageHooks";
-import { useDetections } from "@/hooks/detectionHooks";
+import { useDetections, useUpdateUniqueObject } from "@/hooks/detectionHooks";
 import { useFilteredImages } from "@/contexts/FileteredImagesContext";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { groupDetectionsByObject } from "@/utils/detectionUtils";
+import { BBoxCrop } from "@/components/report/mappingReportComponents/slideshow/BBoxCrop";
+import { AssignObjectDialog } from "@/components/report/mappingReportComponents/AssignObjectDialog";
 
 /**
  * ————————————————————————————————————————————————————————————————
@@ -425,6 +431,8 @@ interface GalleryCardProps {
   detectionFilter: string[];
   setDetectionFilter: (filter: string[]) => void;
   thresholds: { [key: string]: number };
+  selectedObjectId: number | null;
+  setSelectedObjectId: (id: number | null) => void;
 }
 
 export function GalleryCard({
@@ -434,7 +442,9 @@ export function GalleryCard({
   setSelectedImage,
   detectionFilter,
   setDetectionFilter,
-  thresholds
+  thresholds,
+  selectedObjectId,
+  setSelectedObjectId,
 }: GalleryCardProps) {
   const { data: images, isLoading } = useImages(reportId);
   const { data: detections } = useDetections(reportId);
@@ -464,6 +474,39 @@ export function GalleryCard({
   // Memoize detection index - only rebuilt when detections change
   const detectionIndex = useMemo(() => buildDetectionIndex(detections), [detections]);
 
+  // ---- Re-identification (objects) view ----
+  const [galleryViewMode, setGalleryViewMode] = useState<"images" | "objects">("images");
+  const [thumbSize, setThumbSize] = useState(120);
+  // The map drives the mode: a selected object forces objects view; otherwise honor the toggle.
+  const effectiveMode = selectedObjectId != null ? "objects" : galleryViewMode;
+
+  const objectClusters = useMemo(() => groupDetectionsByObject(detections).clusters, [detections]);
+  const objectEntries = useMemo(
+    () => Array.from(objectClusters.entries()).sort((a, b) => a[0] - b[0]),
+    [objectClusters]
+  );
+  const imageById = useMemo(() => {
+    const m = new Map<number, ImageBasic>();
+    for (const img of images ?? []) m.set(img.id, img);
+    return m;
+  }, [images]);
+  const hasDetections = (detections?.length ?? 0) > 0;
+  const shownMembers = selectedObjectId != null ? (objectClusters.get(selectedObjectId) ?? []) : [];
+
+  const [editDetection, setEditDetection] = useState<Detection | null>(null);
+  const updateUniqueObject = useUpdateUniqueObject(reportId);
+
+  const removeFromCluster = (det: Detection) => {
+    const prev = det.unique_object_id ?? null;
+    updateUniqueObject.mutate({ uniqueObjectId: null, detectionIds: [det.id] });
+    toast("Removed from object", {
+      action: {
+        label: "Undo",
+        onClick: () => updateUniqueObject.mutate({ uniqueObjectId: prev, detectionIds: [det.id] }),
+      },
+    });
+  };
+
   const [filters, setFilters] = useState<GalleryFilters>({ types: [], temp: {}, dets: detectionFilter });
 
   useEffect(() => {
@@ -491,8 +534,34 @@ export function GalleryCard({
 
   return (
     <Card className="min-w-80 min-h-85 max-h-350 flex flex-col px-4 py-3 gap-2">
-      <div className="text-lg font-semibold py-2">Images</div>
+      <div className="flex items-center justify-between gap-2 py-2">
+        <div className="text-lg font-semibold">{effectiveMode === "objects" ? "Detections" : "Images"}</div>
+        {hasDetections && (
+          <Tabs
+            value={effectiveMode}
+            onValueChange={(v) => {
+              if (v === "images") {
+                setGalleryViewMode("images");
+                setSelectedObjectId(null); // also collapse any cluster selected on the map
+              } else {
+                setGalleryViewMode("objects");
+              }
+            }}
+          >
+            <TabsList className="h-8">
+              <TabsTrigger value="images" className="gap-1 px-2 py-1 text-xs">
+                <ImagesIcon className="h-3.5 w-3.5" /> Images
+              </TabsTrigger>
+              <TabsTrigger value="objects" className="gap-1 px-2 py-1 text-xs">
+                <Boxes className="h-3.5 w-3.5" /> Objects
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+        )}
+      </div>
 
+      {effectiveMode === "images" ? (
+        <>
       {/* Controls */}
       <div className="pb-2 space-y-2">
         <div className="flex flex items-center gap-2">
@@ -633,6 +702,117 @@ export function GalleryCard({
           <p className="text-md text-muted-foreground">No images found</p>
         )}
       </div>
+        </>
+      ) : (
+        /* ———————————————— Objects (detection crops) mode ———————————————— */
+        <>
+          {/* Object picker + thumbnail zoom (replaces the image search/filter row, no extra height) */}
+          <div className="flex items-center gap-2 pb-2">
+            <Select
+              value={selectedObjectId != null ? String(selectedObjectId) : undefined}
+              onValueChange={(v) => setSelectedObjectId(Number(v))}
+            >
+              <SelectTrigger className="flex-grow min-w-[120px]">
+                <SelectValue placeholder={objectEntries.length ? "Select an object" : "No objects"} />
+              </SelectTrigger>
+              <SelectContent>
+                {objectEntries.map(([uid, members]) => (
+                  <SelectItem key={uid} value={String(uid)}>
+                    Object #{uid} · {members[0].class_name} · {members.length}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button
+              variant="outline"
+              size="icon"
+              title="Deselect object"
+              className="shrink-0"
+              disabled={selectedObjectId == null}
+              onClick={() => setSelectedObjectId(null)}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+            <div className="flex items-center gap-1 w-36 shrink-0">
+              <ZoomIn className="h-4 w-4 text-muted-foreground" />
+              <Slider
+                min={60}
+                max={220}
+                step={10}
+                value={[thumbSize]}
+                onValueChange={(v) => setThumbSize(v[0])}
+              />
+            </div>
+          </div>
+
+          {/* Crop grid */}
+          <div
+            className="overflow-auto grow grid gap-2 flex-1 content-start justify-items-center"
+            style={{ gridTemplateColumns: `repeat(auto-fill, minmax(${thumbSize}px, 1fr))` }}
+          >
+            {selectedObjectId == null ? (
+              <p className="text-md text-muted-foreground">
+                {objectEntries.length
+                  ? "Select an object on the map or from the dropdown to view its detections."
+                  : "No re-identified objects yet."}
+              </p>
+            ) : shownMembers.length === 0 ? (
+              <p className="text-md text-muted-foreground">No detections for this object.</p>
+            ) : (
+              shownMembers.map((det) => {
+                const img = imageById.get(det.image_id);
+                if (!img) return null;
+                const b = det.bbox as unknown as number[];
+                const bbox: [number, number, number, number] = [Number(b[0]), Number(b[1]), Number(b[2]), Number(b[3])];
+                return (
+                  <div key={det.id} className="group flex flex-col items-center gap-1" style={{ maxWidth: thumbSize }}>
+                    <div className="relative" style={{ width: thumbSize, height: thumbSize }}>
+                      <BBoxCrop
+                        imageUrl={`${apiUrl}/${img.url}`}
+                        imageWidth={img.width}
+                        imageHeight={img.height}
+                        bbox={bbox}
+                        thumbSize={thumbSize}
+                        alt={img.filename}
+                        onClick={() => onImageClick(img)}
+                      />
+                      {/* Hover-reveal edit / remove controls */}
+                      <div className="absolute top-1 right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          type="button"
+                          title="Change object ID"
+                          className="rounded-sm bg-black/60 hover:bg-black/80 text-white p-1"
+                          onClick={(e) => { e.stopPropagation(); setEditDetection(det); }}
+                        >
+                          <Pencil className="h-3 w-3" />
+                        </button>
+                        <button
+                          type="button"
+                          title="Remove from object"
+                          className="rounded-sm bg-black/60 hover:bg-red-600 text-white p-1"
+                          onClick={(e) => { e.stopPropagation(); removeFromCluster(det); }}
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    </div>
+                    <span className="text-[10px] text-muted-foreground truncate w-full text-center" title={img.filename}>
+                      {(det.score * 100).toFixed(0)}% · {img.filename}
+                    </span>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </>
+      )}
+
+      <AssignObjectDialog
+        reportId={reportId}
+        open={editDetection != null}
+        onOpenChange={(o) => { if (!o) setEditDetection(null); }}
+        detection={editDetection}
+      />
     </Card>
   );
 }

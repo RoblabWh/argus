@@ -14,7 +14,11 @@ from app.schemas.image import (
     ImageOut,
     DetectionUpdate,
     DetectionSettings,
-    DetectionIncremental
+    DetectionIncremental,
+    DetectionUniqueObjectAssign,
+    DetectionObjectGroup,
+    ReidInput,
+    DetectionUniqueObjectsBulk,
 )
 
 from app.services.celery_app import celery_app
@@ -209,6 +213,74 @@ def update_detections_batch(report_id: int, data: List[DetectionUpdate], db: Ses
 
     updated_count = image_crud.update_detections_batch(db, mapping_report.id, data)
     return {"message": f"Updated {updated_count} detections", "report_id": report_id, "updated_count": updated_count}
+
+@router.put("/r/{report_id}/unique_object", response_model=dict)
+def set_unique_object_id_batch(report_id: int, data: DetectionUniqueObjectAssign, db: Session = Depends(get_db)):
+    """
+    Assign a unique_object_id to a batch of detections in a report.
+    Passing a null unique_object_id clears the assignment for the given detections.
+    """
+    mapping_report = report_crud.get_short_report(db, report_id).mapping_report
+    if not mapping_report:
+        raise HTTPException(status_code=404, detail="Report not found")
+
+    updated_count = image_crud.set_unique_object_id_batch(
+        db, mapping_report.id, data.unique_object_id, data.detection_ids
+    )
+    return {
+        "message": f"Updated unique_object_id for {updated_count} detections",
+        "report_id": report_id,
+        "updated_count": updated_count,
+    }
+
+@router.get("/r/{report_id}/reid_input", response_model=ReidInput)
+def get_reid_input(report_id: int, db: Session = Depends(get_db)):
+    """
+    Return detections (with DB ids) plus per-image georeferencing for the YOLO
+    reID worker to cluster detections of the same physical object.
+    """
+    mapping_report = report_crud.get_short_report(db, report_id).mapping_report
+    if not mapping_report:
+        raise HTTPException(status_code=404, detail="Report not found")
+
+    return image_crud.get_reid_input(db, mapping_report.id)
+
+
+@router.put("/r/{report_id}/unique_objects", response_model=dict)
+def assign_unique_object_clusters(
+    report_id: int, data: DetectionUniqueObjectsBulk, db: Session = Depends(get_db)
+):
+    """
+    Bulk-assign reID clusters to a report's detections. Previous assignments for
+    the report are cleared first so re-runs are clean.
+    """
+    mapping_report = report_crud.get_short_report(db, report_id).mapping_report
+    if not mapping_report:
+        raise HTTPException(status_code=404, detail="Report not found")
+
+    clusters = {int(uid): det_ids for uid, det_ids in data.clusters.items()}
+    updated_count = image_crud.assign_unique_object_clusters(
+        db, mapping_report.id, clusters
+    )
+    return {
+        "message": f"Assigned {len(clusters)} objects across {updated_count} detections",
+        "report_id": report_id,
+        "updated_count": updated_count,
+        "object_count": len(clusters),
+    }
+
+
+@router.get("/r/{report_id}/objects", response_model=List[DetectionObjectGroup])
+def get_detections_grouped_by_object(report_id: int, db: Session = Depends(get_db)):
+    """
+    Get detections for a report grouped by unique_object_id.
+    Detections without an assigned object id are returned in the null group.
+    """
+    mapping_report = report_crud.get_short_report(db, report_id).mapping_report
+    if not mapping_report:
+        raise HTTPException(status_code=404, detail="Report not found")
+
+    return image_crud.get_detections_grouped_by_object(db, mapping_report.id)
 
 @router.post("/send_to_iais", response_model=dict)
 def send_detection_to_iais(geometry: dict, properties: dict, db: Session = Depends(get_db)):
