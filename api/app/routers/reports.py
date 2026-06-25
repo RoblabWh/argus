@@ -216,6 +216,41 @@ def process_report(report_id: int, processing_settings: ProcessingSettings, db: 
     r.set(f"report:{report_id}:progress", 0)
     return returnval
 
+@router.get("/{report_id}/colmap/status", response_model=dict)
+def get_colmap_status(report_id: int):
+    """Poll the COLMAP 3D-reconstruction status for a report.
+
+    State lives only in Redis (colmap:{id}:*); 3D availability is also derivable
+    from the on-disk reconstruction.json. Returns status 'none' when no run has
+    ever been started for this report.
+    """
+    status = r.get(f"colmap:{report_id}:status")
+    progress = r.get(f"colmap:{report_id}:progress")
+    message = r.get(f"colmap:{report_id}:message")
+    reconstruction = os.path.join(
+        str(UPLOAD_DIR), str(report_id), "colmap", "reconstruction.json"
+    )
+    return {
+        "report_id": report_id,
+        "status": status.decode() if status else "none",
+        "progress": int(progress) if progress else 0,
+        "message": message.decode() if message else "",
+        "has_reconstruction": os.path.isfile(reconstruction),
+    }
+
+
+@router.post("/{report_id}/colmap/complete", response_model=dict)
+def complete_colmap(report_id: int, summary: dict = None):
+    """Best-effort completion callback from the COLMAP worker.
+
+    Tracking is Redis + on-disk only (no DB row), so this just logs the
+    registration metrics for observability. The worker already set the terminal
+    Redis status before calling.
+    """
+    logger.info(f"COLMAP reconstruction complete for report {report_id}: {summary}")
+    return {"ok": True, "report_id": report_id}
+
+
 @router.get("/{report_id}/processing_settings", response_model=ProcessingSettings)
 def get_processing_settings(report_id: int, db: Session = Depends(get_db)):
     """Return the last-used ProcessingSettings for prefilling the process dialog."""

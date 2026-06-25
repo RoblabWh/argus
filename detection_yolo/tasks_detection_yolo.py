@@ -12,6 +12,8 @@ from yolo_inference import YOLOInferencer   # NEW MODULE (see next step)
 from huggingface_hub import hf_hub_download
 
 from reid.by_dinov3 import run_reid
+from reid.by_3d_dinov3 import run_reid_3d
+from reid import localize
 from reid.embeddings import unload_models as unload_reid_models
 
 
@@ -55,13 +57,31 @@ def run_reid_clustering(report_id: int):
         detections = payload.get("detections", [])
         images = {img["id"]: img for img in payload.get("images", [])}
 
-        georeferenced = any(img.get("corners_gps") for img in images.values())
-        if len(detections) < 2 or not georeferenced:
+        # Re-ID only considers detections from images actually placed in the map
+        # (those have GPS corners). Detections from non-mapped images are excluded
+        # from re-ID entirely and keep a null unique_object_id — they are neither
+        # clustered nor emitted as singletons. (assign_unique_object_clusters
+        # resets the whole report to null before writing, so any detection we omit
+        # here stays null for free.)
+        mapped_image_ids = {iid for iid, img in images.items() if img.get("corners_gps")}
+        reid_detections = [d for d in detections if d["image_id"] in mapped_image_ids]
+
+        # A COLMAP 3D reconstruction (built during processing when the user opted
+        # in) lives in the shared volume. Its presence selects the stronger 3D
+        # weighted-multipass reID; otherwise we gracefully fall back to the 2D
+        # DINOv3 + bilinear-GPS approach.
+        colmap_dir = os.path.join("reports_data", str(report_id), "colmap")
+        has_3d = os.path.isfile(os.path.join(colmap_dir, "reconstruction.json"))
+
+        # Every reid_detection is from a mapped (georeferenced) image by
+        # construction, so we only need enough of them to form a pair.
+        if len(reid_detections) < 2:
             logger.info(
-                "[YOLO] Skipping reID for report %s (%d detections, georef=%s)",
+                "[YOLO] Skipping reID for report %s (%d mapped-image detections of %d total, 3d=%s)",
                 report_id,
+                len(reid_detections),
                 len(detections),
-                georeferenced,
+                has_3d,
             )
             return
 
@@ -77,7 +97,30 @@ def run_reid_clustering(report_id: int):
         if os.getenv("REID_DUMP_CROPS", "false").lower() not in ("0", "false", "no", ""):
             dump_dir = os.path.join("reports_data", str(report_id), "reid_crops")
 
-        clusters = run_reid(detections, images, progress_cb=progress_cb, dump_dir=dump_dir)
+        clusters = None
+        if has_3d:
+            try:
+                r.set(f"detection:{report_id}:message", "Localizing detections in 3D…")
+                positions = localize.compute_annotation_positions(reid_detections, images, colmap_dir)
+                if positions:
+                    logger.info(
+                        "[YOLO] Using 3D reID for report %s (%d/%d mapped-image detections localized)",
+                        report_id, len(positions), len(reid_detections),
+                    )
+                    clusters = run_reid_3d(
+                        reid_detections, images, positions,
+                        progress_cb=progress_cb, dump_dir=dump_dir,
+                    )
+                else:
+                    logger.warning(
+                        "[YOLO] 3D reconstruction present but no detection localized for "
+                        "report %s — falling back to 2D reID", report_id,
+                    )
+            except Exception as e3d:  # noqa: BLE001 - never lose detections to a 3D failure
+                logger.error("[YOLO] 3D reID failed for report %s: %s — falling back to 2D", report_id, e3d)
+
+        if clusters is None:
+            clusters = run_reid(reid_detections, images, progress_cb=progress_cb, dump_dir=dump_dir)
 
         put = requests.put(
             f"{BACKEND_URL}/detections/r/{report_id}/unique_objects",

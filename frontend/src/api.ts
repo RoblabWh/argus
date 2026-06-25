@@ -183,6 +183,20 @@ export const getReconstructionResults = (
 ): Promise<ReconstructionResults> =>
   fetchJson(`/reconstruction/${report_id}/results`);
 
+// --- COLMAP 3D reconstruction status ---
+
+export interface ColmapStatusData {
+  report_id: number;
+  status: "none" | "queued" | "running" | "completed" | "error";
+  progress: number;
+  message: string;
+  has_reconstruction: boolean;
+}
+
+// GET: COLMAP reconstruction status (separate fire-and-forget job dispatched after mapping)
+export const getColmapStatus = (reportId: number): Promise<ColmapStatusData> =>
+  fetchJson(`/reports/${reportId}/colmap/status`);
+
 //export api Url
 export const getApiUrl = () => API_URL;
 export const getExportReportUrl = (reportId: number): string => `${API_URL}/transfer/export/${reportId}`;

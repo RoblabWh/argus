@@ -13,4 +13,6 @@ export interface ProcessingSettings {
   odm_full: boolean;
   reread_metadata: boolean;
   apply_manual_defaults: boolean;
+  run_colmap: boolean;
+  colmap_dense: boolean;
 }

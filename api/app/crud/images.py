@@ -424,8 +424,9 @@ def get_reid_input(db: Session, mapping_report_id: int):
     dimensions and 4 GPS corners. Corners come from the report's map elements
     (computed during mapping), stored as [TL, TR, BR, BL] each [lat, lon] —
     exactly the order the worker's bilinear interpolation expects, so they are
-    passed through unchanged. Images without a map element get corners_gps=None
-    (their detections become singletons).
+    passed through unchanged. Images without a map element get corners_gps=None;
+    the worker excludes their detections from re-ID entirely, leaving their
+    unique_object_id null (they are neither clustered nor made singletons).
     """
     images = (
         db.query(models.Image)

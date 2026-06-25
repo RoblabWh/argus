@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Report } from "@/types/report";
 import type { Image, ImageBasic } from "@/types/image";
+import type { DetectionDisplayMode } from "@/types/detection";
 import { getApiUrl } from "@/api";
 import { MapTab } from "@/components/report/mappingReportComponents/MapTab";
 import { SlideshowTab } from "@/components/report/mappingReportComponents/SlideshowTab";
@@ -17,13 +18,15 @@ interface Props {
   setTab: (value: string) => void;
   thresholds: { [key: string]: number };
   visibleCategories: { [key: string]: boolean };
-  clipDetections: boolean;
-  setClipDetections: (v: boolean) => void;
+  detectionMode: DetectionDisplayMode;
+  setDetectionMode: (v: DetectionDisplayMode) => void;
   selectedObjectId: number | null;
   setSelectedObjectId: (id: number | null) => void;
+  highlightedDetectionId: number | null;
+  setHighlightedDetectionId: (id: number | null) => void;
 }
 
-export function TabArea({ report, selectedImage, setSelectedImage, tab, setTab, thresholds, visibleCategories, clipDetections, setClipDetections, selectedObjectId, setSelectedObjectId }: Props) {
+export function TabArea({ report, selectedImage, setSelectedImage, tab, setTab, thresholds, visibleCategories, detectionMode, setDetectionMode, selectedObjectId, setSelectedObjectId, highlightedDetectionId, setHighlightedDetectionId }: Props) {
   const api_url = getApiUrl();
   const { data: images } = useImages(report.report_id);
   const [visibleMapOverlays, setVisibleMapOverlays] = useState<{ [mapId: number]: boolean }>({});
@@ -107,10 +110,12 @@ export function TabArea({ report, selectedImage, setSelectedImage, tab, setTab, 
             visibleCategories={visibleCategories}
             visibleMapOverlays={visibleMapOverlays}
             setVisibleMapOverlays={setVisibleMapOverlays}
-            clipDetections={clipDetections}
-            setClipDetections={setClipDetections}
+            detectionMode={detectionMode}
+            setDetectionMode={setDetectionMode}
             selectedObjectId={selectedObjectId}
             setSelectedObjectId={setSelectedObjectId}
+            highlightedDetectionId={highlightedDetectionId}
+            setHighlightedDetectionId={setHighlightedDetectionId}
           />
         </div>
       </TabsContent>

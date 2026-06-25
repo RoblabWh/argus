@@ -72,6 +72,8 @@ class ProcessingSettings(BaseModel):
     odm_processing: bool = False
     odm_full: bool = False
     reread_metadata: Optional[bool] = False
+    run_colmap: bool = False                         # build a 3D point cloud (COLMAP SfM) for 3D reID
+    colmap_dense: bool = False                       # also attempt dense MVS (off by default — fails on low-overlap nadir)
 
 
 

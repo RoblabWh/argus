@@ -22,6 +22,8 @@ export function useReportSettings(
     odm_full: false,
     reread_metadata: false,
     apply_manual_defaults: true,
+    run_colmap: false,
+    colmap_dense: false,
     ...dynamicDefaults,
   };
 

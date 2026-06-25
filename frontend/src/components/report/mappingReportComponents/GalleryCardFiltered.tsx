@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -11,13 +11,13 @@ import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
-import { X, Filter as FilterIcon, Thermometer, Info, Images as ImagesIcon, Boxes, ZoomIn, Pencil } from "lucide-react";
+import { X, Filter as FilterIcon, Thermometer, Info, Images as ImagesIcon, Boxes, ZoomIn, Pencil, Unlink, Unlink2, Trash, Group } from "lucide-react";
 import { toast } from "sonner";
 import { getApiUrl } from "@/api";
 import type { ImageBasic } from "@/types/image";
 import type { Detection } from "@/types/detection";
 import { useImages } from "@/hooks/imageHooks";
-import { useDetections, useUpdateUniqueObject } from "@/hooks/detectionHooks";
+import { useDetections, useUpdateUniqueObject, useDeleteDetection } from "@/hooks/detectionHooks";
 import { useFilteredImages } from "@/contexts/FileteredImagesContext";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { groupDetectionsByObject } from "@/utils/detectionUtils";
@@ -433,6 +433,8 @@ interface GalleryCardProps {
   thresholds: { [key: string]: number };
   selectedObjectId: number | null;
   setSelectedObjectId: (id: number | null) => void;
+  highlightedDetectionId: number | null;
+  setHighlightedDetectionId: (id: number | null) => void;
 }
 
 export function GalleryCard({
@@ -445,6 +447,8 @@ export function GalleryCard({
   thresholds,
   selectedObjectId,
   setSelectedObjectId,
+  highlightedDetectionId,
+  setHighlightedDetectionId,
 }: GalleryCardProps) {
   const { data: images, isLoading } = useImages(reportId);
   const { data: detections } = useDetections(reportId);
@@ -495,6 +499,23 @@ export function GalleryCard({
 
   const [editDetection, setEditDetection] = useState<Detection | null>(null);
   const updateUniqueObject = useUpdateUniqueObject(reportId);
+  const deleteDetectionMut = useDeleteDetection(reportId);
+
+  // Scroll the cross-highlighted crop (from a clicked map marker) into view
+  const highlightedCropRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (highlightedDetectionId != null) {
+      highlightedCropRef.current?.scrollIntoView({ block: "nearest" });
+    }
+  }, [highlightedDetectionId]);
+
+  const isBelowThreshold = (det: Detection) => det.score < (thresholds[det.class_name] ?? 0);
+
+  const handleDelete = (det: Detection) => {
+    if (!window.confirm(`Permanently delete this ${det.class_name} detection? This cannot be undone.`)) return;
+    deleteDetectionMut.mutate(det.id);
+    if (highlightedDetectionId === det.id) setHighlightedDetectionId(null);
+  };
 
   const removeFromCluster = (det: Detection) => {
     const prev = det.unique_object_id ?? null;
@@ -553,7 +574,7 @@ export function GalleryCard({
                 <ImagesIcon className="h-3.5 w-3.5" /> Images
               </TabsTrigger>
               <TabsTrigger value="objects" className="gap-1 px-2 py-1 text-xs">
-                <Boxes className="h-3.5 w-3.5" /> Objects
+                <Group className="h-3.5 w-3.5" /> Objects
               </TabsTrigger>
             </TabsList>
           </Tabs>
@@ -759,14 +780,26 @@ export function GalleryCard({
             ) : shownMembers.length === 0 ? (
               <p className="text-md text-muted-foreground">No detections for this object.</p>
             ) : (
-              shownMembers.map((det) => {
+              [...shownMembers]
+                .sort((a, b) => Number(isBelowThreshold(a)) - Number(isBelowThreshold(b)))
+                .map((det) => {
                 const img = imageById.get(det.image_id);
                 if (!img) return null;
                 const b = det.bbox as unknown as number[];
                 const bbox: [number, number, number, number] = [Number(b[0]), Number(b[1]), Number(b[2]), Number(b[3])];
+                const isHighlighted = det.id === highlightedDetectionId;
+                const below = isBelowThreshold(det);
                 return (
-                  <div key={det.id} className="group flex flex-col items-center gap-1" style={{ maxWidth: thumbSize }}>
-                    <div className="relative" style={{ width: thumbSize, height: thumbSize }}>
+                  <div
+                    key={det.id}
+                    ref={isHighlighted ? highlightedCropRef : undefined}
+                    className="group flex flex-col items-center gap-1"
+                    style={{ maxWidth: thumbSize }}
+                  >
+                    <div
+                      className={`relative rounded-sm ${isHighlighted ? "ring-2 ring-primary ring-offset-2" : ""}`}
+                      style={{ width: thumbSize, height: thumbSize }}
+                    >
                       <BBoxCrop
                         imageUrl={`${apiUrl}/${img.url}`}
                         imageWidth={img.width}
@@ -776,6 +809,23 @@ export function GalleryCard({
                         alt={img.filename}
                         onClick={() => onImageClick(img)}
                       />
+                      {/* Below-threshold: dim + label, but stays clickable (overlay is click-through) */}
+                      {below && (
+                        <div className="absolute inset-0 bg-black/55 rounded-sm flex items-center justify-center pointer-events-none">
+                          <span className="text-[10px] text-white/90 font-medium text-center px-1">below threshold</span>
+                        </div>
+                      )}
+                      {/* Delete whole detection (top-left, separate from the grouping controls) */}
+                      <div className="absolute top-1 left-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          type="button"
+                          title="Delete detection"
+                          className="rounded-sm bg-black/60 hover:bg-red-600 text-white p-1"
+                          onClick={(e) => { e.stopPropagation(); handleDelete(det); }}
+                        >
+                          <Trash className="h-3 w-3" />
+                        </button>
+                      </div>
                       {/* Hover-reveal edit / remove controls */}
                       <div className="absolute top-1 right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button
@@ -792,7 +842,7 @@ export function GalleryCard({
                           className="rounded-sm bg-black/60 hover:bg-red-600 text-white p-1"
                           onClick={(e) => { e.stopPropagation(); removeFromCluster(det); }}
                         >
-                          <X className="h-3 w-3" />
+                          <Unlink className="h-3 w-3" />
                         </button>
                       </div>
                     </div>

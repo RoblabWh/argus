@@ -113,6 +113,23 @@ services:
       HF_REID_MODEL_ID: ${HF_REID_MODEL_ID:-facebook/dinov3-vitb16-pretrain-lvd1689m}
       HF_TOKEN: ${HF_TOKEN:-}
 
+  argus_colmap_worker:
+    build: ./detection_colmap
+    working_dir: /detection_colmap
+    container_name: argusII_colmap_worker
+    entrypoint: celery
+    command: -A tasks_colmap worker -Q colmap --loglevel=${LOG_LEVEL}
+    volumes:
+      - argus_uploaded_files:/detection_colmap/reports_data
+    depends_on:
+      - redis
+      - api
+    environment:
+      REDIS_PORT: ${PORT_REDIS}
+      REDIS_HOST: ${HOST_REDIS}
+      BACKEND_URL: ${VITE_API_URL}
+      DEVICE: "cpu"
+
   argus_stella_worker:
     build: ./reconstruction_stella
     container_name: argusII_stella_worker

@@ -150,6 +150,17 @@
 .custom-div-icon:hover .marker-dot {
   transform: scale(1.18);
 }
+/* Spatial super-cluster dots: grow slightly and brighten the muted outer ring to the
+   full class color (passed in as the --ring-active inline custom property). */
+.custom-div-icon .spatial-cluster {
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+.custom-div-icon:hover .spatial-cluster {
+  transform: scale(1.10);
+}
+.custom-div-icon:hover .spatial-cluster-ring {
+  border-color: var(--ring-active);
+}
 
 /* Image-footprint overlay polygons — smooth fade in/out of the hover highlight.
    weight stays constant; only stroke/fill opacity animate (Leaflet writes these as

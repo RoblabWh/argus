@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
     ScanEye,
     ScanSearch,
@@ -15,10 +16,13 @@ import {
     Info,
     Eye,
     EyeOff,
-    Scissors
+    Scissors,
+    Boxes,
+    Layers,
+    Group
 } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import type { Detection } from '@/types/detection';
+import type { Detection, DetectionDisplayMode } from '@/types/detection';
 import { getDetectionColor } from '@/types/detection';
 import { useQueryClient } from '@tanstack/react-query';
 import {
@@ -30,12 +34,15 @@ import {
 } from "@/hooks/detectionHooks";
 import {
     countDetections,
+    countReduced,
+    reduceDetections,
     initiateThresholds,
     initiateCategoryVisibility,
     updateThresholds,
     updateCategoryVisibility,
 } from "@/utils/detectionUtils";
 import { useMaps } from "@/hooks/useMaps";
+import { useImages } from "@/hooks/imageHooks";
 
 
 interface Props {
@@ -46,22 +53,43 @@ interface Props {
     filters: string[];
     visibleCategories: { [key: string]: boolean };
     setVisibleCategories: (visibility: { [key: string]: boolean }) => void;
-    clipDetections: boolean;
-    setClipDetections: (v: boolean) => void;
+    detectionMode: DetectionDisplayMode;
+    setDetectionMode: (v: DetectionDisplayMode) => void;
 }
 
-export function DetectionCard({ report_id, setThresholds, thresholds, setFilter, filters, visibleCategories, setVisibleCategories, clipDetections, setClipDetections }: Props) {
+export function DetectionCard({ report_id, setThresholds, thresholds, setFilter, filters, visibleCategories, setVisibleCategories, detectionMode, setDetectionMode }: Props) {
     const [pollingEnabled, setPollingEnabled] = useState(false);
     const isRunning = useIsDetectionRunning(report_id);
     const { data: detections, isLoading: isLoadingDetections, isError: isErrorDetections } = useDetections(report_id);
     const { data: maps } = useMaps(report_id);
+    const { data: images } = useImages(report_id);
     const hasVoronoi = useMemo(() =>
         maps?.some(m => m.map_elements?.some(el => el.voronoi_gps?.length)) ?? false
     , [maps]);
+    const hasUniqueIds = useMemo(() =>
+        detections?.some(d => d.unique_object_id != null) ?? false
+    , [detections]);
     const queryClient = useQueryClient();
-    const detectionSummary = useMemo(() => { if (detections) return countDetections(detections, thresholds); }, [detections, thresholds]);
+    // In "reduced" mode the count mirrors the map: distinct objects + Voronoi-clipped leftovers.
+    // In "all" mode every detection above threshold is counted individually.
+    const reducedSummary = useMemo(() => {
+        if (!detections) return undefined;
+        const summary = countReduced(reduceDetections(detections, images, maps, thresholds, "reduced"));
+        // Seed every class with 0 so its row still renders even when fully reduced away.
+        for (const det of detections) {
+            if (!(det.class_name in summary)) summary[det.class_name] = 0;
+        }
+        return summary;
+    }, [detections, images, maps, thresholds]);
+    const allSummary = useMemo(
+        () => (detections ? countDetections(detections, thresholds) : undefined),
+        [detections, thresholds]
+    );
+    // The table shows the count for the active mode; the count-cell tooltip shows the other mode's.
+    const detectionSummary = detectionMode === "reduced" ? reducedSummary : allSummary;
+    const alternateSummary = detectionMode === "reduced" ? allSummary : reducedSummary;
     var [hasDetections, setHasDetections] = useState(detections && detections.length > 0);
-    const [detectionMode, setDetectionMode] = useState<"fast" | "medium" | "detailed" | "experimental" | undefined>(undefined);
+    const [analysisMode, setAnalysisMode] = useState<"fast" | "medium" | "detailed" | "experimental" | undefined>(undefined);
 
     useEffect(() => {
         if (detections) {
@@ -93,29 +121,40 @@ export function DetectionCard({ report_id, setThresholds, thresholds, setFilter,
         if (!detectionStatus.data) return;
 
         const progress = detectionStatus.data.progress ?? 0;
+        const status = detectionStatus.data.status.toUpperCase();
+        const terminal = status === "FINISHED" || status === "ERROR";
 
-        // If progress increased, request more detections
-        if (progress > lastProgressRef.current) {
+        // While running, pull newly-produced detections incrementally. Crucially, do NOT do
+        // this on the terminal tick: the incremental merge snapshots the stale cache (no
+        // unique_object_ids) and would clobber the authoritative refetch below — leaving the
+        // re-id grouping invisible until a manual reload.
+        if (!terminal && progress > lastProgressRef.current) {
             fetchNewDetections.mutate();
         }
         lastProgressRef.current = progress;
 
-        if (detectionStatus.data.status.toUpperCase() === "FINISHED" || detectionStatus.data.status.toUpperCase() === "ERROR") {
+        if (terminal) {
             setPollingEnabled(false);
-            if (detectionStatus.data.status.toUpperCase() === "FINISHED") {
-                // refresh detections by invalidating queries  ["report", report.report_id]
+            if (status === "FINISHED") {
+                // Authoritative full refetch — picks up re-id unique_object_ids (YOLO) or just
+                // the final detections (old pipeline, no re-id). A second bounded refetch ~1.5s
+                // later defeats the narrow race where a prior in-flight incremental merge
+                // resolves after this invalidate.
                 queryClient.invalidateQueries({ queryKey: ["detections", report_id] });
-                console.log("Detections should be updated");
+                const t = setTimeout(() => {
+                    queryClient.invalidateQueries({ queryKey: ["detections", report_id] });
+                }, 1500);
+                return () => clearTimeout(t);
             }
         }
     }, [detectionStatus.data]);
 
 
     const handleStart = () => {
-        if (!detectionMode) return;
+        if (!analysisMode) return;
 
         startDetection.mutate(
-            { reportId: report_id, processingMode: detectionMode },
+            { reportId: report_id, processingMode: analysisMode },
             {
                 onSuccess: () => {
                     queryClient.invalidateQueries({ queryKey: ["detections", report_id] });
@@ -183,8 +222,24 @@ export function DetectionCard({ report_id, setThresholds, thresholds, setFilter,
                 <CardContent className="px-4 pt-1 flex flex-col items-start space-y-1 relative z-10">
                     {/* Title */}
 
-                    <div className="flex justify-between items-start w-full">
+                    <div className="flex justify-between items-center w-full">
                         <div className="text-xl font-bold leading-none">Object Detection</div>
+                        {hasDetections && (hasUniqueIds || hasVoronoi) && (
+                            <Tabs
+                                value={detectionMode}
+                                onValueChange={(v) => setDetectionMode(v as DetectionDisplayMode)}
+                            >
+                                <TabsList className="h-8">
+                                    <TabsTrigger value="all" className="gap-1 px-2 py-1 text-xs">
+                                        <Layers className="h-3.5 w-3.5" /> All
+                                    </TabsTrigger>
+                                    <TabsTrigger value="reduced" className="gap-1 px-2 py-1 text-xs">
+                                        {hasUniqueIds ? <Group className="h-3.5 w-3.5" /> : <Scissors className="h-3.5 w-3.5" />}
+                                        {hasUniqueIds ? "Grouped" : "Clipped"}
+                                    </TabsTrigger>
+                                </TabsList>
+                            </Tabs>
+                        )}
                     </div>
 
                     {/* Description */}
@@ -208,7 +263,16 @@ export function DetectionCard({ report_id, setThresholds, thresholds, setFilter,
                                                 </div>
                                             </TableCell>
                                             <TableCell className="w-0 py-1">
-                                                {count}
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        <span className="cursor-help">{count}</span>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent>
+                                                        {detectionMode === "reduced"
+                                                            ? `Ungrouped total: ${alternateSummary?.[key] ?? 0}`
+                                                            : `Grouped: ${alternateSummary?.[key] ?? 0}`}
+                                                    </TooltipContent>
+                                                </Tooltip>
                                             </TableCell>
                                             <TableCell className="w-0 p-auto py-1 ">
                                                 <Input
@@ -306,11 +370,11 @@ export function DetectionCard({ report_id, setThresholds, thresholds, setFilter,
                                 <div className="w-full flex flex-row justify-between items-center">
 
                                     <Select
-                                        value={detectionMode}
-                                        onValueChange={(value) => setDetectionMode(value as "fast" | "medium" | "detailed" | "experimental" | undefined)}
+                                        value={analysisMode}
+                                        onValueChange={(value) => setAnalysisMode(value as "fast" | "medium" | "detailed" | "experimental" | undefined)}
                                     >
                                         <SelectTrigger className="w-[150px]"
-                                            value={detectionMode}
+                                            value={analysisMode}
                                         >
                                             <SelectValue placeholder="Analysis Mode" />
                                         </SelectTrigger>
@@ -323,42 +387,23 @@ export function DetectionCard({ report_id, setThresholds, thresholds, setFilter,
                                     </Select>
 
                                     <div className="flex items-center gap-2">
-                                        {hasDetections && hasVoronoi && (
-                                            <Tooltip>
-                                                <TooltipTrigger asChild>
-                                                    <Button
-                                                        variant={clipDetections ? "outline": "default"}
-                                                        size="sm"
-                                                        onClick={() => setClipDetections(!clipDetections)}
-                                                    >
-                                                        <Scissors className="w-4 h-4 mr-1" />
-                                                        {clipDetections ? "Show all" : "Clip"}
-                                                    </Button>
-                                                </TooltipTrigger>
-                                                <TooltipContent>
-                                                    {clipDetections
-                                                        ? "Showing detections clipped by each image's center region (like the map view)"
-                                                        : "Showing all detections (may include duplicates from overlapping images)"}
-                                                </TooltipContent>
-                                            </Tooltip>
-                                        )}
                                         <Tooltip>
                                             <TooltipTrigger>
-                                                <Button variant={`${detectionMode === undefined ? "outline" : "default"}`} size="sm" onClick={() => { handleStart() }} disabled={!pollingEnabled && (!detectionMode)}>
+                                                <Button variant={`${analysisMode === undefined ? "outline" : "default"}`} size="sm" onClick={() => { handleStart() }} disabled={!pollingEnabled && (!analysisMode)}>
                                                     Run Detection
                                                 </Button>
                                             </TooltipTrigger>
                                             <TooltipContent>
-                                                {detectionMode === undefined ? "Select analysis mode first" : "Start AI detection processing"}
+                                                {analysisMode === undefined ? "Select analysis mode first" : "Start AI detection processing"}
                                             </TooltipContent>
                                         </Tooltip>
                                     </div>
                                 </div>
-                                {detectionMode && (
+                                {analysisMode && (
                                     <div className="rounded-md border p-2 mt-2 text-sm border-gray-400 bg-gray-200 text-muted-foreground dark:bg-gray-800 dark:border-gray-700">
                                         <p className="m-0">
                                             <Info className="inline-block w-3 h-3 align-middle mr-1" />
-                                            {infotextForMode(detectionMode)}
+                                            {infotextForMode(analysisMode)}
                                         </p>
                                     </div>
 

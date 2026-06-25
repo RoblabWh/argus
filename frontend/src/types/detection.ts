@@ -14,6 +14,13 @@ export interface Detection {
   coord?: Coord;
 };
 
+/**
+ * How detections are reduced for display on the map and counted in the DetectionCard.
+ * - "all": every detection shown individually (no grouping, no clipping)
+ * - "reduced": merge by unique_object_id into clusters, Voronoi-clip the ungrouped leftovers
+ */
+export type DetectionDisplayMode = "all" | "reduced";
+
 
 function parseHex(hex: string): [number, number, number] {
   const h = hex.replace("#", "");

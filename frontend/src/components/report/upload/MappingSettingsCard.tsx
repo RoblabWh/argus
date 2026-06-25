@@ -30,7 +30,7 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { useEffect, useRef } from "react";
-import { Info, Blocks } from "lucide-react";
+import { Info, Blocks, Boxes } from "lucide-react";
 import { WebODMLogo } from "@/components/report/mappingReportComponents/WebOdmCard";
 import { MappingTile } from "@/components/report/upload/SettingsTile";
 import type { ProcessingSettings } from "@/types/processing";
@@ -448,6 +448,43 @@ export function MappingSettingsCard({
                                     <SelectItem value="true">Full 3D Mapping</SelectItem>
                                 </SelectContent>
                             </Select>
+                        </div>
+                    </MappingTile>
+
+                    {/* 3D Reconstruction (COLMAP) */}
+                    <MappingTile
+                        title="3D Reconstruction (COLMAP)"
+                        icon={<Boxes className="w-28 h-28" />}
+                        enabled={settings.run_colmap}
+                        onToggle={(val) => update({ run_colmap: val })}
+                    >
+                        <div className="relative z-10 space-y-3">
+                            <p className="text-sm text-muted-foreground max-w-xs">
+                                Builds a 3D point cloud of the site (needs GPS-tagged images).
+                                Enables more accurate 3D object grouping on the next detection run.
+                                Runs in the background after mapping — see status in the report.
+                            </p>
+
+                            <div className="flex items-center justify-between gap-6">
+                                <div className="flex items-center gap-2">
+                                    <Label htmlFor="colmap-dense">Dense point cloud</Label>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <Info className="w-4 h-4 text-muted-foreground cursor-help" />
+                                        </TooltipTrigger>
+                                        <TooltipContent side="right">
+                                            Much slower and frequently fails on low-overlap nadir
+                                            flights. Leave off unless you need a dense cloud — the
+                                            sparse cloud is sufficient for 3D re-identification.
+                                        </TooltipContent>
+                                    </Tooltip>
+                                </div>
+                                <Switch
+                                    id="colmap-dense"
+                                    checked={settings.colmap_dense}
+                                    onCheckedChange={(val) => update({ colmap_dense: val })}
+                                />
+                            </div>
                         </div>
                     </MappingTile>
                 </div>

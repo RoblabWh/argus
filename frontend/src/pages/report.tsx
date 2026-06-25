@@ -112,6 +112,9 @@ export default function ReportOverview() {
       if (statusChanged) {
         if (newStatus === "completed") {
           refetchFullReport();
+          // COLMAP (if enabled) is dispatched right after mapping completes. Wake its poll
+          // now so the 3D-reconstruction bar appears without a reload.
+          queryClient.invalidateQueries({ queryKey: ["colmap-status", Number(report_id)] });
         } else if (prevStatus === "preprocessing" || (prevStatus === "queued" && newStatus === "processing")) {
           setHasRefetchedAfterStatusChange(false);
           refetchFullReport().then(() => {

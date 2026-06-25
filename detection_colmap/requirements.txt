@@ -1,0 +1,11 @@
+# COLMAP SfM worker. The CUDA `colmap` CLI is provided by the base image
+# (colmap/colmap); only the Python orchestration + geometry deps live here.
+celery==5.6.0
+redis==7.1.0
+requests
+numpy==1.26.3
+scipy==1.13.1
+pyproj==3.6.1
+pillow==12.2.0
+# Read COLMAP binaries (cameras.bin / images.bin / points3D) + export PLY.
+pycolmap==3.10.0

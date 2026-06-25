@@ -82,7 +82,16 @@ def run_detections(report_id: int, req: DetectionSettings, db: Session = Depends
         detection_task = celery_app.signature(
             "detection.run", args=[report_id, images_list, max_splits], queue="detection"
         )
-    asynch_task = detection_task.apply_async()
+    try:
+        asynch_task = detection_task.apply_async()
+    except Exception as e:
+        # Dispatch failed — don't leave an orphaned "queued" status behind (it has
+        # no task_id, so it would otherwise look stuck forever until a restart).
+        r.delete(f"detection:{report_id}:status")
+        r.delete(f"detection:{report_id}:progress")
+        r.delete(f"detection:{report_id}:message")
+        logger.error(f"Failed to dispatch detection task for report {report_id}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to queue detection task")
 
     r.set(f"detection:{report_id}:task_id", asynch_task.id)
     #logger.info(f"Detection task {asynch_task.id} queued for report {report_id}")

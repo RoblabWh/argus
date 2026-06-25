@@ -13,6 +13,7 @@ import { MoreHorizontal, Square } from "lucide-react";
 import type { Report } from '@/types/report';
 import { EditReportPopup } from "../EditReportPopup";
 import { ExportPopup } from './ShareMapImagesPopup';
+import { ColmapStatusIndicator } from './ColmapStatusIndicator';
 
 interface Props {
     report: Report;
@@ -132,6 +133,10 @@ export function GeneralDataCard({ report, onReprocessClicked, onStopProcessing, 
                         </DropdownMenu>
                     )}
                 </div>
+
+                {/* COLMAP 3D reconstruction status — separate, fire-and-forget job that runs
+                    after mapping completes. Renders nothing unless COLMAP was started. */}
+                <ColmapStatusIndicator reportId={report.report_id} />
             </CardContent>
         </Card>
         <EditReportPopup

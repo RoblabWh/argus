@@ -81,6 +81,19 @@ def process_report(report_id: int, settings: dict = None):
                 if new_project_id is not None:
                     webODM_project_id = new_project_id
 
+        # ------------------------------------------------------------------
+        # Optional 3D reconstruction (COLMAP SfM). Runs in its own GPU worker
+        # *after* mapping when the user opted in. Fire-and-forget: detection /
+        # reID is a separate, later user action that simply uses the 3D output
+        # if present (and falls back to 2D otherwise), so mapping does not wait
+        # on it. Artifacts land in the shared volume at reports_data/{id}/colmap/.
+        # ------------------------------------------------------------------
+        if settings.get('run_colmap'):
+            try:
+                _dispatch_colmap(report_id, images, settings)
+            except Exception as colmap_err:  # noqa: BLE001 - reconstruction is optional
+                logger.error(f"Failed to dispatch COLMAP for report {report_id}: {colmap_err}")
+
         progress_updater.update_progress("completed", 100.0)
     except Exception as e:
         logger.error(f"Error processing report {report_id}: {e}")
@@ -92,4 +105,37 @@ def process_report(report_id: int, settings: dict = None):
 
     finally:
         db.close()
+
+
+def _dispatch_colmap(report_id: int, images, settings: dict) -> None:
+    """Queue a COLMAP SfM reconstruction for the report's non-thermal images.
+
+    Image paths are passed as the relative ``Image.url`` (``reports_data/...``),
+    which the COLMAP worker resolves from its own CWD against the shared volume
+    — the same portable scheme the YOLO worker uses. Output goes to
+    ``reports_data/{report_id}/colmap/``.
+    """
+    image_paths = {
+        os.path.basename(img.url): img.url
+        for img in images
+        if not img.thermal and img.url
+    }
+    if len(image_paths) < 3:
+        logger.info(f"Skipping COLMAP for report {report_id}: too few images ({len(image_paths)})")
+        return
+
+    results_path = os.path.join("reports_data", str(report_id), "colmap")
+    options = {"dense": bool(settings.get('colmap_dense', False))}
+
+    task = celery_app.signature(
+        "colmap.run",
+        args=[report_id, image_paths, results_path, options],
+        queue="colmap",
+    ).apply_async()
+
+    r.set(f"colmap:{report_id}:task_id", task.id)
+    r.set(f"colmap:{report_id}:status", "queued")
+    r.set(f"colmap:{report_id}:progress", 0)
+    r.set(f"colmap:{report_id}:message", "COLMAP reconstruction queued")
+    logger.info(f"Dispatched COLMAP task {task.id} for report {report_id} ({len(image_paths)} images, dense={options['dense']})")
 

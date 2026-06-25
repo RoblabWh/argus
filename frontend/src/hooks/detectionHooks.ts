@@ -82,8 +82,8 @@ export function useDeleteDetection(reportId: number) {
     return useMutation({
         mutationFn: (detectionId: number) => deleteDetection(detectionId),
         onSuccess: () => {
-            // Invalidate and refetch
-            console.log("successfully deleted detection");
+            // Re-cluster map + gallery once a detection is removed
+            queryClient.invalidateQueries({ queryKey: ["detections", reportId] });
         },
     });
 }

@@ -1,6 +1,6 @@
 import React from "react";
 import { useState, useEffect, useMemo, useRef } from "react";
-import type { ImageBasic, GPSCoord } from "@/types/image";
+import type { ImageBasic } from "@/types/image";
 import type { Detection } from "@/types/detection";
 import { getDetectionColor } from "@/types/detection";
 import { getApiUrl } from "@/api";
@@ -25,15 +25,18 @@ import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
-import { Home } from 'lucide-react';
+import { Home, Group, Ungroup } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import "@/lib/Leaflet.ImageOverlay.Rotated";
 import { RotatedImageOverlay } from "@/components/report/mappingReportComponents/RotatedImageOverlay";
 import panoPinSVG from '@/assets/panorama.svg';
 import { useImages } from "@/hooks/imageHooks";
 import { useMaps } from "@/hooks/useMaps";
 import { useDetections, useUpdateDetectionBatch } from "@/hooks/detectionHooks";
-import { extractFlightTrajectory, computeDetectionGps, isPointInPolygon, polygonIntersection } from "@/utils/coordinateUtils";
-import { groupDetectionsByObject } from "@/utils/detectionUtils";
+import { extractFlightTrajectory, computeDetectionGps, polygonIntersection } from "@/utils/coordinateUtils";
+import { reduceDetections, gridClusterMarkables } from "@/utils/detectionUtils";
+import type { DetectionWithGps, ClusterMarker, SpatialMarkable } from "@/utils/detectionUtils";
+import type { DetectionDisplayMode } from "@/types/detection";
 import { AssignObjectDialog } from "@/components/report/mappingReportComponents/AssignObjectDialog";
 
 // Re-export for backward compatibility if other components import from here
@@ -42,22 +45,20 @@ export { extractFlightTrajectory } from "@/utils/coordinateUtils";
 const { BaseLayer } = LayersControl;
 
 // Cluster count badges are hidden below this zoom (too cluttered when zoomed out)
-const CLUSTER_BADGE_MIN_ZOOM = 20;
+const CLUSTER_BADGE_MIN_ZOOM = 21;
+
+// At or below this zoom, nearby same-class markers collapse into spatial super-cluster dots.
+const SPATIAL_CLUSTER_MAX_ZOOM = 17;
+
+// Experiment: derive a cluster's map marker from its Voronoi-clipped member instead of the average.
+const CLUSTER_REP_FROM_VORONOI = true;
 
 // Accent for image-footprint overlay polygons (reads on light + dark basemaps)
 const FOOTPRINT_COLOR = "#0ea5e9"; // sky-500
 
-type DetectionWithGps = Detection & { computedGps: GPSCoord };
-type ClusterMarker = {
-    uid: number;
-    members: DetectionWithGps[];
-    centroid: GPSCoord;
-    className: string;
-};
-
-/** Radius in meters that encloses a cluster's members around its centroid (with padding). */
+/** Radius in meters that encloses a cluster's members around its average center (with padding). */
 function clusterRadiusMeters(cluster: ClusterMarker): number {
-    const { lat, lon } = cluster.centroid;
+    const { lat, lon } = cluster.averageCentroid;
     const cosLat = Math.cos((lat * Math.PI) / 180);
     let rMax = 0;
     for (const m of cluster.members) {
@@ -75,13 +76,15 @@ interface Props {
     visibleCategories: { [key: string]: boolean };
     visibleMapOverlays: { [mapId: number]: boolean };
     setVisibleMapOverlays: (overlays: { [mapId: number]: boolean }) => void;
-    clipDetections: boolean;
-    setClipDetections: (v: boolean) => void;
+    detectionMode: DetectionDisplayMode;
+    setDetectionMode: (v: DetectionDisplayMode) => void;
     selectedObjectId: number | null;
     setSelectedObjectId: (id: number | null) => void;
+    highlightedDetectionId: number | null;
+    setHighlightedDetectionId: (id: number | null) => void;
 }
 
-function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCategories, visibleMapOverlays, setVisibleMapOverlays, clipDetections, selectedObjectId, setSelectedObjectId }: Props) {
+function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCategories, visibleMapOverlays, setVisibleMapOverlays, detectionMode, selectedObjectId, setSelectedObjectId, setHighlightedDetectionId }: Props) {
     const [overlayOpacity, setOverlayOpacity] = useState(1.0);
     const [map, setMap] = useState<LeafletMap | null>(null);
     const { data: images } = useImages(reportId);
@@ -94,6 +97,7 @@ function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCatego
     const [showPanoMarkers, setShowPanoMarkers] = useState(true);
     const [showDetections, setShowDetections] = useState(true);
     const [showPolygons, setShowPolygons] = useState(true);
+    const [spatialClusterEnabled, setSpatialClusterEnabled] = useState(true);
     const [editDetection, setEditDetection] = useState<Detection | null>(null);
     const [zoom, setZoom] = useState(18);
     const current = theme === "system"
@@ -131,14 +135,15 @@ function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCatego
         const getIcon = (className: string, highlighted = false) => {
             const key = `${className}|${highlighted ? 1 : 0}`;
             if (!cache.has(key)) {
-                const color = getDetectionColor(className);
-                const size = highlighted ? 10 : 8;
+                const color = getDetectionColor(className, false);
+                const centerColor = getDetectionColor(className, true);
+                const size = highlighted ? 14 :11;
                 const shadow = highlighted
-                    ? `0 0 0 3px ${color}80, 0 1px 4px rgba(0,0,0,0.5)`
-                    : `0 1px 3px rgba(0,0,0,0.45)`;
+                    ? `0 1px 8px rgba(0,0,0,0.65)`
+                    : `0 2px 5px rgba(0,0,0,0.45)`;
                 cache.set(key, L.divIcon({
                     className: 'custom-div-icon',
-                    html: `<div class="marker-dot" style="background-color:${color};width:${size}px;height:${size}px;border-radius:50%;border:3px solid #fff;box-shadow:${shadow};box-sizing:border-box;"></div>`,
+                    html: `<div class="marker-dot" style="background-color:${centerColor};width:${size}px;height:${size}px;border-radius:50%;border:1px solid ${color};box-shadow:${shadow};box-sizing:border-box;"></div>`,
                     iconSize: [size, size],
                     iconAnchor: [size / 2, size / 2],
                     popupAnchor: [0, -size / 2],
@@ -149,24 +154,13 @@ function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCatego
         return getIcon;
     }, []);
 
-    // Build a lookup from image_id → Voronoi polygon (GPS coords)
-    const voronoiIndex = useMemo(() => {
-        const index = new Map<number, [number, number][]>();
-        maps?.forEach(m =>
-            m.map_elements?.forEach(el => {
-                if (el.voronoi_gps?.length) index.set(el.image_id, el.voronoi_gps);
-            })
-        );
-        return index;
-    }, [maps]);
-
     // Cache merged-cluster icons by class + count + whether the count badge is shown (zoom-gated)
     const getClusterIcon = useMemo(() => {
         const cache = new Map<string, L.DivIcon>();
         return (className: string, count: number, showBadge: boolean) => {
             const key = `${className}|${count}|${showBadge ? 1 : 0}`;
             if (!cache.has(key)) {
-                const color = getDetectionColor(className);
+                const color = getDetectionColor(className, false);
                 const centerColor = getDetectionColor(className, true);
                 const badge = showBadge
                     ? `<span style="position:absolute;top:-7px;right:-7px;background:#111;color:#fff;border-radius:9px;font-size:10px;line-height:14px;min-width:14px;height:14px;text-align:center;padding:0 2px;border:1px solid #fff;box-sizing:border-box;">${count}</span>`
@@ -174,7 +168,7 @@ function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCatego
                 cache.set(key, L.divIcon({
                     className: 'custom-div-icon',
                     html: `<div style="position:relative;width:16px;height:16px;">
-                        <div class="marker-dot" style="background-color:${centerColor};width:10px;height:10px;border-radius:50%;border:2px solid ${color};box-shadow:0 1px 4px rgba(0,0,0,0.5);box-sizing:border-box;"></div>
+                        <div class="marker-dot" style="background-color:${centerColor};width:11px;height:11px;border-radius:50%;border:2px solid ${color};box-shadow:0 1px 4px rgba(0,0,0,0.5);box-sizing:border-box;"></div>
                         ${badge}
                     </div>`,
                     iconSize: [22, 22],
@@ -186,64 +180,100 @@ function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCatego
         };
     }, []);
 
-    // Threshold/visibility-filtered detections with GPS, split into re-id clusters
-    // (merged) and unassigned (rendered individually, with Voronoi clip preserved).
-    const { clusters, unassignedVisible } = useMemo(() => {
-        if (!detections?.length || !images?.length || !maps?.length) {
-            return { clusters: [] as ClusterMarker[], unassignedVisible: [] as DetectionWithGps[] };
-        }
+    // Cache spatial super-cluster icons (zoomed-out proximity aggregation) by class + count.
+    // Visually distinct from re-id markers: a larger filled dot with the count *inside*.
+    const getSpatialClusterIcon = useMemo(() => {
+        const cache = new Map<string, L.DivIcon>();
+        return (className: string, count: number) => {
+            const key = `${className}|${count}`;
+            if (!cache.has(key)) {
+                const centerColor = getDetectionColor(className, true);
+                const color = getDetectionColor(className, false);
+                const size = 24;
+                cache.set(key, L.divIcon({
+                    className: 'custom-div-icon',
+                    html: `<div class="spatial-cluster spatial-cluster-ring" style="--ring-active:${color};width:${size+8}px;height:${size+8}px;border-radius:50%;border:2px solid ${centerColor};box-sizing:border-box;display:flex;align-items:center;justify-content:center;">
+                            <div style="background-color:${color};width:${size}px;height:${size}px;border-radius:50%;border:2px solid ${color};box-shadow:0 2px 6px rgba(0,0,0,0.5);box-sizing:border-box;display:flex;align-items:center;justify-content:center;color:#111;font-weight:700;font-size:13px;line-height:1; color: #000000;">${count}</div>
+                            </div>`,
+                    iconSize: [size + 8, size + 8],
+                    iconAnchor: [size / 2 + 4, size / 2 + 4],
+                    popupAnchor: [0, -size / 2 - 4],
+                }));
+            }
+            return cache.get(key)!;
+        };
+    }, []);
 
-        const withGps = detections
-            .filter(det =>
-                visibleCategories[det.class_name] &&
-                det.score >= (thresholds[det.class_name] || 0)
-            )
-            .map(det => {
-                const gps = det.coord?.gps || computeDetectionGps(det, images, maps);
-                return gps ? { ...det, computedGps: gps } : null;
-            })
-            .filter(Boolean) as DetectionWithGps[];
+    // Threshold-filtered detections with GPS, reduced per the display mode (shared with the
+    // DetectionCard count so the map and the table stay consistent). Visibility (per-class eye
+    // toggle) is applied as a render-time filter below, not here.
+    const reduced = useMemo(
+        () => reduceDetections(detections, images, maps, thresholds, detectionMode, CLUSTER_REP_FROM_VORONOI),
+        [detections, images, maps, thresholds, detectionMode]
+    );
 
-        const { clusters: rawClusters, unassigned } = groupDetectionsByObject(withGps);
-
-        // One merged marker per cluster at the centroid of its members (no clip — we
-        // intentionally merge the overlapping duplicates).
-        const clusterList: ClusterMarker[] = Array.from(rawClusters.entries()).map(([uid, members]) => {
-            const lat = members.reduce((s, m) => s + m.computedGps.lat, 0) / members.length;
-            const lon = members.reduce((s, m) => s + m.computedGps.lon, 0) / members.length;
-            return { uid, members, centroid: { lat, lon }, className: members[0].class_name };
-        });
-
-        // Unassigned detections keep the existing per-image Voronoi clip behavior.
-        const unassignedVisible = unassigned.filter(det => {
-            if (!clipDetections) return true;
-            const voronoi = voronoiIndex.get(det.image_id);
-            if (!voronoi) return true;  // no Voronoi data → always show
-            return isPointInPolygon([det.computedGps.lat, det.computedGps.lon], voronoi);
-        });
-
-        return { clusters: clusterList, unassignedVisible };
-    }, [detections, images, maps, visibleCategories, thresholds, clipDetections, voronoiIndex]);
+    const clusters: ClusterMarker[] = useMemo(
+        () => reduced.clusters.filter(c => visibleCategories[c.className]),
+        [reduced, visibleCategories]
+    );
+    const unassignedVisible: DetectionWithGps[] = useMemo(
+        () => reduced.unassignedVisible.filter(d => visibleCategories[d.class_name]),
+        [reduced, visibleCategories]
+    );
 
     const hasDetectionMarkers = clusters.length > 0 || unassignedVisible.length > 0;
 
-    // Spotlight: when a cluster is selected, fade everything that isn't its children
-    const spotlight = selectedObjectId != null;
-    const selectedCluster = spotlight ? clusters.find(c => c.uid === selectedObjectId) : undefined;
-    
+    // Spotlight: when a cluster is selected, fade everything that isn't its children.
+    // Tied to an actually-present cluster, so "all" mode (no clusters) or a hidden-class
+    // selection never dims the map with nothing to highlight.
+    const selectedCluster = selectedObjectId != null ? clusters.find(c => c.uid === selectedObjectId) : undefined;
+    const spotlight = selectedCluster != null;
+
+    // Spatial (proximity) clustering for zoomed-out views: aggregate nearby same-class markers
+    // into numbered dots. Disabled above the zoom threshold and while a re-id cluster is expanded.
+    const spatialView = useMemo(() => {
+        if (!map || zoom > SPATIAL_CLUSTER_MAX_ZOOM || spotlight || !spatialClusterEnabled) {
+            return { active: false as const };
+        }
+        const markables: SpatialMarkable[] = [
+            ...clusters.map((c): SpatialMarkable => ({
+                className: c.className,
+                position: c.centroid,
+                ref: { kind: "cluster", cluster: c },
+            })),
+            ...unassignedVisible.map((d): SpatialMarkable => ({
+                className: d.class_name,
+                position: d.computedGps,
+                ref: { kind: "detection", detection: d },
+            })),
+        ];
+        const project = (lat: number, lon: number) => map.project([lat, lon], zoom);
+        const unproject = (x: number, y: number) => {
+            const ll = map.unproject([x, y], zoom);
+            return { lat: ll.lat, lon: ll.lng };
+        };
+        const { clusters: spatialClusters, singles } = gridClusterMarkables(markables, project, unproject);
+        return { active: true as const, clusters: spatialClusters, singles };
+    }, [map, zoom, spotlight, spatialClusterEnabled, clusters, unassignedVisible]);
+
     const getCenter = (corners: [number, number][]): [number, number] => {
         const lat = (corners[0][0] + corners[1][0] + corners[2][0] + corners[3][0]) / 4;    
         const lon = (corners[0][1] + corners[1][1] + corners[2][1] + corners[3][1]) / 4;
         return [lat, lon];
     }
 
+    // Position the initial view from the first GPS-bearing image — but only once. Running on
+    // every `images` change would snap the user's zoom/pan back to 18 on each refetch / new
+    // detection batch during processing.
     useEffect(() => {
-        let first_image_with_gps = images?.find((image) => image.coord);
+        if (didInitView.current) return;
+        const first_image_with_gps = images?.find((image) => image.coord);
         if (first_image_with_gps && first_image_with_gps.coord?.gps) {
             setCenter([first_image_with_gps.coord.gps.lat, first_image_with_gps.coord.gps.lon]);
             map?.setView([first_image_with_gps.coord.gps.lat, first_image_with_gps.coord.gps.lon], 18);
+            didInitView.current = true;
         }
-    }, [images]);
+    }, [images, map]);
 
     useEffect(() => {
         if (maps && setVisibleMapOverlays) {
@@ -261,7 +291,26 @@ function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCatego
 
     const cornerRefs = useRef<Map<number, L.Polygon>>(new Map());
 
+    // Detection ids we've already attempted a GPS backfill for. Prevents the
+    // invalidate → refetch → re-select → PUT loop when a backfilled coord doesn't come back
+    // populated, while still allowing *new* detection batches (new ids) to be backfilled
+    // during processing. Reset when the report changes.
+    const attemptedBackfillIds = useRef<Set<number>>(new Set());
+    // Whether the map's initial view has been positioned from the first GPS-bearing image.
+    const didInitView = useRef(false);
+    useEffect(() => {
+        attemptedBackfillIds.current = new Set();
+        didInitView.current = false;
+    }, [reportId]);
+
     const handleOverlayClick = (mapId: number, elementId: number, image_id: number) => {
+        // While a cluster is active, a click on the background (which usually lands on an overlay
+        // polygon) should only deselect it — not navigate to the image.
+        if (selectedObjectId != null) {
+            setSelectedObjectId(null);
+            setHighlightedDetectionId(null);
+            return;
+        }
         selectImageOnMap(image_id);
     };
 
@@ -285,28 +334,64 @@ function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCatego
         </Popup>
     );
 
-    useEffect(() => {
-        if (map !== null && bounds) {
-            map.fitBounds(bounds);
+    // An ungrouped detection as an individual marker (clicking clears any cluster selection).
+    const renderUnassignedMarker = (detection: DetectionWithGps) => (
+        <Marker
+            key={`det-${detection.id}`}
+            position={[detection.computedGps.lat, detection.computedGps.lon]}
+            icon={detectionIconCache(detection.class_name)}
+            opacity={spotlight ? 0.3 : 1}
+            eventHandlers={{ click: () => { setSelectedObjectId(null); setHighlightedDetectionId(null); } }}
+        >
+            {renderDetectionPopup(detection)}
+        </Marker>
+    );
+
+    // A re-id cluster as one merged marker; expands to highlighted child markers when selected.
+    const renderClusterMarker = (cluster: ClusterMarker) => {
+        if (cluster.uid === selectedObjectId) {
+            return cluster.members.map(member => (
+                <Marker
+                    key={`obj-${cluster.uid}-det-${member.id}`}
+                    position={[member.computedGps.lat, member.computedGps.lon]}
+                    icon={detectionIconCache(member.class_name, true)}
+                    eventHandlers={{ click: () => setHighlightedDetectionId(member.id) }}
+                >
+                    {renderDetectionPopup(member)}
+                </Marker>
+            ));
         }
-    }, [map]);
+        return (
+            <Marker
+                key={`obj-${cluster.uid}`}
+                position={[cluster.centroid.lat, cluster.centroid.lon]}
+                icon={getClusterIcon(cluster.className, cluster.members.length, !spotlight && zoom >= CLUSTER_BADGE_MIN_ZOOM)}
+                opacity={spotlight ? 0.3 : 1}
+                eventHandlers={{ click: () => setSelectedObjectId(cluster.uid) }}
+            />
+        );
+    };
 
     useEffect(() => {
         if (!detections?.length || !images?.length || !maps?.length) return;
 
-        // Find detections missing GPS
+        // Find detections missing GPS that we haven't already tried to backfill. Skipping
+        // already-attempted ids breaks the invalidate → refetch → re-select → PUT loop that
+        // occurs when a backfilled coord doesn't come back populated, while still letting new
+        // detection batches (new ids) arriving during processing get backfilled.
         const toUpdate = detections
-            .filter(det => !det.coord?.gps?.lat || !det.coord?.gps?.lon)
+            .filter(det => (!det.coord?.gps?.lat || !det.coord?.gps?.lon) && !attemptedBackfillIds.current.has(det.id))
             .map(det => {
                 const gps = computeDetectionGps(det, images, maps);
                 if (!gps) return null;
                 det.coord = { gps: gps, utm: undefined };
                 return det;
             })
-            .filter(Boolean);
+            .filter(Boolean) as Detection[];
 
         // Send a single batch PUT if needed
-        if (toUpdate.length > 0 && toUpdate !== null && updateDetections) {
+        if (toUpdate.length > 0 && updateDetections) {
+            toUpdate.forEach(det => attemptedBackfillIds.current.add(det.id));
             updateDetections(toUpdate);
         }
     }, [detections, images, maps, updateDetections]);
@@ -323,6 +408,7 @@ function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCatego
                 }
             });
             resizeObserver.observe(map.getContainer());
+            return () => resizeObserver.disconnect();
         }
     }, [map]);
 
@@ -372,10 +458,10 @@ function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCatego
     // Leaflet markers stop propagation, so this only fires on bare-map clicks.
     useEffect(() => {
         if (!map) return;
-        const handler = () => setSelectedObjectId(null);
+        const handler = () => { setSelectedObjectId(null); setHighlightedDetectionId(null); };
         map.on("click", handler);
         return () => { map.off("click", handler); };
-    }, [map, setSelectedObjectId]);
+    }, [map, setSelectedObjectId, setHighlightedDetectionId]);
 
     // Track zoom so cluster count badges can be hidden when zoomed out
     useEffect(() => {
@@ -437,7 +523,7 @@ function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCatego
                             {/* Faint outline grouping the selected cluster's members together */}
                             {selectedCluster && (
                                 <Circle
-                                    center={[selectedCluster.centroid.lat, selectedCluster.centroid.lon]}
+                                    center={[selectedCluster.averageCentroid.lat, selectedCluster.averageCentroid.lon]}
                                     radius={clusterRadiusMeters(selectedCluster)}
                                     pathOptions={{
                                         color: getDetectionColor(selectedCluster.className),
@@ -449,43 +535,38 @@ function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCatego
                                 />
                             )}
 
-                            {/* Unassigned detections — individual markers (clicking clears any cluster selection) */}
-                            {unassignedVisible.map(detection => (
-                                <Marker
-                                    key={`det-${detection.id}`}
-                                    position={[detection.computedGps.lat, detection.computedGps.lon]}
-                                    icon={detectionIconCache(detection.class_name)}
-                                    opacity={spotlight ? 0.3 : 1}
-                                    eventHandlers={{ click: () => setSelectedObjectId(null) }}
-                                >
-                                    {renderDetectionPopup(detection)}
-                                </Marker>
-                            ))}
-
-                            {/* Re-id clusters — one merged marker per object; expands to child markers when selected */}
-                            {clusters.map(cluster => {
-                                if (cluster.uid === selectedObjectId) {
-                                    // Selected: show the individual member detections (highlighted) instead of the merged marker
-                                    return cluster.members.map(member => (
+                            {spatialView.active ? (
+                                <>
+                                    {/* Spatial super-clusters — numbered dots; click zooms in until members separate */}
+                                    {spatialView.clusters.map(sc => (
                                         <Marker
-                                            key={`obj-${cluster.uid}-det-${member.id}`}
-                                            position={[member.computedGps.lat, member.computedGps.lon]}
-                                            icon={detectionIconCache(member.class_name, true)}
-                                        >
-                                            {renderDetectionPopup(member)}
-                                        </Marker>
-                                    ));
-                                }
-                                return (
-                                    <Marker
-                                        key={`obj-${cluster.uid}`}
-                                        position={[cluster.centroid.lat, cluster.centroid.lon]}
-                                        icon={getClusterIcon(cluster.className, cluster.members.length, zoom >= CLUSTER_BADGE_MIN_ZOOM)}
-                                        opacity={spotlight ? 0.3 : 1}
-                                        eventHandlers={{ click: () => setSelectedObjectId(cluster.uid) }}
-                                    />
-                                );
-                            })}
+                                            key={`spatial-${sc.id}`}
+                                            position={[sc.center.lat, sc.center.lon]}
+                                            icon={getSpatialClusterIcon(sc.className, sc.count)}
+                                            eventHandlers={{
+                                                click: () => {
+                                                    if (!map) return;
+                                                    const latlngs = sc.members.map(m => [m.position.lat, m.position.lon]) as [number, number][];
+                                                    map.fitBounds(L.latLngBounds(latlngs), { padding: [40, 40], maxZoom: 19 });
+                                                },
+                                            }}
+                                        />
+                                    ))}
+                                    {/* Lone markers in their cell render normally */}
+                                    {spatialView.singles.map(m =>
+                                        m.ref.kind === "detection"
+                                            ? renderUnassignedMarker(m.ref.detection)
+                                            : renderClusterMarker(m.ref.cluster)
+                                    )}
+                                </>
+                            ) : (
+                                <>
+                                    {/* Unassigned detections — individual markers */}
+                                    {unassignedVisible.map(renderUnassignedMarker)}
+                                    {/* Re-id clusters — one merged marker per object; expands when selected */}
+                                    {clusters.map(renderClusterMarker)}
+                                </>
+                            )}
                         </LayerGroup>
                     )}
                     {(images && images.length > 0 && images.some(image => image.panoramic)) && showPanoMarkers && (
@@ -581,9 +662,11 @@ function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCatego
                                                 }}
                                                 eventHandlers={!hasVoronoi ? {
                                                     mouseover: (e) => {
+                                                        if (spotlight) return;
                                                         (e.target as L.Path).setStyle({ opacity: 0.9, fillOpacity: 0.18 });
                                                     },
                                                     mouseout: (e) => {
+                                                        if (spotlight) return;
                                                         (e.target as L.Path).setStyle({ opacity: 0, fillOpacity: 0 });
                                                     },
                                                     click: () => {
@@ -616,10 +699,12 @@ function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCatego
                                                 }}
                                                 eventHandlers={{
                                                     mouseover: (e) => {
+                                                        if (spotlight) return;
                                                         (e.target as L.Path).setStyle({ opacity: 0.95 });
                                                         cornerRefs.current.get(element.id)?.setStyle({ fillOpacity: 0.18 });
                                                     },
                                                     mouseout: (e) => {
+                                                        if (spotlight) return;
                                                         (e.target as L.Path).setStyle({ opacity: 0 });
                                                         cornerRefs.current.get(element.id)?.setStyle({ fillOpacity: 0 });
                                                     },
@@ -650,6 +735,31 @@ function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCatego
                 {(bounds || center) && (
                     <HomeButton bounds={bounds} center={center} />
                 )}
+
+                {hasDetectionMarkers && (
+                    <button
+                        type="button"
+                        onClick={() => setSpatialClusterEnabled(v => !v)}
+                        title={spatialClusterEnabled
+                            ? "Spatial clustering on — click to disable"
+                            : "Spatial clustering off — click to enable"}
+                        style={{
+                            position: 'absolute',
+                            top: '128px',
+                            left: '12px',
+                            zIndex: 1000,
+                            padding: '4px',
+                            borderRadius: '2px',
+                            boxShadow: '0 1px 3px rgba(0,0,0,0.8)',
+                            cursor: 'pointer',
+                        }}
+                        className="hover:bg-gray-100 bg-white transition-colors duration-200"
+                    >
+                        {spatialClusterEnabled
+                            ? <Group size={22} className="dark:text-black" />
+                            : <Ungroup size={22} className="dark:text-black" />}
+                    </button>
+                )}
             </MapContainer>
 
             {(maps && maps.length !== 0) && (
@@ -677,9 +787,19 @@ function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCatego
                     <Separator orientation="vertical" className="mx-4 h-6" />
                     {maps && maps.length > 0 && (
                         <div className="flex flex-col items-center w-15">
-                            <label className="text-sm font-medium mb-1 block text-center">Overlays</label>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <label className={`text-sm font-medium mb-1 block text-center ${spotlight ? "text-muted-foreground opacity-50" : ""}`}>Overlays</label>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                    {spotlight
+                                        ? "Overlays are inactive while a detection group is open"
+                                        : "Toggle image footprint overlays"}
+                                </TooltipContent>
+                            </Tooltip>
                             <Switch
                                 checked={showPolygons}
+                                disabled={spotlight}
                                 onCheckedChange={(checked) => setShowPolygons(checked)}
                                 className="w-8"
                             />

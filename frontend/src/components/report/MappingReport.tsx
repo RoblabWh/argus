@@ -18,6 +18,7 @@ import { Card, CardContent, CardTitle } from "@/components/ui/card";
 import { useDetections, useIsDetectionRunning } from '@/hooks/detectionHooks';
 import { FilteredImagesProvider } from '@/contexts/FileteredImagesContext';
 import { useStopProcessing } from '@/hooks/useStartProcessing';
+import type { DetectionDisplayMode } from '@/types/detection';
 
 
 
@@ -34,9 +35,11 @@ export function MappingReport({ report, onEditClicked, setReport }: Props) {
   //const { data: detections } = useDetections(report.report_id);
   const [thresholds, setThresholds] = useState<{ [key: string]: number }>({});
   const [visibleCategories, setVisibleCategories] = useState<{ [key: string]: boolean }>({});
-  const [clipDetections, setClipDetections] = useState(true);
+  const [detectionMode, setDetectionMode] = useState<DetectionDisplayMode>("reduced");
   // Re-identification cluster currently selected (shared between map and gallery)
   const [selectedObjectId, setSelectedObjectId] = useState<number | null>(null);
+  // Single detection cross-highlighted between map (clicked member marker) and gallery crop
+  const [highlightedDetectionId, setHighlightedDetectionId] = useState<number | null>(null);
   const stopProcessingMutation = useStopProcessing(report.report_id);
 
   const handleStopProcessing = () => {
@@ -64,9 +67,9 @@ export function MappingReport({ report, onEditClicked, setReport }: Props) {
                 <FlightCard data={report.mapping_report} />
                 <AutoDescriptionCard reportID={report.report_id} description={report.auto_description} />
                 <WebOdmCard webODMProjectID={report.mapping_report?.webodm_project_id} reportID={report.report_id} progress={report.progress} />
-                <DetectionCard report_id={report.report_id} setThresholds={setThresholds} thresholds={thresholds} setFilter={setDetectionFilter} filters={detectionFilter} visibleCategories={visibleCategories} setVisibleCategories={setVisibleCategories} clipDetections={clipDetections} setClipDetections={setClipDetections} />
+                <DetectionCard report_id={report.report_id} setThresholds={setThresholds} thresholds={thresholds} setFilter={setDetectionFilter} filters={detectionFilter} visibleCategories={visibleCategories} setVisibleCategories={setVisibleCategories} detectionMode={detectionMode} setDetectionMode={setDetectionMode} />
               </div>
-              <GalleryCard reportId={report.report_id} setSelectedImage={selectImageFromGallery} detectionFilter={detectionFilter} setDetectionFilter={setDetectionFilter} thresholds={thresholds} selectedObjectId={selectedObjectId} setSelectedObjectId={setSelectedObjectId} />
+              <GalleryCard reportId={report.report_id} setSelectedImage={selectImageFromGallery} detectionFilter={detectionFilter} setDetectionFilter={setDetectionFilter} thresholds={thresholds} selectedObjectId={selectedObjectId} setSelectedObjectId={setSelectedObjectId} highlightedDetectionId={highlightedDetectionId} setHighlightedDetectionId={setHighlightedDetectionId} />
             </div>
           }
           right={
@@ -75,7 +78,7 @@ export function MappingReport({ report, onEditClicked, setReport }: Props) {
             //     <p>Selected Image: {selectedImage ? selectedImage.id : "None"}</p>
             //   </CardContent>
             // </Card>
-            <TabArea report={report} selectedImage={selectedImage} setSelectedImage={setSelectedImage} tab={tab} setTab={setTab} thresholds={thresholds} visibleCategories={visibleCategories} clipDetections={clipDetections} setClipDetections={setClipDetections} selectedObjectId={selectedObjectId} setSelectedObjectId={setSelectedObjectId} />
+            <TabArea report={report} selectedImage={selectedImage} setSelectedImage={setSelectedImage} tab={tab} setTab={setTab} thresholds={thresholds} visibleCategories={visibleCategories} detectionMode={detectionMode} setDetectionMode={setDetectionMode} selectedObjectId={selectedObjectId} setSelectedObjectId={setSelectedObjectId} highlightedDetectionId={highlightedDetectionId} setHighlightedDetectionId={setHighlightedDetectionId} />
           }
         />
       </FilteredImagesProvider>
