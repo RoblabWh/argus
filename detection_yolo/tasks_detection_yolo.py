@@ -166,7 +166,8 @@ def run_detection_yolo(report_id: int, images: list[dict]):
         # model_path = "./yolo11l-p2-visdrone-argus-best.pt"
         #model_path = "./yolo11l-p2-visdrone_phase2_finetune_Argus-1280_best.pt"
         # local_model_path = "./yolo11l-p2-visdrone-argus-1280-best.pt"
-        local_model_path = "./argus3_1280_yolo_11l_visdrone960_argus1280.pt"
+        # local_model_path = "./argus3_1280_yolo_11l_visdrone960_argus1280.pt"
+        local_model_path = "./argus3_1280_yolo_11x_visdrone960_argus1280.pt"
         model_path = (
             local_model_path
             if os.path.isfile(local_model_path)
