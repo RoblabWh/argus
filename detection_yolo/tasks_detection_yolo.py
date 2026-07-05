@@ -149,25 +149,8 @@ def run_detection_yolo(report_id: int, images: list[dict]):
         r.set(f"detection:{report_id}:message", message)
 
     try:
-        # model_path = hf_hub_download(
-        #     repo_id="StephanST/WALDO30",
-        #     filename="WALDO30_yolov8m_640x640.pt"
-        # )
-        # model_path = hf_hub_download(
-        #     repo_id="erbayat/yolov11n-visdrone",
-        #     filename="best.pt"
-        # )
-        # model_path = "yolo11l.pt"
-        # model_path = hf_hub_download(
-        #     repo_id="mshamrai/yolov8l-visdrone",
-        #     filename="best.pt"
-        # )
-        #infer = YOLOInferencer(model_name=model_path, progress_callback=set_progress, device=DEVICE)
-        # model_path = "./yolo11l-p2-visdrone-argus-best.pt"
-        #model_path = "./yolo11l-p2-visdrone_phase2_finetune_Argus-1280_best.pt"
-        # local_model_path = "./yolo11l-p2-visdrone-argus-1280-best.pt"
         # local_model_path = "./argus3_1280_yolo_11l_visdrone960_argus1280.pt"
-        local_model_path = "./argus3_1280_yolo_11x_visdrone960_argus1280.pt"
+        local_model_path = "./argus3_1280_yolo_11x_visdrone960_argus1280.pt" # Still local need publishing to HF hub
         model_path = (
             local_model_path
             if os.path.isfile(local_model_path)
