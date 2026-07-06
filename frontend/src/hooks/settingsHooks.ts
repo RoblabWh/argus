@@ -4,14 +4,17 @@ import {
     updateWebodmSettings,
     updateDrzSettings,
     updateWeatherSettings,
+    updateHuggingFaceSettings,
     updateDetectionColors,
     testWebodmSettings,
     testWeatherSettings,
     testDrzSettings,
+    testHuggingFaceSettings,
 } from "@/api";
 import type {
     WebODMSettings,
     OpenWeatherSettings,
+    HuggingFaceSettings,
     DRZSettings,
 } from "@/types/settings";
 
@@ -53,6 +56,16 @@ export function useUpdateDrzSettings() {
     });
 }
 
+export function useUpdateHuggingFaceSettings() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (newSettings: HuggingFaceSettings) => updateHuggingFaceSettings(newSettings),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["settings"] });
+        },
+    });
+}
+
 export function useUpdateDetectionColors() {
     const queryClient = useQueryClient();
     return useMutation({
@@ -79,5 +92,11 @@ export function useTestWeatherSettings() {
 export function useTestDrzSettings() {
     return useMutation({
         mutationFn: (s: DRZSettings) => testDrzSettings(s),
+    });
+}
+
+export function useTestHuggingFaceSettings() {
+    return useMutation({
+        mutationFn: (s: HuggingFaceSettings) => testHuggingFaceSettings(s),
     });
 }

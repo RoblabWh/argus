@@ -79,7 +79,9 @@ def _scene():
 def _run():
     detections, images, emb = _scene()
     embeddings.embed_detections = lambda *a, **k: emb  # bypass DINOv3
-    clusters = by_dinov3.run_reid(detections, images, neighbor_radius_m=7.0, sim_threshold=0.65)
+    # Neighbor radius is per-category now (NEIGHBOR_RADIUS_BY_CATEGORY_M);
+    # "human" uses the default 8 m, which fits this scene's geometry.
+    clusters = by_dinov3.run_reid(detections, images, sim_threshold=0.65)
     return detections, clusters
 
 

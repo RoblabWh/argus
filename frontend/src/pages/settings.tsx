@@ -41,15 +41,18 @@ import {
   useUpdateDrzSettings,
   useUpdateWeatherSettings,
   useUpdateWebodmSettings,
+  useUpdateHuggingFaceSettings,
   useTestWebodmSettings,
   useTestWeatherSettings,
   useTestDrzSettings,
+  useTestHuggingFaceSettings,
 } from '@/hooks/settingsHooks';
 import type {
   SettingsData,
   SettingsTestResult,
   WebODMSettings,
   OpenWeatherSettings,
+  HuggingFaceSettings,
   DRZSettings,
 } from '@/types/settings';
 
@@ -163,6 +166,7 @@ function ConfirmDialog({
 
 type LockKey =
   | 'OPEN_WEATHER_API_KEY'
+  | 'HF_TOKEN'
   | 'WEBODM_URL'
   | 'WEBODM_USERNAME'
   | 'WEBODM_PASSWORD'
@@ -173,6 +177,7 @@ type LockKey =
 
 const INITIAL_LOCKED: Record<LockKey, boolean> = {
   OPEN_WEATHER_API_KEY: true,
+  HF_TOKEN: true,
   WEBODM_URL: true,
   WEBODM_USERNAME: true,
   WEBODM_PASSWORD: true,
@@ -256,13 +261,16 @@ export default function Settings() {
   const updateWebodmSettings = useUpdateWebodmSettings();
   const updateWeatherSettings = useUpdateWeatherSettings();
   const updateDrzSettings = useUpdateDrzSettings();
+  const updateHuggingFaceSettings = useUpdateHuggingFaceSettings();
   const updateDetectionColors = useUpdateDetectionColors();
   const testWebodm = useTestWebodmSettings();
   const testWeather = useTestWeatherSettings();
   const testDrz = useTestDrzSettings();
+  const testHuggingFace = useTestHuggingFaceSettings();
 
   const [settings, setSettings] = useState<SettingsData>({
     OPEN_WEATHER_API_KEY: '',
+    HF_TOKEN: '',
     ENABLE_WEBODM: false,
     WEBODM_URL: '',
     WEBODM_USERNAME: '',
@@ -280,6 +288,7 @@ export default function Settings() {
 
   const [locked, setLocked] = useState<Record<LockKey, boolean>>(INITIAL_LOCKED);
   const [weatherResult, setWeatherResult] = useState<SettingsTestResult | null>(null);
+  const [hfResult, setHfResult] = useState<SettingsTestResult | null>(null);
   const [webodmResult, setWebodmResult] = useState<SettingsTestResult | null>(null);
   const [drzResult, setDrzResult] = useState<SettingsTestResult | null>(null);
   const [confirmState, setConfirmState] = useState<ConfirmState>(null);
@@ -292,6 +301,7 @@ export default function Settings() {
     if (settingsData) {
       setSettings({
         OPEN_WEATHER_API_KEY: settingsData.OPEN_WEATHER_API_KEY || '',
+        HF_TOKEN: settingsData.HF_TOKEN || '',
         ENABLE_WEBODM: settingsData.ENABLE_WEBODM || false,
         WEBODM_URL: settingsData.WEBODM_URL || '',
         WEBODM_USERNAME: settingsData.WEBODM_USERNAME || '',
@@ -320,6 +330,11 @@ export default function Settings() {
   function changeWeather(value: string) {
     handleChange('OPEN_WEATHER_API_KEY', value);
     setWeatherResult(null);
+  }
+
+  function changeHuggingFace(value: string) {
+    handleChange('HF_TOKEN', value);
+    setHfResult(null);
   }
 
   function changeWebodm<K extends 'ENABLE_WEBODM' | 'WEBODM_URL' | 'WEBODM_USERNAME' | 'WEBODM_PASSWORD'>(
@@ -386,6 +401,18 @@ export default function Settings() {
     persist: (b) => updateWeatherSettings.mutate(b),
     setResult: setWeatherResult,
     label: 'OpenWeather',
+  });
+
+  async function testHuggingFaceToken() {
+    const body: HuggingFaceSettings = { HF_TOKEN: settings.HF_TOKEN };
+    setHfResult(await runTest(testHuggingFace.mutateAsync, body));
+  }
+  const saveHuggingFace = saveWithTest({
+    body: { HF_TOKEN: settings.HF_TOKEN } as HuggingFaceSettings,
+    test: testHuggingFace.mutateAsync,
+    persist: (b) => updateHuggingFaceSettings.mutate(b),
+    setResult: setHfResult,
+    label: 'Hugging Face',
   });
 
   async function testWebODM() {
@@ -484,6 +511,54 @@ export default function Settings() {
                 )}
               </Button>
               <Button onClick={saveOpenWeather} disabled={testWeather.isPending}>
+                Save
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* HUGGING FACE (RE-IDENTIFICATION) */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              Hugging Face — Object Re-Identification
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info className="h-4 w-4 text-muted-foreground" />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-sm">
+                  Only needed for object re-identification: the DINOv3 model
+                  weights are license-gated. Create a free Hugging Face account,
+                  accept the license on the DINOv3 model page, and paste a read
+                  access token here. Detection itself works without it.
+                </TooltipContent>
+              </Tooltip>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <LockedField
+              id="hfToken"
+              label="Access Token"
+              type="password"
+              value={settings.HF_TOKEN}
+              onChange={changeHuggingFace}
+              locked={locked.HF_TOKEN}
+              onToggleLock={() => toggleLock('HF_TOKEN')}
+            />
+            <div className="flex items-center justify-end gap-3 flex-wrap">
+              <TestResultChip pending={testHuggingFace.isPending} result={hfResult} />
+              <Button
+                variant="outline"
+                onClick={testHuggingFaceToken}
+                disabled={testHuggingFace.isPending}
+              >
+                {testHuggingFace.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  'Test'
+                )}
+              </Button>
+              <Button onClick={saveHuggingFace} disabled={testHuggingFace.isPending}>
                 Save
               </Button>
             </div>

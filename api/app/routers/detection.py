@@ -75,8 +75,14 @@ def run_detections(report_id: int, req: DetectionSettings, db: Session = Depends
         pipeline = "yolo"
     detection_task = None
     if pipeline == "yolo":
+        # Forward the deployment's HF token so the worker can fetch the gated
+        # DINOv3 re-ID weights — a token saved on the settings page takes
+        # effect on the next run, no worker restart needed.
         detection_task = celery_app.signature(
-            "detection_yolo.run", args=[report_id, images_list], queue="detection_yolo"
+            "detection_yolo.run",
+            args=[report_id, images_list],
+            kwargs={"hf_token": config.env_vars.get("HF_TOKEN", "")},
+            queue="detection_yolo",
         )
     else:
         detection_task = celery_app.signature(

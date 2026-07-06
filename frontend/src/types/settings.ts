@@ -1,5 +1,6 @@
 export interface SettingsData {
   OPEN_WEATHER_API_KEY: string;
+  HF_TOKEN: string;
   ENABLE_WEBODM: boolean;
   WEBODM_URL: string;
   WEBODM_USERNAME: string;
@@ -24,6 +25,10 @@ export type WebODMSettings = {
 
 export type OpenWeatherSettings = {
   OPEN_WEATHER_API_KEY: string;
+};
+
+export type HuggingFaceSettings = {
+  HF_TOKEN: string;
 };
 
 export type DRZSettings = {

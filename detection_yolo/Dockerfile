@@ -18,5 +18,5 @@ WORKDIR /detection_yolo
 
 COPY . /detection_yolo
 
-# Start celery worker
-ENTRYPOINT ["celery", "-A", "tasks_detection_yolo", "worker", "-Q", "detection_yolo", "--loglevel=info"]
+# Warm the model cache, then start the celery worker
+ENTRYPOINT ["/detection_yolo/entrypoint.sh"]

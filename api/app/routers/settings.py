@@ -11,6 +11,7 @@ from app.config import config
 from app.schemas.settings import (
     WebODMSettings,
     OpenWeatherSettings,
+    HuggingFaceSettings,
     DRZSettings,
     AppearanceSettings,
     SettingsTestResult,
@@ -23,12 +24,17 @@ from app.services.image_metadata_extraction import _auto_discover_config
 from app.services.odm import try_webodm_authenticate
 from app.services.drz_backend_sharing import try_drz_authenticate
 from app.services.weather_check import try_openweather_key
+from app.services.huggingface_check import try_hf_token
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/settings", tags=["settings"])
 
 # Path to the .env file mounted from base folder
 ENV_PATH = Path(__file__).resolve().parent.parent.parent / ".env"
+
+# Default re-ID backbone; must match the yolo worker's default
+# (detection_yolo/reid/embeddings.py). Overridable via HF_REID_MODEL_ID in .env.
+DEFAULT_REID_MODEL_ID = "facebook/dinov3-vitb16-pretrain-lvd1689m"
 
 
 @router.get("/")
@@ -44,6 +50,7 @@ def get_all_settings():
     # logger.info(f"Local vars: {local_vars}")
     return {
         "OPEN_WEATHER_API_KEY": env_vars.get("OPEN_WEATHER_API_KEY", "no key set"),
+        "HF_TOKEN": env_vars.get("HF_TOKEN", ""),
         "ENABLE_WEBODM": env_vars.get("ENABLE_WEBODM", "false").lower() == "true",
         "WEBODM_URL": env_vars.get("WEBODM_URL", "http://127.0.0.1:8000"),
         "WEBODM_USERNAME": env_vars.get("WEBODM_USERNAME", ""),
@@ -88,6 +95,14 @@ def test_openweather(settings: OpenWeatherSettings):
     return _run_test(try_openweather_key, settings.OPEN_WEATHER_API_KEY)
 
 
+@router.post("/huggingface/test", response_model=SettingsTestResult)
+def test_huggingface(settings: HuggingFaceSettings):
+    """Validate the HF token and its access to the gated DINOv3 weights without saving."""
+    logger.info("Testing Hugging Face token")
+    model_id = config.env_vars.get("HF_REID_MODEL_ID") or DEFAULT_REID_MODEL_ID
+    return _run_test(try_hf_token, settings.HF_TOKEN, model_id)
+
+
 @router.post("/drz/test", response_model=SettingsTestResult)
 def test_drz(settings: DRZSettings):
     """Validate DRZ backend URL + credentials without saving them."""
@@ -126,6 +141,18 @@ def update_openweather(settings: OpenWeatherSettings):
         config.write_env({"OPEN_WEATHER_API_KEY": settings.OPEN_WEATHER_API_KEY})
         return {
             "message": "OpenWeather API key updated. Restart container to apply changes."
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.put("/huggingface")
+def update_huggingface(settings: HuggingFaceSettings):
+    logger.info("Updating Hugging Face token")
+    try:
+        config.write_env({"HF_TOKEN": settings.HF_TOKEN})
+        return {
+            "message": "Hugging Face token updated. It is used from the next detection run on."
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

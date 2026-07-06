@@ -9,6 +9,7 @@ import type {
   SettingsData,
   WebODMSettings,
   OpenWeatherSettings,
+  HuggingFaceSettings,
   DRZSettings,
   SettingsTestResult,
 } from "@/types/settings";
@@ -124,6 +125,8 @@ export const updateWeatherSettings = (settings: OpenWeatherSettings) =>
   postJson<{ message: string }>("/settings/openweather", settings, "PUT");
 export const updateDrzSettings = (settings: DRZSettings) =>
   postJson<{ message: string }>("/settings/drz", settings, "PUT");
+export const updateHuggingFaceSettings = (settings: HuggingFaceSettings) =>
+  postJson<{ message: string }>("/settings/huggingface", settings, "PUT");
 export const updateDetectionColors = (settings: { DETECTION_COLORS: { [key: string]: string } }) =>
   postJson<{ message: string }>("/settings/appearance", settings, "PUT");
 
@@ -133,6 +136,8 @@ export const testWeatherSettings = (settings: OpenWeatherSettings) =>
   postJson<SettingsTestResult>("/settings/openweather/test", settings);
 export const testDrzSettings = (settings: DRZSettings) =>
   postJson<SettingsTestResult>("/settings/drz/test", settings);
+export const testHuggingFaceSettings = (settings: HuggingFaceSettings) =>
+  postJson<SettingsTestResult>("/settings/huggingface/test", settings);
 
 // WebODM integration
 export const getWebODMAvailable = () => fetchJson<{ is_available: boolean, url: string }>("/odm/");

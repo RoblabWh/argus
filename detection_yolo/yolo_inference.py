@@ -6,6 +6,8 @@ import logging
 
 import math
 
+from gpu_batch import adaptive_batch_size, run_with_oom_backoff
+
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.WARNING)
 
@@ -15,6 +17,9 @@ class YOLOInferencer:
         self.imgsz = imgsz
         self.device = device
         self.progress_callback = progress_callback
+        # GPU micro-batch, sized from free VRAM on first inference (lazy so the
+        # measurement happens when the memory situation is the real one).
+        self.gpu_batch = None
 
 
     def generate_sliding_windows(self, img, depths=1, overlap=0.20, min_tile=96):
@@ -244,8 +249,20 @@ class YOLOInferencer:
     def infer_images_wo_splitting(self, images_batch):
         if not images_batch:
             return []
-        
-        predictions = self.model(images_batch, device=self.device)
+
+        if self.gpu_batch is None:
+            self.gpu_batch = adaptive_batch_size(self.device)
+            logger.info("[YOLOInferencer] GPU micro-batch: %d", self.gpu_batch)
+
+        # An in-memory image list is ONE GPU batch for ultralytics, so feed the
+        # model in micro-batches; on CUDA OOM the runner halves the size and
+        # we keep the reduced size for the rest of the run. imgsz is passed
+        # explicitly (matches training; don't rely on checkpoint overrides).
+        predictions, self.gpu_batch = run_with_oom_backoff(
+            lambda chunk: self.model(chunk, device=self.device, imgsz=self.imgsz),
+            images_batch,
+            self.gpu_batch,
+        )
         results_per_image = []
         for pred in predictions:
             class_map = pred.names

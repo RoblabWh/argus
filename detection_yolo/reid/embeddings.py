@@ -28,6 +28,15 @@ DEFAULT_MODEL_ID = os.getenv(
 BBOX_PADDING_RATIO = 0.05
 BATCH_SIZE = int(os.getenv("REID_BATCH_SIZE", "32"))
 
+# Keep the model resident between tasks: skips the per-run disk->GPU weight
+# load at the cost of permanently held (GPU) memory.
+KEEP_MODELS_LOADED = os.getenv("REID_KEEP_MODEL_LOADED", "false").lower() not in (
+    "0",
+    "false",
+    "no",
+    "",
+)
+
 # model_id -> (processor, model, device)
 _MODEL_CACHE: dict[str, tuple] = {}
 
@@ -48,14 +57,30 @@ def get_model(model_id: str = DEFAULT_MODEL_ID):
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     logger.info("[reid] loading DINOv3 model %s on %s", model_id, device)
-    processor = AutoImageProcessor.from_pretrained(model_id)
-    model = AutoModel.from_pretrained(model_id).eval().to(device)
+    try:
+        # Cached weights only: no HF etag round-trips, works offline.
+        processor = AutoImageProcessor.from_pretrained(model_id, local_files_only=True)
+        model = AutoModel.from_pretrained(model_id, local_files_only=True)
+    except OSError:
+        # Cache miss (fresh volume or model switched) — download once into the
+        # persistent cache. The gated repo needs HF_TOKEN in the environment,
+        # which the Celery task sets from the API payload before calling us.
+        logger.info("[reid] %s not in local cache — downloading", model_id)
+        processor = AutoImageProcessor.from_pretrained(model_id)
+        model = AutoModel.from_pretrained(model_id)
+    model = model.eval().to(device)
     _MODEL_CACHE[model_id] = (processor, model, device)
     return processor, model, device
 
 
 def unload_models() -> None:
-    """Drop cached models and free GPU memory (best-effort)."""
+    """Drop cached models and free GPU memory (best-effort).
+
+    No-op when REID_KEEP_MODEL_LOADED is set, so repeated tasks skip the
+    disk->GPU reload.
+    """
+    if KEEP_MODELS_LOADED:
+        return
     _MODEL_CACHE.clear()
     import gc
 
@@ -101,20 +126,24 @@ def extract_embeddings(crops_rgb, model_id: str = DEFAULT_MODEL_ID, batch_size: 
     import torch
     import torch.nn.functional as F
 
+    from gpu_batch import run_with_oom_backoff
+
     processor, model, device = get_model(model_id)
-    out = []
-    with torch.inference_mode():
-        for s in range(0, len(crops_rgb), batch_size):
-            batch = crops_rgb[s : s + batch_size]
-            inputs = processor(images=batch, return_tensors="pt")
+
+    def _embed_chunk(chunk):
+        with torch.inference_mode():
+            inputs = processor(images=chunk, return_tensors="pt")
             inputs = {k: v.to(device, non_blocking=True) for k, v in inputs.items()}
             outputs = model(**inputs)
             pooled = getattr(outputs, "pooler_output", None)
             if pooled is None:
                 pooled = outputs.last_hidden_state.mean(dim=1)  # mean-pool patch tokens
             emb = F.normalize(pooled.float(), p=2, dim=-1)  # L2-normalize -> cosine = dot
-            out.append(emb.cpu().numpy())
-    return np.concatenate(out, axis=0).astype(np.float32)
+            return list(emb.cpu().numpy())
+
+    # Halves the batch and retries on CUDA OOM instead of failing the reID.
+    rows, _ = run_with_oom_backoff(_embed_chunk, crops_rgb, batch_size)
+    return np.stack(rows).astype(np.float32)
 
 
 def embed_detections(

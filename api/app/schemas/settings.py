@@ -16,6 +16,10 @@ class OpenWeatherSettings(BaseModel):
     OPEN_WEATHER_API_KEY: str
 
 
+class HuggingFaceSettings(BaseModel):
+    HF_TOKEN: str
+
+
 class DRZSettings(BaseModel):
     BACKEND_URL: str
     AUTHOR_NAME: str

@@ -7,10 +7,9 @@ import gc
 import torch
 
 from ultralytics import YOLO
-from yolo_inference import YOLOInferencer   # NEW MODULE (see next step)
+from yolo_inference import YOLOInferencer
 
-from huggingface_hub import hf_hub_download
-
+from model_assets import resolve_yolo_weights
 from reid.by_dinov3 import run_reid
 from reid.by_3d_dinov3 import run_reid_3d
 from reid import localize
@@ -20,8 +19,10 @@ from reid.embeddings import unload_models as unload_reid_models
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.WARNING)
 
-REDIS_HOST = os.getenv("HOST_REDIS", "redis")
-REDIS_PORT = int(os.getenv("PORT_REDIS", 6379))
+# docker-compose passes REDIS_HOST/REDIS_PORT; the *_REDIS names are kept as
+# fallback for older deployments.
+REDIS_HOST = os.getenv("REDIS_HOST") or os.getenv("HOST_REDIS", "redis")
+REDIS_PORT = int(os.getenv("REDIS_PORT") or os.getenv("PORT_REDIS", 6379))
 BACKEND_URL = os.getenv("BACKEND_URL", "http://127.0.0.1:8008")
 DEVICE = os.getenv("DEVICE", "cuda:0")
 r = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, db=0)
@@ -136,8 +137,15 @@ def run_reid_clustering(report_id: int):
 
 
 @celery_app.task(name="detection_yolo.run")
-def run_detection_yolo(report_id: int, images: list[dict]):
+def run_detection_yolo(report_id: int, images: list[dict], hf_token: str | None = None):
     logger.info(f"[YOLO] Starting detection for report {report_id}")
+
+    # The API forwards the deployment's HF token with every task, so a token
+    # saved on the settings page works on the next run without a container
+    # restart. huggingface_hub picks it up from the environment when the
+    # gated DINOv3 weights need downloading.
+    if hf_token:
+        os.environ["HF_TOKEN"] = hf_token
 
     r.set(f"detection:{report_id}:status", "running")
     r.set(f"detection:{report_id}:progress", 0)
@@ -149,16 +157,7 @@ def run_detection_yolo(report_id: int, images: list[dict]):
         r.set(f"detection:{report_id}:message", message)
 
     try:
-        # local_model_path = "./argus3_1280_yolo_11l_visdrone960_argus1280.pt"
-        local_model_path = "./argus3_1280_yolo_11x_visdrone960_argus1280.pt" # Still local need publishing to HF hub
-        model_path = (
-            local_model_path
-            if os.path.isfile(local_model_path)
-            else hf_hub_download(
-                repo_id="erbayat/yolov11n-visdrone",
-                filename="best.pt",
-            )
-        )
+        model_path = resolve_yolo_weights()
         imgsz = 1280
         infer = YOLOInferencer(model_name=model_path, imgsz=imgsz, progress_callback=set_progress, device=DEVICE)
         r.set(f"detection:{report_id}:message", "Running YOLOv11 inference…")
