@@ -1,6 +1,7 @@
 import { Boxes, Loader2, CircleCheck, CircleAlert } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { usePollColmapStatus } from "@/hooks/usePollColmapStatus";
+import { useSseActive } from "@/hooks/useReportEvents";
 
 interface Props {
     reportId: number;
@@ -17,7 +18,8 @@ interface Props {
  * Renders nothing when COLMAP was never started for this report (status "none").
  */
 export function ColmapStatusIndicator({ reportId }: Props) {
-    const { data } = usePollColmapStatus(reportId, true);
+    const sseActive = useSseActive();
+    const { data } = usePollColmapStatus(reportId, true, sseActive);
 
     if (!data || data.status === "none") return null;
 

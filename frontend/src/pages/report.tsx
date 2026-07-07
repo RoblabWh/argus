@@ -6,6 +6,7 @@ import type { Map as OrthoMap } from '@/types/map';
 import { useReport } from '@/hooks/reportHooks';
 import { usePollReportStatus } from '@/hooks/usePollReportStatus';
 import { usePollReconstructionStatus } from '@/hooks/usePollReconstructionStatus';
+import { useReportEvents, SseActiveContext } from '@/hooks/useReportEvents';
 import { useMaps, useMapsSlim } from '@/hooks/useMaps';
 import { Upload } from '@/components/report/Upload';
 import { MappingReport } from '@/components/report/MappingReport';
@@ -57,17 +58,25 @@ export default function ReportOverview() {
     }
   }, [initialReport]);
 
+  // Live push updates via SSE. Events land in the same react-query caches the
+  // polling hooks below read from, so all downstream logic stays unchanged.
+  // While the stream is up (sseActive), the intervals are suspended; if it
+  // drops, polling resumes automatically as a fallback.
+  const { sseActive } = useReportEvents(Number(report_id));
+
   // General report status polling (works for both mapping and reconstruction)
   const { data: polledData } = usePollReportStatus(
     Number(report_id),
-    shouldPoll
+    shouldPoll,
+    sseActive
   );
 
   // Reconstruction-specific status polling (for detailed progress messages)
   const isReconstructionType = liveReport?.type === "reconstruction_360";
   const { data: reconstructionStatus } = usePollReconstructionStatus(
     Number(report_id),
-    shouldPoll && isReconstructionType
+    shouldPoll && isReconstructionType,
+    sseActive
   );
 
   useEffect(() => {
@@ -127,8 +136,10 @@ export default function ReportOverview() {
         if (polledData.progress !== undefined) {
           if (polledData.progress > (liveReport?.progress ?? 0)) {
             setLiveReport((prev) => ({ ...prev!, progress: polledData.progress }));
-            // Only refetch maps for mapping reports
-            if (!isReconstructionType) {
+            // Polling fallback only: discover newly generated maps by diffing
+            // the slim list. With SSE active, map_created events append the new
+            // map to the cache directly (useReportEvents).
+            if (!isReconstructionType && !sseActive) {
               refetchSlimMaps();
             }
           }
@@ -243,7 +254,7 @@ export default function ReportOverview() {
   };
 
   return (
-    <>
+    <SseActiveContext.Provider value={sseActive}>
       {isFullscreenMode ? (
         <div className="w-full h-[calc(100vh-54px)] overflow-hidden">
           {renderReportContent(liveReport!)}
@@ -262,6 +273,6 @@ export default function ReportOverview() {
           {!isLoading && !error && liveReport && renderReportContent(liveReport)}
         </div>
       )}
-    </>
+    </SseActiveContext.Provider>
   );
 }

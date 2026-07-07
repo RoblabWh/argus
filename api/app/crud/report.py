@@ -297,72 +297,122 @@ def update_process(db: Session, report_id: int, status: str = "queued", progress
 
 
 
-def get_process_status(db: Session, report_id: int, r: redis.Redis):
-    
-    #first check the progress and status saved in postgresql
+def read_process_status(db: Session, report_id: int, r: redis.Redis):
+    """Pure read of a report's processing state: DB status/progress with the
+    live Redis progress overlaid.
+
+    The overlay mutates the ORM object in memory only and is never committed —
+    the session is discarded (rolled back) when the request/caller closes it.
+    Status reconciliation (crashed/lost tasks) lives in
+    reconcile_report_status, driven by the status watchdog.
+    """
     report = db.query(models.Report).filter(models.Report.report_id == report_id).first()
     if not report:
         raise ValueError("Report not found")
 
-    #if status is preprocessing or processing check redis if the task is still going or crahed
-    status = report.status
-
-    if status in ["preprocessing", "processing", "queued"]:
-
-        # Reconstruction reports use a separate Redis namespace managed by the Stella worker.
-        # The worker finalises the report via POST /reconstruction/{id}/complete, so we must
-        # NOT apply the mapping liveness check here (report:{id}:task_id is never set for
-        # reconstruction — doing so would immediately mark the report as "failed").
-        if report.type == "reconstruction_360":
-            try:
-                progress_raw = r.get(f"reconstruction:{report_id}:progress")
-                if progress_raw is not None:
-                    report.progress = float(progress_raw)
-                    db.commit()
-            except redis.RedisError as e:
-                print(f"Redis error reading reconstruction progress: {e}")
-            return report
-
-        # Mapping report: check redis for the task status
+    if report.status in ["preprocessing", "processing", "queued"]:
+        # Reconstruction reports use a separate Redis namespace managed by the
+        # Stella worker (report:{id}:* keys are never set for them).
+        progress_key = (
+            f"reconstruction:{report_id}:progress"
+            if report.type == "reconstruction_360"
+            else f"report:{report_id}:progress"
+        )
         try:
-            task_id = r.get(f"report:{report_id}:task_id")
-            if not task_id:
-                # no task found, set status to failed
-                report.status = "failed"
-                report.progress = 0.0
-                db.commit()
-                return {"status": "failed", "progress": 0.0}
-            # print(f"Task ID for report {report_id}: {task_id.decode('utf-8')}")
-            task_status = r.get(f"report:{report_id}:progress")
-            # print(f"Task status for report {report_id}: {task_status}")
-            if task_status is None:
-                # no progress found, set status to failed
-                report.status = "failed"
-                report.progress = 0.0
-                db.commit()
-                return {"status": "failed", "progress": 0.0}
-            elif float(task_status) >= 100.0:
-                if status == "preprocessing":
-                    report.status = "processing"
-                    report.progress = 0.0
-                else:
-                    report.status = "completed"
-                    report.progress = 100.0
-                db.commit()
-                return report
-            elif float(task_status) < 0.0:
-                report.status = "failed"
-                report.progress = 0.0
-                db.commit()
-                return {"status": "failed", "progress": 0.0}
+            progress_raw = r.get(progress_key)
+            if progress_raw is not None:
+                live_progress = float(progress_raw)
+                if 0.0 <= live_progress <= 100.0:
+                    report.progress = live_progress
         except redis.RedisError as e:
-            print(f"Redis error: {e}")
-            # if redis is not available, set status to failed
-            report.status = "unprocessed"
-            report.progress = 0.0
-            db.commit()
+            print(f"Redis error reading progress for report {report_id}: {e}")
 
     return report
+
+
+def get_process_status(db: Session, report_id: int, r: redis.Redis):
+    """Backwards-compatible alias — now a pure read (no DB writes)."""
+    return read_process_status(db, report_id, r)
+
+
+def reconcile_report_status(db: Session, report_id: int, r: redis.Redis) -> bool:
+    """Detect crashed/lost/finished mapping tasks and fix the DB status.
+
+    This is the write-side logic that used to run inside the polling GET —
+    it now runs from the status watchdog so failure detection no longer
+    depends on someone having the report page open. Returns True when the
+    DB was changed (the caller publishes the matching event).
+    """
+    report = db.query(models.Report).filter(models.Report.report_id == report_id).first()
+    if not report or report.status not in ["preprocessing", "processing", "queued"]:
+        return False
+
+    # Reconstruction reports: the Stella worker owns the reconstruction:{id}:*
+    # Redis keys and finalises via POST /reconstruction/{id}/complete. The
+    # mapping liveness check below would instantly mark them failed
+    # (report:{id}:task_id is never set), so instead sync the DB status from
+    # the worker's Redis status — this write-back used to happen inside the
+    # reconstruction status polling GET.
+    if report.type == "reconstruction_360":
+        try:
+            status_raw = r.get(f"reconstruction:{report_id}:status")
+            progress_raw = r.get(f"reconstruction:{report_id}:progress")
+        except redis.RedisError as e:
+            print(f"Redis error while reconciling reconstruction report {report_id}: {e}")
+            return False
+        worker_status = status_raw.decode() if status_raw else None
+        worker_progress = float(progress_raw) if progress_raw else 0.0
+        if worker_status == "error":
+            report.status = "failed"
+            report.progress = 0.0
+            db.commit()
+            return True
+        if worker_status == "completed" and report.status != "completed":
+            # Normally set by the /complete callback — safety net for a lost callback.
+            report.status = "completed"
+            report.progress = 100.0
+            db.commit()
+            return True
+        if worker_status in ("preprocessing", "processing") and report.status != worker_status:
+            report.status = worker_status
+            report.progress = worker_progress
+            db.commit()
+            return True
+        return False
+
+    try:
+        task_id = r.get(f"report:{report_id}:task_id")
+        progress_raw = r.get(f"report:{report_id}:progress")
+    except redis.RedisError as e:
+        print(f"Redis error while reconciling report {report_id}: {e}")
+        return False
+
+    if not task_id or progress_raw is None:
+        report.status = "failed"
+        report.progress = 0.0
+        db.commit()
+        return True
+
+    progress = float(progress_raw)
+    if progress >= 100.0:
+        if report.status == "preprocessing":
+            report.status = "processing"
+            report.progress = 0.0
+            # Reset the live key too, otherwise the next reconcile tick would
+            # still see 100 and mark the report completed prematurely.
+            r.set(f"report:{report_id}:progress", 0)
+        else:
+            report.status = "completed"
+            report.progress = 100.0
+        db.commit()
+        return True
+    if progress < 0.0:
+        report.status = "failed"
+        report.progress = 0.0
+        db.commit()
+        return True
+
+    return False
 
 
 def set_auto_description(db: Session, report_id: int, description: str):

@@ -9,6 +9,7 @@ from app.schemas.report import ProcessingSettings
 from app.schemas.map import MapCreate
 from app.crud import report as crud_report
 from app.crud import map as map_crud
+import app.services.events as events_service
 import logging
 
 import billiard as multiprocessing
@@ -155,6 +156,12 @@ def process_webODM(
                 f"Creating map in database for report {report_id} with data: {map_data}"
             )
             map = map_crud.create(db, map_data)
+
+            # Announce the freshly committed ODM map to live SSE clients
+            events_service.publish_event(
+                progress_updater.redis_client, report_id, events_service.EVENT_MAP_CREATED,
+                data={"map_id": map.id},
+            )
 
         progress_updater.update_progress_of_map(status="processing", progress=100.0)
         return webODM_project_id

@@ -19,7 +19,10 @@ export function useIsDetectionRunning(reportId: number) {
         queryFn: async () => {
             try {
                 const status = await getDetectionStatus(reportId);
-                return status.status !== ""//; && status.status !== "completed" && status.status !== "failed";
+                // Terminal Redis state survives restarts by design — only a
+                // genuinely active run may arm the progress-bar polling.
+                const s = (status.status || "").toLowerCase();
+                return s !== "" && !["finished", "error", "failed"].includes(s);
             } catch (err: any) {
                 if (err.status === 404) {
                     return false; // no process running
@@ -30,12 +33,14 @@ export function useIsDetectionRunning(reportId: number) {
     });
 }
 
-export function useDetectionStatusPolling(reportId: number, enabled: boolean) {
+// `suspend` pauses the interval while SSE is delivering the same data into
+// this query's cache (see useReportEvents); polling resumes if SSE drops.
+export function useDetectionStatusPolling(reportId: number, enabled: boolean, suspend = false) {
     return useQuery({
         queryKey: ["detectionStatus", reportId],
         queryFn: () => getDetectionStatus(reportId),
         enabled,
-        refetchInterval: enabled ? 2000 : false, // always poll if enabled
+        refetchInterval: enabled && !suspend ? 2000 : false, // poll if enabled and SSE is down
     });
 }
 

@@ -116,7 +116,7 @@ services:
       HF_TOKEN: ${HF_TOKEN:-}
       # Published YOLO detection weights (public repo, no token needed).
       ARGUS_YOLO_REPO_ID: ${ARGUS_YOLO_REPO_ID:-RoblabWhGe/ARGUS-YOLO}
-      ARGUS_YOLO_FILENAME: ${ARGUS_YOLO_FILENAME:11x-best.pt}
+      ARGUS_YOLO_FILENAME: ${ARGUS_YOLO_FILENAME:-11x-best.pt}
       # GPU batch sizing: auto from free VRAM; YOLO_BATCH_SIZE forces a fixed size.
       YOLO_BATCH_SIZE: ${YOLO_BATCH_SIZE:-}
       GPU_MEM_TARGET_FRACTION: ${GPU_MEM_TARGET_FRACTION:-0.75}

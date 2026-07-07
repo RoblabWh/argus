@@ -23,6 +23,7 @@ from app.schemas.image import (
 
 from app.services.celery_app import celery_app
 from app.services.drz_backend_sharing import send_geojson_poi_to_iais
+import app.services.events as events_service
 
 import redis
 from app.config import config
@@ -101,6 +102,10 @@ def run_detections(report_id: int, req: DetectionSettings, db: Session = Depends
 
     r.set(f"detection:{report_id}:task_id", asynch_task.id)
     #logger.info(f"Detection task {asynch_task.id} queued for report {report_id}")
+    events_service.publish_event(
+        r, report_id, events_service.EVENT_DETECTION_STATUS,
+        status="queued", progress=0, message="Detection task queued",
+    )
 
     return {"message": "Detection task queued", "report_id": report_id}
 
@@ -117,10 +122,14 @@ def set_detections(report_id: int, detections: dict, db: Session = Depends(get_d
     #logger.info(detections)
     #
     image_crud.save_detections(db, mapping_report.id, detections)  # adapt to your CRUD
-    # r.set(f"detection:{report_id}:status", "finished")
-    # r.set(f"detection:{report_id}:progress", 100)
-    # r.set(f"detection:{report_id}:message", "Detections saved successfully")
-    # logger.info(f"{len(detections.get('detections', []))} Detections saved for report {report_id}")
+
+    # New rows are now queryable — tell live SSE clients to pull them. The
+    # worker keeps ownership of the detection *status* (it may still be doing
+    # reID/3D localization after this PUT), so only announce the data here.
+    events_service.publish_event(
+        r, report_id, events_service.EVENT_DETECTIONS_ADDED,
+        data={"count": len(detections.get("detections", []))},
+    )
 
     return {"message": "Detections saved successfully", "report_id": report_id, "detections": detections}
 

@@ -43,6 +43,7 @@ import {
 } from "@/utils/detectionUtils";
 import { useMaps } from "@/hooks/useMaps";
 import { useImages } from "@/hooks/imageHooks";
+import { useSseActive } from "@/hooks/useReportEvents";
 
 
 interface Props {
@@ -112,8 +113,9 @@ export function DetectionCard({ report_id, setThresholds, thresholds, setFilter,
         }
     }, [isRunning.data]);
 
+    const sseActive = useSseActive();
     const startDetection = useStartDetection();
-    const detectionStatus = useDetectionStatusPolling(report_id, pollingEnabled);
+    const detectionStatus = useDetectionStatusPolling(report_id, pollingEnabled, sseActive);
     const fetchNewDetections = useFetchNewDetections(report_id);
     const lastProgressRef = useRef(0);
 
@@ -122,7 +124,7 @@ export function DetectionCard({ report_id, setThresholds, thresholds, setFilter,
 
         const progress = detectionStatus.data.progress ?? 0;
         const status = detectionStatus.data.status.toUpperCase();
-        const terminal = status === "FINISHED" || status === "ERROR";
+        const terminal = status === "FINISHED" || status === "ERROR" || status === "FAILED";
 
         // While running, pull newly-produced detections incrementally. Crucially, do NOT do
         // this on the terminal tick: the incremental merge snapshots the stale cache (no

@@ -10,8 +10,10 @@ message}`` (mirrors the detection / stella pipelines). No DB row is created;
 3D availability is detected downstream by the presence of ``reconstruction.json``.
 """
 from celery import Celery
+import json
 import os
 import logging
+import time
 
 import redis
 import requests
@@ -25,6 +27,28 @@ REDIS_HOST = os.getenv("HOST_REDIS", "redis")
 REDIS_PORT = int(os.getenv("PORT_REDIS", 6379))
 BACKEND_URL = os.getenv("BACKEND_URL", "http://127.0.0.1:8008")
 r = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, db=0)
+
+
+def publish_status(report_id: int, *, status=None, progress=None, message=None, data=None):
+    """Push a colmap_status event to live SSE subscribers.
+
+    Additive to the colmap:{id}:* keys (which stay the source of truth for
+    snapshots/polling). Channel + envelope are the cross-container contract —
+    see api/SSE_MIGRATION_PLAN.md. Fire-and-forget: must never break the task.
+    """
+    payload = {
+        "report_id": report_id,
+        "type": "colmap_status",
+        "status": status,
+        "progress": progress,
+        "message": message,
+        "data": data or {},
+        "ts": time.time(),
+    }
+    try:
+        r.publish(f"argus:events:report:{report_id}", json.dumps(payload))
+    except Exception:
+        logger.warning("Failed to publish colmap_status event for report %s", report_id, exc_info=True)
 
 celery_app = Celery(
     "colmap",
@@ -51,23 +75,26 @@ def run_colmap(report_id: int, image_paths: dict, results_path: str,
     r.set(f"colmap:{report_id}:status", "running")
     r.set(f"colmap:{report_id}:progress", 0)
     r.set(f"colmap:{report_id}:message", "Initializing COLMAP…")
+    publish_status(report_id, status="running", progress=0, message="Initializing COLMAP…")
 
     def progress_cb(message: str, percent: int):
         r.set(f"colmap:{report_id}:progress", int(percent))
         r.set(f"colmap:{report_id}:message", message)
+        publish_status(report_id, status="running", progress=int(percent), message=message)
 
     try:
         summary = build_reconstruction(
             image_paths, results_path, options=options, progress_cb=progress_cb
         )
 
+        completion_message = (
+            f"Reconstruction complete — "
+            f"{summary['registered_images']}/{summary['total_images']} images registered"
+        )
         r.set(f"colmap:{report_id}:status", "completed")
         r.set(f"colmap:{report_id}:progress", 100)
-        r.set(
-            f"colmap:{report_id}:message",
-            f"Reconstruction complete — "
-            f"{summary['registered_images']}/{summary['total_images']} images registered",
-        )
+        r.set(f"colmap:{report_id}:message", completion_message)
+        publish_status(report_id, status="completed", progress=100, message=completion_message)
 
         # Best-effort completion callback (lets the API note 3D availability /
         # surface the registration rate). Not required — the YOLO worker only
@@ -93,10 +120,12 @@ def run_colmap(report_id: int, image_paths: dict, results_path: str,
         r.set(f"colmap:{report_id}:status", "error")
         r.set(f"colmap:{report_id}:message", str(e))
         r.set(f"colmap:{report_id}:progress", 0)
+        publish_status(report_id, status="error", progress=0, message=str(e))
         raise
     except Exception as e:  # noqa: BLE001
         logger.error("[colmap] unexpected error for report %s: %s", report_id, e)
         r.set(f"colmap:{report_id}:status", "error")
         r.set(f"colmap:{report_id}:message", str(e))
         r.set(f"colmap:{report_id}:progress", 0)
+        publish_status(report_id, status="error", progress=0, message=str(e))
         raise

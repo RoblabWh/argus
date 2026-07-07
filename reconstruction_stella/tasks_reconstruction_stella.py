@@ -1,8 +1,10 @@
 from celery import Celery
+import json
 import os
 import logging
 import shutil
 import tempfile
+import time
 
 import redis
 import requests
@@ -29,6 +31,28 @@ celery_app = Celery(
     broker=f"redis://{REDIS_HOST}:{REDIS_PORT}/0",
     backend=f"redis://{REDIS_HOST}:{REDIS_PORT}/0",
 )
+
+
+def publish_status(report_id: int, *, status=None, progress=None, message=None, data=None):
+    """Push a reconstruction_status event to live SSE subscribers.
+
+    Additive to the reconstruction:{id}:* keys (which stay the source of truth
+    for snapshots/polling). Channel + envelope are the cross-container contract
+    — see api/SSE_MIGRATION_PLAN.md. Fire-and-forget: must never break the task.
+    """
+    payload = {
+        "report_id": report_id,
+        "type": "reconstruction_status",
+        "status": status,
+        "progress": progress,
+        "message": message,
+        "data": data or {},
+        "ts": time.time(),
+    }
+    try:
+        r.publish(f"argus:events:report:{report_id}", json.dumps(payload))
+    except Exception:
+        logger.warning("Failed to publish reconstruction_status event for report %s", report_id, exc_info=True)
 
 
 SCRIPT_PATH = os.path.dirname(os.path.abspath(__file__))
@@ -80,16 +104,20 @@ def preprocess(report_id: int, video_path: str, results_path: str, options: dict
         if check_h264_codec(video_path):
             r.set(f"reconstruction:{report_id}:message", "Converting video to H.264 (this may take a while)…")
             r.set(f"reconstruction:{report_id}:progress", 5)
+            publish_status(report_id, status="preprocessing", progress=5,
+                           message="Converting video to H.264 (this may take a while)…")
             if convert_to_h264(video_path):
                 logger.info(f"[STELLA] Video converted to H.264: {video_path}")
             else:
                 raise RuntimeError("Video codec conversion failed")
         r.set(f"reconstruction:{report_id}:progress", 50)
-        
+        publish_status(report_id, status="preprocessing", progress=50)
+
         # Flip: create a 180°-rotated copy if requested (upside-down camera mounts)
         flip_video = options.get("flip_video", False)
         if flip_video:
             r.set(f"reconstruction:{report_id}:message", "Flipping video 180°…")
+            publish_status(report_id, status="preprocessing", progress=50, message="Flipping video 180°…")
             video_path = flip_video_180(video_path)
             # Notify API to update DB video_path to the flipped file.
             # Stella path: /data/reports/{report_id}/video_flipped.mp4
@@ -122,13 +150,15 @@ def run_reconstruction_stella(
     r.set(f"reconstruction:{report_id}:status", "preprocessing")
     r.set(f"reconstruction:{report_id}:progress", 0)
     r.set(f"reconstruction:{report_id}:message", "Initializing StellaVSLAM…")
+    publish_status(report_id, status="preprocessing", progress=0, message="Initializing StellaVSLAM…")
 
     try:
         preprocess(report_id, video_path, results_path, options)
-        
+
         r.set(f"reconstruction:{report_id}:progress", 0)
         r.set(f"reconstruction:{report_id}:status", "processing")
         r.set(f"reconstruction:{report_id}:message", "Initializing StellaVSLAM…")
+        publish_status(report_id, status="processing", progress=0, message="Initializing StellaVSLAM…")
 
         # Open video and auto-detect properties
         logger.debug(f"Opening video at path: {video_path}")
@@ -207,19 +237,18 @@ def run_reconstruction_stella(
 
                 # Update progress periodically
                 if frame_idx % progress_interval == 0:
-                    r.set(
-                        f"reconstruction:{report_id}:progress",
-                        int((frame_idx / total_steps) * 95),
-                    )
-                    r.set(
-                        f"reconstruction:{report_id}:message",
-                        f"Processed {frame_idx} of {total_steps} frames",
-                    )
+                    slam_progress = int((frame_idx / total_steps) * 95)
+                    slam_message = f"Processed {frame_idx} of {total_steps} frames"
+                    r.set(f"reconstruction:{report_id}:progress", slam_progress)
+                    r.set(f"reconstruction:{report_id}:message", slam_message)
+                    publish_status(report_id, status="processing",
+                                   progress=slam_progress, message=slam_message)
 
             cap.release()
 
             r.set(f"reconstruction:{report_id}:progress", 95)
             r.set(f"reconstruction:{report_id}:message", "Finalizing reconstruction…")
+            publish_status(report_id, status="processing", progress=95, message="Finalizing reconstruction…")
 
             # Shutdown SLAM
             slam.shutdown()
@@ -250,6 +279,8 @@ def run_reconstruction_stella(
                 f"reconstruction:{report_id}:message",
                 "Reconstruction completed successfully",
             )
+            publish_status(report_id, status="completed", progress=100,
+                           message="Reconstruction completed successfully")
 
             # Notify API to finalize DB entry
             try:
@@ -265,5 +296,6 @@ def run_reconstruction_stella(
         r.set(f"reconstruction:{report_id}:status", "error")
         r.set(f"reconstruction:{report_id}:message", str(e))
         r.set(f"reconstruction:{report_id}:progress", 0)
+        publish_status(report_id, status="error", progress=0, message=str(e))
         raise
 

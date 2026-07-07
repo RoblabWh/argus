@@ -84,6 +84,10 @@ export const editReport = (data: { id: number; title: string; description: strin
 
 export const getMaps = (report_id: number) => fetchJson<Map[]>(`/reports/${report_id}/mapping_report/maps`);
 export const getMapsSlim = (report_id: number) => fetchJson<Map[]>(`/reports/${report_id}/mapping_report/maps_slim`);
+export const getMapById = (report_id: number, map_id: number) => fetchJson<Map>(`/reports/${report_id}/mapping_report/maps/${map_id}`);
+
+// SSE stream of live report events (see api/SSE_MIGRATION_PLAN.md)
+export const getReportEventsUrl = (report_id: number): string => `${API_URL}/reports/${report_id}/events`;
 export const getODMProjectID = (report_id: number) => fetchJson<{ webodm_project_id: string }>(`/reports/${report_id}/mapping_report/webodm_project_id`);
 
 export const getImages = (report_id: number) => fetchJson<ImageBasic[]>(`/images/report/${report_id}`);

@@ -2,6 +2,7 @@ from celery import Celery
 import os
 import json
 import logging
+import time
 import numpy as np
 from transformer_pipeline.inference.datahandler import DataHandler
 from transformer_pipeline.inference.inference_engine import Inferencer
@@ -20,6 +21,28 @@ BACKEND_URL = os.getenv("BACKEND_URL", "http://127.0.0.1:8008")
 
 logging.basicConfig(level=logging.WARNING)
 logger = logging.getLogger(__name__)
+
+
+def publish_status(report_id: int, *, status=None, progress=None, message=None, data=None):
+    """Push a detection_status event to live SSE subscribers.
+
+    Additive to the detection:{id}:* keys (which stay the source of truth for
+    snapshots/polling). Channel + envelope are the cross-container contract —
+    see api/SSE_MIGRATION_PLAN.md. Fire-and-forget: must never break the task.
+    """
+    payload = {
+        "report_id": report_id,
+        "type": "detection_status",
+        "status": status,
+        "progress": progress,
+        "message": message,
+        "data": data or {},
+        "ts": time.time(),
+    }
+    try:
+        r.publish(f"argus:events:report:{report_id}", json.dumps(payload))
+    except Exception:
+        logger.warning("Failed to publish detection_status event for report %s", report_id, exc_info=True)
 
 def preload_models():
     inferencer = Inferencer(score_thr=0.4)
@@ -56,14 +79,16 @@ def run_detection(report_id: int, images: list[dict], max_splits: int = 0):
     try:
         r.set(f"detection:{report_id}:status", "running")
         r.set(f"detection:{report_id}:progress", 0)
-    
+        publish_status(report_id, status="running", progress=0)
+
         annotation_path = f"reports_data/{report_id}/annotations.json"
         progress_tracker = ProgressTracker(
             total_steps=4,
             broadcast_status_function=lambda status, progress, message: (
                 r.set(f"detection:{report_id}:status", status),
                 r.set(f"detection:{report_id}:progress", progress),
-                r.set(f"detection:{report_id}:message", message)
+                r.set(f"detection:{report_id}:message", message),
+                publish_status(report_id, status=status, progress=progress, message=message)
             )
         )
 
@@ -139,11 +164,14 @@ def run_detection(report_id: int, images: list[dict], max_splits: int = 0):
         r.set(f"detection:{report_id}:status", "finished")
         r.set(f"detection:{report_id}:progress", 100)
         r.set(f"detection:{report_id}:message", "Detection completed successfully")
+        publish_status(report_id, status="finished", progress=100,
+                       message="Detection completed successfully")
     except Exception as e:
         logger.error(f"Error during detection for report {report_id}: {e}")
         r.set(f"detection:{report_id}:status", "failed")
         r.set(f"detection:{report_id}:message", str(e))
         r.set(f"detection:{report_id}:progress", 0)
+        publish_status(report_id, status="failed", progress=0, message=str(e))
 
 
 def reformat_ann(ann_path: str, images: list[dict]):

@@ -14,6 +14,7 @@ import {
     useStartAutoDescription,
     useAutoDescriptionPolling
 } from "@/hooks/autoDescriptionHooks";
+import { useSseActive } from "@/hooks/useReportEvents";
 
 type Props = {
     reportID: number;
@@ -26,8 +27,9 @@ export function AutoDescriptionCard({ reportID, description }: Props) {
     const [expanded, setExpanded] = useState(false);
     const [descriptionText, setDescriptionText] = React.useState(description || "");
 
+    const sseActive = useSseActive();
     const { mutate: start } = useStartAutoDescription(reportID);
-    const { data, isLoading: isPolling } = useAutoDescriptionPolling(reportID, polling);
+    const { data, isLoading: isPolling } = useAutoDescriptionPolling(reportID, polling, sseActive);
 
     useEffect(() => {
         if (data?.status === "completed" || data?.status === "error") {

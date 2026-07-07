@@ -8,11 +8,13 @@ export function useStartAutoDescription(reportId: number) {
     });
 }
 
-export function useAutoDescriptionPolling(reportId: number, enabled: boolean) {
+// `suspend` pauses the interval while SSE is delivering the same data into
+// this query's cache (see useReportEvents); polling resumes if SSE drops.
+export function useAutoDescriptionPolling(reportId: number, enabled: boolean, suspend = false) {
     return useQuery({
         queryKey: ["autoDescription", reportId],
         queryFn: () => getAutoDescription(reportId),
         enabled,
-        refetchInterval: enabled ? 2000 : false,
+        refetchInterval: enabled && !suspend ? 2000 : false,
     });
 }

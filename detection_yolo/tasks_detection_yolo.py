@@ -1,9 +1,11 @@
 from celery import Celery
+import json
 import os
 import logging
 import redis
 import requests
 import gc
+import time
 import torch
 
 from ultralytics import YOLO
@@ -35,6 +37,28 @@ celery_app = Celery(
 )
 
 
+def publish_status(report_id: int, *, status=None, progress=None, message=None, data=None):
+    """Push a detection_status event to live SSE subscribers.
+
+    Additive to the detection:{id}:* keys (which stay the source of truth for
+    snapshots/polling). Channel + envelope are the cross-container contract —
+    see api/SSE_MIGRATION_PLAN.md. Fire-and-forget: must never break the task.
+    """
+    payload = {
+        "report_id": report_id,
+        "type": "detection_status",
+        "status": status,
+        "progress": progress,
+        "message": message,
+        "data": data or {},
+        "ts": time.time(),
+    }
+    try:
+        r.publish(f"argus:events:report:{report_id}", json.dumps(payload))
+    except Exception:
+        logger.warning("Failed to publish detection_status event for report %s", report_id, exc_info=True)
+
+
 
 def run_reid_clustering(report_id: int):
     """Cluster a report's detections into unique objects, in-place via the API.
@@ -51,6 +75,8 @@ def run_reid_clustering(report_id: int):
             f"detection:{report_id}:message",
             "Detections complete — re-identifying objects…",
         )
+        publish_status(report_id, status="running", progress=90,
+                       message="Detections complete — re-identifying objects…")
 
         resp = requests.get(f"{BACKEND_URL}/detections/r/{report_id}/reid_input", timeout=60)
         resp.raise_for_status()
@@ -89,8 +115,10 @@ def run_reid_clustering(report_id: int):
         def progress_cb(message: str, fraction: float):
             # Map reID progress into the 90..99 band so the bar keeps moving
             # without prematurely hitting 100 (reserved for "finished").
-            r.set(f"detection:{report_id}:progress", 90 + int(fraction * 9))
+            progress = 90 + int(fraction * 9)
+            r.set(f"detection:{report_id}:progress", progress)
             r.set(f"detection:{report_id}:message", message)
+            publish_status(report_id, status="running", progress=progress, message=message)
 
         # Optionally dump the crops fed to DINOv3 for manual inspection. Lands
         # under the shared volume at reports_data/{report_id}/reid_crops/.
@@ -150,11 +178,15 @@ def run_detection_yolo(report_id: int, images: list[dict], hf_token: str | None 
     r.set(f"detection:{report_id}:status", "running")
     r.set(f"detection:{report_id}:progress", 0)
     r.set(f"detection:{report_id}:message", "Initializing YOLOv11 inference…")
+    publish_status(report_id, status="running", progress=0, message="Initializing YOLOv11 inference…")
 
     def set_progress(step: int, total_steps: int, message: str):
-        progress = int((step / total_steps) * 100)
+        # Inference owns the 0-90 band; reID continues 90-99 and "finished" is
+        # 100, so the bar never moves backwards.
+        progress = int((step / total_steps) * 90)
         r.set(f"detection:{report_id}:progress", progress)
         r.set(f"detection:{report_id}:message", message)
+        publish_status(report_id, status="running", progress=progress, message=message)
 
     try:
         model_path = resolve_yolo_weights()
@@ -189,10 +221,13 @@ def run_detection_yolo(report_id: int, images: list[dict], hf_token: str | None 
         r.set(f"detection:{report_id}:status", "finished")
         r.set(f"detection:{report_id}:progress", 100)
         r.set(f"detection:{report_id}:message", "Detection + reID completed successfully")
+        publish_status(report_id, status="finished", progress=100,
+                       message="Detection + reID completed successfully")
 
     except Exception as e:
         logger.error(e)
         r.set(f"detection:{report_id}:status", "error")
         r.set(f"detection:{report_id}:message", str(e))
         r.set(f"detection:{report_id}:progress", 0)
+        publish_status(report_id, status="error", progress=0, message=str(e))
         raise

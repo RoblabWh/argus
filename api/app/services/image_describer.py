@@ -19,6 +19,7 @@ import json
 
 import app.crud.report as report_crud
 import app.crud.images as images_crud
+import app.services.events as events_service
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 REDIS_PORT = os.getenv("REDIS_PORT", 6379)
@@ -75,7 +76,7 @@ def describe_images(report_id: int):
         #     except Exception as e:
         #         logger.error(f"Failed to write metadata for image {img.id}: {e}")
         #         continue
-        set_redis_progress(report_id, 100.0)
+        set_redis_progress(report_id, 100.0, description=final_report)
     except Exception as e:
         unload_model(OLLAMA_URL, IMAGE_MODEL)
         unload_model(OLLAMA_URL, TEXT_MODEL)
@@ -83,13 +84,21 @@ def describe_images(report_id: int):
         set_redis_progress(report_id, -1.0)
 
 
-def set_redis_progress(report_id: int, progress: float):
+def set_redis_progress(report_id: int, progress: float, description: str = ""):
     status = "processing" if progress < 100.0 and progress >= 0.0 else "completed" if progress >= 100.0 else "error"
     if progress < 0.0:
         progress = 100.0
 
     r.set(f"description:{report_id}:progress", progress)
     r.set(f"description:{report_id}:status", status)
+
+    # Push to live SSE subscribers; the completion event carries the final
+    # text so the frontend doesn't need a follow-up fetch.
+    events_service.publish_event(
+        r, report_id, events_service.EVENT_DESCRIPTION_STATUS,
+        status=status, progress=progress,
+        data={"description": description} if description else None,
+    )
     return
 
 
@@ -311,4 +320,8 @@ def start_description_process(report_id: int, db: Session):
     r.set(f"description:{report_id}:status", "queued")
     r.set(f"description:{report_id}:progress", 0.0)
     r.set(f"description:{report_id}:task_id", task.id)
+    events_service.publish_event(
+        r, report_id, events_service.EVENT_DESCRIPTION_STATUS,
+        status="queued", progress=0.0,
+    )
     return {"status": "started", "task_id": task.id}

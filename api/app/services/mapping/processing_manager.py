@@ -15,6 +15,7 @@ from app.services.mapping.advanced_mapping import map_images_advanced
 from app.services.mapping.progress_updater import ProgressUpdater
 from app.services.mapping.odm_mapping import summon_webODM_mapping_selections, process_webODM
 from app.services.image_processing import reread_image_metadata
+import app.services.events as events_service
 import logging
 
 r = redis.Redis(host=config.REDIS_HOST, port=config.REDIS_PORT, db=0)
@@ -137,5 +138,9 @@ def _dispatch_colmap(report_id: int, images, settings: dict) -> None:
     r.set(f"colmap:{report_id}:status", "queued")
     r.set(f"colmap:{report_id}:progress", 0)
     r.set(f"colmap:{report_id}:message", "COLMAP reconstruction queued")
+    events_service.publish_event(
+        r, report_id, events_service.EVENT_COLMAP_STATUS,
+        status="queued", progress=0, message="COLMAP reconstruction queued",
+    )
     logger.info(f"Dispatched COLMAP task {task.id} for report {report_id} ({len(image_paths)} images, dense={options['dense']})")
 

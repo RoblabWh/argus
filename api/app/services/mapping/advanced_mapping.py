@@ -35,6 +35,7 @@ from app.services.mapping.fast_mapping import (
     BatchTimeoutError,
 )
 import app.crud.map as crud
+import app.services.events as events_service
 
 logger = logging.getLogger(__name__)
 UPLOAD_DIR = config.UPLOAD_DIR
@@ -875,5 +876,12 @@ def map_images_advanced(report_id, mapping_report_id, mapping_selection, setting
         f"Storing {len(db_elements)} map elements for map {db_map.id}"
     )
     crud.create_multiple_map_elements(db, db_map.id, db_elements)
+
+    # Map + elements are committed — announce it so live SSE clients can fetch
+    # this map immediately instead of waiting for the whole report to finish.
+    events_service.publish_event(
+        progress_updater.redis_client, report_id, events_service.EVENT_MAP_CREATED,
+        data={"map_id": db_map.id},
+    )
 
     progress_updater.update_progress_of_map("processing", 100.0)

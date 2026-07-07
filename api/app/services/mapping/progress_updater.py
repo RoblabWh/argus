@@ -1,5 +1,6 @@
 from sqlalchemy.orm import Session
 import app.crud.report as crud
+import app.services.events as events_service
 import redis
 
 
@@ -40,8 +41,15 @@ class ProgressUpdater:
         # Update in database
         crud.update_process(self.session, self.report_id, status, mapped)
 
-        # Update in Redis
+        # Update in Redis (status too, so SSE snapshots see it without a DB hit)
         self.redis_client.set(f"report:{self.report_id}:progress", mapped)
+        self.redis_client.set(f"report:{self.report_id}:status", status)
+
+        # Push to live SSE subscribers
+        events_service.publish_event(
+            self.redis_client, self.report_id, events_service.EVENT_REPORT_STATUS,
+            status=status, progress=mapped,
+        )
 
     def update_partial_progress(self, status: str, start: float, end: float, total: float, progress: float):
         """

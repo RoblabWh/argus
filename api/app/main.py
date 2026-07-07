@@ -9,6 +9,9 @@ logging.basicConfig(
     format="[%(levelname)s] %(asctime)s %(name)s - %(message)s",
 )
 
+import asyncio
+from contextlib import asynccontextmanager, suppress
+
 from fastapi import FastAPI
 from . import models, schemas
 from .database import SessionLocal, engine
@@ -16,6 +19,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import inspect
 from app.services.on_startup import cleanup_lost_tasks
+from app.services.status_watchdog import watchdog_loop
 import os
 import redis
 
@@ -29,14 +33,27 @@ from app.routers import (
     transfer,
     reconstruction,
     export,
+    events,
 )
 
 models.Base.metadata.create_all(bind=engine)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    cleanup_lost_tasks()  # Cleanup lost tasks on startup
+    watchdog_task = asyncio.create_task(watchdog_loop())
+    yield
+    watchdog_task.cancel()
+    with suppress(asyncio.CancelledError):
+        await watchdog_task
+
 
 app = FastAPI(
     title="Argus API",
     description="API for managing reports.",
     version="1.0.0",
+    lifespan=lifespan,
 )
 
 # Optional CORS setup (adjust origins as needed)
@@ -63,8 +80,7 @@ app.include_router(settings.router)
 app.include_router(transfer.router)
 app.include_router(reconstruction.router)
 app.include_router(export.router)
-
-cleanup_lost_tasks()  # Cleanup lost tasks on startup
+app.include_router(events.router)
 
 
 inspector = inspect(engine)

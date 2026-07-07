@@ -11,6 +11,7 @@ python-multipart
 pyproj
 celery
 redis
+sse-starlette
 geopy
 requests
 numpy

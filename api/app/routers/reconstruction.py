@@ -11,6 +11,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 import app.crud.report as report_crud
+import app.services.events as events_service
 from app.database import get_db
 from app.config import config
 from app.schemas.report import ReportCreate, ReportOut, ReconstructionSettings, ReconstructionReportOut
@@ -87,6 +88,10 @@ def start_reconstruction(
     r.set(f"reconstruction:{report_id}:status", "queued")
     r.set(f"reconstruction:{report_id}:progress", 0)
     r.set(f"reconstruction:{report_id}:message", "Task queued")
+    events_service.publish_event(
+        r, report_id, events_service.EVENT_RECONSTRUCTION_STATUS,
+        status="queued", progress=0, message="Task queued",
+    )
 
     report_crud.update_reconstruction_report(db, report_id, processing_settings=settings.model_dump())
     return report_crud.update_process(db, report_id, "queued", 0.0)
@@ -97,21 +102,12 @@ def start_reconstruction(
 @router.get("/{report_id}/status", response_model=dict)
 def get_reconstruction_status(report_id: int, db: Session = Depends(get_db)):
     """Poll the current status and progress from Redis."""
-    status = r.get(f"reconstruction:{report_id}:status")
-    progress = r.get(f"reconstruction:{report_id}:progress")
-    message = r.get(f"reconstruction:{report_id}:message")
-
-    if not status and not progress:
+    # Pure read — the stella worker owns the DB status via its progress updates
+    # and the /complete callback; the status watchdog covers crashed tasks.
+    state = events_service.read_reconstruction_state(r, report_id)
+    if state is None:
         raise HTTPException(status_code=404, detail="No reconstruction status found for this report")
-    
-    report_crud.update_process(db, report_id, status.decode() if status else "unknown", float(progress) if progress else 0.0)
-    
-    return {
-        "report_id": report_id,
-        "status": status.decode() if status else "unknown",
-        "progress": int(progress) if progress else 0,
-        "message": message.decode() if message else "",
-    }
+    return state
 
 
 # ── Video path update (called by stella worker after preprocessing) ───────────
@@ -165,6 +161,17 @@ def complete_reconstruction(report_id: int, db: Session = Depends(get_db)):
 
     # Clean up Redis task key
     r.delete(f"reconstruction:{report_id}:task_id")
+
+    events_service.publish_event(
+        r, report_id, events_service.EVENT_RECONSTRUCTION_STATUS,
+        status="completed", progress=100,
+        message="Reconstruction finalized",
+        data={"keyframe_count": keyframe_count, "has_dense_pointcloud": has_dense},
+    )
+    events_service.publish_event(
+        r, report_id, events_service.EVENT_REPORT_STATUS,
+        status="completed", progress=100.0,
+    )
 
     logger.info(f"Reconstruction complete for report {report_id}: {keyframe_count} keyframes, dense={has_dense}")
     return {"message": "Reconstruction finalized", "report_id": report_id, "keyframe_count": keyframe_count}

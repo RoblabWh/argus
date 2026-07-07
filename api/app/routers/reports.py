@@ -9,6 +9,7 @@ import logging
 
 import app.crud.report as crud
 import app.crud.groups as crud_groups
+import app.crud.map as map_crud
 from app.database import get_db
 from app.schemas.report import (
     ReportCreate,
@@ -26,13 +27,14 @@ from app.schemas.report import (
 )
 from app.schemas.image import UploadSummary, VideoUploadResult, ImageUploadResult
 from app.schemas.map import MapOut, MapSharingData
-from app.services.celery_app import celery_app, task_is_really_active
+from app.services.celery_app import celery_app
 from app.services.image_processing import process_image, check_mapping_report, UPLOAD_DIR
 from app.services.camera_config_service import extract_video_metadata
 
 import app.services.mapping.processing_manager as process_report_service
 import app.services.image_describer as image_describer_service
 import app.services.drz_backend_sharing as drz_service
+import app.services.events as events_service
 from app.config import config
 import redis
 
@@ -202,6 +204,16 @@ def get_mapping_report_maps(report_id: int, db: Session = Depends(get_db)):
 def get_mapping_report_maps(report_id: int, db: Session = Depends(get_db)):
     return crud.get_mapping_report_maps_slim(db, report_id)
 
+@router.get("/{report_id}/mapping_report/maps/{map_id}", response_model=MapOut)
+def get_mapping_report_single_map(report_id: int, map_id: int, db: Session = Depends(get_db)):
+    """Fetch one map with its elements — used by the SSE map_created handler to
+    load a freshly generated map without refetching the whole maps list."""
+    try:
+        crud.get_mapping_report_map(db, map_id, report_id)  # ownership check
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    return map_crud.get_full_map(db, map_id)
+
 @router.get("/{report_id}/mapping_report/webodm_project_id", response_model=int | None)
 def get_mapping_report_webodm_project_id(report_id: int, db: Session = Depends(get_db)):
     return crud.get_mapping_report_webodm_project_id(db, report_id)
@@ -214,6 +226,10 @@ def process_report(report_id: int, processing_settings: ProcessingSettings, db: 
     task = process_report_service.process_report.delay(report_id, processing_settings_dict)
     r.set(f"report:{report_id}:task_id", task.id)
     r.set(f"report:{report_id}:progress", 0)
+    r.set(f"report:{report_id}:status", "queued")
+    events_service.publish_event(
+        r, report_id, events_service.EVENT_REPORT_STATUS, status="queued", progress=0.0
+    )
     return returnval
 
 @router.get("/{report_id}/colmap/status", response_model=dict)
@@ -224,19 +240,7 @@ def get_colmap_status(report_id: int):
     from the on-disk reconstruction.json. Returns status 'none' when no run has
     ever been started for this report.
     """
-    status = r.get(f"colmap:{report_id}:status")
-    progress = r.get(f"colmap:{report_id}:progress")
-    message = r.get(f"colmap:{report_id}:message")
-    reconstruction = os.path.join(
-        str(UPLOAD_DIR), str(report_id), "colmap", "reconstruction.json"
-    )
-    return {
-        "report_id": report_id,
-        "status": status.decode() if status else "none",
-        "progress": int(progress) if progress else 0,
-        "message": message.decode() if message else "",
-        "has_reconstruction": os.path.isfile(reconstruction),
-    }
+    return events_service.read_colmap_state(r, report_id)
 
 
 @router.post("/{report_id}/colmap/complete", response_model=dict)
@@ -248,6 +252,16 @@ def complete_colmap(report_id: int, summary: dict = None):
     Redis status before calling.
     """
     logger.info(f"COLMAP reconstruction complete for report {report_id}: {summary}")
+    state = events_service.read_colmap_state(r, report_id)
+    events_service.publish_event(
+        r,
+        report_id,
+        events_service.EVENT_COLMAP_STATUS,
+        status=state["status"],
+        progress=state["progress"],
+        message=state["message"],
+        data={"has_reconstruction": state["has_reconstruction"]},
+    )
     return {"ok": True, "report_id": report_id}
 
 
@@ -281,8 +295,11 @@ def stop_processing(report_id: int, db: Session = Depends(get_db)):
     result = crud.update_process(db, report_id, "cancelled", progress)
 
     # Clean up Redis keys
-    r.delete(f"report:{report_id}:task_id", f"report:{report_id}:progress")
+    r.delete(f"report:{report_id}:task_id", f"report:{report_id}:progress", f"report:{report_id}:status")
 
+    events_service.publish_event(
+        r, report_id, events_service.EVENT_REPORT_STATUS, status="cancelled", progress=progress
+    )
     return result
 
 
@@ -303,25 +320,20 @@ def start_auto_description(report_id: int, db: Session = Depends(get_db)):
 
 @router.get("/{report_id}/auto_description", response_model=dict)
 def get_auto_description(report_id: int, db: Session = Depends(get_db)):
-    task_id = r.get(f"description:{report_id}:task_id")
+    # Pure read: the status watchdog owns the "did the Celery task die?" check
+    # that used to be inlined here (it writes the error status and publishes
+    # the matching SSE event).
     status = r.get(f"description:{report_id}:status")
     progress = r.get(f"description:{report_id}:progress")
-    
+
     if status and status.decode() in ("processing", "queued"):
-        if task_id:
-            if not task_is_really_active(task_id.decode()):
-                status = b"error"
-                progress = 100.0
-                r.set(f"description:{report_id}:status", status)
-                r.set(f"description:{report_id}:progress", progress)
-            
-            return {
-                "report_id": report_id,
-                "status": status.decode() if status else "unknown",
-                "progress": float(progress) if progress else 0.0,
-                "description": ""
-            }
-    
+        return {
+            "report_id": report_id,
+            "status": status.decode(),
+            "progress": float(progress) if progress else 0.0,
+            "description": ""
+        }
+
     if status == b"error":
         return {
             "report_id": report_id,
