@@ -618,16 +618,22 @@ interface Props {
     dense_pointcloud_url: string | null;
     has_dense_pointcloud: boolean;
   };
-  keyframes: Keyframe[];
+  // Optional: without keyframes the viewer shows a plain point cloud
+  // (no camera path / marker overlays) — used for COLMAP mapping reconstructions.
+  keyframes?: Keyframe[];
   apiUrl: string;
-  onOpenViewer: (idx: number) => void;
+  onOpenViewer?: (idx: number) => void;
+  // Coordinate convention of the cloud: stella writes OpenCV/TUM (+Y down,
+  // +Z forward), COLMAP's model_aligner writes geo-registered ENU (+Z up).
+  sourceFrame?: "opencv" | "enu";
 }
 
 export function ReconstructionPointcloudTab({
   results,
-  keyframes,
+  keyframes = [],
   apiUrl,
-  onOpenViewer,
+  onOpenViewer = () => {},
+  sourceFrame = "opencv",
 }: Props) {
   const sparseUrl = results.sparse_pointcloud_url
     ? `${apiUrl}${results.sparse_pointcloud_url}`
@@ -643,6 +649,11 @@ export function ReconstructionPointcloudTab({
   const [highlightedIndex, setHighlightedIndex] = useState<number | null>(null);
   const [retryCounter, setRetryCounter] = useState(0);
   const [toolbarOpen, setToolbarOpen] = useState(true);
+
+  // Manual mirror toggles in viewer/screen axes (X=right, Y=up, Z=toward camera)
+  const [flipX, setFlipX] = useState(false);
+  const [flipY, setFlipY] = useState(false);
+  const [flipZ, setFlipZ] = useState(false);
 
   // Overlays
   const [showTrajectory, setShowTrajectory] = useState(true);
@@ -694,7 +705,15 @@ export function ReconstructionPointcloudTab({
   const highlightedKeyframe =
     highlightedIndex != null ? keyframes[highlightedIndex] : null;
 
-  const cloudKey = `${activeUrl}#${retryCounter}`;
+  // Flips are part of the key so <Bounds> remounts and re-fits the camera —
+  // mirroring a non-origin-centered cloud would otherwise move it out of view.
+  const cloudKey = `${activeUrl}#${retryCounter}#${flipX}${flipY}${flipZ}`;
+
+  // Rotate the source frame into three.js's +Y-up view space.
+  const baseRotation: [number, number, number] =
+    sourceFrame === "enu"
+      ? [-Math.PI / 2, 0, 0] // ENU: +Z up → +Y up, +Y north → −Z
+      : [Math.PI, 0, 0]; // OpenCV/TUM: +Y down, +Z forward → flip about X
 
   const navHelp =
     navMode === "fly"
@@ -728,9 +747,11 @@ export function ReconstructionPointcloudTab({
               </Html>
             }
           >
-            {/* Flip OpenCV/TUM (+Y down, +Z forward) into Three's +Y up; cloudScale scales the whole scene. */}
-            <group rotation={[Math.PI, 0, 0]} scale={cloudScale}>
-              <Bounds fit clip margin={1.2}>
+            {/* Outer group mirrors in viewer axes (flip toggles); inner group turns
+                the source frame upright (see baseRotation) and applies cloudScale. */}
+            <group scale={[flipX ? -1 : 1, flipY ? -1 : 1, flipZ ? -1 : 1]}>
+            <group rotation={baseRotation} scale={cloudScale}>
+              <Bounds key={cloudKey} fit clip margin={1.2}>
                 <PointCloud
                   key={cloudKey}
                   url={activeUrl}
@@ -766,6 +787,7 @@ export function ReconstructionPointcloudTab({
                   />
                 )}
               {showAxes && <axesHelper args={[1]} />}
+            </group>
             </group>
           </Suspense>
 
@@ -1103,6 +1125,27 @@ export function ReconstructionPointcloudTab({
               </AccordionContent>
             </AccordionItem>
 
+            {/* Orientation — rarely needed escape hatch, collapsed by default */}
+            <AccordionItem value="orientation">
+              <AccordionTrigger className="py-2 px-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Orientation
+              </AccordionTrigger>
+              <AccordionContent className="pt-1 pb-2 px-1 flex flex-col gap-2">
+                <label className="flex items-center justify-between gap-2 text-xs font-medium text-muted-foreground">
+                  Flip X
+                  <Switch checked={flipX} onCheckedChange={setFlipX} />
+                </label>
+                <label className="flex items-center justify-between gap-2 text-xs font-medium text-muted-foreground">
+                  Flip Y
+                  <Switch checked={flipY} onCheckedChange={setFlipY} />
+                </label>
+                <label className="flex items-center justify-between gap-2 text-xs font-medium text-muted-foreground">
+                  Flip Z
+                  <Switch checked={flipZ} onCheckedChange={setFlipZ} />
+                </label>
+              </AccordionContent>
+            </AccordionItem>
+
             {/* Overlays */}
             <AccordionItem value="overlays">
               <AccordionTrigger className="py-2 px-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -1113,33 +1156,37 @@ export function ReconstructionPointcloudTab({
                   Axes
                   <Switch checked={showAxes} onCheckedChange={setShowAxes} />
                 </label>
-                <label className="flex items-center justify-between gap-2 text-xs font-medium text-muted-foreground">
-                  Camera path
-                  <Switch checked={showTrajectory} onCheckedChange={setShowTrajectory} />
-                </label>
-                <label className="flex items-center justify-between gap-2 text-xs font-medium text-muted-foreground">
-                  Keyframe markers
-                  <Switch
-                    checked={showKeyframeMarkers}
-                    onCheckedChange={setShowKeyframeMarkers}
-                  />
-                </label>
+                {keyframes.length > 0 && (
+                  <>
+                    <label className="flex items-center justify-between gap-2 text-xs font-medium text-muted-foreground">
+                      Camera path
+                      <Switch checked={showTrajectory} onCheckedChange={setShowTrajectory} />
+                    </label>
+                    <label className="flex items-center justify-between gap-2 text-xs font-medium text-muted-foreground">
+                      Keyframe markers
+                      <Switch
+                        checked={showKeyframeMarkers}
+                        onCheckedChange={setShowKeyframeMarkers}
+                      />
+                    </label>
 
-                <div className="flex flex-col gap-1.5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-medium text-muted-foreground">Sphere size</span>
-                    <span className="text-xs tabular-nums text-muted-foreground">
-                      {(sphereSize * 10).toFixed(2)}
-                    </span>
-                  </div>
-                  <Slider
-                    value={[sphereSize * 0.1]}
-                    min={MIN_SPHERE_SIZE}
-                    max={MAX_SPHERE_SIZE}
-                    step={0.0001}
-                    onValueChange={(v) => setSphereSize(v[0] * 10)}
-                  />
-                </div>
+                    <div className="flex flex-col gap-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-medium text-muted-foreground">Sphere size</span>
+                        <span className="text-xs tabular-nums text-muted-foreground">
+                          {(sphereSize * 10).toFixed(2)}
+                        </span>
+                      </div>
+                      <Slider
+                        value={[sphereSize * 0.1]}
+                        min={MIN_SPHERE_SIZE}
+                        max={MAX_SPHERE_SIZE}
+                        step={0.0001}
+                        onValueChange={(v) => setSphereSize(v[0] * 10)}
+                      />
+                    </div>
+                  </>
+                )}
               </AccordionContent>
             </AccordionItem>
           </Accordion>

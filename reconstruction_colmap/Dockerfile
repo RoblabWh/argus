@@ -12,11 +12,11 @@ RUN apt-get update \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt /detection_colmap/requirements.txt
-RUN pip3 install --no-cache-dir --break-system-packages -r /detection_colmap/requirements.txt
+COPY requirements.txt /reconstruction_colmap/requirements.txt
+RUN pip3 install --no-cache-dir --break-system-packages -r /reconstruction_colmap/requirements.txt
 
-WORKDIR /detection_colmap
-COPY . /detection_colmap
+WORKDIR /reconstruction_colmap
+COPY . /reconstruction_colmap
 
 # The base image sets an ENTRYPOINT of `colmap`; override it so we launch celery.
 ENTRYPOINT ["celery", "-A", "tasks_colmap", "worker", "-Q", "colmap", "--loglevel=info"]

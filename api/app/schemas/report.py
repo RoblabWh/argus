@@ -155,6 +155,17 @@ class ReconstructionReportOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class ColmapResultsOut(BaseModel):
+    report_id: int
+    has_reconstruction: bool
+    sparse_pointcloud_url: Optional[str] = None
+    dense_pointcloud_url: Optional[str] = None
+    has_dense_pointcloud: bool = False
+    reconstruction_mode: Optional[str] = None  # "sparse" | "dense"
+    registered_images: Optional[int] = None
+    total_images: Optional[int] = None
+
+
 ##################
 ## Pano Report
 ##################

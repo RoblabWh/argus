@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, lazy, Suspense } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Report } from "@/types/report";
 import type { Image, ImageBasic } from "@/types/image";
@@ -9,6 +9,16 @@ import { SlideshowTab } from "@/components/report/mappingReportComponents/Slides
 import { DataTab } from "@/components/report/mappingReportComponents/DataTab";
 import { useImages } from "@/hooks/imageHooks";
 import { useFilteredImages } from "@/contexts/FileteredImagesContext";
+import { usePollColmapStatus } from "@/hooks/usePollColmapStatus";
+import { useColmapResults } from "@/hooks/useColmapResults";
+import { useSseActive } from "@/hooks/useReportEvents";
+import { Loader2 } from "lucide-react";
+
+const ReconstructionPointcloudTab = lazy(() =>
+  import("../reconstructionReportComponents/ReconstructionPointcloudTab").then(
+    (m) => ({ default: m.ReconstructionPointcloudTab }),
+  ),
+);
 
 interface Props {
   report: Report;
@@ -31,6 +41,13 @@ export function TabArea({ report, selectedImage, setSelectedImage, tab, setTab, 
   const { data: images } = useImages(report.report_id);
   const [visibleMapOverlays, setVisibleMapOverlays] = useState<{ [mapId: number]: boolean }>({});
   const { filteredImages, } = useFilteredImages();
+
+  // COLMAP 3D reconstruction — shares the ["colmap-status", id] cache with
+  // ColmapStatusIndicator; SSE flips has_reconstruction live once the worker finishes.
+  const sseActive = useSseActive();
+  const { data: colmapStatus } = usePollColmapStatus(report.report_id, true, sseActive);
+  const hasColmap = !!colmapStatus?.has_reconstruction;
+  const { data: colmapResults } = useColmapResults(report.report_id, hasColmap);
 
   const onTabChange = (value: string) => {
     setTab(value);
@@ -98,6 +115,9 @@ export function TabArea({ report, selectedImage, setSelectedImage, tab, setTab, 
           <TabsTrigger className="cursor-pointer" value="map">Map</TabsTrigger>
           <TabsTrigger className="cursor-pointer" value="slideshow">Images</TabsTrigger>
           <TabsTrigger className="cursor-pointer" value="data">Data</TabsTrigger>
+          {hasColmap && (
+            <TabsTrigger className="cursor-pointer" value="pointcloud">3D</TabsTrigger>
+          )}
         </TabsList>
       </div>
       {/* forceMount keeps the map alive when switching tabs, hidden with CSS */}
@@ -133,6 +153,25 @@ export function TabArea({ report, selectedImage, setSelectedImage, tab, setTab, 
         {/* Data content goes here */}
         <DataTab report={report} />
       </TabsContent>
+      {/* COLMAP 3D tab — forceMount keeps the WebGL canvas alive when switching tabs */}
+      {hasColmap && colmapResults?.sparse_pointcloud_url && (
+        <TabsContent
+          value="pointcloud"
+          forceMount
+          className={`h-full ${tab !== "pointcloud" ? "hidden" : ""}`}
+        >
+          <Suspense
+            fallback={
+              <div className="w-full h-full flex items-center justify-center text-muted-foreground gap-2">
+                <Loader2 className="w-5 h-5 animate-spin" />
+                <span className="text-sm">Loading 3D viewer…</span>
+              </div>
+            }
+          >
+            <ReconstructionPointcloudTab results={colmapResults} apiUrl={api_url} sourceFrame="enu" />
+          </Suspense>
+        </TabsContent>
+      )}
     </Tabs>
   );
 }

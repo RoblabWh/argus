@@ -1,3 +1,4 @@
+import json
 import os
 import shutil
 from concurrent.futures import ThreadPoolExecutor
@@ -24,6 +25,7 @@ from app.schemas.report import (
     MappingReportUpdate,
     MappingReportOut,
     ProcessingSettings,
+    ColmapResultsOut,
 )
 from app.schemas.image import UploadSummary, VideoUploadResult, ImageUploadResult
 from app.schemas.map import MapOut, MapSharingData
@@ -241,6 +243,45 @@ def get_colmap_status(report_id: int):
     ever been started for this report.
     """
     return events_service.read_colmap_state(r, report_id)
+
+
+@router.get("/{report_id}/colmap/results", response_model=ColmapResultsOut)
+def get_colmap_results(report_id: int):
+    """Point-cloud URLs and summary stats of a finished COLMAP reconstruction.
+
+    Like the status endpoint this never 404s (there is no DB row for COLMAP):
+    a report without a reconstruction gets has_reconstruction=False. The .ply
+    files themselves are served by the /reports_data static mount.
+    """
+    colmap_dir = os.path.join(str(config.UPLOAD_DIR), str(report_id), "colmap")
+    summary_path = os.path.join(colmap_dir, "reconstruction.json")
+    if not os.path.isfile(summary_path):
+        return ColmapResultsOut(report_id=report_id, has_reconstruction=False)
+
+    summary = {}
+    try:
+        with open(summary_path) as f:
+            summary = json.load(f)
+    except (OSError, json.JSONDecodeError) as e:
+        logger.warning(f"Unreadable reconstruction.json for report {report_id}: {e}")
+
+    sparse_url = None
+    if os.path.isfile(os.path.join(colmap_dir, "sparse_aligned", "points.ply")):
+        sparse_url = f"/reports_data/{report_id}/colmap/sparse_aligned/points.ply"
+    dense_url = None
+    if os.path.isfile(os.path.join(colmap_dir, "dense", "fused.ply")):
+        dense_url = f"/reports_data/{report_id}/colmap/dense/fused.ply"
+
+    return ColmapResultsOut(
+        report_id=report_id,
+        has_reconstruction=True,
+        sparse_pointcloud_url=sparse_url,
+        dense_pointcloud_url=dense_url,
+        has_dense_pointcloud=dense_url is not None,
+        reconstruction_mode=summary.get("reconstruction_mode"),
+        registered_images=summary.get("registered_images"),
+        total_images=summary.get("total_images"),
+    )
 
 
 @router.post("/{report_id}/colmap/complete", response_model=dict)

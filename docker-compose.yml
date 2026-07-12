@@ -122,13 +122,13 @@ services:
       GPU_MEM_TARGET_FRACTION: ${GPU_MEM_TARGET_FRACTION:-0.75}
 
   argus_colmap_worker:
-    build: ./detection_colmap
-    working_dir: /detection_colmap
+    build: ./reconstruction_colmap
+    working_dir: /reconstruction_colmap
     container_name: argusII_colmap_worker
     entrypoint: celery
     command: -A tasks_colmap worker -Q colmap --loglevel=${LOG_LEVEL}
     volumes:
-      - argus_uploaded_files:/detection_colmap/reports_data
+      - argus_uploaded_files:/reconstruction_colmap/reports_data
     depends_on:
       - redis
       - api

@@ -206,6 +206,21 @@ export interface ColmapStatusData {
 export const getColmapStatus = (reportId: number): Promise<ColmapStatusData> =>
   fetchJson(`/reports/${reportId}/colmap/status`);
 
+export interface ColmapResultsData {
+  report_id: number;
+  has_reconstruction: boolean;
+  sparse_pointcloud_url: string | null;
+  dense_pointcloud_url: string | null;
+  has_dense_pointcloud: boolean;
+  reconstruction_mode: string | null;
+  registered_images: number | null;
+  total_images: number | null;
+}
+
+// GET: point-cloud URLs + stats of a finished COLMAP reconstruction
+export const getColmapResults = (reportId: number): Promise<ColmapResultsData> =>
+  fetchJson(`/reports/${reportId}/colmap/results`);
+
 //export api Url
 export const getApiUrl = () => API_URL;
 export const getExportReportUrl = (reportId: number): string => `${API_URL}/transfer/export/${reportId}`;
