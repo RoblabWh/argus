@@ -57,6 +57,57 @@ export function getDetectionColor(className: string, muted: boolean | undefined)
   return color;
 }
 
+/** Classes produced by the dedicated fire detection pipeline (mirrors the
+ * backend's FIRE_CLASSES). On the map they render as the fire overlay, not
+ * as individual markers; the slideshow still draws their bboxes. */
+export const FIRE_CLASSES = new Set(["fire"]);
+
+/** Plasma sequential ramp for the fire overlay: perceptually uniform and
+ * monotonic in lightness — purple = low confidence, bright yellow = high. */
+const CONFIDENCE_RAMP: [number, [number, number, number]][] = [
+  [0.0, [13, 8, 135]],    // #0d0887
+  [0.25, [126, 3, 168]],  // #7e03a8
+  [0.5, [204, 71, 120]],  // #cc4778
+  [0.75, [248, 149, 64]], // #f89540
+  [1.0, [240, 249, 33]],  // #f0f921
+];
+
+export function confidenceToColor(score: number): string {
+  const t = Math.min(Math.max(score, 0), 1);
+  for (let i = 1; i < CONFIDENCE_RAMP.length; i++) {
+    const [t1, c1] = CONFIDENCE_RAMP[i];
+    if (t > t1) continue;
+    const [t0, c0] = CONFIDENCE_RAMP[i - 1];
+    const f = (t - t0) / (t1 - t0);
+    const rgb = c0.map((v, ch) => Math.round(v + f * (c1[ch] - v)));
+    return `rgb(${rgb[0]}, ${rgb[1]}, ${rgb[2]})`;
+  }
+  return "rgb(240, 249, 33)";
+}
+
+/** CSS gradient of the confidence ramp, for the fire overlay legend. */
+export const CONFIDENCE_RAMP_GRADIENT = `linear-gradient(to right, ${CONFIDENCE_RAMP.map(
+  ([t, [r, g, b]]) => `rgb(${r}, ${g}, ${b}) ${t * 100}%`,
+).join(", ")})`;
+
+export interface FireMapRegionImage {
+  image_id: number;
+  filename?: string | null;
+  thumbnail_url?: string | null;
+}
+
+export interface FireMapRegion {
+  max_score: number;
+  detection_count: number;
+  images: FireMapRegionImage[];
+}
+
+/** Response of GET /detections/r/{id}/fire_map — see api/app/services/fire_map.py. */
+export interface FireMap {
+  geojson: import("geojson").FeatureCollection | null;
+  regions: Record<string, FireMapRegion>;
+}
+
 export interface Geometry {
     type: "Point"
     coordinates: [number, number] // [longitude, latitude]

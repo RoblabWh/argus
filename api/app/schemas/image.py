@@ -240,3 +240,27 @@ class ReidInput(BaseModel):
 class DetectionUniqueObjectsBulk(BaseModel):
     # {unique_object_id (as string key): [detection_id, ...]}
     clusters: dict[str, List[int]]
+
+
+##################
+## Fire map (vector overlay from fire-class detections)
+##################
+
+class FireMapRegionImage(BaseModel):
+    image_id: int
+    filename: Optional[str] = None
+    thumbnail_url: Optional[str] = None
+
+
+class FireMapRegion(BaseModel):
+    max_score: float
+    detection_count: int
+    images: List[FireMapRegionImage] = []
+
+
+class FireMapOut(BaseModel):
+    # GeoJSON FeatureCollection (band polygons, [lon, lat] coordinates) or
+    # None when the report has no georeferenced fire detections.
+    geojson: Optional[dict] = None
+    # region_id (string key) -> source images/detections of that fire region
+    regions: dict[str, FireMapRegion] = {}

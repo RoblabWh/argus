@@ -1,14 +1,15 @@
 import React from "react";
 import { useState, useEffect, useMemo, useRef } from "react";
 import type { ImageBasic } from "@/types/image";
-import type { Detection } from "@/types/detection";
-import { getDetectionColor } from "@/types/detection";
+import type { Detection, FireMapRegion } from "@/types/detection";
+import { getDetectionColor, confidenceToColor, CONFIDENCE_RAMP_GRADIENT, FIRE_CLASSES } from "@/types/detection";
 import { getApiUrl } from "@/api";
 import {
     MapContainer,
     TileLayer,
     LayersControl,
     ImageOverlay,
+    GeoJSON,
     Marker,
     Popup,
     Polygon,
@@ -25,14 +26,14 @@ import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
-import { Home, Group, Ungroup } from 'lucide-react';
+import { Home, Group, Ungroup, CircleHelp } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import "@/lib/Leaflet.ImageOverlay.Rotated";
 import { RotatedImageOverlay } from "@/components/report/mappingReportComponents/RotatedImageOverlay";
 import panoPinSVG from '@/assets/panorama.svg';
 import { useImages } from "@/hooks/imageHooks";
 import { useMaps } from "@/hooks/useMaps";
-import { useDetections, useUpdateDetectionBatch } from "@/hooks/detectionHooks";
+import { useDetections, useFireMap, useUpdateDetectionBatch } from "@/hooks/detectionHooks";
 import { extractFlightTrajectory, computeDetectionGps, polygonIntersection } from "@/utils/coordinateUtils";
 import { reduceDetections, gridClusterMarkables } from "@/utils/detectionUtils";
 import type { DetectionWithGps, ClusterMarker, SpatialMarkable } from "@/utils/detectionUtils";
@@ -82,9 +83,10 @@ interface Props {
     setSelectedObjectId: (id: number | null) => void;
     highlightedDetectionId: number | null;
     setHighlightedDetectionId: (id: number | null) => void;
+    setFireRegionImageIds: (ids: number[] | null) => void;
 }
 
-function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCategories, visibleMapOverlays, setVisibleMapOverlays, detectionMode, selectedObjectId, setSelectedObjectId, setHighlightedDetectionId }: Props) {
+function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCategories, visibleMapOverlays, setVisibleMapOverlays, detectionMode, selectedObjectId, setSelectedObjectId, setHighlightedDetectionId, setFireRegionImageIds }: Props) {
     const [overlayOpacity, setOverlayOpacity] = useState(1.0);
     const [map, setMap] = useState<LeafletMap | null>(null);
     const { data: images } = useImages(reportId);
@@ -97,6 +99,11 @@ function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCatego
     const [showPanoMarkers, setShowPanoMarkers] = useState(true);
     const [showDetections, setShowDetections] = useState(true);
     const [showPolygons, setShowPolygons] = useState(true);
+    const [showFireMap, setShowFireMap] = useState(true);
+    // Server-generated fire overlay (confidence bands + region->image table).
+    const fireMapQuery = useFireMap(reportId, showFireMap);
+    const fireMap = fireMapQuery.data;
+    const hasFireOverlay = !!fireMap?.geojson?.features?.length;
     const [spatialClusterEnabled, setSpatialClusterEnabled] = useState(true);
     const [editDetection, setEditDetection] = useState<Detection | null>(null);
     const [zoom, setZoom] = useState(18);
@@ -204,12 +211,19 @@ function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCatego
         };
     }, []);
 
+    // Fire-class detections never render as individual map markers — they are
+    // shown as the fire overlay instead (the slideshow keeps their bboxes).
+    const markerDetections = useMemo(
+        () => detections?.filter(d => !FIRE_CLASSES.has(d.class_name)),
+        [detections]
+    );
+
     // Threshold-filtered detections with GPS, reduced per the display mode (shared with the
     // DetectionCard count so the map and the table stay consistent). Visibility (per-class eye
     // toggle) is applied as a render-time filter below, not here.
     const reduced = useMemo(
-        () => reduceDetections(detections, images, maps, thresholds, detectionMode, CLUSTER_REP_FROM_VORONOI),
-        [detections, images, maps, thresholds, detectionMode]
+        () => reduceDetections(markerDetections, images, maps, thresholds, detectionMode, CLUSTER_REP_FROM_VORONOI),
+        [markerDetections, images, maps, thresholds, detectionMode]
     );
 
     const clusters: ClusterMarker[] = useMemo(
@@ -312,6 +326,38 @@ function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCatego
             return;
         }
         selectImageOnMap(image_id);
+    };
+
+    // Popup for a fire-overlay region: a short summary plus a button that
+    // filters the gallery to the region's source images (thumbnails belong to
+    // the gallery card, not a map popup — same idea as object groups).
+    // Plain DOM because GeoJSON layers bind Leaflet popups, not React nodes.
+    const buildFireRegionPopup = (region: FireMapRegion) => {
+        const root = document.createElement("div");
+        root.className = "w-44";
+        const title = document.createElement("div");
+        const detLabel = `${region.detection_count} detection${region.detection_count === 1 ? "" : "s"}`;
+        const imgLabel = `${region.images.length} image${region.images.length === 1 ? "" : "s"}`;
+        title.innerHTML =
+            `<strong>Potential fire</strong><br/>` +
+            `Max confidence: ${(region.max_score * 100).toFixed(1)}%<br/>` +
+            `<span class="text-xs text-gray-500">${detLabel} from ${imgLabel}</span>`;
+        root.appendChild(title);
+        const button = document.createElement("button");
+        button.type = "button";
+        // Mirrors the shadcn Button used in the detection popups
+        button.className = "mt-2 w-full inline-flex items-center justify-center rounded-md text-sm font-medium h-8 px-3 bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer";
+        button.textContent = "Show source images";
+        button.addEventListener("click", () => {
+            // An open object group forces the gallery's objects view — clear it
+            // so the image grid (which the filter applies to) becomes visible.
+            setSelectedObjectId(null);
+            setHighlightedDetectionId(null);
+            setFireRegionImageIds(region.images.map((img) => img.image_id));
+            map?.closePopup();
+        });
+        root.appendChild(button);
+        return root;
     };
 
     const renderDetectionPopup = (detection: DetectionWithGps) => (
@@ -567,6 +613,34 @@ function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCatego
                                     {clusters.map(renderClusterMarker)}
                                 </>
                             )}
+                        </LayerGroup>
+                    )}
+                    {/* Fire overlay: smoothly merged fire detections as confidence
+                        bands (purple = low, bright yellow = high). Painted low band
+                        first, so higher-confidence cores sit on top (height-map look).
+                        key remounts the layer when new data arrives — react-leaflet's
+                        GeoJSON reads `data` only on mount. */}
+                    {showFireMap && hasFireOverlay && fireMap?.geojson && (
+                        <LayerGroup>
+                            <GeoJSON
+                                key={`fire-${fireMapQuery.dataUpdatedAt}`}
+                                data={fireMap.geojson}
+                                style={(feature) => ({
+                                    stroke: false,
+                                    fillColor: confidenceToColor(feature?.properties?.conf_min ?? 0),
+                                    fillOpacity: 0.3,
+                                })}
+                                onEachFeature={(feature, layer) => {
+                                    const region = fireMap.regions[String(feature.properties?.region_id)];
+                                    if (region) {
+                                        layer.bindPopup(buildFireRegionPopup(region), { minWidth: 200 });
+                                    }
+                                    layer.on({
+                                        mouseover: () => (layer as L.Path).setStyle({ fillOpacity: 0.7 }),
+                                        mouseout: () => (layer as L.Path).setStyle({ fillOpacity: 0.3 }),
+                                    });
+                                }}
+                            />
                         </LayerGroup>
                     )}
                     {(images && images.length > 0 && images.some(image => image.panoramic)) && showPanoMarkers && (
@@ -831,7 +905,42 @@ function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCatego
                             </div>
                         </>
                     )}
-                    
+                    {hasFireOverlay && (
+                        <>
+                            <Separator orientation="vertical" className="mx-4 h-6" />
+                            <div className="flex flex-col items-center w-18">
+                                <div className="flex items-center gap-1 mb-1">
+                                    <label className="text-sm font-medium block text-center">Fire</label>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <CircleHelp size={14} className="text-muted-foreground cursor-help" />
+                                        </TooltipTrigger>
+                                        <TooltipContent className="max-w-56">
+                                            <p>
+                                                Areas with potential fire, merged from all fire
+                                                detections in the color images. Detection confidence indicated by color:
+                                            </p>
+                                            <div
+                                                className="h-2 w-full rounded my-1"
+                                                style={{ background: CONFIDENCE_RAMP_GRADIENT }}
+                                            />
+                                            <div className="flex justify-between leading-tight">
+                                                <span>low</span>
+                                                <span>high</span>
+                                            </div>
+                                            <p className="mt-1">Click a region to see where it was detected.</p>
+                                        </TooltipContent>
+                                    </Tooltip>
+                                </div>
+                                <Switch
+                                    checked={showFireMap}
+                                    onCheckedChange={(checked) => setShowFireMap(checked)}
+                                    className="w-8"
+                                />
+                            </div>
+                        </>
+                    )}
+
                 </div>
             )}
 

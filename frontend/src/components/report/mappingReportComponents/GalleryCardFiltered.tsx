@@ -59,7 +59,8 @@ function filterImages(
   search: string,
   filters: GalleryFilters,
   thresholds: Record<string, number> = {},
-  detectionIndex: Map<number, Detection[]> // pre-built index for performance
+  detectionIndex: Map<number, Detection[]>, // pre-built index for performance
+  restrictIds?: Set<number> | null // hard restriction to these image ids (fire region)
 ): ImageBasic[] {
   if (!images) return [];
 
@@ -69,6 +70,10 @@ function filterImages(
   let filtered = term
     ? images.filter((img) => img.filename.toLowerCase().includes(term))
     : images;
+
+  if (restrictIds) {
+    filtered = filtered.filter((img) => restrictIds.has(img.id));
+  }
 
   const { types, temp, dets } = filters;
 
@@ -435,6 +440,9 @@ interface GalleryCardProps {
   setSelectedObjectId: (id: number | null) => void;
   highlightedDetectionId: number | null;
   setHighlightedDetectionId: (id: number | null) => void;
+  // Fire-overlay region selected on the map: restrict the grid to its source images
+  fireRegionImageIds: number[] | null;
+  setFireRegionImageIds: (ids: number[] | null) => void;
 }
 
 export function GalleryCard({
@@ -449,6 +457,8 @@ export function GalleryCard({
   setSelectedObjectId,
   highlightedDetectionId,
   setHighlightedDetectionId,
+  fireRegionImageIds,
+  setFireRegionImageIds,
 }: GalleryCardProps) {
   const { data: images, isLoading } = useImages(reportId);
   const { data: detections } = useDetections(reportId);
@@ -481,8 +491,10 @@ export function GalleryCard({
   // ---- Re-identification (objects) view ----
   const [galleryViewMode, setGalleryViewMode] = useState<"images" | "objects">("images");
   const [thumbSize, setThumbSize] = useState(120);
-  // The map drives the mode: a selected object forces objects view; otherwise honor the toggle.
-  const effectiveMode = selectedObjectId != null ? "objects" : galleryViewMode;
+  // The map drives the mode: a selected object forces objects view, an active
+  // fire-region filter forces images view (that's where it applies); otherwise
+  // honor the toggle.
+  const effectiveMode = selectedObjectId != null ? "objects" : fireRegionImageIds ? "images" : galleryViewMode;
 
   const objectClusters = useMemo(() => groupDetectionsByObject(detections).clusters, [detections]);
   const objectEntries = useMemo(
@@ -534,11 +546,16 @@ export function GalleryCard({
     setFilters((prev) => ({ ...prev, dets: detectionFilter }));
   }, [detectionFilter]);
 
+  const fireRegionIdSet = useMemo(
+    () => (fireRegionImageIds ? new Set(fireRegionImageIds) : null),
+    [fireRegionImageIds]
+  );
+
   // Apply filter pipeline whenever deps change
   useEffect(() => {
-    const next = filterImages(images, search, filters, thresholds, detectionIndex);
+    const next = filterImages(images, search, filters, thresholds, detectionIndex, fireRegionIdSet);
     setFilteredImages(next);
-  }, [images, search, filters, thresholds, detectionIndex, setFilteredImages]);
+  }, [images, search, filters, thresholds, detectionIndex, fireRegionIdSet, setFilteredImages]);
 
   const onImageClick = (image: ImageBasic) => setSelectedImage(image);
 
@@ -546,12 +563,14 @@ export function GalleryCard({
     setSearch("");
     setFilters({ types: [], temp: {}, dets: [] });
     setDetectionFilter([]);
+    setFireRegionImageIds(null);
   };
 
   const hasActiveFilters = filters.types.length > 0 ||
     filters.temp.minAtLeast !== undefined ||
     filters.temp.maxAtMost !== undefined ||
-    filters.dets.length > 0;
+    filters.dets.length > 0 ||
+    fireRegionImageIds != null;
 
   return (
     <Card className="min-w-80 min-h-85 max-h-350 flex flex-col px-4 py-3 gap-2">
@@ -631,6 +650,15 @@ export function GalleryCard({
         {/* Active filter chips */}
         {(hasActiveFilters || search) && (
           <div className="flex flex-wrap items-center gap-2">
+            {fireRegionImageIds && (
+              <Badge variant="secondary" className="px-2 py-1 text-xs">
+                Fire region ({fireRegionImageIds.length} image{fireRegionImageIds.length === 1 ? "" : "s"})
+                <button className="ml-1" onClick={() => setFireRegionImageIds(null)}>
+                  <X className="h-3 w-3" />
+                </button>
+              </Badge>
+            )}
+
             {search && (
               <Badge variant="secondary" className="px-2 py-1 text-xs">
                 Search: “{search}”

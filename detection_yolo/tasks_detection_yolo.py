@@ -11,7 +11,7 @@ import torch
 from ultralytics import YOLO
 from yolo_inference import YOLOInferencer
 
-from model_assets import resolve_yolo_weights
+from model_assets import get_pipeline_specs, resolve_yolo_weights
 from reid.by_dinov3 import run_reid
 from reid.by_3d_dinov3 import run_reid_3d
 from reid import localize
@@ -60,14 +60,17 @@ def publish_status(report_id: int, *, status=None, progress=None, message=None, 
 
 
 
-def run_reid_clustering(report_id: int):
+def run_reid_clustering(report_id: int, exclude_classes: set[str] | None = None):
     """Cluster a report's detections into unique objects, in-place via the API.
 
     Fetches the saved detections back (to learn their DB ids) plus per-image
     georeferencing, runs the DINOv3 reID, and pushes the resulting clusters.
-    The detection status stays "running" with progress messages throughout;
-    callers flip it to "finished" afterwards. All errors are swallowed so a
-    reID failure never discards the already-saved detections.
+    ``exclude_classes`` drops detections by class name — used for classes
+    emitted by non-reID models (e.g. fire/smoke) that were saved in the same
+    run; they keep a null unique_object_id. The detection status stays
+    "running" with progress messages throughout; callers flip it to "finished"
+    afterwards. All errors are swallowed so a reID failure never discards the
+    already-saved detections.
     """
     try:
         r.set(f"detection:{report_id}:progress", 90)
@@ -91,7 +94,11 @@ def run_reid_clustering(report_id: int):
         # resets the whole report to null before writing, so any detection we omit
         # here stays null for free.)
         mapped_image_ids = {iid for iid, img in images.items() if img.get("corners_gps")}
-        reid_detections = [d for d in detections if d["image_id"] in mapped_image_ids]
+        exclude_classes = exclude_classes or set()
+        reid_detections = [
+            d for d in detections
+            if d["image_id"] in mapped_image_ids and d.get("class_name") not in exclude_classes
+        ]
 
         # A COLMAP 3D reconstruction (built during processing when the user opted
         # in) lives in the shared volume. Its presence selects the stronger 3D
@@ -104,10 +111,12 @@ def run_reid_clustering(report_id: int):
         # construction, so we only need enough of them to form a pair.
         if len(reid_detections) < 2:
             logger.info(
-                "[YOLO] Skipping reID for report %s (%d mapped-image detections of %d total, 3d=%s)",
+                "[YOLO] Skipping reID for report %s (%d eligible detections of %d total, "
+                "%d classes excluded, 3d=%s)",
                 report_id,
                 len(reid_detections),
                 len(detections),
+                len(exclude_classes),
                 has_3d,
             )
             return
@@ -165,8 +174,9 @@ def run_reid_clustering(report_id: int):
 
 
 @celery_app.task(name="detection_yolo.run")
-def run_detection_yolo(report_id: int, images: list[dict], hf_token: str | None = None):
-    logger.info(f"[YOLO] Starting detection for report {report_id}")
+def run_detection_yolo(report_id: int, images: list[dict], hf_token: str | None = None,
+                       pipeline: str = "objects"):
+    logger.info(f"[YOLO] Starting detection for report {report_id} (pipeline: {pipeline})")
 
     # The API forwards the deployment's HF token with every task, so a token
     # saved on the settings page works on the next run without a container
@@ -177,8 +187,8 @@ def run_detection_yolo(report_id: int, images: list[dict], hf_token: str | None 
 
     r.set(f"detection:{report_id}:status", "running")
     r.set(f"detection:{report_id}:progress", 0)
-    r.set(f"detection:{report_id}:message", "Initializing YOLOv11 inference…")
-    publish_status(report_id, status="running", progress=0, message="Initializing YOLOv11 inference…")
+    r.set(f"detection:{report_id}:message", "Initializing YOLO inference…")
+    publish_status(report_id, status="running", progress=0, message="Initializing YOLO inference…")
 
     def set_progress(step: int, total_steps: int, message: str):
         # Inference owns the 0-90 band; reID continues 90-99 and "finished" is
@@ -189,40 +199,72 @@ def run_detection_yolo(report_id: int, images: list[dict], hf_token: str | None 
         publish_status(report_id, status="running", progress=progress, message=message)
 
     try:
-        model_path = resolve_yolo_weights()
-        imgsz = 1280
-        infer = YOLOInferencer(model_name=model_path, imgsz=imgsz, progress_callback=set_progress, device=DEVICE)
-        r.set(f"detection:{report_id}:message", "Running YOLOv11 inference…")
+        specs = get_pipeline_specs(pipeline)
 
-        # create 4 image long batches for progress tracking
+        # Detections from all active models accumulate on the report (the API
+        # clears old ones at dispatch). Classes emitted by non-reID models are
+        # collected here so reID leaves them alone (null unique_object_id).
+        # Note: if a non-reID model ever shared a class name with an reID
+        # model, those shared-name detections would be excluded too — the
+        # current models have disjoint class sets.
+        reid_excluded_classes: set[str] = set()
+
         batch_size = 16
         total_batches = (len(images) + batch_size - 1) // batch_size
-        for i in range(total_batches):
-            batch_images = images[i*batch_size:(i+1)*batch_size]
-            annotations = infer.run(batch_images)
-            url = f"{BACKEND_URL}/detections/r/{report_id}"
-            resp = requests.put(url, json={"detections": annotations}, timeout=30)
-            resp.raise_for_status()
-            set_progress(i + 1, total_batches, f"Processed batch {i + 1} of {total_batches}")
-        del infer
-        gc.collect()
-        if torch.cuda.is_available():
-            torch.cuda.empty_cache()
-            torch.cuda.ipc_collect()
+        overall_batches = len(specs) * total_batches
+
+        for model_idx, (model_name, spec) in enumerate(specs):
+            logger.info("[YOLO] Running model %s (%s/%s)", model_name, spec.repo_id, spec.filename)
+            model_path = resolve_yolo_weights(spec)
+            infer = YOLOInferencer(model_name=model_path, imgsz=spec.imgsz, progress_callback=set_progress, device=DEVICE)
+            r.set(f"detection:{report_id}:message", f"Running YOLO inference ({model_name})…")
+
+            for i in range(total_batches):
+                batch_images = images[i*batch_size:(i+1)*batch_size]
+                annotations = infer.run(batch_images)
+                if spec.class_map:
+                    for det in annotations:
+                        det["category_name"] = spec.class_map.get(det["category_name"], det["category_name"])
+                if spec.keep_classes is not None:
+                    annotations = [det for det in annotations if det["category_name"] in spec.keep_classes]
+                if not spec.run_reid:
+                    reid_excluded_classes.update(det["category_name"] for det in annotations)
+                url = f"{BACKEND_URL}/detections/r/{report_id}"
+                resp = requests.put(url, json={"detections": annotations}, timeout=30)
+                resp.raise_for_status()
+                set_progress(
+                    model_idx * total_batches + i + 1,
+                    overall_batches,
+                    f"[{model_name}] Processed batch {i + 1} of {total_batches}",
+                )
+
+            # Free this model before loading the next one, so two models never
+            # hold VRAM at the same time (and reID starts with a clean GPU).
+            del infer
+            gc.collect()
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+                torch.cuda.ipc_collect()
 
         # ------------------------------------------------------------------
         # Re-identification: join detections of the same physical object into
         # tracks/clusters (DINOv3 appearance + GPS proximity). Best-effort: the
         # detections are already saved/shown, so a reID failure must never
-        # discard them — log it and still mark the task finished.
+        # discard them — log it and still mark the task finished. Classes from
+        # the experimental fire models are excluded (no persistent identity).
         # ------------------------------------------------------------------
-        run_reid_clustering(report_id)
+        if any(spec.run_reid for _, spec in specs):
+            run_reid_clustering(report_id, exclude_classes=reid_excluded_classes)
+            final_message = "Detection + reID completed successfully"
+        else:
+            logger.info("[YOLO] Skipping reID — no active model uses it")
+            final_message = "Detection completed successfully"
 
         r.set(f"detection:{report_id}:status", "finished")
         r.set(f"detection:{report_id}:progress", 100)
-        r.set(f"detection:{report_id}:message", "Detection + reID completed successfully")
+        r.set(f"detection:{report_id}:message", final_message)
         publish_status(report_id, status="finished", progress=100,
-                       message="Detection + reID completed successfully")
+                       message=final_message)
 
     except Exception as e:
         logger.error(e)

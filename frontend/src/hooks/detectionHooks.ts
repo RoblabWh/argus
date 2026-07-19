@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
-import { startDetection, getDetectionStatus, getDetections, updateDetection, deleteDetection, updateDetectionBatch, updateDetectionUniqueObject, getNewDetections } from "@/api";
+import { startDetection, getDetectionStatus, getDetections, getFireMap, updateDetection, deleteDetection, updateDetectionBatch, updateDetectionUniqueObject, getNewDetections } from "@/api";
 import type { Detection } from "@/types/detection";
 import type { Report } from "@/types/report";
 
@@ -48,6 +48,17 @@ export function useDetections(reportId: number) {
     return useQuery({
         queryKey: ["detections", reportId],
         queryFn: () => getDetections(reportId),
+    });
+}
+
+// Server-generated fire overlay (GeoJSON confidence bands + region->image
+// attribution). Only fetched while the map's fire layer is switched on;
+// invalidated alongside ["detections"] when new detections arrive.
+export function useFireMap(reportId: number, enabled: boolean) {
+    return useQuery({
+        queryKey: ["fireMap", reportId],
+        queryFn: () => getFireMap(reportId),
+        enabled,
     });
 }
 

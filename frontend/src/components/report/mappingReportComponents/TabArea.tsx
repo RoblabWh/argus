@@ -34,9 +34,10 @@ interface Props {
   setSelectedObjectId: (id: number | null) => void;
   highlightedDetectionId: number | null;
   setHighlightedDetectionId: (id: number | null) => void;
+  setFireRegionImageIds: (ids: number[] | null) => void;
 }
 
-export function TabArea({ report, selectedImage, setSelectedImage, tab, setTab, thresholds, visibleCategories, detectionMode, setDetectionMode, selectedObjectId, setSelectedObjectId, highlightedDetectionId, setHighlightedDetectionId }: Props) {
+export function TabArea({ report, selectedImage, setSelectedImage, tab, setTab, thresholds, visibleCategories, detectionMode, setDetectionMode, selectedObjectId, setSelectedObjectId, highlightedDetectionId, setHighlightedDetectionId, setFireRegionImageIds }: Props) {
   const api_url = getApiUrl();
   const { data: images } = useImages(report.report_id);
   const [visibleMapOverlays, setVisibleMapOverlays] = useState<{ [mapId: number]: boolean }>({});
@@ -136,6 +137,7 @@ export function TabArea({ report, selectedImage, setSelectedImage, tab, setTab, 
             setSelectedObjectId={setSelectedObjectId}
             highlightedDetectionId={highlightedDetectionId}
             setHighlightedDetectionId={setHighlightedDetectionId}
+            setFireRegionImageIds={setFireRegionImageIds}
           />
         </div>
       </TabsContent>

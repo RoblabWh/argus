@@ -179,6 +179,7 @@ export function useReportEvents(reportId: number) {
         // DetectionCard also invalidates on its terminal tick; this covers the
         // case where the card is not mounted.
         queryClient.invalidateQueries({ queryKey: ["detections", reportId] });
+        queryClient.invalidateQueries({ queryKey: ["fireMap", reportId] });
       }
     };
 
@@ -210,6 +211,9 @@ export function useReportEvents(reportId: number) {
 
     const onDetectionsAdded = () => {
       fetchNewDetectionsIntoCache();
+      // The server-generated fire overlay reflects the detections table;
+      // refetch happens lazily (only while the fire layer is enabled).
+      queryClient.invalidateQueries({ queryKey: ["fireMap", reportId] });
     };
 
     const scheduleRetry = () => {

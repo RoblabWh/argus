@@ -4,7 +4,7 @@ import type { Report, ReportSummary } from "@/types/report";
 import type { Map } from "@/types/map";
 import type { ProcessingSettings } from "@/types/processing";
 import type { Image, ImageBasic } from "@/types/image";
-import type { Detection, Geometry, Properties } from "./types/detection";
+import type { Detection, FireMap, Geometry, Properties } from "./types/detection";
 import type {
   SettingsData,
   WebODMSettings,
@@ -111,6 +111,7 @@ export const updateDetectionUniqueObject = (
   { unique_object_id, detection_ids },
   "PUT",
 );
+export const getFireMap = (report_id: number) => fetchJson<FireMap>(`/detections/r/${report_id}/fire_map`);
 export const sendDetectionToDrz = (geometry: Geometry, properties: Properties) =>
   postJson<{ message: string; error?: string; iais_response?: unknown }>(
     "/detections/send_to_iais",

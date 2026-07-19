@@ -1,0 +1,6 @@
+# Local dev weights — production weights come from HF (see model_assets.py).
+# Remove this line if you re-enable the LOCAL_YOLO_WEIGHTS dev override
+# inside the container.
+*.pt
+__pycache__/
+tests/

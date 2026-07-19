@@ -60,19 +60,22 @@ def warm_dinov3() -> None:
 
 
 def warm_yolo() -> None:
-    from model_assets import LOCAL_YOLO_WEIGHTS, YOLO_FILENAME, YOLO_REPO_ID, resolve_yolo_weights
+    from model_assets import MODELS, PIPELINES, resolve_yolo_weights
 
-    try:
-        path = resolve_yolo_weights()
-        source = "local file" if path == LOCAL_YOLO_WEIGHTS else "HF cache"
-        logger.info("YOLO weights ready (%s: %s)", source, path)
-    except Exception as e:  # noqa: BLE001 - warm-up must never block startup
-        logger.warning(
-            "Could not fetch YOLO weights %s/%s: %s — will retry on the first detection run.",
-            YOLO_REPO_ID,
-            YOLO_FILENAME,
-            e,
-        )
+    # Warm every model any pipeline can run (deduped, in pipeline order).
+    model_names = list(dict.fromkeys(name for names in PIPELINES.values() for name in names))
+    for model_name in model_names:
+        spec = MODELS[model_name]
+        try:
+            path = resolve_yolo_weights(spec)
+            logger.info("YOLO weights ready (model %s: %s)", model_name, path)
+        except Exception as e:  # noqa: BLE001 - warm-up must never block startup
+            logger.warning(
+                "Could not fetch YOLO weights %s/%s: %s — will retry on the first detection run.",
+                spec.repo_id,
+                spec.filename,
+                e,
+            )
 
 
 if __name__ == "__main__":

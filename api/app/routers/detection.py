@@ -19,10 +19,12 @@ from app.schemas.image import (
     DetectionObjectGroup,
     ReidInput,
     DetectionUniqueObjectsBulk,
+    FireMapOut,
 )
 
 from app.services.celery_app import celery_app
 from app.services.drz_backend_sharing import send_geojson_poi_to_iais
+from app.services.fire_map import build_fire_map
 import app.services.events as events_service
 
 import redis
@@ -31,6 +33,11 @@ r = redis.Redis(host=config.REDIS_HOST, port=config.REDIS_PORT, db=0)
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/detections", tags=["Detections"])
+
+# Classes produced by the dedicated fire pipeline. Fire and object runs are
+# dispatched separately and must not wipe each other's results, so detection
+# deletion at dispatch is scoped by these class names.
+FIRE_CLASSES = {"fire"}
 
 
 @router.get("/", response_model=List[DetectionOut])
@@ -64,16 +71,29 @@ def run_detections(report_id: int, req: DetectionSettings, db: Session = Depends
         r.delete(f"detection:{report_id}:message")
         raise HTTPException(status_code=404, detail="No images found for the given report ID")
     
-    image_crud.delete_all_detections_by_mapping_report_id(db, mapping_report.id)
-    
     max_splits = 0
     pipeline = "roblab_rescue"
+    yolo_pipeline = "objects"
     if req.processing_mode == "medium":
         max_splits = 1
     elif req.processing_mode == "detailed":
         max_splits = 4
     elif req.processing_mode == "experimental":
         pipeline = "yolo"
+    elif req.processing_mode == "fire":
+        pipeline = "yolo"
+        yolo_pipeline = "fire"
+
+    # Scoped cleanup: a fire run only replaces fire detections, an object
+    # (experimental) run replaces everything except them. The legacy roblab
+    # modes stay authoritative for everything (they may emit "fire" too).
+    if req.processing_mode == "fire":
+        image_crud.delete_detections_by_class_names(db, mapping_report.id, FIRE_CLASSES)
+    elif req.processing_mode == "experimental":
+        image_crud.delete_detections_by_class_names(db, mapping_report.id, FIRE_CLASSES, invert=True)
+    else:
+        image_crud.delete_all_detections_by_mapping_report_id(db, mapping_report.id)
+
     detection_task = None
     if pipeline == "yolo":
         # Forward the deployment's HF token so the worker can fetch the gated
@@ -82,7 +102,10 @@ def run_detections(report_id: int, req: DetectionSettings, db: Session = Depends
         detection_task = celery_app.signature(
             "detection_yolo.run",
             args=[report_id, images_list],
-            kwargs={"hf_token": config.env_vars.get("HF_TOKEN", "")},
+            kwargs={
+                "hf_token": config.env_vars.get("HF_TOKEN", ""),
+                "pipeline": yolo_pipeline,
+            },
             queue="detection_yolo",
         )
     else:
@@ -292,6 +315,22 @@ def assign_unique_object_clusters(
         "updated_count": updated_count,
         "object_count": len(clusters),
     }
+
+
+@router.get("/r/{report_id}/fire_map", response_model=FireMapOut)
+def get_fire_map(report_id: int, db: Session = Depends(get_db)):
+    """
+    Vector fire overlay for the map: the report's fire-class detections
+    projected to GPS, smoothly merged and sliced into confidence bands
+    (GeoJSON), plus per-region source-image attribution. Computed on request
+    from the current detections — no caching, always in sync.
+    """
+    mapping_report = report_crud.get_short_report(db, report_id).mapping_report
+    if not mapping_report:
+        raise HTTPException(status_code=404, detail="Report not found")
+
+    fire_input = image_crud.get_fire_map_input(db, mapping_report.id, FIRE_CLASSES)
+    return build_fire_map(fire_input)
 
 
 @router.get("/r/{report_id}/objects", response_model=List[DetectionObjectGroup])

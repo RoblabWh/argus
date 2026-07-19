@@ -315,6 +315,30 @@ def delete_all_detections_by_mapping_report_id(db: Session, mapping_report_id: i
     return {"status": "success", "message": "All detections deleted successfully"}
 
 
+def delete_detections_by_class_names(
+    db: Session, mapping_report_id: int, class_names, invert: bool = False
+):
+    """Delete a report's detections scoped by class name.
+
+    ``invert=False`` deletes only detections whose class is in ``class_names``;
+    ``invert=True`` deletes everything else (NULL class names included). Lets
+    the separately-dispatched fire and object detection runs replace only
+    their own results.
+    """
+    image_ids = select(models.Image.id).where(
+        models.Image.mapping_report_id == mapping_report_id
+    )
+    class_filter = models.Detection.class_name.in_(class_names)
+    if invert:
+        class_filter = models.Detection.class_name.is_(None) | ~models.Detection.class_name.in_(class_names)
+    db.query(models.Detection).filter(
+        models.Detection.image_id.in_(image_ids),
+        class_filter,
+    ).delete(synchronize_session=False)
+    db.commit()
+    return {"status": "success", "message": "Detections deleted successfully"}
+
+
 def update_detection(db: Session, detection_id: int, update_data: DetectionUpdate):
     detection = (
         db.query(models.Detection).filter(models.Detection.id == detection_id).first()
@@ -478,6 +502,67 @@ def get_reid_input(db: Session, mapping_report_id: int):
                     "class_name": det.class_name,
                 }
             )
+
+    return {"detections": detections, "images": images_out}
+
+
+def get_fire_map_input(db: Session, mapping_report_id: int, class_names):
+    """Assemble the payload the fire-map service needs (services/fire_map.py).
+
+    Like get_reid_input, but only detections whose class is in ``class_names``,
+    and images additionally carry filename/thumbnail_url so the map overlay
+    can show which source images a fire region originates from. Corner
+    convention is unchanged: [TL, TR, BR, BL], each [lat, lon]; images without
+    a map element get corners_gps=None and their detections are skipped by
+    the service.
+    """
+    images = (
+        db.query(models.Image)
+        .filter(
+            models.Image.mapping_report_id == mapping_report_id,
+            models.Image.thermal.is_(False),
+        )
+        .options(joinedload(models.Image.detections))
+        .all()
+    )
+
+    corners_by_image: dict[int, list] = {}
+    map_elements = (
+        db.query(models.MapElement)
+        .join(models.Map, models.MapElement.map_id == models.Map.id)
+        .filter(models.Map.mapping_report_id == mapping_report_id)
+        .all()
+    )
+    for el in map_elements:
+        if el.image_id in corners_by_image:
+            continue
+        gps = (el.corners or {}).get("gps") if el.corners else None
+        if gps and len(gps) == 4:
+            corners_by_image[el.image_id] = gps
+
+    detections: list = []
+    images_out: list = []
+    for image in images:
+        images_out.append(
+            {
+                "id": image.id,
+                "filename": image.filename,
+                "thumbnail_url": image.thumbnail_url,
+                "width": image.width,
+                "height": image.height,
+                "corners_gps": corners_by_image.get(image.id),
+            }
+        )
+        for det in image.detections:
+            if det.class_name in class_names:
+                detections.append(
+                    {
+                        "id": det.id,
+                        "image_id": det.image_id,
+                        "bbox": det.bbox,
+                        "score": det.score,
+                    }
+                )
 
     return {"detections": detections, "images": images_out}
 

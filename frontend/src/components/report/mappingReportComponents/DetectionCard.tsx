@@ -90,7 +90,7 @@ export function DetectionCard({ report_id, setThresholds, thresholds, setFilter,
     const detectionSummary = detectionMode === "reduced" ? reducedSummary : allSummary;
     const alternateSummary = detectionMode === "reduced" ? allSummary : reducedSummary;
     var [hasDetections, setHasDetections] = useState(detections && detections.length > 0);
-    const [analysisMode, setAnalysisMode] = useState<"fast" | "medium" | "detailed" | "experimental" | undefined>(undefined);
+    const [analysisMode, setAnalysisMode] = useState<"fast" | "medium" | "detailed" | "experimental" | "fire" | undefined>(undefined);
 
     useEffect(() => {
         if (detections) {
@@ -207,6 +207,8 @@ export function DetectionCard({ report_id, setThresholds, thresholds, setFilter,
                 return "Detailed mode processes images at full resolution for maximum detail. Much slower, best for high-altitude or fine-detail.";
             case 'experimental':
                 return "Experimental mode uses the latest YOLOv11 model. May not be integrated fully and could produce unexpected results.";
+            case 'fire':
+                return "Fire detection runs a dedicated fire model and only replaces previous fire results — object detections are kept. Fire shows up as a confidence overlay on the map.";
             default:
                 return "No information available for this mode.";
         }
@@ -373,7 +375,7 @@ export function DetectionCard({ report_id, setThresholds, thresholds, setFilter,
 
                                     <Select
                                         value={analysisMode}
-                                        onValueChange={(value) => setAnalysisMode(value as "fast" | "medium" | "detailed" | "experimental" | undefined)}
+                                        onValueChange={(value) => setAnalysisMode(value as "fast" | "medium" | "detailed" | "experimental" | "fire" | undefined)}
                                     >
                                         <SelectTrigger className="w-[150px]"
                                             value={analysisMode}
@@ -385,6 +387,7 @@ export function DetectionCard({ report_id, setThresholds, thresholds, setFilter,
                                             <SelectItem value="medium">Medium (Refined)</SelectItem>
                                             <SelectItem value="detailed">Fine (Detailed)</SelectItem>
                                             <SelectItem value="experimental">Experimental (YOLOv11)</SelectItem>
+                                            <SelectItem value="fire">Fire (Experimental)</SelectItem>
                                         </SelectContent>
                                     </Select>
 
