@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import List
 from celery import chain
@@ -318,19 +318,24 @@ def assign_unique_object_clusters(
 
 
 @router.get("/r/{report_id}/fire_map", response_model=FireMapOut)
-def get_fire_map(report_id: int, db: Session = Depends(get_db)):
+def get_fire_map(
+    report_id: int,
+    min_confidence: float | None = Query(default=None, ge=0.0, le=1.0),
+    db: Session = Depends(get_db),
+):
     """
     Vector fire overlay for the map: the report's fire-class detections
     projected to GPS, smoothly merged and sliced into confidence bands
     (GeoJSON), plus per-region source-image attribution. Computed on request
-    from the current detections — no caching, always in sync.
+    from the current detections — no caching, always in sync. min_confidence
+    raises the confidence floor (detections below it are excluded).
     """
     mapping_report = report_crud.get_short_report(db, report_id).mapping_report
     if not mapping_report:
         raise HTTPException(status_code=404, detail="Report not found")
 
     fire_input = image_crud.get_fire_map_input(db, mapping_report.id, FIRE_CLASSES)
-    return build_fire_map(fire_input)
+    return build_fire_map(fire_input, min_confidence=min_confidence)
 
 
 @router.get("/r/{report_id}/objects", response_model=List[DetectionObjectGroup])

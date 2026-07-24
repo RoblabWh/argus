@@ -207,6 +207,9 @@ export function useReportEvents(reportId: number) {
       const ev = parse(e);
       const mapId = ev?.data?.map_id;
       if (typeof mapId === "number") fetchAndAppendMap(mapId);
+      // A new (re)mapping run means new map elements — the temperature
+      // overlay is derived from them (prefix-matches all clip variants).
+      queryClient.invalidateQueries({ queryKey: ["thermalMap", reportId] });
     };
 
     const onDetectionsAdded = () => {

@@ -31,7 +31,7 @@ import { AssignObjectDialog } from "@/components/report/mappingReportComponents/
  */
 export type FilterTag = "thermal" | "panoramic" | "regular";
 
-type TempFilters = {
+export type TempFilters = {
   /** Keep images whose observed MAX temp is >= this value */
   minAtLeast?: number;
   /** Keep images whose observed MIN temp is <= this value */
@@ -440,9 +440,12 @@ interface GalleryCardProps {
   setSelectedObjectId: (id: number | null) => void;
   highlightedDetectionId: number | null;
   setHighlightedDetectionId: (id: number | null) => void;
-  // Fire-overlay region selected on the map: restrict the grid to its source images
-  fireRegionImageIds: number[] | null;
-  setFireRegionImageIds: (ids: number[] | null) => void;
+  // Overlay region selected on the map (fire/thermal): restrict the grid to its source images
+  regionImageIds: number[] | null;
+  setRegionImageIds: (ids: number[] | null) => void;
+  // Temperature filter — lifted so the map's thermal overlay can follow it
+  tempFilter: TempFilters;
+  setTempFilter: (t: TempFilters) => void;
 }
 
 export function GalleryCard({
@@ -457,8 +460,10 @@ export function GalleryCard({
   setSelectedObjectId,
   highlightedDetectionId,
   setHighlightedDetectionId,
-  fireRegionImageIds,
-  setFireRegionImageIds,
+  regionImageIds,
+  setRegionImageIds,
+  tempFilter,
+  setTempFilter,
 }: GalleryCardProps) {
   const { data: images, isLoading } = useImages(reportId);
   const { data: detections } = useDetections(reportId);
@@ -494,7 +499,7 @@ export function GalleryCard({
   // The map drives the mode: a selected object forces objects view, an active
   // fire-region filter forces images view (that's where it applies); otherwise
   // honor the toggle.
-  const effectiveMode = selectedObjectId != null ? "objects" : fireRegionImageIds ? "images" : galleryViewMode;
+  const effectiveMode = selectedObjectId != null ? "objects" : regionImageIds ? "images" : galleryViewMode;
 
   const objectClusters = useMemo(() => groupDetectionsByObject(detections).clusters, [detections]);
   const objectEntries = useMemo(
@@ -540,15 +545,19 @@ export function GalleryCard({
     });
   };
 
-  const [filters, setFilters] = useState<GalleryFilters>({ types: [], temp: {}, dets: detectionFilter });
+  const [filters, setFilters] = useState<GalleryFilters>({ types: [], temp: tempFilter, dets: detectionFilter });
 
   useEffect(() => {
     setFilters((prev) => ({ ...prev, dets: detectionFilter }));
   }, [detectionFilter]);
 
+  useEffect(() => {
+    setFilters((prev) => ({ ...prev, temp: tempFilter }));
+  }, [tempFilter]);
+
   const fireRegionIdSet = useMemo(
-    () => (fireRegionImageIds ? new Set(fireRegionImageIds) : null),
-    [fireRegionImageIds]
+    () => (regionImageIds ? new Set(regionImageIds) : null),
+    [regionImageIds]
   );
 
   // Apply filter pipeline whenever deps change
@@ -563,14 +572,15 @@ export function GalleryCard({
     setSearch("");
     setFilters({ types: [], temp: {}, dets: [] });
     setDetectionFilter([]);
-    setFireRegionImageIds(null);
+    setTempFilter({});
+    setRegionImageIds(null);
   };
 
   const hasActiveFilters = filters.types.length > 0 ||
     filters.temp.minAtLeast !== undefined ||
     filters.temp.maxAtMost !== undefined ||
     filters.dets.length > 0 ||
-    fireRegionImageIds != null;
+    regionImageIds != null;
 
   return (
     <Card className="min-w-80 min-h-85 max-h-350 flex flex-col px-4 py-3 gap-2">
@@ -632,8 +642,10 @@ export function GalleryCard({
             value={filters}
             onChange={(next) => {
               setFilters(next);
-              // Sync detection filter changes to parent
+              // Sync detection + temperature filter changes to parent (the
+              // temp filter also drives the map's thermal overlay)
               setDetectionFilter(next.dets);
+              setTempFilter(next.temp);
             }}
             datasetTempRange={datasetTempRange}
             tempUnit={tempUnit}
@@ -650,10 +662,10 @@ export function GalleryCard({
         {/* Active filter chips */}
         {(hasActiveFilters || search) && (
           <div className="flex flex-wrap items-center gap-2">
-            {fireRegionImageIds && (
+            {regionImageIds && (
               <Badge variant="secondary" className="px-2 py-1 text-xs">
-                Fire region ({fireRegionImageIds.length} image{fireRegionImageIds.length === 1 ? "" : "s"})
-                <button className="ml-1" onClick={() => setFireRegionImageIds(null)}>
+                Map region ({regionImageIds.length} image{regionImageIds.length === 1 ? "" : "s"})
+                <button className="ml-1" onClick={() => setRegionImageIds(null)}>
                   <X className="h-3 w-3" />
                 </button>
               </Badge>
@@ -680,7 +692,11 @@ export function GalleryCard({
             {filters.temp.minAtLeast !== undefined && (
               <Badge variant="secondary" className="px-2 py-1 text-xs">
                 MAX ≥ {filters.temp.minAtLeast}°{tempUnit}
-                <button className="ml-1" onClick={() => setFilters({ ...filters, temp: { ...filters.temp, minAtLeast: undefined } })}>
+                <button className="ml-1" onClick={() => {
+                  const temp = { ...filters.temp, minAtLeast: undefined };
+                  setFilters({ ...filters, temp });
+                  setTempFilter(temp);
+                }}>
                   <X className="h-3 w-3" />
                 </button>
               </Badge>
@@ -689,7 +705,11 @@ export function GalleryCard({
             {filters.temp.maxAtMost !== undefined && (
               <Badge variant="secondary" className="px-2 py-1 text-xs">
                 MIN ≤ {filters.temp.maxAtMost}°{tempUnit}
-                <button className="ml-1" onClick={() => setFilters({ ...filters, temp: { ...filters.temp, maxAtMost: undefined } })}>
+                <button className="ml-1" onClick={() => {
+                  const temp = { ...filters.temp, maxAtMost: undefined };
+                  setFilters({ ...filters, temp });
+                  setTempFilter(temp);
+                }}>
                   <X className="h-3 w-3" />
                 </button>
               </Badge>

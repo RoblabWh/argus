@@ -1,5 +1,6 @@
-import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { startDetection, getDetectionStatus, getDetections, getFireMap, updateDetection, deleteDetection, updateDetectionBatch, updateDetectionUniqueObject, getNewDetections } from "@/api";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import type { Detection } from "@/types/detection";
 import type { Report } from "@/types/report";
 
@@ -53,12 +54,16 @@ export function useDetections(reportId: number) {
 
 // Server-generated fire overlay (GeoJSON confidence bands + region->image
 // attribution). Only fetched while the map's fire layer is switched on;
-// invalidated alongside ["detections"] when new detections arrive.
-export function useFireMap(reportId: number, enabled: boolean) {
+// invalidated alongside ["detections"] when new detections arrive. The fire
+// threshold is debounced so arrow-clicking the number field doesn't fire a
+// request per step; keepPreviousData avoids flicker while recomputing.
+export function useFireMap(reportId: number, enabled: boolean, fireThreshold?: number) {
+    const debounced = useDebouncedValue(fireThreshold, 400);
     return useQuery({
-        queryKey: ["fireMap", reportId],
-        queryFn: () => getFireMap(reportId),
+        queryKey: ["fireMap", reportId, debounced ?? null],
+        queryFn: () => getFireMap(reportId, debounced),
         enabled,
+        placeholderData: keepPreviousData,
     });
 }
 
@@ -87,8 +92,10 @@ export function useUpdateDetection(reportId: number) {
         mutationFn: ({ detectionId, data }: { detectionId: number; data: Detection }) =>
             updateDetection(detectionId, data),
         onSuccess: () => {
-            // Invalidate and refetch
+            // Invalidate and refetch; the fire overlay is derived from the
+            // detections table, so it must follow edits too.
             queryClient.invalidateQueries({ queryKey: ["detections", reportId] });
+            queryClient.invalidateQueries({ queryKey: ["fireMap", reportId] });
         },
     });
 }
@@ -98,8 +105,10 @@ export function useDeleteDetection(reportId: number) {
     return useMutation({
         mutationFn: (detectionId: number) => deleteDetection(detectionId),
         onSuccess: () => {
-            // Re-cluster map + gallery once a detection is removed
+            // Re-cluster map + gallery once a detection is removed; the fire
+            // overlay is derived from the detections table, so it follows too.
             queryClient.invalidateQueries({ queryKey: ["detections", reportId] });
+            queryClient.invalidateQueries({ queryKey: ["fireMap", reportId] });
         },
     });
 }

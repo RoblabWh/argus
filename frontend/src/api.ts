@@ -5,6 +5,7 @@ import type { Map } from "@/types/map";
 import type { ProcessingSettings } from "@/types/processing";
 import type { Image, ImageBasic } from "@/types/image";
 import type { Detection, FireMap, Geometry, Properties } from "./types/detection";
+import type { ThermalMap } from "./types/thermalData";
 import type {
   SettingsData,
   WebODMSettings,
@@ -111,7 +112,17 @@ export const updateDetectionUniqueObject = (
   { unique_object_id, detection_ids },
   "PUT",
 );
-export const getFireMap = (report_id: number) => fetchJson<FireMap>(`/detections/r/${report_id}/fire_map`);
+export const getFireMap = (report_id: number, min_confidence?: number) => {
+  const query = min_confidence !== undefined ? `?min_confidence=${min_confidence}` : "";
+  return fetchJson<FireMap>(`/detections/r/${report_id}/fire_map${query}`);
+};
+export const getThermalMap = (report_id: number, t_min?: number, t_max?: number) => {
+  const params = new URLSearchParams();
+  if (t_min !== undefined) params.set("t_min", String(t_min));
+  if (t_max !== undefined) params.set("t_max", String(t_max));
+  const query = params.toString();
+  return fetchJson<ThermalMap>(`/reports/${report_id}/thermal_map${query ? `?${query}` : ""}`);
+};
 export const sendDetectionToDrz = (geometry: Geometry, properties: Properties) =>
   postJson<{ message: string; error?: string; iais_response?: unknown }>(
     "/detections/send_to_iais",

@@ -12,3 +12,22 @@ export type ThermalData = {
   temp_unit?: "C" | "F";
   lut_name?: string;
 };
+
+export interface ThermalMapRegionImage {
+  image_id: number;
+  filename?: string | null;
+  thumbnail_url?: string | null;
+}
+
+export interface ThermalMapRegion {
+  max_temp: number;
+  images: ThermalMapRegionImage[];
+}
+
+/** Response of GET /reports/{id}/thermal_map — see api/app/services/thermal_map.py. */
+export interface ThermalMap {
+  geojson: import("geojson").FeatureCollection | null;
+  regions: Record<string, ThermalMapRegion>;
+  /** Unclipped temperature range of the report's thermal data (filter hint). */
+  range: { min: number; max: number } | null;
+}

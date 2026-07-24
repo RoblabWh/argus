@@ -76,3 +76,34 @@ class MapElementOut(MapElementBase):
 class MapSharingData(BaseModel):
     map_id: int
     layer_name: str
+
+
+##################
+## Thermal map (temperature vector overlay from radiometric thermal images)
+##################
+
+class ThermalMapRegionImage(BaseModel):
+    image_id: int
+    filename: Optional[str] = None
+    thumbnail_url: Optional[str] = None
+
+
+class ThermalMapRegion(BaseModel):
+    max_temp: float
+    images: List[ThermalMapRegionImage] = []
+
+
+class ThermalMapRange(BaseModel):
+    min: float
+    max: float
+
+
+class ThermalMapOut(BaseModel):
+    # GeoJSON FeatureCollection (temperature band polygons, [lon, lat]) or
+    # None when the report has no analyzable thermal data (or the clip range
+    # excludes everything).
+    geojson: Optional[dict] = None
+    # region_id (string key) -> source images / max temperature of that region
+    regions: dict[str, ThermalMapRegion] = {}
+    # Unclipped temperature range of the report's thermal data (filter hint).
+    range: Optional[ThermalMapRange] = None

@@ -34,6 +34,10 @@ import panoPinSVG from '@/assets/panorama.svg';
 import { useImages } from "@/hooks/imageHooks";
 import { useMaps } from "@/hooks/useMaps";
 import { useDetections, useFireMap, useUpdateDetectionBatch } from "@/hooks/detectionHooks";
+import { useThermalMap } from "@/hooks/useThermalMap";
+import { temperatureToRampColor, TEMPERATURE_RAMP_GRADIENT } from "@/utils/thermalUtils";
+import type { ThermalMapRegion } from "@/types/thermalData";
+import type { TempFilters } from "@/components/report/mappingReportComponents/GalleryCardFiltered";
 import { extractFlightTrajectory, computeDetectionGps, polygonIntersection } from "@/utils/coordinateUtils";
 import { reduceDetections, gridClusterMarkables } from "@/utils/detectionUtils";
 import type { DetectionWithGps, ClusterMarker, SpatialMarkable } from "@/utils/detectionUtils";
@@ -83,10 +87,11 @@ interface Props {
     setSelectedObjectId: (id: number | null) => void;
     highlightedDetectionId: number | null;
     setHighlightedDetectionId: (id: number | null) => void;
-    setFireRegionImageIds: (ids: number[] | null) => void;
+    setRegionImageIds: (ids: number[] | null) => void;
+    tempFilter: TempFilters;
 }
 
-function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCategories, visibleMapOverlays, setVisibleMapOverlays, detectionMode, selectedObjectId, setSelectedObjectId, setHighlightedDetectionId, setFireRegionImageIds }: Props) {
+function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCategories, visibleMapOverlays, setVisibleMapOverlays, detectionMode, selectedObjectId, setSelectedObjectId, setHighlightedDetectionId, setRegionImageIds, tempFilter }: Props) {
     const [overlayOpacity, setOverlayOpacity] = useState(1.0);
     const [map, setMap] = useState<LeafletMap | null>(null);
     const { data: images } = useImages(reportId);
@@ -100,10 +105,27 @@ function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCatego
     const [showDetections, setShowDetections] = useState(true);
     const [showPolygons, setShowPolygons] = useState(true);
     const [showFireMap, setShowFireMap] = useState(true);
-    // Server-generated fire overlay (confidence bands + region->image table).
-    const fireMapQuery = useFireMap(reportId, showFireMap);
+    // Server-generated fire overlay (confidence bands + region->image table),
+    // recomputed when the fire-class detection threshold changes.
+    const fireMapQuery = useFireMap(reportId, showFireMap, thresholds["fire"]);
     const fireMap = fireMapQuery.data;
     const hasFireOverlay = !!fireMap?.geojson?.features?.length;
+    // Server-generated temperature overlay (10 °C bands, clipped to the
+    // gallery's temp filters). Off by default — the first request builds the
+    // per-map composite cache.
+    const [showTempMap, setShowTempMap] = useState(false);
+    const thermalMapQuery = useThermalMap(reportId, tempFilter, showTempMap);
+    const thermalMap = thermalMapQuery.data;
+    const hasThermalOverlay = !!thermalMap?.geojson?.features?.length;
+    // Displayed (filter-clipped) temperature range — the color ramp is re-fit
+    // to it so high-filtered views don't collapse into the white ramp tip.
+    const thermalDisplayRange = useMemo(() => {
+        const range = thermalMap?.range;
+        if (!range) return null;
+        const lo = Math.max(tempFilter.minAtLeast ?? -Infinity, range.min);
+        const hi = Math.min(tempFilter.maxAtMost ?? Infinity, range.max);
+        return lo <= hi ? { lo, hi } : { lo: range.min, hi: range.max };
+    }, [thermalMap?.range, tempFilter.minAtLeast, tempFilter.maxAtMost]);
     const [spatialClusterEnabled, setSpatialClusterEnabled] = useState(true);
     const [editDetection, setEditDetection] = useState<Detection | null>(null);
     const [zoom, setZoom] = useState(18);
@@ -328,6 +350,39 @@ function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCatego
         selectImageOnMap(image_id);
     };
 
+    // Whether the report has thermally analyzable images at all (drives the
+    // Temp map toggle visibility; color-mapped-only thermal images don't count).
+    const hasThermalCapable = useMemo(
+        () => !!images?.some((img) => img.thermal && img.thermal_data?.min_temp != null),
+        [images]
+    );
+
+    // Popup for a temperature-overlay region: band range + region max + the
+    // same "Show source images" gallery-filter button as fire regions.
+    const buildThermalRegionPopup = (bandMin: number, bandMax: number, region: ThermalMapRegion) => {
+        const root = document.createElement("div");
+        root.className = "w-44";
+        const title = document.createElement("div");
+        const imgLabel = `${region.images.length} image${region.images.length === 1 ? "" : "s"}`;
+        title.innerHTML =
+            `<strong>Temperature ${bandMin}–${bandMax} °C</strong><br/>` +
+            `Region max: ${region.max_temp} °C<br/>` +
+            `<span class="text-xs text-gray-500">covered by ${imgLabel}</span>`;
+        root.appendChild(title);
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "mt-2 w-full inline-flex items-center justify-center rounded-md text-sm font-medium h-8 px-3 bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer";
+        button.textContent = "Show source images";
+        button.addEventListener("click", () => {
+            setSelectedObjectId(null);
+            setHighlightedDetectionId(null);
+            setRegionImageIds(region.images.map((img) => img.image_id));
+            map?.closePopup();
+        });
+        root.appendChild(button);
+        return root;
+    };
+
     // Popup for a fire-overlay region: a short summary plus a button that
     // filters the gallery to the region's source images (thumbnails belong to
     // the gallery card, not a map popup — same idea as object groups).
@@ -353,7 +408,7 @@ function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCatego
             // so the image grid (which the filter applies to) becomes visible.
             setSelectedObjectId(null);
             setHighlightedDetectionId(null);
-            setFireRegionImageIds(region.images.map((img) => img.image_id));
+            setRegionImageIds(region.images.map((img) => img.image_id));
             map?.closePopup();
         });
         root.appendChild(button);
@@ -638,6 +693,45 @@ function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCatego
                                     layer.on({
                                         mouseover: () => (layer as L.Path).setStyle({ fillOpacity: 0.7 }),
                                         mouseout: () => (layer as L.Path).setStyle({ fillOpacity: 0.3 }),
+                                    });
+                                }}
+                            />
+                        </LayerGroup>
+                    )}
+                    {/* Temperature overlay: the report's thermal matrices merged
+                        (max) and banded in 10 °C steps, clipped to the gallery's
+                        temp filters. Colored on the ironbow ramp over the report's
+                        full temperature range so colors stay stable while filtering. */}
+                    {showTempMap && hasThermalOverlay && thermalMap?.geojson && (
+                        <LayerGroup>
+                            <GeoJSON
+                                key={`thermal-${thermalMapQuery.dataUpdatedAt}`}
+                                data={thermalMap.geojson}
+                                style={(feature) => ({
+                                    stroke: false,
+                                    fillColor: temperatureToRampColor(
+                                        feature?.properties?.temp_min ?? 0,
+                                        thermalDisplayRange?.lo ?? 0,
+                                        thermalDisplayRange?.hi ?? 100,
+                                        tempFilter.minAtLeast,
+                                    ),
+                                    fillOpacity: 0.5,
+                                })}
+                                onEachFeature={(feature, layer) => {
+                                    const region = thermalMap.regions[String(feature.properties?.region_id)];
+                                    if (region) {
+                                        layer.bindPopup(
+                                            buildThermalRegionPopup(
+                                                feature.properties?.temp_min,
+                                                feature.properties?.temp_max,
+                                                region,
+                                            ),
+                                            { minWidth: 200 },
+                                        );
+                                    }
+                                    layer.on({
+                                        mouseover: () => (layer as L.Path).setStyle({ fillOpacity: 0.7 }),
+                                        mouseout: () => (layer as L.Path).setStyle({ fillOpacity: 0.5 }),
                                     });
                                 }}
                             />
@@ -935,6 +1029,47 @@ function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCatego
                                 <Switch
                                     checked={showFireMap}
                                     onCheckedChange={(checked) => setShowFireMap(checked)}
+                                    className="w-8"
+                                />
+                            </div>
+                        </>
+                    )}
+                    {hasThermalCapable && (
+                        <>
+                            <Separator orientation="vertical" className="mx-4 h-6" />
+                            <div className="flex flex-col items-center w-18">
+                                <div className="flex items-center gap-1 mb-1">
+                                    <label className="text-sm font-medium block text-center">Temperature</label>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <CircleHelp size={14} className="text-muted-foreground cursor-help" />
+                                        </TooltipTrigger>
+                                        <TooltipContent className="max-w-56">
+                                            <p>
+                                                Thermal images merged into one temperature map
+                                                (hottest reading wins where they overlap), drawn in
+                                                10 °C bands{thermalMap?.range ? ` — this report spans ${thermalMap.range.min} to ${thermalMap.range.max} °C` : ""}:
+                                            </p>
+                                            <div
+                                                className="h-2 w-full rounded my-1"
+                                                style={{ background: TEMPERATURE_RAMP_GRADIENT }}
+                                            />
+                                            <div className="flex justify-between leading-tight">
+                                                <span>cold</span>
+                                                <span>hot</span>
+                                            </div>
+                                            <p className="mt-1">
+                                                The gallery's temperature filters clip what is shown;
+                                                colors re-fit to the filtered range (a hotter filter
+                                                floor starts higher on the ramp, never at cold).
+                                                Click a region to see which images cover it.
+                                            </p>
+                                        </TooltipContent>
+                                    </Tooltip>
+                                </div>
+                                <Switch
+                                    checked={showTempMap}
+                                    onCheckedChange={(checked) => setShowTempMap(checked)}
                                     className="w-8"
                                 />
                             </div>

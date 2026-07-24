@@ -187,3 +187,43 @@ export function matrixToCanvasImage(
         img.src = canvas.toDataURL();
     });
 }
+
+/**
+ * Map an absolute temperature to a CSS color on the ironbow ramp, scaled over
+ * [rangeMin, rangeMax] — used by the map's temperature overlay so its colors
+ * match the slideshow's thermal rendering.
+ */
+export function temperatureToColor(temp: number, rangeMin: number, rangeMax: number): string {
+    const span = Math.max(rangeMax - rangeMin, 1e-6);
+    const gray = Math.min(Math.max(((temp - rangeMin) / span) * 255, 0), 255);
+    const [r, g, b] = getColorMapFunction("whspecial")(gray).map((v) =>
+        Math.min(Math.max(Math.round(v), 0), 255)
+    );
+    return `rgb(${r}, ${g}, ${b})`;
+}
+
+/** CSS gradient of the ironbow ramp, for the temperature overlay legend. */
+export const TEMPERATURE_RAMP_GRADIENT = `linear-gradient(to right, ${[0, 0.2, 0.4, 0.6, 0.8, 1]
+    .map((t) => `${temperatureToColor(t, 0, 1)} ${t * 100}%`)
+    .join(", ")})`;
+
+/**
+ * Ironbow color for the map's temperature overlay, re-fit to the currently
+ * displayed (filter-clipped) range. Without a lower temperature filter the
+ * full ramp maps over the data range. When the user sets one (`anchorLo`),
+ * the ramp does NOT restart at the coldest color: its start slides up with
+ * how hot that filter floor is — rampStart = 0.5 × clamp(anchorLo / 60 °C,
+ * 0, 1) — so a "≥ 60 °C" view spans the upper (dark-red → white) half of the
+ * ramp: differentiated, but still reading as hot.
+ */
+export function temperatureToRampColor(
+    temp: number,
+    displayLo: number,
+    displayHi: number,
+    anchorLo?: number | null
+): string {
+    const rampStart = anchorLo != null ? 0.5 * Math.min(Math.max(anchorLo / 60, 0), 1) : 0;
+    const span = Math.max(displayHi - displayLo, 1e-6);
+    const u = rampStart + (1 - rampStart) * Math.min(Math.max((temp - displayLo) / span, 0), 1);
+    return temperatureToColor(u, 0, 1);
+}

@@ -5,6 +5,7 @@ import type { Image, ImageBasic } from "@/types/image";
 import type { DetectionDisplayMode } from "@/types/detection";
 import { getApiUrl } from "@/api";
 import { MapTab } from "@/components/report/mappingReportComponents/MapTab";
+import type { TempFilters } from "@/components/report/mappingReportComponents/GalleryCardFiltered";
 import { SlideshowTab } from "@/components/report/mappingReportComponents/SlideshowTab";
 import { DataTab } from "@/components/report/mappingReportComponents/DataTab";
 import { useImages } from "@/hooks/imageHooks";
@@ -34,10 +35,11 @@ interface Props {
   setSelectedObjectId: (id: number | null) => void;
   highlightedDetectionId: number | null;
   setHighlightedDetectionId: (id: number | null) => void;
-  setFireRegionImageIds: (ids: number[] | null) => void;
+  setRegionImageIds: (ids: number[] | null) => void;
+  tempFilter: TempFilters;
 }
 
-export function TabArea({ report, selectedImage, setSelectedImage, tab, setTab, thresholds, visibleCategories, detectionMode, setDetectionMode, selectedObjectId, setSelectedObjectId, highlightedDetectionId, setHighlightedDetectionId, setFireRegionImageIds }: Props) {
+export function TabArea({ report, selectedImage, setSelectedImage, tab, setTab, thresholds, visibleCategories, detectionMode, setDetectionMode, selectedObjectId, setSelectedObjectId, highlightedDetectionId, setHighlightedDetectionId, setRegionImageIds, tempFilter }: Props) {
   const api_url = getApiUrl();
   const { data: images } = useImages(report.report_id);
   const [visibleMapOverlays, setVisibleMapOverlays] = useState<{ [mapId: number]: boolean }>({});
@@ -137,7 +139,8 @@ export function TabArea({ report, selectedImage, setSelectedImage, tab, setTab, 
             setSelectedObjectId={setSelectedObjectId}
             highlightedDetectionId={highlightedDetectionId}
             setHighlightedDetectionId={setHighlightedDetectionId}
-            setFireRegionImageIds={setFireRegionImageIds}
+            setRegionImageIds={setRegionImageIds}
+            tempFilter={tempFilter}
           />
         </div>
       </TabsContent>

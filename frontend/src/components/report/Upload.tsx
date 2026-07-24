@@ -89,11 +89,15 @@ export function Upload({ report, onProcessingStarted, isEditing, setIsEditing, s
 
   const handleStartMappingProcessing = (settings: ProcessingSettings) => {
     queryClient.invalidateQueries({ queryKey: ["report", report.report_id] });
-    queryClient.removeQueries({ queryKey: ["report-settings", report.report_id] });
-    queryClient.invalidateQueries({ queryKey: ["processing-settings", report.report_id] });
+    // Commit the submitted settings to both caches so the card keeps showing the
+    // actual options in use while processing runs (even across remounts).
+    queryClient.setQueryData(["report-settings", report.report_id], settings);
+    queryClient.setQueryData(["processing-settings", report.report_id], settings);
 
     startMappingMutation.mutate(settings, {
       onSuccess: () => {
+        // Backend has persisted the settings at this point — refetch confirms them
+        queryClient.invalidateQueries({ queryKey: ["processing-settings", report.report_id] });
         if (onProcessingStarted) onProcessingStarted();
       },
       onError: (error) => {

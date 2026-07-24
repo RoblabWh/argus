@@ -33,9 +33,6 @@ def preprocess_report(report_id: int, images: list[ImageOut], settings: Processi
     images = _process_thermal_images(images, report_id, db, progress_updater)
     progress_updater.update_progress("preprocessing", 33.0)
 
-    # Persist settings so the frontend can pre-populate on reprocessing
-    crud_report.save_processing_settings(db, report_id, settings)
-
     # Apply user-supplied defaults for fields missing from EXIF
     _apply_default_mapping_settings(images, settings, db)
 

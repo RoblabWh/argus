@@ -81,6 +81,9 @@ export function MappingSettingsCard({
         staleTime: 0,
     });
 
+    const isActive =
+        status === "queued" || status === "preprocessing" || status === "processing";
+
     const hasInitialized = useRef(false);
     useEffect(() => {
         if (backendSettings && !isBackendSettingsFetching && !hasInitialized.current) {
@@ -91,11 +94,17 @@ export function MappingSettingsCard({
                     (overrides as Record<string, unknown>)[k] = v;
                 }
             }
+            if (!isActive) {
+                // Opening the (re)process form: restore saved settings but force
+                // these two defaults regardless of what was saved last run
+                overrides.reread_metadata = false;
+                overrides.keep_weather = weatherAvailable;
+            }
             if (Object.keys(overrides).length > 0) {
                 setSettings({ ...settings, ...overrides });
             }
         }
-    }, [backendSettings, isBackendSettingsFetching, settings, setSettings]);
+    }, [backendSettings, isBackendSettingsFetching, settings, setSettings, isActive, weatherAvailable]);
 
     useEffect(() => {
         if (!settings.apply_manual_defaults) return;

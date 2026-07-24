@@ -23,11 +23,11 @@ overlay:
 Everywhere without detections stays uncovered (transparent on the map).
 """
 import logging
-from functools import lru_cache
 
 import cv2
 import numpy as np
-import pyproj
+
+from app.services.raster_bands import get_transformers, smooth_mask, trace_band_features
 
 logger = logging.getLogger(__name__)
 
@@ -41,8 +41,6 @@ SMOOTH_RADIUS_M = 1.5
 # Raster sizing: metre-per-cell floor and overall grid cap.
 MIN_CELL_M = 0.05
 MAX_GRID_DIM = 1536
-# Polygon simplification tolerance in raster cells.
-SIMPLIFY_EPSILON_PX = 1.5
 
 EMPTY_RESULT = {"geojson": None, "regions": {}}
 
@@ -61,15 +59,6 @@ def _interpolate_px_to_gps(px: float, py: float, width: int, height: int, corner
     bot_lat = bl[0] + rx * (br[0] - bl[0])
     bot_lon = bl[1] + rx * (br[1] - bl[1])
     return top_lat + ry * (bot_lat - top_lat), top_lon + ry * (bot_lon - top_lon)
-
-
-@lru_cache(maxsize=4)
-def _get_transformers(zone: int, north: bool):
-    """(WGS84 -> UTM, UTM -> WGS84) transformer pair, both always_xy (lon/lat)."""
-    epsg = f"EPSG:326{zone:02d}" if north else f"EPSG:327{zone:02d}"
-    to_utm = pyproj.Transformer.from_crs("EPSG:4326", epsg, always_xy=True)
-    to_wgs = pyproj.Transformer.from_crs(epsg, "EPSG:4326", always_xy=True)
-    return to_utm, to_wgs
 
 
 def _project_detection_quads(detections: list[dict], images_by_id: dict):
@@ -94,7 +83,7 @@ def _project_detection_quads(detections: list[dict], images_by_id: dict):
         if to_utm is None:
             lat0, lon0 = gps[0]
             zone = int((lon0 + 180) / 6) + 1
-            to_utm, to_wgs = _get_transformers(zone, lat0 >= 0)
+            to_utm, to_wgs = get_transformers(zone, lat0 >= 0)
         utm = np.array([to_utm.transform(lon, lat) for lat, lon in gps], dtype=np.float64)
         quads.append(
             {
@@ -125,17 +114,6 @@ def _quad_to_grid_px(quad_utm, e_min, n_max, cell):
     cols = (quad_utm[:, 0] - e_min) / cell
     rows = (n_max - quad_utm[:, 1]) / cell
     return np.stack([cols, rows], axis=1).round().astype(np.int32)
-
-
-def _grid_ring_to_lonlat(contour, e_min, n_max, cell, to_wgs):
-    """Contour (Nx1x2 or Nx2 int px) -> closed GeoJSON ring [[lon, lat], ...]."""
-    pts = contour.reshape(-1, 2).astype(np.float64)
-    easting = e_min + (pts[:, 0] + 0.5) * cell
-    northing = n_max - (pts[:, 1] + 0.5) * cell
-    lon, lat = to_wgs.transform(easting, northing)
-    ring = [[round(float(lo), 7), round(float(la), 7)] for lo, la in zip(lon, lat)]
-    ring.append(ring[0])
-    return ring
 
 
 def _assign_regions(quads, labels, grid_w, grid_h, e_min, n_max, cell, images_by_id):
@@ -177,75 +155,46 @@ def _assign_regions(quads, labels, grid_w, grid_h, e_min, n_max, cell, images_by
     return out
 
 
-def _smooth_mask(mask: np.ndarray, sigma_cells: float) -> np.ndarray:
-    """Geometric (level-set) smoothing: blur the binary mask, re-threshold.
-
-    The 0.5 threshold roughly preserves area, rounds corners, and bridges
-    gaps smaller than ~sigma — the metaball-style merge. Blur is monotone
-    w.r.t. mask inclusion, so smoothed confidence bands stay properly nested.
-    """
-    blurred = cv2.GaussianBlur(mask.astype(np.float32), (0, 0), sigma_cells)
-    return (blurred >= 0.5).astype(np.uint8)
-
-
-def _vectorize_bands(field, labels, sigma_cells, e_min, n_max, cell, to_wgs):
+def _vectorize_bands(field, labels, sigma_cells, e_min, n_max, cell, to_wgs, floor):
     """Slice the confidence field into bands and trace them into features."""
     field_max = float(field.max())
-    span = max(field_max - BASE_CONFIDENCE, 1e-6)
-    thresholds = [BASE_CONFIDENCE + i * span / NUM_BANDS for i in range(NUM_BANDS)]
+    span = max(field_max - floor, 1e-6)
+    thresholds = [floor + i * span / NUM_BANDS for i in range(NUM_BANDS)]
 
     features = []
     for level, threshold in enumerate(thresholds):
-        mask = _smooth_mask(field >= threshold, sigma_cells)
+        mask = smooth_mask(field >= threshold, sigma_cells)
         if not mask.any():
             break
-        contours, hierarchy = cv2.findContours(mask, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_SIMPLE)
-        if hierarchy is None:
-            continue
-        hierarchy = hierarchy[0]  # [next, prev, first_child, parent]
-        for idx, contour in enumerate(contours):
-            if hierarchy[idx][3] != -1:
-                continue  # holes are attached to their outer ring below
-            # region_id from an original contour point — it lies inside the
-            # base-band mask by construction, so its label is never 0.
-            cy, cx = int(contour[0][0][1]), int(contour[0][0][0])
-            region_id = int(labels[cy, cx])
-
-            rings = []
-            outer = cv2.approxPolyDP(contour, SIMPLIFY_EPSILON_PX, True)
-            if len(outer) < 3:
-                continue
-            rings.append(_grid_ring_to_lonlat(outer, e_min, n_max, cell, to_wgs))
-            child = hierarchy[idx][2]
-            while child != -1:
-                hole = cv2.approxPolyDP(contours[child], SIMPLIFY_EPSILON_PX, True)
-                if len(hole) >= 3:
-                    rings.append(_grid_ring_to_lonlat(hole, e_min, n_max, cell, to_wgs))
-                child = hierarchy[child][0]
-
-            features.append(
-                {
-                    "type": "Feature",
-                    "geometry": {"type": "Polygon", "coordinates": rings},
-                    "properties": {
-                        "region_id": region_id,
-                        "level": level,
-                        "conf_min": round(threshold, 3),
-                    },
-                }
+        features.extend(
+            trace_band_features(
+                mask, labels,
+                {"level": level, "conf_min": round(threshold, 3)},
+                e_min, n_max, cell, to_wgs,
             )
+        )
     return features
 
 
-def build_fire_map(fire_input: dict) -> dict:
+def build_fire_map(fire_input: dict, min_confidence: float | None = None) -> dict:
     """Build the fire overlay from a get_fire_map_input payload.
 
     Returns {"geojson": FeatureCollection | None, "regions": {...}} — see the
     module docstring. Features are ordered low band -> high band so painting
     them in order produces the height-map look.
+
+    min_confidence raises the confidence floor above BASE_CONFIDENCE:
+    detections below it are dropped entirely (they must not influence grid
+    sizing, the smoothing cap, or region attribution) and it becomes the
+    outer edge of the lowest band.
     """
+    floor = max(min_confidence or 0.0, BASE_CONFIDENCE)
+    detections = [
+        det for det in fire_input.get("detections", [])
+        if float(det.get("score") or 0.0) >= floor
+    ]
     images_by_id = {img["id"]: img for img in fire_input.get("images", [])}
-    quads, to_wgs = _project_detection_quads(fire_input.get("detections", []), images_by_id)
+    quads, to_wgs = _project_detection_quads(detections, images_by_id)
     if not quads:
         return dict(EMPTY_RESULT)
 
@@ -266,13 +215,13 @@ def build_fire_map(fire_input: dict) -> dict:
     )
     sigma_cells = max(min(SMOOTH_RADIUS_M, 0.6 * min_side) / cell, 1.0)
 
-    base_mask = _smooth_mask(field >= BASE_CONFIDENCE, sigma_cells)
+    base_mask = smooth_mask(field >= floor, sigma_cells)
     if not base_mask.any():
         return dict(EMPTY_RESULT)
     _, labels = cv2.connectedComponents(base_mask)
 
     regions = _assign_regions(quads, labels, grid_w, grid_h, e_min, n_max, cell, images_by_id)
-    features = _vectorize_bands(field, labels, sigma_cells, e_min, n_max, cell, to_wgs)
+    features = _vectorize_bands(field, labels, sigma_cells, e_min, n_max, cell, to_wgs, floor)
 
     logger.info(
         "Fire map: %d detections -> %d regions, %d band polygons (grid %dx%d, %.2f m/cell)",

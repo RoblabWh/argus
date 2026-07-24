@@ -50,3 +50,52 @@ def create_multiple_map_elements(db: Session, map_id: int, elements: list[MapEle
     db.add_all(map_elements)
     db.commit()
     return map_elements
+
+
+def get_thermal_map_input(db: Session, mapping_report_id: int):
+    """Assemble the payload the thermal-map service needs (services/thermal_map.py).
+
+    Returns the report's IR maps (Map.name pattern ``{method}_ir_{index}``)
+    with, per map element, the image's UTM footprint corners plus its raw
+    temperature matrix path. Elements whose image has no ThermalData/.npy
+    (color-mapped-only thermal images) get temp_matrix_path=None — the
+    service skips them.
+    """
+    ir_maps = (
+        db.query(models.Map)
+        .options(
+            joinedload(models.Map.map_elements)
+            .joinedload(models.MapElement.image)
+            .joinedload(models.Image.thermal_data)
+        )
+        .filter(
+            models.Map.mapping_report_id == mapping_report_id,
+            models.Map.name.contains("_ir_"),
+        )
+        .all()
+    )
+
+    maps_out = []
+    for ir_map in ir_maps:
+        bounds_utm = (ir_map.bounds or {}).get("utm")
+        if not bounds_utm:
+            continue
+        elements = []
+        for el in ir_map.map_elements:
+            corners_utm = (el.corners or {}).get("utm")
+            image = el.image
+            if not image or not corners_utm or len(corners_utm) != 4:
+                continue
+            thermal_data = image.thermal_data
+            elements.append(
+                {
+                    "image_id": image.id,
+                    "filename": image.filename,
+                    "thumbnail_url": image.thumbnail_url,
+                    "corners_utm": corners_utm,
+                    "temp_matrix_path": thermal_data.temp_matrix_path if thermal_data else None,
+                }
+            )
+        maps_out.append({"id": ir_map.id, "bounds_utm": bounds_utm, "elements": elements})
+
+    return {"maps": maps_out}

@@ -28,7 +28,8 @@ from app.schemas.report import (
     ColmapResultsOut,
 )
 from app.schemas.image import UploadSummary, VideoUploadResult, ImageUploadResult
-from app.schemas.map import MapOut, MapSharingData
+from app.schemas.map import MapOut, MapSharingData, ThermalMapOut
+from app.services.thermal_map import build_thermal_map
 from app.services.celery_app import celery_app
 from app.services.image_processing import process_image, check_mapping_report, UPLOAD_DIR
 from app.services.camera_config_service import extract_video_metadata
@@ -220,11 +221,36 @@ def get_mapping_report_single_map(report_id: int, map_id: int, db: Session = Dep
 def get_mapping_report_webodm_project_id(report_id: int, db: Session = Depends(get_db)):
     return crud.get_mapping_report_webodm_project_id(db, report_id)
 
+
+@router.get("/{report_id}/thermal_map", response_model=ThermalMapOut)
+def get_thermal_map(
+    report_id: int,
+    t_min: float | None = Query(default=None, description="Lower temperature clip in °C"),
+    t_max: float | None = Query(default=None, description="Upper temperature clip in °C"),
+    db: Session = Depends(get_db),
+):
+    """
+    Interactive temperature overlay: the report's radiometric thermal images
+    merged into a max-composite temperature field per IR map, banded in 10 °C
+    steps as GeoJSON polygons, optionally clipped to [t_min, t_max] (the
+    gallery's temperature filters). Composites are cached on disk, so repeat
+    calls with different clips are fast.
+    """
+    report = crud.get_short_report(db, report_id)
+    if not report or not report.mapping_report:
+        raise HTTPException(status_code=404, detail="Report not found")
+
+    tm_input = map_crud.get_thermal_map_input(db, report.mapping_report.id)
+    tm_input["report_id"] = report_id
+    return build_thermal_map(tm_input, t_min=t_min, t_max=t_max)
+
 @router.post("/{report_id}/process", response_model=ReportOut)
 def process_report(report_id: int, processing_settings: ProcessingSettings, db: Session = Depends(get_db)):
     returnval = crud.update_process(db, report_id, "queued", 0.0)
     processing_settings_dict = processing_settings.model_dump()
     logger.warning(f"Starting processing for report {report_id} with settings: {processing_settings_dict}")
+    # Persist before dispatch so GET /processing_settings is race-free for the frontend
+    crud.save_processing_settings(db, report_id, processing_settings_dict)
     task = process_report_service.process_report.delay(report_id, processing_settings_dict)
     r.set(f"report:{report_id}:task_id", task.id)
     r.set(f"report:{report_id}:progress", 0)
@@ -306,10 +332,14 @@ def complete_colmap(report_id: int, summary: dict = None):
     return {"ok": True, "report_id": report_id}
 
 
-@router.get("/{report_id}/processing_settings", response_model=ProcessingSettings)
+@router.get("/{report_id}/processing_settings", response_model=dict)
 def get_processing_settings(report_id: int, db: Session = Depends(get_db)):
-    """Return the last-used ProcessingSettings for prefilling the process dialog."""
-    return ProcessingSettings(**crud.get_processing_settings(db, report_id))
+    """Return the last-used processing settings for prefilling the process dialog.
+
+    Returns only the keys that were actually saved ({} if never processed), so the
+    frontend can tell saved values apart from schema defaults.
+    """
+    return crud.get_processing_settings(db, report_id)
 
 
 @router.post("/{report_id}/process/stop", response_model=ReportOut)
