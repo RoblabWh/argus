@@ -45,7 +45,11 @@ DEFAULT_MERGE_THRESHOLD = 1.0
 ENABLE_CLEANUP_PASS = os.getenv("REID3D_CLEANUP", "1").lower() not in ("0", "false", "no", "")
 CLEANUP_RADIUS_MULTIPLIER = 10.0
 CLEANUP_SMALL_MAX = 3
-CLEANUP_SANITY_SIM = 0.66
+# The cleanup pass merges on appearance ALONE inside 10x the merge threshold
+# (25 m for humans, 40 m for vehicles), so this floor is the only thing keeping
+# two different objects apart. DINOv3 cosine between distinct small aerial
+# objects routinely reaches 0.65-0.75 — anything below ~0.72 over-merges.
+CLEANUP_SANITY_SIM = float(os.getenv("REID3D_CLEANUP_SIM", "0.72"))
 
 
 # Map raw YOLO/VisDrone class names to the canonical names the thresholds use.
@@ -152,7 +156,7 @@ def run_reid_3d(
             cluster_images.pop(old_root, None)
             return float(np.dot(emb[a], emb[b]))
 
-        # --- Step 4: per-category candidate generation (generous radius) ---
+        # --- Step 3: per-category candidate generation (generous radius) ---
         _progress("Generating 3D candidates…", 0.72)
         edges = []  # (scaled_distance, cosine_sim, a, b)
         for cat in np.unique(categories):
@@ -177,7 +181,7 @@ def run_reid_3d(
                     continue
                 edges.append((sc, s, a, b))
 
-        # --- Step 5: multi-pass gated merge (strict → loose) ---
+        # --- Step 4: multi-pass gated merge (strict → loose) ---
         _progress("Clustering (multi-pass)…", 0.82)
         for level in SANITY_LEVELS:
             pass_edges = [e for e in edges if e[1] >= level]
@@ -185,7 +189,7 @@ def run_reid_3d(
             for _sc, _s, a, b in pass_edges:
                 try_merge(a, b)
 
-        # --- Step 6: optional appearance-only cleanup pass ---
+        # --- Step 5: optional appearance-only cleanup pass ---
         if ENABLE_CLEANUP_PASS:
             _progress("Cleanup pass…", 0.9)
             roots_before = [uf.find(i) for i in range(n)]
@@ -220,7 +224,7 @@ def run_reid_3d(
 
         roots = [uf.find(i) for i in range(n)]
 
-    # --- Step 7: build the output dict (clusters first, then singletons) ---
+    # --- Step 6: build the output dict (clusters first, then singletons) ---
     _progress("Building object groups…", 0.96)
     root_to_uid: dict = {}
     det_to_uid: dict = {}

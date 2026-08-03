@@ -40,6 +40,9 @@ services:
     build: ./frontend
     container_name: argusII_frontend
     restart: unless-stopped
+    # Reconcile node_modules with package.json on every start so a stale
+    # frontend_node_modules volume self-heals (e.g. after new deps are added).
+    command: sh -c "npm install && npm run dev"
     ports:
       - "${PORT_FRONTEND}:5173"
     volumes:

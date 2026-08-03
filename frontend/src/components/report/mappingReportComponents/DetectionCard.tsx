@@ -19,7 +19,8 @@ import {
     Scissors,
     Boxes,
     Layers,
-    Group
+    Group,
+    X
 } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import type { Detection, DetectionDisplayMode } from '@/types/detection';
@@ -91,6 +92,8 @@ export function DetectionCard({ report_id, setThresholds, thresholds, setFilter,
     const alternateSummary = detectionMode === "reduced" ? allSummary : reducedSummary;
     var [hasDetections, setHasDetections] = useState(detections && detections.length > 0);
     const [analysisMode, setAnalysisMode] = useState<"fast" | "medium" | "detailed" | "experimental" | "fire" | undefined>(undefined);
+    // Which mode's info text the user dismissed — switching modes shows the box again.
+    const [dismissedInfoMode, setDismissedInfoMode] = useState<string | undefined>(undefined);
 
     useEffect(() => {
         if (detections) {
@@ -404,12 +407,20 @@ export function DetectionCard({ report_id, setThresholds, thresholds, setFilter,
                                         </Tooltip>
                                     </div>
                                 </div>
-                                {analysisMode && (
-                                    <div className="rounded-md border p-2 mt-2 text-sm border-gray-400 bg-gray-200 text-muted-foreground dark:bg-gray-800 dark:border-gray-700">
-                                        <p className="m-0">
+                                {analysisMode && analysisMode !== dismissedInfoMode && (
+                                    <div className="rounded-md border p-2 mt-2 text-sm border-gray-400 bg-gray-200 text-muted-foreground dark:bg-gray-800 dark:border-gray-700 flex items-start gap-2">
+                                        <p className="m-0 flex-1">
                                             <Info className="inline-block w-3 h-3 align-middle mr-1" />
                                             {infotextForMode(analysisMode)}
                                         </p>
+                                        <button
+                                            type="button"
+                                            aria-label="Dismiss info"
+                                            onClick={() => setDismissedInfoMode(analysisMode)}
+                                            className="shrink-0 rounded p-0.5 hover:bg-gray-300 dark:hover:bg-gray-700 hover:text-foreground transition-colors"
+                                        >
+                                            <X className="w-3.5 h-3.5" />
+                                        </button>
                                     </div>
 
                                 )}

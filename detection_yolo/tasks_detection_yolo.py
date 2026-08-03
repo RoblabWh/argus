@@ -93,6 +93,15 @@ def run_reid_clustering(report_id: int, exclude_classes: set[str] | None = None)
         # clustered nor emitted as singletons. (assign_unique_object_clusters
         # resets the whole report to null before writing, so any detection we omit
         # here stays null for free.)
+        #
+        # This gate is deliberate and applies to the 3D path too, even though it
+        # could localize such detections from the reconstruction alone:
+        #   - an image without a map element is usually NOT nadir, so its crops
+        #     look very different from the rest of the flight and DINOv3 cosine
+        #     against the nadir sightings of the same object is unreliable — the
+        #     very signal the sanity gates and the cleanup pass run on;
+        #   - without a map element the detection cannot be drawn on the map, so
+        #     a cluster containing one would be partly invisible in the report.
         mapped_image_ids = {iid for iid, img in images.items() if img.get("corners_gps")}
         exclude_classes = exclude_classes or set()
         reid_detections = [

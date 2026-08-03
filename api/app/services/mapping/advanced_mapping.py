@@ -100,12 +100,24 @@ class MapElement:
             self.utm["easting"], self.utm["northing"], zone, hemisphere
         )
 
+        # The image region the corners were traced from. Normally the whole
+        # frame, but the lower half when the full footprint failed the size
+        # sanity check. Consumers that map a pixel into the footprint (re-ID's
+        # bbox-centre interpolation) must normalize against this, not the full
+        # image dimensions.
+        # Omitted when the dimensions are unknown — consumers then assume the
+        # full frame, which is the pre-existing behaviour.
+        src_px = None
+        if self.image_width and self.image_height:
+            y0 = self.image_height // 2 if self.use_lower_half else 0
+            src_px = [0, y0, self.image_width, self.image_height]
+
         return MapElementCreate(
             map_id=map_id,
             image_id=self.image_id,
             index=self.index,
             coord={"utm": self.utm, "gps": coord_gps},
-            corners={"utm": self.utm_corners, "gps": corners_gps},
+            corners={"utm": self.utm_corners, "gps": corners_gps, "src_px": src_px},
             px_coord={"px": self.px_center},
             px_corners={"px": self.px_corners},
             voronoi_gps=self.voronoi_gps,

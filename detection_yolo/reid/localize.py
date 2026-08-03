@@ -10,7 +10,14 @@ A 4-step fallback cascade runs in order until one yields a position:
     (1) primary frustum      most reliable
     (2) dilated frustum      bbox ×1.75               [low_confidence]
     (3) local plane fit      ray ∩ fitted ground plane [low_confidence]
-    (4) bilinear GPS         corner interpolation, z=0 [low_confidence]
+    (4) bilinear footprint   corner interpolation on the terrain [low_confidence]
+
+Step 4 uses the ground footprint implied by the image's own COLMAP pose when it
+is registered, and only falls back to the mapping pipeline's ``corners_gps`` for
+unregistered images — every position therefore stays in one metric frame, which
+matters because Stage 3 merges on a budget of a few metres. The terrain height
+is measured from the point cloud rather than assumed to be z = 0: Stage 1 leaves
+altitudes in whichever EXIF datum the flight carried.
 
 Detections that can't be localized are simply absent (→ Stage-3 singletons).
 
@@ -39,6 +46,7 @@ NEAREST_DEPTH_QUANTILE = 0.33
 LOCAL_PLANE_RADIUS_M = 12.0
 LOW_CONFIDENCE_SPREAD = {"human": 3.0, "vehicle": 8.0}
 DEFAULT_LOW_CONFIDENCE_SPREAD = 5.0
+GROUND_Z_QUANTILE = 0.10
 
 
 # --- PLY reader (minimal: ascii + binary_little_endian, xyz only) -----------
@@ -136,9 +144,14 @@ def load_reconstruction(colmap_dir: str):
     ply_rel = recon.get("points_ply") or os.path.join("sparse_aligned", "points.ply")
     ply_path = os.path.join(colmap_dir, ply_rel)
     if not os.path.isfile(ply_path):
-        # also try the dense cloud
-        dense = os.path.join(colmap_dir, "dense", "fused.ply")
-        ply_path = dense if os.path.isfile(dense) else ply_path
+        # Stage 1 names the dense cloud when MVS succeeded and the sparse one
+        # otherwise; if that file is gone, take whichever of the two is on disk.
+        for alt_rel in (os.path.join("dense", "fused.ply"),
+                        os.path.join("sparse_aligned", "points.ply")):
+            alt_path = os.path.join(colmap_dir, alt_rel)
+            if os.path.isfile(alt_path):
+                ply_path = alt_path
+                break
     try:
         points = _read_ply_points(ply_path)
     except (OSError, ValueError) as e:
@@ -164,14 +177,16 @@ def _localize_one(bbox, cat_name, pose, points3d, kdtree):
     K = pose["K"]
 
     alt = max(30.0, float(cam_center[2]))
-    if points3d.shape[0] == 0:
-        return None
-    cand_idx = kdtree.query_ball_point(cam_center[:2], r=3.0 * alt)
-    if not cand_idx:
-        return None
-    cand = points3d[cand_idx]
+    # An empty cloud or an empty neighbourhood only rules out the two frustum
+    # passes — the plane fit below queries its own neighbourhood and may still
+    # succeed, so it must stay reachable.
+    cand_idx = (
+        kdtree.query_ball_point(cam_center[:2], r=3.0 * alt)
+        if points3d.shape[0] else []
+    )
+    cand = points3d[cand_idx] if cand_idx else np.empty((0, 3))
 
-    def _frustum_centroid(rect_box, dilate, low_conf_force):
+    def _frustum_centroid(rect_box, low_conf_force):
         mask = geom.points_inside_frustum(
             cand, cam_center, R_wc, K, rect_box,
             margin_px=FRUSTUM_MARGIN_PX, near=0.1, far=max(10.0, alt * 2.0),
@@ -194,20 +209,21 @@ def _localize_one(bbox, cat_name, pose, points3d, kdtree):
         low_conf = low_conf_force or (xy_spread > thresh)
         return centroid.tolist(), xy_spread, low_conf
 
-    # (1) primary frustum
-    res = _frustum_centroid(rect, False, False)
-    if res is not None:
-        centroid, spread, low_conf = res
-        return centroid, "frustum_localized", low_conf, spread
+    if cand.shape[0]:
+        # (1) primary frustum
+        res = _frustum_centroid(rect, False)
+        if res is not None:
+            centroid, spread, low_conf = res
+            return centroid, "frustum_localized", low_conf, spread
 
-    # (2) dilated frustum (×1.75 about its centre) — always low_confidence
-    cx_r, cy_r = u0 + (u1 - u0) / 2, v0 + (v1 - v0) / 2
-    dw, dh = (u1 - u0) * FRUSTUM_DILATE_FACTOR, (v1 - v0) * FRUSTUM_DILATE_FACTOR
-    rect_d = (cx_r - dw / 2, cy_r - dh / 2, dw, dh)
-    res = _frustum_centroid(rect_d, True, True)
-    if res is not None:
-        centroid, spread, _ = res
-        return centroid, "fallback_dilated_frustum", True, spread
+        # (2) dilated frustum (×1.75 about its centre) — always low_confidence
+        cx_r, cy_r = u0 + (u1 - u0) / 2, v0 + (v1 - v0) / 2
+        dw, dh = (u1 - u0) * FRUSTUM_DILATE_FACTOR, (v1 - v0) * FRUSTUM_DILATE_FACTOR
+        rect_d = (cx_r - dw / 2, cy_r - dh / 2, dw, dh)
+        res = _frustum_centroid(rect_d, True)
+        if res is not None:
+            centroid, spread, _ = res
+            return centroid, "fallback_dilated_frustum", True, spread
 
     # (3) local plane fit through the bbox centre — always low_confidence
     cx_b, cy_b = bbox[0] + bbox[2] / 2, bbox[1] + bbox[3] / 2
@@ -227,15 +243,76 @@ def _localize_one(bbox, cat_name, pose, points3d, kdtree):
     return None
 
 
-def _fallback_bilinear(bbox, img_meta, geo_offset):
-    """Step 4 — bilinear GPS interpolation → UTM-local, z=0. Needs corners_gps."""
+def _ground_footprint_from_pose(pose, ground_z: float = 0.0):
+    """The image's 4 corners projected onto the local ground plane, or ``None``.
+
+    Returns ``[TL, TR, BR, BL]`` as ``(x, y)`` in the reconstruction's local
+    metric frame. Ground is ``z = ground_z`` (0 = the datum Stage 1 aligned to).
+    """
+    w, h = pose.get("width"), pose.get("height")
+    if not w or not h:
+        return None
+    uv = geom.undistort_by_model(
+        np.array([[0.0, 0.0], [w, 0.0], [w, h], [0.0, h]], float), pose
+    )
+    K = pose["K"]
+    cam_dirs = np.column_stack((
+        (uv[:, 0] - K[0, 2]) / K[0, 0],
+        (uv[:, 1] - K[1, 2]) / K[1, 1],
+        np.ones(4, dtype=np.float64),
+    ))
+    world_dirs = cam_dirs @ np.asarray(pose["R_world_cam"], float).T
+    center = np.asarray(pose["camera_center"], float)
+    dz = world_dirs[:, 2]
+    if np.any(np.abs(dz) < 1e-9):
+        return None
+    t = (ground_z - float(center[2])) / dz
+    if np.any(t <= 0.0):
+        return None  # at least one corner ray points away from the ground
+    return (center + world_dirs * t[:, None])[:, :2]
+
+
+def estimate_ground_z(points3d) -> float:
+    """Height of the terrain in the reconstruction's local frame.
+
+    Stage 1 leaves camera altitudes in whichever EXIF datum the flight carried
+    (height above takeoff, or MSL), so the ground is *not* reliably at z = 0 —
+    it has to be measured. Aerial clouds are dominated by terrain, and the low
+    quantile keeps roofs and canopy from dragging the estimate up. Returns 0.0
+    for an empty cloud, matching the old hardcoded assumption.
+    """
+    pts = np.asarray(points3d)
+    if pts.shape[0] == 0:
+        return 0.0
+    return float(np.quantile(pts[:, 2], GROUND_Z_QUANTILE))
+
+
+def _fallback_bilinear(bbox, img_meta, geo_offset, pose=None, epsg=None, ground_z=0.0):
+    """Step 4 — interpolate the bbox centre inside the image's ground footprint.
+
+    A registered image uses the footprint implied by its own bundle-adjusted
+    COLMAP pose, so the result lands in the same metric frame as the frustum and
+    plane methods. Only unregistered images fall back to the mapping pipeline's
+    ``corners_gps``, whose gimbal-EXIF footprint is biased differently by metres.
+    Either way the position sits on the terrain at ``ground_z``.
+    """
+    if pose is not None:
+        ground = _ground_footprint_from_pose(pose, ground_z=ground_z)
+        if ground is not None:
+            x, y = interpolate_detection_gps(
+                bbox, pose["width"], pose["height"], ground.tolist()
+            )
+            return [float(x), float(y), ground_z]
+
     corners = img_meta.get("corners_gps")
     w, h = img_meta.get("width"), img_meta.get("height")
     if not corners or not w or not h:
         return None
-    lat, lon = interpolate_detection_gps(bbox, w, h, corners)
-    e, n = gps_to_utm(lat, lon)
-    return [e - geo_offset[0], n - geo_offset[1], 0.0]
+    lat, lon = interpolate_detection_gps(
+        bbox, w, h, corners, src_px=img_meta.get("corners_src_px")
+    )
+    e, n = gps_to_utm(lat, lon, epsg=epsg)
+    return [e - geo_offset[0], n - geo_offset[1], ground_z]
 
 
 def compute_annotation_positions(detections: list[dict], images: dict, colmap_dir: str) -> dict:
@@ -254,6 +331,10 @@ def compute_annotation_positions(detections: list[dict], images: dict, colmap_di
         return {}
     recon, points, poses = loaded
     geo_offset = recon.get("geo_offset", [0.0, 0.0, 0.0])
+    # geo_offset was computed in this zone; re-deriving it per detection would
+    # break apart on a flight that straddles a UTM zone boundary.
+    epsg = recon.get("utm_epsg")
+    ground_z = estimate_ground_z(points)
 
     kdtree = cKDTree(points[:, :2]) if points.shape[0] else None
     # image_id -> reconstruction image name (= staged basename of the image path)
@@ -279,7 +360,10 @@ def compute_annotation_positions(detections: list[dict], images: dict, colmap_di
         if result is not None:
             xyz, method, low_conf, spread = result
         else:
-            xyz = _fallback_bilinear(bbox, images.get(img_id, {}), geo_offset)
+            xyz = _fallback_bilinear(
+                bbox, images.get(img_id, {}), geo_offset,
+                pose=pose, epsg=epsg, ground_z=ground_z,
+            )
             if xyz is None:
                 continue  # truly unlocalizable -> absent -> Stage-3 singleton
             method, low_conf, spread = "fallback_bilinear", True, None

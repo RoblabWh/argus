@@ -464,6 +464,8 @@ def get_reid_input(db: Session, mapping_report_id: int):
 
     # image_id -> [TL, TR, BR, BL] of [lat, lon], pulled from map elements.
     corners_by_image: dict[int, list] = {}
+    # image_id -> [x0, y0, x1, y1], the image region those corners cover.
+    src_px_by_image: dict[int, list] = {}
     map_elements = (
         db.query(models.MapElement)
         .join(models.Map, models.MapElement.map_id == models.Map.id)
@@ -480,6 +482,9 @@ def get_reid_input(db: Session, mapping_report_id: int):
             # frontend/src/utils/coordinateUtils.ts. The worker's
             # interpolate_detection_gps expects exactly this order, so pass through.
             corners_by_image[el.image_id] = gps
+            src_px = (el.corners or {}).get("src_px")
+            if src_px and len(src_px) == 4:
+                src_px_by_image[el.image_id] = src_px
 
     detections: list = []
     images_out: list = []
@@ -491,6 +496,7 @@ def get_reid_input(db: Session, mapping_report_id: int):
                 "width": image.width,
                 "height": image.height,
                 "corners_gps": corners_by_image.get(image.id),
+                "corners_src_px": src_px_by_image.get(image.id),
             }
         )
         for det in image.detections:
@@ -527,6 +533,7 @@ def get_fire_map_input(db: Session, mapping_report_id: int, class_names):
     )
 
     corners_by_image: dict[int, list] = {}
+    src_px_by_image: dict[int, list] = {}
     map_elements = (
         db.query(models.MapElement)
         .join(models.Map, models.MapElement.map_id == models.Map.id)
@@ -539,6 +546,9 @@ def get_fire_map_input(db: Session, mapping_report_id: int, class_names):
         gps = (el.corners or {}).get("gps") if el.corners else None
         if gps and len(gps) == 4:
             corners_by_image[el.image_id] = gps
+            src_px = (el.corners or {}).get("src_px")
+            if src_px and len(src_px) == 4:
+                src_px_by_image[el.image_id] = src_px
 
     detections: list = []
     images_out: list = []
@@ -551,6 +561,7 @@ def get_fire_map_input(db: Session, mapping_report_id: int, class_names):
                 "width": image.width,
                 "height": image.height,
                 "corners_gps": corners_by_image.get(image.id),
+                "corners_src_px": src_px_by_image.get(image.id),
             }
         )
         for det in image.detections:

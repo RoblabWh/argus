@@ -125,7 +125,9 @@ def run_reid(
         h = img.get("height") if img else None
         if not corners or not w or not h:
             continue  # no georef -> singleton later
-        lat, lon = interpolate_detection_gps(d["bbox"], w, h, corners)
+        lat, lon = interpolate_detection_gps(
+            d["bbox"], w, h, corners, src_px=img.get("corners_src_px")
+        )
         e, n = gps_to_utm(lat, lon)
         idx_det_ids.append(d["id"])
         emb_rows.append(emb)

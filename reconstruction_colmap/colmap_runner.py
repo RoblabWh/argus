@@ -335,6 +335,10 @@ def build_reconstruction(image_paths: dict[str, str], results_path: str,
     rec.export_PLY(out_ply)
 
     # (9) optional dense MVS -------------------------------------------------
+    # The cloud named by `points_ply` is the one downstream localization reads,
+    # so a successful dense run has to claim it — otherwise patch-match stereo
+    # is paid for and never used.
+    points_ply = out_ply
     if options.get("dense"):
         _p("Dense reconstruction (MVS)…", 88)
         dense_dir = os.path.join(results_path, "dense")
@@ -343,8 +347,9 @@ def build_reconstruction(image_paths: dict[str, str], results_path: str,
         fused = _run_dense_mvs(images_root, aligned_dir, dense_dir, log_dir)
         if fused:
             summary["reconstruction_mode"] = "dense"
+            points_ply = fused
 
-    summary["points_ply"] = os.path.relpath(out_ply, results_path)
+    summary["points_ply"] = os.path.relpath(points_ply, results_path)
     with open(os.path.join(results_path, "reconstruction.json"), "w") as f:
         json.dump(summary, f, indent=2)
 

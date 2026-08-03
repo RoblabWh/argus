@@ -230,6 +230,10 @@ class ReidImage(BaseModel):
     height: Optional[int] = None
     # 4 GPS corners [TL, TR, BR, BL], each [lat, lon]; None if not georeferenced
     corners_gps: Optional[List[List[float]]] = None
+    # [x0, y0, x1, y1] — the image region corners_gps was traced from (the whole
+    # frame normally, the lower half for steeply tilted footprints). None on
+    # reports mapped before this was recorded; consumers assume the full frame.
+    corners_src_px: Optional[List[int]] = None
 
 
 class ReidInput(BaseModel):

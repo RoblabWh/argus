@@ -89,7 +89,7 @@ def test_mad_filter_rejects_outlier():
 # Stage 2 — localization (PLY + reconstruction.json on disk)
 # ---------------------------------------------------------------------------
 
-def _write_scene(colmap_dir):
+def _write_scene(colmap_dir, extra_points=None):
     """A reconstruction with one nadir image + a planted object cluster cloud."""
     os.makedirs(os.path.join(colmap_dir, "sparse_aligned"), exist_ok=True)
     recon = {
@@ -115,8 +115,20 @@ def _write_scene(colmap_dir):
     obj = np.column_stack([5.0 + rng.normal(0, 0.05, 12),
                            3.0 + rng.normal(0, 0.05, 12),
                            np.full(12, 1.5)])                  # the object, z≈1.5
-    far = np.array([[50.0, 50.0, 0.0], [-40.0, 30.0, 0.0]])    # outside the bbox frustum
+    # Ground well outside the bbox frustum. Enough of it that the terrain
+    # estimate (a low quantile of z) lands on z=0 rather than on the object,
+    # which is what a real aerial cloud looks like.
+    far = np.vstack([
+        np.column_stack([50.0 + rng.normal(0, 0.5, 6),
+                         50.0 + rng.normal(0, 0.5, 6),
+                         np.zeros(6)]),
+        np.column_stack([-40.0 + rng.normal(0, 0.5, 6),
+                         30.0 + rng.normal(0, 0.5, 6),
+                         np.zeros(6)]),
+    ])
     pts = np.vstack([obj, far])
+    if extra_points is not None:
+        pts = np.vstack([pts, np.asarray(extra_points, float)])
     ply = os.path.join(colmap_dir, "sparse_aligned", "points.ply")
     with open(ply, "w") as f:
         f.write("ply\nformat ascii 1.0\n")
@@ -130,7 +142,8 @@ def test_ply_reader_ascii():
     with tempfile.TemporaryDirectory() as d:
         _write_scene(d)
         pts = localize._read_ply_points(os.path.join(d, "sparse_aligned", "points.ply"))
-        assert pts.shape == (14, 3)
+        assert pts.shape == (24, 3)          # 12 object + 12 ground
+        assert localize.estimate_ground_z(pts) == 0.0
 
 
 def test_localize_frustum_returns_planted_object():
@@ -163,6 +176,78 @@ def test_localize_bilinear_fallback_when_unregistered():
         positions = localize.compute_annotation_positions(detections, images, d)
         assert positions["202"]["method"] == "fallback_bilinear"
         assert positions["202"]["xyz_local"][2] == 0.0   # ground plane
+
+
+def test_localize_registered_fallback_uses_pose_footprint():
+    """A registered image whose frustum + plane fit both fail still lands in the
+    reconstruction's own frame — not in the mapping pipeline's corners_gps."""
+    with tempfile.TemporaryDirectory() as d:
+        _write_scene(d)
+        # Empty image region: no cloud points project into it, and none lie
+        # within the plane-fit radius of the ray's ground hit.
+        detections = [{"id": 303, "image_id": 1, "bbox": [100, 100, 20, 20],
+                       "class_name": "human"}]
+        # corners_gps is None — pre-fix this detection had no position at all.
+        images = {1: {"path": "/x/img1.jpg", "width": 1000, "height": 1000,
+                      "corners_gps": None}}
+        positions = localize.compute_annotation_positions(detections, images, d)
+        assert "303" in positions
+        xyz = positions["303"]["xyz_local"]
+        # Nadir camera 50 m up, f=1000: pixel (110,110) -> ground (-19.5, 19.5).
+        assert abs(xyz[0] - (-19.5)) < 0.1
+        assert abs(xyz[1] - 19.5) < 0.1
+        assert xyz[2] == 0.0
+
+
+def test_localize_reaches_plane_fit_when_frustum_empty():
+    """The plane fit must stay reachable after the cascade restructure."""
+    with tempfile.TemporaryDirectory() as d:
+        # A ground patch ~6 m around the ray hit of pixel (110,110): far enough
+        # from the bbox to stay out of both frustum passes, close enough to be
+        # inside LOCAL_PLANE_RADIUS_M.
+        ang = np.linspace(0, 2 * np.pi, 12, endpoint=False)
+        patch = np.column_stack([-19.2 + 6.0 * np.cos(ang),
+                                 19.2 + 6.0 * np.sin(ang),
+                                 np.zeros(12)])
+        _write_scene(d, extra_points=patch)
+        detections = [{"id": 404, "image_id": 1, "bbox": [100, 100, 20, 20],
+                       "class_name": "human"}]
+        images = {1: {"path": "/x/img1.jpg", "width": 1000, "height": 1000,
+                      "corners_gps": None}}
+        positions = localize.compute_annotation_positions(detections, images, d)
+        assert positions["404"]["method"] == "fallback_local_plane"
+        xyz = positions["404"]["xyz_local"]
+        assert abs(xyz[0] - (-19.5)) < 0.5 and abs(xyz[1] - 19.5) < 0.5
+
+
+def test_estimate_ground_z_ignores_raised_structures():
+    """Terrain must come from the cloud, not from a z=0 assumption — Stage 1
+    leaves altitudes in whichever EXIF datum the flight carried."""
+    rng = np.random.default_rng(1)
+    # Terrain 250 m up (absolute MSL datum) with a 10 m building on top.
+    terrain = np.column_stack([rng.uniform(-50, 50, 400), rng.uniform(-50, 50, 400),
+                               np.full(400, 250.0)])
+    roof = np.column_stack([rng.uniform(0, 5, 60), rng.uniform(0, 5, 60),
+                            np.full(60, 260.0)])
+    assert abs(localize.estimate_ground_z(np.vstack([terrain, roof])) - 250.0) < 0.5
+    assert localize.estimate_ground_z(np.empty((0, 3))) == 0.0
+
+
+def test_interpolate_honours_lower_half_src_px():
+    """Corners traced from the image's lower half must be normalized against
+    that half, not the full frame."""
+    from reid.spatial import interpolate_detection_gps
+
+    corners = [[1.0, 0.0], [1.0, 1.0], [0.0, 1.0], [0.0, 0.0]]  # TL, TR, BR, BL
+    # bbox centre at 3/4 of the full height = the middle of the lower half.
+    bbox = [400, 700, 200, 100]
+    full = interpolate_detection_gps(bbox, 1000, 1000, corners)
+    half = interpolate_detection_gps(bbox, 1000, 1000, corners,
+                                     src_px=[0, 500, 1000, 1000])
+    assert abs(full[0] - 0.25) < 1e-9      # lat interpolates 1 -> 0 over v
+    assert abs(half[0] - 0.50) < 1e-9      # v = 0.5 inside the lower half
+    assert abs(full[1] - 0.50) < 1e-9      # horizontal is unaffected
+    assert abs(half[1] - 0.50) < 1e-9
 
 
 def test_load_reconstruction_missing_returns_none():

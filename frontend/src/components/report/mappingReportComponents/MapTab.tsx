@@ -173,6 +173,7 @@ function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCatego
                 cache.set(key, L.divIcon({
                     className: 'custom-div-icon',
                     html: `<div class="marker-dot" style="background-color:${centerColor};width:${size}px;height:${size}px;border-radius:50%;border:1px solid ${color};box-shadow:${shadow};box-sizing:border-box;"></div>`,
+                    //html: `<div style="background-color:${color};opacity:0.85;width:14px;height:14px;border-radius:50%;border:2px solid black;"></div>`,
                     iconSize: [size, size],
                     iconAnchor: [size / 2, size / 2],
                     popupAnchor: [0, -size / 2],
@@ -821,9 +822,11 @@ function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCatego
                                                 positions={[corners[0], corners[1], corners[2], corners[3]]}
                                                 pathOptions={{
                                                     className: 'map-footprint',
-                                                    color: FOOTPRINT_COLOR,
                                                     fillColor: FOOTPRINT_COLOR,
+                                                    color: FOOTPRINT_COLOR,
                                                     weight: 2,
+                                                    // color: 'black',
+                                                    // weight: 4,
                                                     opacity: 0,
                                                     fillOpacity: 0,
                                                     lineJoin: 'round',
@@ -861,6 +864,8 @@ function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCatego
                                                     className: 'map-footprint',
                                                     color: FOOTPRINT_COLOR,
                                                     weight: 2,
+                                                    // color: 'yellow',
+                                                    // weight: 4,
                                                     opacity: 0,
                                                     fillOpacity: 0,
                                                     lineJoin: 'round',
@@ -870,11 +875,12 @@ function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCatego
                                                         if (spotlight) return;
                                                         (e.target as L.Path).setStyle({ opacity: 0.95 });
                                                         cornerRefs.current.get(element.id)?.setStyle({ fillOpacity: 0.18 });
+                                                        // cornerRefs.current.get(element.id)?.setStyle({ fillOpacity: 0.18, opacity: 0.95 });
                                                     },
                                                     mouseout: (e) => {
                                                         if (spotlight) return;
                                                         (e.target as L.Path).setStyle({ opacity: 0 });
-                                                        cornerRefs.current.get(element.id)?.setStyle({ fillOpacity: 0 });
+                                                        cornerRefs.current.get(element.id)?.setStyle({ fillOpacity: 0, opacity: 0 });
                                                     },
                                                     click: () => {
                                                         handleOverlayClick(map.id, element.id, element.image_id);
