@@ -60,9 +60,11 @@ export default function ReportOverview() {
 
   // Live push updates via SSE. Events land in the same react-query caches the
   // polling hooks below read from, so all downstream logic stays unchanged.
-  // While the stream is up (sseActive), the intervals are suspended; if it
-  // drops, polling resumes automatically as a fallback.
-  const { sseActive } = useReportEvents(Number(report_id));
+  // While SSE owns the updates (streaming, or idle because nothing is running),
+  // the intervals are suspended; if the stream fails, polling resumes as a
+  // fallback. `sse.wake()` re-opens the stream when a job is started here.
+  const sse = useReportEvents(Number(report_id));
+  const sseActive = sse.suspendPolling;
 
   // General report status polling (works for both mapping and reconstruction)
   const { data: polledData } = usePollReportStatus(
@@ -207,6 +209,7 @@ export default function ReportOverview() {
           onProcessingStarted={() => {
             setShouldPoll(true);
             setIsEditing(false);
+            sse.wake();
           }}
           isEditing={isEditing}
           setIsEditing={setIsEditing}
@@ -225,7 +228,7 @@ export default function ReportOverview() {
         return (
           <Upload
             report={report}
-            onProcessingStarted={() => { setShouldPoll(true); }}
+            onProcessingStarted={() => { setShouldPoll(true); sse.wake(); }}
             statusMessage={reconstructionMessage}
           />
         );
@@ -254,7 +257,7 @@ export default function ReportOverview() {
   };
 
   return (
-    <SseActiveContext.Provider value={sseActive}>
+    <SseActiveContext.Provider value={sse}>
       {isFullscreenMode ? (
         <div className="w-full h-[calc(100vh-54px)] overflow-hidden">
           {renderReportContent(liveReport!)}

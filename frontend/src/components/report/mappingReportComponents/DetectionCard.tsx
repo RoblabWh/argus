@@ -44,7 +44,7 @@ import {
 } from "@/utils/detectionUtils";
 import { useMaps } from "@/hooks/useMaps";
 import { useImages } from "@/hooks/imageHooks";
-import { useSseActive } from "@/hooks/useReportEvents";
+import { useSseActive, useSseWake } from "@/hooks/useReportEvents";
 
 
 interface Props {
@@ -117,6 +117,7 @@ export function DetectionCard({ report_id, setThresholds, thresholds, setFilter,
     }, [isRunning.data]);
 
     const sseActive = useSseActive();
+    const wakeSse = useSseWake();
     const startDetection = useStartDetection();
     const detectionStatus = useDetectionStatusPolling(report_id, pollingEnabled, sseActive);
     const fetchNewDetections = useFetchNewDetections(report_id);
@@ -164,6 +165,7 @@ export function DetectionCard({ report_id, setThresholds, thresholds, setFilter,
                 onSuccess: () => {
                     queryClient.invalidateQueries({ queryKey: ["detections", report_id] });
                     setPollingEnabled(true);
+                    wakeSse(); // the stream is released while a report is idle
                 },
             }
         );

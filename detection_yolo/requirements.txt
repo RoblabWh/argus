@@ -2,7 +2,7 @@
 ultralytics==8.4.101
 redis==7.1.0
 celery==5.6.0
-pillow==12.2.0
+pillow==12.3.0
 numpy==1.26.3
 # DINOv3 appearance re-identification (reid/) — torch comes from the base image
 transformers==5.9.0

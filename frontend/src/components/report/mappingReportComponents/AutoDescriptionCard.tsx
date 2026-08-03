@@ -14,7 +14,7 @@ import {
     useStartAutoDescription,
     useAutoDescriptionPolling
 } from "@/hooks/autoDescriptionHooks";
-import { useSseActive } from "@/hooks/useReportEvents";
+import { useSseActive, useSseWake } from "@/hooks/useReportEvents";
 
 type Props = {
     reportID: number;
@@ -28,6 +28,7 @@ export function AutoDescriptionCard({ reportID, description }: Props) {
     const [descriptionText, setDescriptionText] = React.useState(description || "");
 
     const sseActive = useSseActive();
+    const wakeSse = useSseWake();
     const { mutate: start } = useStartAutoDescription(reportID);
     const { data, isLoading: isPolling } = useAutoDescriptionPolling(reportID, polling, sseActive);
 
@@ -50,7 +51,11 @@ export function AutoDescriptionCard({ reportID, description }: Props) {
 
     const handleStart = () => {
         start(undefined, {
-            onSuccess: () => { setPolling(true); toast.success("Started AI description."); },
+            onSuccess: () => {
+                setPolling(true);
+                wakeSse(); // the stream is released while a report is idle
+                toast.success("Started AI description.");
+            },
         });
     };
 

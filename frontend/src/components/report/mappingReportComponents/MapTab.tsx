@@ -26,7 +26,7 @@ import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
-import { Home, Group, Ungroup, CircleHelp } from 'lucide-react';
+import { Home, Group, Ungroup, CircleHelp, Contrast } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import "@/lib/Leaflet.ImageOverlay.Rotated";
 import { RotatedImageOverlay } from "@/components/report/mappingReportComponents/RotatedImageOverlay";
@@ -60,6 +60,16 @@ const CLUSTER_REP_FROM_VORONOI = true;
 
 // Accent for image-footprint overlay polygons (reads on light + dark basemaps)
 const FOOTPRINT_COLOR = "#0ea5e9"; // sky-500
+
+/** Background-agnostic marker casing for high-contrast mode: a dark ring hugging the fill,
+ *  a light ring outside it, so the marker reads on bright roofs and dark asphalt alike.
+ *  box-shadow spreads don't affect layout, so every iconSize/iconAnchor stays valid and the
+ *  ring can't shift a marker off its GPS point. */
+function markerCasing(highContrast: boolean, normalShadow: string): string {
+    return highContrast
+        ? "0 0 0 3px #fff, 0 1px 2px rgba(0,0,0,0.55)"
+        : normalShadow;
+}
 
 /** Radius in meters that encloses a cluster's members around its average center (with padding). */
 function clusterRadiusMeters(cluster: ClusterMarker): number {
@@ -127,6 +137,9 @@ function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCatego
         return lo <= hi ? { lo, hi } : { lo: range.min, hi: range.max };
     }, [thermalMap?.range, tempFilter.minAtLeast, tempFilter.maxAtMost]);
     const [spatialClusterEnabled, setSpatialClusterEnabled] = useState(true);
+    // Opt-in high-contrast marker style (opaque fill + black/white double halo) for
+    // backgrounds the class colors wash out against.
+    const [highContrast, setHighContrast] = useState(false);
     const [editDetection, setEditDetection] = useState<Detection | null>(null);
     const [zoom, setZoom] = useState(18);
     const current = theme === "system"
@@ -166,13 +179,17 @@ function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCatego
             if (!cache.has(key)) {
                 const color = getDetectionColor(className, false);
                 const centerColor = getDetectionColor(className, true);
-                const size = highlighted ? 14 :11;
+                // High contrast: opaque fill, no same-color border (the black casing ring
+                // replaces it), +2px so the core still reads inside the two rings.
+                const size = highlighted ? (highContrast ? 15 : 14) : (highContrast ? 13 : 11);
+                const fill = highContrast ? color : centerColor;
+                const border = highContrast ? "3px solid black" : `2px solid ${color}`;
                 const shadow = highlighted
                     ? `0 1px 8px rgba(0,0,0,0.65)`
                     : `0 2px 5px rgba(0,0,0,0.45)`;
                 cache.set(key, L.divIcon({
                     className: 'custom-div-icon',
-                    html: `<div class="marker-dot" style="background-color:${centerColor};width:${size}px;height:${size}px;border-radius:50%;border:1px solid ${color};box-shadow:${shadow};box-sizing:border-box;"></div>`,
+                    html: `<div class="marker-dot" style="background-color:${fill};width:${size}px;height:${size}px;border-radius:50%;border:${border};box-shadow:${markerCasing(highContrast, shadow)};box-sizing:border-box;"></div>`,
                     //html: `<div style="background-color:${color};opacity:0.85;width:14px;height:14px;border-radius:50%;border:2px solid black;"></div>`,
                     iconSize: [size, size],
                     iconAnchor: [size / 2, size / 2],
@@ -182,7 +199,9 @@ function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCatego
             return cache.get(key)!;
         };
         return getIcon;
-    }, []);
+        // Toggling contrast discards the cache so every marker gets a fresh icon —
+        // a few dozen tiny DivIcons, rebuilt only on an explicit user toggle.
+    }, [highContrast]);
 
     // Cache merged-cluster icons by class + count + whether the count badge is shown (zoom-gated)
     const getClusterIcon = useMemo(() => {
@@ -195,10 +214,18 @@ function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCatego
                 const badge = showBadge
                     ? `<span style="position:absolute;top:-7px;right:-7px;background:#111;color:#fff;border-radius:9px;font-size:10px;line-height:14px;min-width:14px;height:14px;text-align:center;padding:0 2px;border:1px solid #fff;box-sizing:border-box;">${count}</span>`
                     : "";
+                // The +2px and the casing rings both fit inside the existing 22px icon box,
+                // so the wrapper and badge offsets stay untouched. The dot sits at the
+                // wrapper's top-left rather than centered, so the +2px is pulled back by 1px
+                // to keep its center — and thus the marker's screen position — unchanged.
+                const dot = highContrast ? 13 : 11;
+                const dotOffset = highContrast ? "margin:-1px 0 0 -1px;" : "";
+                const fill = highContrast ? color : centerColor;
+                const border = highContrast ? "3px solid black" : `2px solid ${color}`;
                 cache.set(key, L.divIcon({
                     className: 'custom-div-icon',
                     html: `<div style="position:relative;width:16px;height:16px;">
-                        <div class="marker-dot" style="background-color:${centerColor};width:11px;height:11px;border-radius:50%;border:2px solid ${color};box-shadow:0 1px 4px rgba(0,0,0,0.5);box-sizing:border-box;"></div>
+                        <div class="marker-dot" style="background-color:${fill};width:${dot}px;height:${dot}px;border-radius:50%;border:${border};box-shadow:${markerCasing(highContrast, "0 1px 4px rgba(0,0,0,0.5)")};box-sizing:border-box;${dotOffset}"></div>
                         ${badge}
                     </div>`,
                     iconSize: [22, 22],
@@ -208,7 +235,7 @@ function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCatego
             }
             return cache.get(key)!;
         };
-    }, []);
+    }, [highContrast]);
 
     // Cache spatial super-cluster icons (zoomed-out proximity aggregation) by class + count.
     // Visually distinct from re-id markers: a larger filled dot with the count *inside*.
@@ -220,10 +247,20 @@ function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCatego
                 const centerColor = getDetectionColor(className, true);
                 const color = getDetectionColor(className, false);
                 const size = 24;
+                // This icon already has two concentric elements, so the double halo reuses
+                // their borders (black inner / white outer) instead of a box-shadow casing —
+                // a 3px white spread would collide with the 2px gap to the outer ring.
+                const outerBorder = highContrast ? "#fff" : centerColor;
+                const innerBorder = highContrast ? "#000" : color;
+                const dotShadow = highContrast ? "0 1px 2px rgba(0,0,0,0.55)" : "0 2px 6px rgba(0,0,0,0.5)";
+                // The #111 digit is illegible on dark class colors — outline it in white.
+                const countOutline = highContrast
+                    ? "text-shadow:0 1px 0 #fff,1px 0 0 #fff,0 -1px 0 #fff,-1px 0 0 #fff;"
+                    : "";
                 cache.set(key, L.divIcon({
                     className: 'custom-div-icon',
-                    html: `<div class="spatial-cluster spatial-cluster-ring" style="--ring-active:${color};width:${size+8}px;height:${size+8}px;border-radius:50%;border:2px solid ${centerColor};box-sizing:border-box;display:flex;align-items:center;justify-content:center;">
-                            <div style="background-color:${color};width:${size}px;height:${size}px;border-radius:50%;border:2px solid ${color};box-shadow:0 2px 6px rgba(0,0,0,0.5);box-sizing:border-box;display:flex;align-items:center;justify-content:center;color:#111;font-weight:700;font-size:13px;line-height:1; color: #000000;">${count}</div>
+                    html: `<div class="spatial-cluster spatial-cluster-ring" style="--ring-active:${color};width:${size+8}px;height:${size+8}px;border-radius:50%;border:2px solid ${outerBorder};box-sizing:border-box;display:flex;align-items:center;justify-content:center;">
+                            <div style="background-color:${color};width:${size}px;height:${size}px;border-radius:50%;border:2px solid ${innerBorder};box-shadow:${dotShadow};box-sizing:border-box;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;line-height:1;color:#000000;${countOutline}">${count}</div>
                             </div>`,
                     iconSize: [size + 8, size + 8],
                     iconAnchor: [size / 2 + 4, size / 2 + 4],
@@ -232,7 +269,7 @@ function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCatego
             }
             return cache.get(key)!;
         };
-    }, []);
+    }, [highContrast]);
 
     // Fire-class detections never render as individual map markers — they are
     // shown as the fire overlay instead (the slideshow keeps their bboxes).
@@ -911,28 +948,43 @@ function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCatego
                 )}
 
                 {hasDetectionMarkers && (
-                    <button
-                        type="button"
-                        onClick={() => setSpatialClusterEnabled(v => !v)}
-                        title={spatialClusterEnabled
-                            ? "Spatial clustering on — click to disable"
-                            : "Spatial clustering off — click to enable"}
+                    <div
                         style={{
                             position: 'absolute',
                             top: '128px',
                             left: '12px',
                             zIndex: 1000,
-                            padding: '4px',
                             borderRadius: '2px',
                             boxShadow: '0 1px 3px rgba(0,0,0,0.8)',
-                            cursor: 'pointer',
                         }}
-                        className="hover:bg-gray-100 bg-white transition-colors duration-200"
+                        className="flex flex-col overflow-hidden"
                     >
-                        {spatialClusterEnabled
-                            ? <Group size={22} className="dark:text-black" />
-                            : <Ungroup size={22} className="dark:text-black" />}
-                    </button>
+                        <button
+                            type="button"
+                            onClick={() => setSpatialClusterEnabled(v => !v)}
+                            title={spatialClusterEnabled
+                                ? "Spatial clustering on — click to disable"
+                                : "Spatial clustering off — click to enable"}
+                            aria-pressed={spatialClusterEnabled}
+                            className="p-1 cursor-pointer hover:bg-gray-100 bg-white transition-colors duration-200"
+                        >
+                            {spatialClusterEnabled
+                                ? <Group size={22} className="dark:text-black" />
+                                : <Ungroup size={22} className="dark:text-black" />}
+                        </button>
+                        <div className="h-px bg-gray-300" />
+                        <button
+                            type="button"
+                            onClick={() => setHighContrast(v => !v)}
+                            title={highContrast
+                                ? "High-contrast markers on — click for the default style"
+                                : "High-contrast markers off — click to enable"}
+                            aria-pressed={highContrast}
+                            className={`p-1 cursor-pointer hover:bg-gray-100 transition-colors duration-200 ${highContrast ? "bg-gray-200" : "bg-white"}`}
+                        >
+                            <Contrast className={highContrast ? "[&>path]:fill-current dark:text-black" : "dark:text-black"}  size={22}/>
+                        </button>
+                    </div>
                 )}
             </MapContainer>
 
