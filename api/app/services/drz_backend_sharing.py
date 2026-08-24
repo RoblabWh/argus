@@ -2,9 +2,7 @@ import datetime as dt
 import json
 import requests
 
-#iais_url = "http://iais-backend:8000/api/"
-iais_url = "https://fake-rlw.rettungsrobotik.de/"
-iais_url = "https://eve.iais.fraunhofer.de/"
+
 import logging
 logger = logging.getLogger(__name__)
 from app.config import config

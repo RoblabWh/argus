@@ -7,7 +7,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import type { Map } from "@/types/map"
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import { useMaps } from "@/hooks/useMaps"
-import { getApiUrl, getExportReportUrl } from "@/api"
+import { getExportReportUrl, getMapDownloadUrl, type MapDownloadFormat } from "@/api"
 import { useSendMapToDrz } from "@/hooks/useSendMapToDRZ";
 import { Loader2, Download, FolderArchive, Send } from "lucide-react"
 
@@ -65,16 +65,21 @@ export function ExportPopup({
     const [activeTab, setActiveTab] = useState("export")
     const [selectedMapId, setSelectedMapId] = useState<number | null>(null)
     const [filename, setFilename] = useState<string>("")
+    const [downloadFormat, setDownloadFormat] = useState<MapDownloadFormat>("png")
+    const [isDownloading, setIsDownloading] = useState(false)
     const [layerName, setLayerName] = useState<string>(`argus_report${reportId}`)
     const [serverMessage, setServerMessage] = useState<string>("")
     const [exportError, setExportError] = useState<string>("")
 
     const { data: maps, isLoading: isLoadingMaps, isError: isErrorMaps } = useMaps(reportId)
-    const apiUrl = getApiUrl()
     const { mutateAsync: sendToDrz, isPending: isSending } = useSendMapToDrz()
 
     const hasMaps = maps && maps.length > 0
-    const isBusy = isExporting || isSending
+    const isBusy = isExporting || isSending || isDownloading
+
+    const selectedMap = maps?.find((m: Map) => m.id === selectedMapId)
+    // Maps built before UTM bounds were stored can only be projected to WGS84
+    const hasUtmBounds = Boolean(selectedMap?.bounds?.utm)
 
     // Select first map automatically
     useEffect(() => {
@@ -85,13 +90,17 @@ export function ExportPopup({
 
     // Initialize filename when a map is selected
     useEffect(() => {
-        if (selectedMapId && maps) {
-            const selected = maps.find((m: Map) => m.id === selectedMapId)
-            if (selected) {
-                setFilename(selected.name?.replace(/\.[^/.]+$/, "") || "orthophoto")
-            }
+        if (selectedMap) {
+            setFilename(selectedMap.name?.replace(/\.[^/.]+$/, "") || "orthophoto")
         }
-    }, [selectedMapId, maps])
+    }, [selectedMap])
+
+    // Fall back to PNG if the chosen format isn't available for this map
+    useEffect(() => {
+        if (downloadFormat === "geotiff_utm" && selectedMap && !hasUtmBounds) {
+            setDownloadFormat("png")
+        }
+    }, [downloadFormat, selectedMap, hasUtmBounds])
 
     useEffect(() => {
         if (open) {
@@ -105,13 +114,18 @@ export function ExportPopup({
         if (isExporting) setActiveTab("export")
     }, [isExporting])
 
-    const handleClose = () => {
-        if (isBusy) return
+    const resetFields = () => {
         setSelectedMapId(null)
         setFilename("")
+        setDownloadFormat("png")
         setLayerName(`argus_report${reportId}`)
         setServerMessage("")
         setExportError("")
+    }
+
+    const handleClose = () => {
+        if (isBusy) return
+        resetFields()
         onOpenChange(false)
     }
 
@@ -119,11 +133,7 @@ export function ExportPopup({
         if (!nextOpen && isBusy) return
         onOpenChange(nextOpen)
         if (!nextOpen) {
-            setSelectedMapId(null)
-            setFilename("")
-            setLayerName(`argus_report${reportId}`)
-            setServerMessage("")
-            setExportError("")
+            resetFields()
         }
     }
 
@@ -158,19 +168,41 @@ export function ExportPopup({
         }
     }
 
-    const handleDownload = () => {
-        if (!selectedMapId || !maps) return
-        const selectedMap = maps.find((m: Map) => m.id === selectedMapId)
+    const handleDownload = async () => {
         if (!selectedMap) return
 
-        const link = document.createElement("a")
-        link.href = `${apiUrl}/${selectedMap.url}`
-        link.target = "_blank"
-        link.download = ""
-        document.body.appendChild(link)
-        link.click()
-        document.body.removeChild(link)
-        handleClose()
+        setIsDownloading(true)
+        setExportError("")
+        try {
+            const response = await fetch(getMapDownloadUrl(reportId, selectedMap.id, downloadFormat, filename))
+            if (!response.ok) {
+                const detail = await response.json().catch(() => null)
+                throw new Error(detail?.detail || `Download failed: ${response.status}`)
+            }
+            const blob = await response.blob()
+            const disposition = response.headers.get("content-disposition")
+            const filenameMatch = disposition?.match(/filename="?(.+?)"?$/)
+            const downloadName = filenameMatch?.[1]
+                || `${filename || "orthophoto"}${downloadFormat === "png" ? ".png" : ".tif"}`
+
+            const url = URL.createObjectURL(blob)
+            const link = document.createElement("a")
+            link.href = url
+            link.download = downloadName
+            document.body.appendChild(link)
+            link.click()
+            document.body.removeChild(link)
+            URL.revokeObjectURL(url)
+
+            // close directly — handleClose would still see the stale isBusy
+            setIsDownloading(false)
+            resetFields()
+            onOpenChange(false)
+        } catch (err: any) {
+            console.error("Download failed:", err)
+            setExportError(err?.message || "Download failed.")
+            setIsDownloading(false)
+        }
     }
 
     const handleSendToDrz = async () => {
@@ -206,7 +238,16 @@ export function ExportPopup({
                     <DialogTitle>Export Report</DialogTitle>
                 </DialogHeader>
 
-                <Tabs value={activeTab} onValueChange={(v) => { if (!isBusy) setActiveTab(v) }} className="mt-2">
+                <Tabs
+                    value={activeTab}
+                    onValueChange={(v) => {
+                        if (isBusy) return
+                        setExportError("")
+                        setServerMessage("")
+                        setActiveTab(v)
+                    }}
+                    className="mt-2"
+                >
                     <TabsList className="w-full">
                         <TabsTrigger value="export" disabled={isBusy && activeTab !== "export"}>
                             <FolderArchive className="size-3.5" />
@@ -244,7 +285,8 @@ export function ExportPopup({
                     {/* Download Orthophoto */}
                     <TabsContent value="download" className="space-y-4">
                         <p className="text-sm text-muted-foreground">
-                            Downloads the selected orthophoto to your device.
+                            Downloads the selected orthophoto to your device. GeoTIFF keeps the
+                            georeferencing, so the map can be loaded into QGIS or ArcGIS.
                         </p>
                         <MapSelector
                             maps={maps}
@@ -253,18 +295,45 @@ export function ExportPopup({
                             isLoading={isLoadingMaps}
                             isError={isErrorMaps}
                         />
-                        {selectedMapId && (
-                            <div className="space-y-2">
-                                <Label>Filename</Label>
-                                <Input
-                                    value={filename}
-                                    onChange={(e) => setFilename(e.target.value)}
-                                    placeholder="Enter filename"
-                                />
-                            </div>
+                        {selectedMap && (
+                            <>
+                                <div className="space-y-2">
+                                    <Label>Format</Label>
+                                    <Select
+                                        value={downloadFormat}
+                                        onValueChange={(value) => setDownloadFormat(value as MapDownloadFormat)}
+                                    >
+                                        <SelectTrigger>
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="png">PNG (image only)</SelectItem>
+                                            <SelectItem value="geotiff_wgs84">GeoTIFF (WGS84 / EPSG:4326)</SelectItem>
+                                            <SelectItem value="geotiff_utm" disabled={!hasUtmBounds}>
+                                                GeoTIFF (UTM){!hasUtmBounds && " — not available for this map"}
+                                            </SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Filename</Label>
+                                    <Input
+                                        value={filename}
+                                        onChange={(e) => setFilename(e.target.value)}
+                                        placeholder="Enter filename"
+                                    />
+                                </div>
+                            </>
                         )}
-                        <Button onClick={handleDownload} disabled={!hasMaps} className="w-full">
-                            <Download className="h-4 w-4" /> Download Orthophoto
+                        {exportError && (
+                            <p className="text-xs text-red-600">{exportError}</p>
+                        )}
+                        <Button onClick={handleDownload} disabled={!hasMaps || isDownloading} className="w-full">
+                            {isDownloading ? (
+                                <><Loader2 className="h-4 w-4 animate-spin" /> Preparing download...</>
+                            ) : (
+                                <><Download className="h-4 w-4" /> Download Orthophoto</>
+                            )}
                         </Button>
                     </TabsContent>
 

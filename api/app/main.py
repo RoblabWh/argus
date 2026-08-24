@@ -68,7 +68,28 @@ app.add_middleware(
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 static_dir = os.path.join(current_dir, "../reports_data")
-app.mount("/reports_data", StaticFiles(directory=static_dir), name="static")
+
+
+class CORSStaticFiles(StaticFiles):
+    """StaticFiles that always emits CORS headers.
+
+    CORSMiddleware only adds `Access-Control-Allow-Origin` when the request
+    carries an `Origin` header. Plain `<img src>` loads send none, so their
+    response gets cached without it; a later CORS `fetch` of the same URL
+    (photo-sphere-viewer's TextureLoader) reuses that cache entry and is
+    blocked. Emitting the header unconditionally keeps a single cache entry
+    valid for both kinds of consumer.
+    """
+
+    async def get_response(self, path: str, scope):
+        response = await super().get_response(path, scope)
+        response.headers.setdefault("Access-Control-Allow-Origin", "*")
+        response.headers.setdefault("Vary", "Origin")
+        response.headers.setdefault("Cache-Control", "public, max-age=3600")
+        return response
+
+
+app.mount("/reports_data", CORSStaticFiles(directory=static_dir), name="static")
 
 # Routers will be defined here
 app.include_router(groups.router)

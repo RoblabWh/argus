@@ -4,8 +4,9 @@ import shutil
 from concurrent.futures import ThreadPoolExecutor
 
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Literal
 import logging
 
 import app.crud.report as crud
@@ -37,6 +38,7 @@ from app.services.camera_config_service import extract_video_metadata
 import app.services.mapping.processing_manager as process_report_service
 import app.services.image_describer as image_describer_service
 import app.services.drz_backend_sharing as drz_service
+import app.services.map_export as map_export_service
 import app.services.events as events_service
 from app.config import config
 import redis
@@ -216,6 +218,40 @@ def get_mapping_report_single_map(report_id: int, map_id: int, db: Session = Dep
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
     return map_crud.get_full_map(db, map_id)
+
+@router.get("/{report_id}/mapping_report/maps/{map_id}/download")
+def download_mapping_report_map(
+    report_id: int,
+    map_id: int,
+    format: Literal["png", "geotiff_wgs84", "geotiff_utm"] = "png",
+    filename: str | None = None,
+    db: Session = Depends(get_db),
+):
+    """Download a map as PNG or as a georeferenced GeoTIFF (WGS84 or native UTM).
+
+    Deliberately a sync def — the rasterio write runs in FastAPI's threadpool.
+    """
+    try:
+        map = crud.get_mapping_report_map(db, map_id, report_id)  # ownership check
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+    try:
+        path, media_type = map_export_service.export_map_file(map, format)
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.exception(f"Failed to export map {map_id} as {format}")
+        raise HTTPException(status_code=500, detail=f"Failed to export map: {e}")
+
+    stem = os.path.splitext(os.path.basename(filename or map.name or ""))[0].strip()
+    if not stem:
+        stem = f"map_{map_id}"
+    download_name = stem + map_export_service.file_extension(format)
+
+    return FileResponse(path, media_type=media_type, filename=download_name)
 
 @router.get("/{report_id}/mapping_report/webodm_project_id", response_model=int | None)
 def get_mapping_report_webodm_project_id(report_id: int, db: Session = Depends(get_db)):

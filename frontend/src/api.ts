@@ -87,6 +87,13 @@ export const getMaps = (report_id: number) => fetchJson<Map[]>(`/reports/${repor
 export const getMapsSlim = (report_id: number) => fetchJson<Map[]>(`/reports/${report_id}/mapping_report/maps_slim`);
 export const getMapById = (report_id: number, map_id: number) => fetchJson<Map>(`/reports/${report_id}/mapping_report/maps/${map_id}`);
 
+export type MapDownloadFormat = "png" | "geotiff_wgs84" | "geotiff_utm";
+export const getMapDownloadUrl = (report_id: number, map_id: number, format: MapDownloadFormat, filename?: string): string => {
+  const params = new URLSearchParams({ format });
+  if (filename) params.set("filename", filename);
+  return `${API_URL}/reports/${report_id}/mapping_report/maps/${map_id}/download?${params.toString()}`;
+};
+
 // SSE stream of live report events (see api/SSE_MIGRATION_PLAN.md)
 export const getReportEventsUrl = (report_id: number): string => `${API_URL}/reports/${report_id}/events`;
 export const getODMProjectID = (report_id: number) => fetchJson<{ webodm_project_id: string }>(`/reports/${report_id}/mapping_report/webodm_project_id`);

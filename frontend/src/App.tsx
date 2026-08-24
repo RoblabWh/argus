@@ -10,9 +10,14 @@ import Report from "@/pages/report";
 import Group from "./pages/group";
 import { BreadcrumbProvider } from "@/contexts/BreadcrumbContext";
 import { ThemeProvider } from "@/components/ui/theme-provider";
+import { useSyncDetectionColors } from "@/hooks/useDetectionColors";
 
 
 function App() {
+  // Mirror the configured detection colors into the module store that
+  // getDetectionColor() reads, so every route renders them without the user
+  // having to visit the settings page.
+  useSyncDetectionColors();
 
   return (
     <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">

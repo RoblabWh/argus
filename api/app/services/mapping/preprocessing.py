@@ -288,6 +288,9 @@ def _apply_default_mapping_settings(images: list, settings: dict, db: Session):
 
     If apply_manual_defaults=False, images with any required manual field are marked
     non-mappable — preventing previously persisted values from silently being reused.
+
+    Panoramas never take part in mapping: they get no defaults and are forced
+    non-mappable, which also repairs rows flagged mappable by older uploads.
     """
     apply_manual_defaults = settings.get("apply_manual_defaults", True)
     default_fov = settings.get("default_fov")
@@ -301,6 +304,13 @@ def _apply_default_mapping_settings(images: list, settings: dict, db: Session):
     forced_non_mappable_ids = []
 
     for img in images:
+        if img.panoramic:
+            # Panoramas are not mapping images: no defaults, and correct rows
+            # that older uploads had already flagged mappable.
+            if img.mappable:
+                img.mappable = False
+                forced_non_mappable_ids.append(img.id)
+            continue
         if not img.mapping_data:
             continue
         md = img.mapping_data
@@ -364,7 +374,7 @@ def _apply_default_mapping_settings(images: list, settings: dict, db: Session):
 
     if forced_non_mappable_ids:
         crud_image.mark_images_non_mappable(db, forced_non_mappable_ids)
-        logger.info(f"Marked {len(forced_non_mappable_ids)} images non-mappable (apply_manual_defaults=False)")
+        logger.info(f"Marked {len(forced_non_mappable_ids)} images non-mappable")
 
 
 def _check_altitude(images: list[ImageOut], settings: dict) -> tuple:
@@ -382,6 +392,8 @@ def _check_altitude(images: list[ImageOut], settings: dict) -> tuple:
     default_altitude = settings.get("default_flight_height", 50.0)  # Default altitude if none found
 
     for image in images:
+        if image.panoramic:
+            continue
         if image.mapping_data:
 
             rel_altitude = None

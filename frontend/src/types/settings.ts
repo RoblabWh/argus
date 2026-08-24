@@ -9,11 +9,9 @@ export interface SettingsData {
   DRZ_AUTHOR_NAME: string;
   DRZ_BACKEND_USERNAME: string;
   DRZ_BACKEND_PASSWORD: string;
-  DETECTION_COLORS: {
-    fire: string;
-    vehicle: string;
-    human: string;
-  };
+  /** class_name → #rrggbb. Free-form: the user adds/removes classes in the
+   * settings page, and any class absent here gets an automatic color. */
+  DETECTION_COLORS: Record<string, string>;
 };
 
 export type WebODMSettings = {

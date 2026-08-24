@@ -69,7 +69,10 @@ export function Upload({ report, onProcessingStarted, isEditing, setIsEditing, s
   useEffect(() => {
     const allImages = uploads
       .map((u) => u.imageObject)
-      .filter((img): img is NonNullable<typeof img> => !!img);
+      .filter((img): img is NonNullable<typeof img> => !!img)
+      // Panoramas are never mapped, so their missing EXIF must not make the UI
+      // ask the user for mapping metadata.
+      .filter((img) => !img.panoramic);
 
     setShowManualAltitudeField(
       allImages.some((img) => img.mapping_data?.rel_altitude_method === "manual")

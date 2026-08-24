@@ -142,7 +142,9 @@ def extract_image_metadata(image_path: str) -> dict:
     try:
         mappable, mapping_data = _extract_mapping_data(metadata, config, data, model_name)
         if mapping_data:
-            data["mappable"] = mappable
+            # Panoramas are never mapping inputs. Keep the extracted orientation
+            # data, but never flag them mappable.
+            data["mappable"] = mappable and not data["panoramic"]
             data["mapping_data"] = mapping_data
     except Exception as e:
         logger.warning(f"Error extracting mapping data: {e}")

@@ -4,8 +4,8 @@
     "DRZ_BACKEND_USERNAME": "",
     "DRZ_BACKEND_PASSWORD": "",
     "DETECTION_COLORS": {
-        "fire": "#ec5b81",
+        "fire": "#ffa500",
         "vehicle": "#00ffff",
-        "human": "#8e933e"
+        "human": "#00ff00"
     }
 }

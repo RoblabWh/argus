@@ -14,6 +14,7 @@ import { useImages } from "@/hooks/imageHooks";
 import { useDetections } from "@/hooks/detectionHooks";
 import { useQueryClient } from "@tanstack/react-query";
 import { getDetectionColor } from "@/types/detection";
+import { useDetectionColorsVersion } from "@/hooks/useDetectionColors";
 import { DetectionSharePopup } from "./DetectionSharePopup";
 import { DetectionEditPopup } from "./DetectionEditPopup";
 import { PanoramaViewer } from "./PanoramaViewer";
@@ -42,6 +43,9 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
     visibleCategories,
     report_id,
 }) => {
+    // Re-render when the configured detection colors change (getDetectionColor
+    // reads a module-level store, not props).
+    useDetectionColorsVersion();
     const apiUrl = getApiUrl();
     const containerRef = useRef<HTMLDivElement>(null);
     const stageRef = useRef<any>(null);
@@ -193,7 +197,9 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
         if (!selectedImage) return;
 
         setProbeResult(null);
-        setImageUrl(`${apiUrl}/${selectedImage.url}`);
+        // Panoramas are rendered by PanoramaViewer, not the Konva stage. Skip the
+        // useImage load so the (often very large) file is not fetched twice.
+        setImageUrl(selectedImage.panoramic ? "" : `${apiUrl}/${selectedImage.url}`);
 
         if (selectedImage.thermal && selectedImage.thermal_data?.counterpart_id) {
             if (images) {

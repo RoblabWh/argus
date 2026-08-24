@@ -1,8 +1,9 @@
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from pathlib import Path
 from typing import Dict, Optional, Any
 import os
+import re
 
 
 class WebODMSettings(BaseModel):
@@ -27,8 +28,37 @@ class DRZSettings(BaseModel):
     BACKEND_PASSWORD: str
 
 
+_HEX_COLOR = re.compile(r"#[0-9a-fA-F]{6}")
+
+# The class list is user-editable in the settings page, so it is free-form —
+# but bounded, since it all lands in a single config.json key.
+MAX_DETECTION_COLORS = 200
+
+
 class AppearanceSettings(BaseModel):
-    DETECTION_COLORS: Dict[str, str]  # e.g. {"fire":"#ff0000", "vehicle":"#00ff00"}
+    # Detection class_name -> "#rrggbb". Free-form keys: class names come from
+    # whichever detector produced them (e.g. "fire", "human", "land_vehicle").
+    # Classes absent here get an automatic color assigned by the frontend.
+    DETECTION_COLORS: Dict[str, str]
+
+    @field_validator("DETECTION_COLORS")
+    @classmethod
+    def _validate_colors(cls, value: Dict[str, str]) -> Dict[str, str]:
+        if len(value) > MAX_DETECTION_COLORS:
+            raise ValueError(
+                f"at most {MAX_DETECTION_COLORS} detection colors allowed, got {len(value)}"
+            )
+        cleaned: Dict[str, str] = {}
+        for class_name, color in value.items():
+            name = class_name.strip()
+            if not name:
+                raise ValueError("detection class names must not be empty")
+            if not _HEX_COLOR.fullmatch(color):
+                raise ValueError(
+                    f"color for {name!r} must be a #rrggbb hex value, got {color!r}"
+                )
+            cleaned[name] = color.lower()
+        return cleaned
 
 
 class SettingsTestResult(BaseModel):

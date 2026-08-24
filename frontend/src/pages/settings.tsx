@@ -33,6 +33,8 @@ import {
   Check,
   X,
   Loader2,
+  Plus,
+  Trash2,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import {
@@ -47,6 +49,7 @@ import {
   useTestDrzSettings,
   useTestHuggingFaceSettings,
 } from '@/hooks/settingsHooks';
+import { DEFAULT_DETECTION_COLORS } from '@/types/detection';
 import type {
   SettingsData,
   SettingsTestResult,
@@ -279,12 +282,12 @@ export default function Settings() {
     DRZ_AUTHOR_NAME: '',
     DRZ_BACKEND_USERNAME: '',
     DRZ_BACKEND_PASSWORD: '',
-    DETECTION_COLORS: {
-      fire: '#ff0000',
-      vehicle: '#00ff00',
-      human: '#0000ff',
-    },
+    DETECTION_COLORS: { ...DEFAULT_DETECTION_COLORS },
   });
+
+  // Draft row for a class being added — null while the add form is closed.
+  const [colorDraft, setColorDraft] = useState<{ name: string; color: string } | null>(null);
+  const [colorDraftError, setColorDraftError] = useState<string | null>(null);
 
   const [locked, setLocked] = useState<Record<LockKey, boolean>>(INITIAL_LOCKED);
   const [weatherResult, setWeatherResult] = useState<SettingsTestResult | null>(null);
@@ -310,11 +313,11 @@ export default function Settings() {
         DRZ_AUTHOR_NAME: settingsData.DRZ_AUTHOR_NAME || '',
         DRZ_BACKEND_USERNAME: settingsData.DRZ_BACKEND_USERNAME || '',
         DRZ_BACKEND_PASSWORD: settingsData.DRZ_BACKEND_PASSWORD || '',
-        DETECTION_COLORS: {
-          fire: settingsData.DETECTION_COLORS.fire || '#ff0000',
-          vehicle: settingsData.DETECTION_COLORS.vehicle || '#00ff00',
-          human: settingsData.DETECTION_COLORS.human || '#0000ff',
-        },
+        // Whatever the backend has is authoritative, including which classes
+        // exist. Only a never-configured backend ({}) falls back to the defaults.
+        DETECTION_COLORS: Object.keys(settingsData.DETECTION_COLORS ?? {}).length
+          ? { ...settingsData.DETECTION_COLORS }
+          : { ...DEFAULT_DETECTION_COLORS },
       });
     }
   }, [settingsData]);
@@ -458,6 +461,42 @@ export default function Settings() {
     setResult: setDrzResult,
     label: 'DRZ',
   });
+
+  function setClassColor(className: string, color: string) {
+    // Any edit invalidates the "Saved." confirmation next to the button.
+    updateDetectionColors.reset();
+    setSettings((prev) => ({
+      ...prev,
+      DETECTION_COLORS: { ...prev.DETECTION_COLORS, [className]: color },
+    }));
+  }
+
+  function removeClassColor(className: string) {
+    updateDetectionColors.reset();
+    setSettings((prev) => {
+      const next = { ...prev.DETECTION_COLORS };
+      delete next[className];
+      return { ...prev, DETECTION_COLORS: next };
+    });
+  }
+
+  function confirmColorDraft() {
+    if (!colorDraft) return;
+    // class_name is case-sensitive in the DB ("human" and "Person" both exist),
+    // so the key must match the detector's output exactly.
+    const name = colorDraft.name.trim();
+    if (!name) {
+      setColorDraftError('Enter a class name.');
+      return;
+    }
+    if (name in settings.DETECTION_COLORS) {
+      setColorDraftError(`"${name}" already has a color.`);
+      return;
+    }
+    setClassColor(name, colorDraft.color);
+    setColorDraft(null);
+    setColorDraftError(null);
+  }
 
   function saveAppearance() {
     updateDetectionColors.mutate({ DETECTION_COLORS: { ...settings.DETECTION_COLORS } });
@@ -700,27 +739,112 @@ export default function Settings() {
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              Legacy override for the built-in classes below. New detection classes
-              receive a random color automatically.
+              Colors are matched against a detection's class name exactly (it is
+              case-sensitive). Any class not listed here — including ones you remove —
+              gets an automatic color derived from its name.
             </p>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {(['fire', 'vehicle', 'human'] as const).map((type) => (
+              {Object.entries(settings.DETECTION_COLORS).map(([type, color]) => (
                 <div key={type} className="space-y-1.5">
-                  <Label>{type}</Label>
-                  <ColorPicker
-                    value={settings.DETECTION_COLORS[type]}
-                    onChange={(color) =>
-                      setSettings((prev) => ({
-                        ...prev,
-                        DETECTION_COLORS: { ...prev.DETECTION_COLORS, [type]: color },
-                      }))
-                    }
-                  />
+                  <div className="flex items-center gap-2">
+                    <Label className="truncate" title={type}>{type}</Label>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                          onClick={() => removeClassColor(type)}
+                          aria-label={`Remove ${type}`}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        Remove — <span className="font-mono">{type}</span> then gets an
+                        automatic color.
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
+                  <ColorPicker value={color} onChange={(c) => setClassColor(type, c)} />
                 </div>
               ))}
             </div>
-            <div className="flex items-center justify-end">
-              <Button onClick={saveAppearance}>Save</Button>
+
+            {colorDraft ? (
+              <div className="flex flex-wrap items-end gap-2 rounded-md border border-dashed p-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="new-detection-class">Class name</Label>
+                  <Input
+                    id="new-detection-class"
+                    autoFocus
+                    className="w-56"
+                    placeholder="e.g. land_vehicle"
+                    value={colorDraft.name}
+                    onChange={(e) => {
+                      setColorDraft({ ...colorDraft, name: e.target.value });
+                      setColorDraftError(null);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') confirmColorDraft();
+                      if (e.key === 'Escape') {
+                        setColorDraft(null);
+                        setColorDraftError(null);
+                      }
+                    }}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Color</Label>
+                  <ColorPicker
+                    value={colorDraft.color}
+                    onChange={(c) => setColorDraft({ ...colorDraft, color: c })}
+                  />
+                </div>
+                <div className="flex items-center gap-1 pb-1">
+                  <Button size="sm" onClick={confirmColorDraft}>
+                    <Check className="mr-1 h-4 w-4" /> Add
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => {
+                      setColorDraft(null);
+                      setColorDraftError(null);
+                    }}
+                  >
+                    <X className="mr-1 h-4 w-4" /> Cancel
+                  </Button>
+                </div>
+                {colorDraftError && (
+                  <p className="w-full text-sm text-destructive">{colorDraftError}</p>
+                )}
+              </div>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setColorDraft({ name: '', color: '#ff00ff' })}
+              >
+                <Plus className="mr-1 h-4 w-4" /> Add class
+              </Button>
+            )}
+
+            <div className="flex items-center justify-end gap-3">
+              {updateDetectionColors.isSuccess && !updateDetectionColors.isPending && (
+                <span className="text-sm text-muted-foreground">Saved.</span>
+              )}
+              {updateDetectionColors.isError && (
+                <span className="text-sm text-destructive">
+                  {(updateDetectionColors.error as Error).message}
+                </span>
+              )}
+              <Button onClick={saveAppearance} disabled={updateDetectionColors.isPending}>
+                {updateDetectionColors.isPending && (
+                  <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                )}
+                Save
+              </Button>
             </div>
           </CardContent>
         </Card>

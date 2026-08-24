@@ -3,6 +3,7 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import type { ImageBasic } from "@/types/image";
 import type { Detection, FireMapRegion } from "@/types/detection";
 import { getDetectionColor, confidenceToColor, CONFIDENCE_RAMP_GRADIENT, FIRE_CLASSES } from "@/types/detection";
+import { useDetectionColorsVersion } from "@/hooks/useDetectionColors";
 import { getApiUrl } from "@/api";
 import {
     MapContainer,
@@ -140,6 +141,9 @@ function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCatego
     // Opt-in high-contrast marker style (opaque fill + black/white double halo) for
     // backgrounds the class colors wash out against.
     const [highContrast, setHighContrast] = useState(false);
+    // Bumped when the configured detection colors change; the icon caches below
+    // key on it so a color edit in the settings page repaints the markers.
+    const colorsVersion = useDetectionColorsVersion();
     const [editDetection, setEditDetection] = useState<Detection | null>(null);
     const [zoom, setZoom] = useState(18);
     const current = theme === "system"
@@ -199,9 +203,10 @@ function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCatego
             return cache.get(key)!;
         };
         return getIcon;
-        // Toggling contrast discards the cache so every marker gets a fresh icon —
-        // a few dozen tiny DivIcons, rebuilt only on an explicit user toggle.
-    }, [highContrast]);
+        // Toggling contrast, or editing the class colors, discards the cache so every
+        // marker gets a fresh icon — a few dozen tiny DivIcons, rebuilt only on an
+        // explicit user action.
+    }, [highContrast, colorsVersion]);
 
     // Cache merged-cluster icons by class + count + whether the count badge is shown (zoom-gated)
     const getClusterIcon = useMemo(() => {
@@ -235,7 +240,7 @@ function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCatego
             }
             return cache.get(key)!;
         };
-    }, [highContrast]);
+    }, [highContrast, colorsVersion]);
 
     // Cache spatial super-cluster icons (zoomed-out proximity aggregation) by class + count.
     // Visually distinct from re-id markers: a larger filled dot with the count *inside*.
@@ -269,7 +274,7 @@ function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCatego
             }
             return cache.get(key)!;
         };
-    }, [highContrast]);
+    }, [highContrast, colorsVersion]);
 
     // Fire-class detections never render as individual map markers — they are
     // shown as the fire overlay instead (the slideshow keeps their bboxes).

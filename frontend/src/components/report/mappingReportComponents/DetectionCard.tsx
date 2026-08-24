@@ -25,6 +25,7 @@ import {
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import type { Detection, DetectionDisplayMode } from '@/types/detection';
 import { getDetectionColor } from '@/types/detection';
+import { useDetectionColorsVersion } from '@/hooks/useDetectionColors';
 import { useQueryClient } from '@tanstack/react-query';
 import {
     useStartDetection,
@@ -60,6 +61,9 @@ interface Props {
 }
 
 export function DetectionCard({ report_id, setThresholds, thresholds, setFilter, filters, visibleCategories, setVisibleCategories, detectionMode, setDetectionMode }: Props) {
+    // Re-render when the configured detection colors change (getDetectionColor
+    // reads a module-level store, not props).
+    useDetectionColorsVersion();
     const [pollingEnabled, setPollingEnabled] = useState(false);
     const isRunning = useIsDetectionRunning(report_id);
     const { data: detections, isLoading: isLoadingDetections, isError: isErrorDetections } = useDetections(report_id);

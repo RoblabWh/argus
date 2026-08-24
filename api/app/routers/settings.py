@@ -182,12 +182,12 @@ def update_drz(settings: DRZSettings):
 @router.put("/appearance")
 def update_appearance(settings: AppearanceSettings):
     """
-    These might be frontend-only (not needed at container start).
-    You can either write them into .env or store elsewhere (DB/file).
+    Persist the detection class colors to config.json. Frontend-only (no worker
+    reads them), and a whole-key replace — so removing a class from the map here
+    is how the user hands it back to an automatic color.
     """
     logger.info(f"Updating appearance settings: {settings}")
     try:
-        # flatten detection colors into keys like COLOR_FIRE
         config.write_local_settings({"DETECTION_COLORS": settings.DETECTION_COLORS})
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
