@@ -7,7 +7,6 @@ import { useDetectionColorsVersion } from "@/hooks/useDetectionColors";
 import { getApiUrl } from "@/api";
 import {
     MapContainer,
-    TileLayer,
     LayersControl,
     ImageOverlay,
     GeoJSON,
@@ -19,7 +18,7 @@ import {
     LayerGroup,
     useMap
 } from 'react-leaflet';
-import { useTheme } from "@/components/ui/theme-provider";
+import { MapBaseLayers } from "@/components/shared/MapBaseLayers";
 import type { LatLngBoundsExpression, Map as LeafletMap } from 'leaflet';
 import L from "leaflet";
 import 'leaflet/dist/leaflet.css';
@@ -48,7 +47,6 @@ import { AssignObjectDialog } from "@/components/report/mappingReportComponents/
 // Re-export for backward compatibility if other components import from here
 export { extractFlightTrajectory } from "@/utils/coordinateUtils";
 
-const { BaseLayer } = LayersControl;
 
 // Cluster count badges are hidden below this zoom (too cluttered when zoomed out)
 const CLUSTER_BADGE_MIN_ZOOM = 21;
@@ -110,7 +108,6 @@ function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCatego
     const { data: detections } = useDetections(reportId);
     const { mutate: updateDetections } = useUpdateDetectionBatch(reportId);
     const api_url = getApiUrl();
-    const { theme } = useTheme();
     const [showTrajectory, setShowTrajectory] = useState(true);
     const [showPanoMarkers, setShowPanoMarkers] = useState(true);
     const [showDetections, setShowDetections] = useState(true);
@@ -146,11 +143,6 @@ function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCatego
     const colorsVersion = useDetectionColorsVersion();
     const [editDetection, setEditDetection] = useState<Detection | null>(null);
     const [zoom, setZoom] = useState(18);
-    const current = theme === "system"
-        ? window.matchMedia("(prefers-color-scheme: dark)").matches
-            ? "dark"
-            : "light"
-        : theme;
 
     const first_image_with_gps = images?.find((image) => image.coord);
     const first_map = maps?.[0] || null;
@@ -620,39 +612,7 @@ function MapTabComponent({ reportId, selectImageOnMap, thresholds, visibleCatego
         <div className="w-full h-full relative">
             <MapContainer center={center} zoom={18.5} ref={setMap} style={{ zIndex: 0, flex: 1, height: '100%', cursor: 'default' }}>
                 <LayersControl position="topright">
-                    <BaseLayer checked name="Mapbox Streets">
-                        <TileLayer
-                            id={current === "dark" ? 'mapbox/dark-v11' : 'mapbox/streets-v11'}
-                            attribution='&copy; Mapbox contributors'
-                            url="https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token=pk.eyJ1Ijoicm9ibGFidXNlcndocyIsImEiOiJja3VjaXF3d2MxMTN5Mm9tdmQzaGphdGU3In0.BhKF_054bVOPcviIq2yIKg"
-                            maxZoom={23}
-                        />
-                    </BaseLayer>
-
-                    <BaseLayer name="OpenStreetMap">
-                        <TileLayer
-                            attribution='&copy; OpenStreetMap contributors'
-                            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                            maxZoom={22}
-                        />
-                    </BaseLayer>
-
-                    <BaseLayer name="Esri Satellite">
-                        <TileLayer
-                            attribution='Tiles © Esri'
-                            url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-                            maxZoom={21}
-                        />
-                    </BaseLayer>
-
-                    <BaseLayer name="Mapbox Satellite">
-                        <TileLayer
-                            id='mapbox/satellite-v9'
-                            attribution='&copy; Mapbox contributors'
-                            url="https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token=pk.eyJ1Ijoicm9ibGFidXNlcndocyIsImEiOiJja3VjaXF3d2MxMTN5Mm9tdmQzaGphdGU3In0.BhKF_054bVOPcviIq2yIKg"
-                            maxZoom={23}
-                        />
-                    </BaseLayer>
+                    <MapBaseLayers />
 
                     {flightTrajectory.length > 0 && showTrajectory && (
                         <LayerGroup>

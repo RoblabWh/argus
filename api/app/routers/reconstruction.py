@@ -7,6 +7,7 @@ import pyexifinfo as p
 import redis
 import json
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -14,7 +15,11 @@ import app.crud.report as report_crud
 import app.services.events as events_service
 from app.database import get_db
 from app.config import config
-from app.schemas.report import ReportCreate, ReportOut, ReconstructionSettings, ReconstructionReportOut
+from app.schemas.report import (
+    ReportCreate, ReportOut, ReconstructionSettings, ReconstructionReportOut,
+    KeyframeShareRequest,
+)
+from app.services.drz_backend_sharing import send_photo_to_iais
 from app.services.celery_app import celery_app
 from app.services.camera_config_service import extract_video_metadata
 
@@ -27,6 +32,36 @@ logger.setLevel(logging.INFO)
 # Paths as seen from inside each container (same shared volume, different mount points)
 API_REPORTS_PATH = "/api/reports_data"
 STELLA_REPORTS_PATH = "/data/reports"
+
+
+def _keyframes_dir(report_id: int) -> str:
+    return os.path.join(API_REPORTS_PATH, str(report_id), "reconstruction", "keyframes")
+
+
+def _list_keyframe_files(report_id: int) -> list[str]:
+    """
+    Keyframe image filenames in trajectory order.
+
+    Stella names them image0, image1, image10, ... so they must be sorted by the numeric
+    suffix, not lexicographically — the resulting order matches keyframe_trajectory.txt
+    line by line, which is what the pose pairing and every keyframe index rely on.
+    """
+    keyframes_dir = _keyframes_dir(report_id)
+    if not os.path.isdir(keyframes_dir):
+        return []
+    return sorted(
+        [f for f in os.listdir(keyframes_dir)
+         if f.lower().endswith((".jpg", ".jpeg", ".png")) and f.startswith("image")],
+        key=lambda x: int(os.path.splitext(x)[0].replace("image", "")),
+    )
+
+
+def _resolve_keyframe(report_id: int, index: int) -> tuple[str, str]:
+    """(absolute path, filename) of one keyframe, or 404."""
+    files = _list_keyframe_files(report_id)
+    if index < 0 or index >= len(files):
+        raise HTTPException(status_code=404, detail=f"Keyframe {index} not found")
+    return os.path.join(_keyframes_dir(report_id), files[index]), files[index]
 
 class ReconstructionReportCreate(BaseModel):
     group_id: int
@@ -190,7 +225,6 @@ def get_reconstruction_results(report_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Reconstruction report not found")
 
     results_dir = os.path.join(API_REPORTS_PATH, str(report_id), "reconstruction")
-    keyframes_dir = os.path.join(results_dir, "keyframes")
     trajectory_file = os.path.join(results_dir, "keyframe_trajectory.txt")
 
     if not os.path.isdir(results_dir):
@@ -217,19 +251,13 @@ def get_reconstruction_results(report_id: int, db: Session = Depends(get_db)):
     # Pair keyframes with poses by position — stella saves keyframe images as sequential
     # numbered files (000001.jpg, …), matching the order of entries in the trajectory file.
     keyframes = []
-    if os.path.isdir(keyframes_dir):
-        #ToDo fix: images are saved as image0 image1 image10 image101 ... we need to strip the image prefix and sort by the number, not lexicographically
-        image_files = sorted([
-            f for f in os.listdir(keyframes_dir)
-            if f.lower().endswith((".jpg", ".jpeg", ".png")) and f.startswith("image")
-        ], key=lambda x: int(os.path.splitext(x)[0].replace("image", "")))
-        for idx, filename in enumerate(image_files):
-            pose = poses[idx] if idx < len(poses) else {}
-            keyframes.append({
-                "filename": filename,
-                "url": f"/reports_data/{report_id}/reconstruction/keyframes/{filename}",
-                **pose,
-            })
+    for idx, filename in enumerate(_list_keyframe_files(report_id)):
+        pose = poses[idx] if idx < len(poses) else {}
+        keyframes.append({
+            "filename": filename,
+            "url": f"/reports_data/{report_id}/reconstruction/keyframes/{filename}",
+            **pose,
+        })
 
     result: dict = {
         "report_id": report_id,
@@ -240,5 +268,85 @@ def get_reconstruction_results(report_id: int, db: Session = Depends(get_db)):
             if os.path.isfile(os.path.join(results_dir, "sparse.ply")) else None,
         "dense_pointcloud_url": f"/reports_data/{report_id}/reconstruction/dense.ply"
             if reconstruction.has_dense_pointcloud else None,
+        # Manually picked coordinates, keyed by keyframe index (as a string)
+        "keyframe_geo": reconstruction.keyframe_geo or {},
     }
     return result
+
+
+# ── Keyframe sharing ──────────────────────────────────────────────────────────
+
+@router.get("/{report_id}/keyframes/{index}/download")
+def download_keyframe(report_id: int, index: int, db: Session = Depends(get_db)):
+    """Download a single keyframe panorama with a readable filename."""
+    if not report_crud.get_reconstruction_report(db, report_id):
+        raise HTTPException(status_code=404, detail="Reconstruction report not found")
+
+    path, filename = _resolve_keyframe(report_id, index)
+    ext = os.path.splitext(filename)[1].lower() or ".jpg"
+    media_type = "image/png" if ext == ".png" else "image/jpeg"
+    return FileResponse(
+        path,
+        media_type=media_type,
+        filename=f"report{report_id}_keyframe{index + 1}{ext}",
+    )
+
+
+@router.post("/{report_id}/keyframes/{index}/send_to_drz", response_model=dict)
+def send_keyframe_to_drz(
+    report_id: int,
+    index: int,
+    body: KeyframeShareRequest,
+    db: Session = Depends(get_db),
+):
+    """
+    Send one keyframe panorama to the DRZ/IAIS photo service with a manually picked
+    coordinate, and remember that coordinate on the report.
+
+    Keyframes carry no GPS — the SLAM poses are in a local metric frame — so the
+    coordinate comes from the user picking it on a map in the viewer.
+    """
+    reconstruction = report_crud.get_reconstruction_report(db, report_id)
+    if not reconstruction:
+        raise HTTPException(status_code=404, detail="Reconstruction report not found")
+    if not config.DRZ_BACKEND_URL:
+        raise HTTPException(status_code=503, detail="DRZ backend is not configured")
+
+    path, filename = _resolve_keyframe(report_id, index)
+
+    # Re-sending the same keyframe should update the existing photo, not duplicate it.
+    existing = (reconstruction.keyframe_geo or {}).get(str(index), {})
+    previous_photo_id = existing.get("iais_photo_id")
+
+    success, message, photo_id = send_photo_to_iais(
+        image_path=path,
+        name=body.name,
+        lat=body.lat,
+        lon=body.lon,
+        projection="panorama_360_equirectangular",
+        description=body.description,
+        photo_id=previous_photo_id,
+    )
+
+    if not success:
+        logger.warning(f"Keyframe {index} of report {report_id} could not be sent to DRZ: {message}")
+        # Reported as 200 with success=false so the dialog can show the backend's own
+        # error text — that message is the main signal when debugging the integration.
+        return {"success": False, "message": message, "photo_id": None}
+
+    entry = {
+        "lat": body.lat,
+        "lon": body.lon,
+        "name": body.name,
+        "description": body.description,
+        "iais_photo_id": photo_id or previous_photo_id,
+        "sent_at": datetime.now(timezone.utc).isoformat(),
+    }
+    # Reassign instead of mutating — SQLAlchemy does not track in-place JSONB changes.
+    report_crud.update_reconstruction_report(
+        db, report_id,
+        keyframe_geo={**(reconstruction.keyframe_geo or {}), str(index): entry},
+    )
+
+    logger.info(f"Sent keyframe {index} ({filename}) of report {report_id} to DRZ as photo {photo_id}")
+    return {"success": True, "message": message, "photo_id": entry["iais_photo_id"]}

@@ -22,7 +22,7 @@ from app.schemas.settings import (
 import app.services.camera_config_service as camera_config_svc
 from app.services.image_metadata_extraction import _auto_discover_config
 from app.services.odm import try_webodm_authenticate
-from app.services.drz_backend_sharing import try_drz_authenticate
+from app.services.drz_backend_sharing import invalidate_token, try_drz_authenticate
 from app.services.weather_check import try_openweather_key
 from app.services.huggingface_check import try_hf_token
 
@@ -173,6 +173,9 @@ def update_drz(settings: DRZSettings):
                 "DRZ_BACKEND_PASSWORD": settings.BACKEND_PASSWORD,
             }
         )
+        # The token cache is keyed by (base url, username); a credential change must not keep
+        # riding the old token, which stays valid for hours.
+        invalidate_token()
         return {"message": "DRZ settings updated."}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

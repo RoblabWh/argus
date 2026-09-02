@@ -51,6 +51,7 @@ import {
 } from "@/components/ui/select";
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import type { Keyframe } from "@/types/reconstruction";
+import { isTypingTarget } from "@/utils/keyboard";
 
 /* -------------------------------------------------------------------------- */
 /* Error boundary                                                             */
@@ -338,8 +339,7 @@ function WalkControls({
     };
 
     const setKey = (e: KeyboardEvent, value: boolean) => {
-      const tag = (document.activeElement as HTMLElement | null)?.tagName;
-      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+      if (isTypingTarget(e.target)) return;
       const k = e.key.toLowerCase();
       if (k in keys.current) {
         (keys.current as Record<string, boolean>)[k] = value;

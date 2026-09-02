@@ -358,9 +358,14 @@ def send_detection_to_iais(geometry: dict, properties: dict, db: Session = Depen
     logger.info(f"Sending detection to Iais with properties: {properties}")
     #logger.info(f"Geometry: {geometry}")
     try:
-        iais_response = send_geojson_poi_to_iais(geometry, properties)
-        logger.info(f"Iais response: {iais_response}")
-        return {"message": "Detection sent to Iais successfully", "iais_response": iais_response}
+        success, message, detail = send_geojson_poi_to_iais(geometry, properties)
     except Exception as e:
         logger.error(f"Error sending detection to Iais: {e}")
         return {"message": "Error sending detection to Iais", "error": str(e)}
+
+    logger.info(f"Iais response: success={success}, message={message}, detail={detail}")
+    if not success:
+        # HTTP 200 with an `error` key is the contract the share dialog reads; a failure here
+        # is a remote-system problem, not a bad request to this API.
+        return {"message": message, "error": detail or message}
+    return {"message": message}

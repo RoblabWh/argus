@@ -34,6 +34,7 @@ from app.routers import (
     reconstruction,
     export,
     events,
+    geocode,
 )
 
 models.Base.metadata.create_all(bind=engine)
@@ -102,6 +103,7 @@ app.include_router(transfer.router)
 app.include_router(reconstruction.router)
 app.include_router(export.router)
 app.include_router(events.router)
+app.include_router(geocode.router)
 
 
 inspector = inspect(engine)

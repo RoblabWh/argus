@@ -6,8 +6,10 @@ import "@photo-sphere-viewer/markers-plugin/index.css";
 import { SettingsPlugin } from "@photo-sphere-viewer/settings-plugin";
 import "@photo-sphere-viewer/settings-plugin/index.css";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, Clapperboard, Play } from "lucide-react";
-import type { Keyframe } from "@/types/reconstruction";
+import { ChevronLeft, ChevronRight, Clapperboard, Play, Share2 } from "lucide-react";
+import { KeyframeSharePopup } from "@/components/report/reconstructionReportComponents/KeyframeSharePopup";
+import type { Keyframe, KeyframeGeo } from "@/types/reconstruction";
+import { isTypingTarget } from "@/utils/keyboard";
 
 function formatTimestamp(seconds: number): string {
   const m = Math.floor(seconds / 60);
@@ -150,9 +152,18 @@ interface Props {
   onNavigate: (index: number) => void;
   onPlayFromHere?: (index: number, orientation?: { yaw: number; pitch: number }) => void;
   apiUrl: string;
+  reportId: number;
+  reportTitle?: string;
+  /** Coordinates already picked for this report's keyframes, keyed by index. */
+  keyframeGeo?: Record<string, KeyframeGeo>;
+  /** False when another tab is showing — the tab stays mounted, so shortcuts must not fire. */
+  isActive?: boolean;
 }
 
-export function ReconstructionViewerTab({ keyframes, selectedIndex, onNavigate, onPlayFromHere, apiUrl }: Props) {
+export function ReconstructionViewerTab({
+  keyframes, selectedIndex, onNavigate, onPlayFromHere, apiUrl,
+  reportId, reportTitle, keyframeGeo, isActive = true,
+}: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const viewerRef = useRef<Viewer | null>(null);
   const currentIndexRef = useRef<number>(-1);
@@ -164,6 +175,8 @@ export function ReconstructionViewerTab({ keyframes, selectedIndex, onNavigate, 
   onNavigateRef.current = onNavigate;
   // True once PSV has fired its 'ready' event — guards setMarkers from running during initial panorama load
   const viewerReadyRef = useRef<boolean>(false);
+
+  const [shareOpen, setShareOpen] = useState(false);
 
   const [markerScale, setMarkerScale] = useState(1.0);
   const markerScaleRef = useRef(markerScale);
@@ -283,8 +296,9 @@ export function ReconstructionViewerTab({ keyframes, selectedIndex, onNavigate, 
   // Keyboard navigation
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
-      const tag = (document.activeElement as HTMLElement)?.tagName;
-      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+      // This tab is forceMounted, so the listener outlives it being visible.
+      if (!isActive || shareOpen) return;
+      if (isTypingTarget(e.target)) return;
 
       if (e.key === "ArrowLeft") {
         e.preventDefault();
@@ -296,7 +310,7 @@ export function ReconstructionViewerTab({ keyframes, selectedIndex, onNavigate, 
     };
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [goTo, selectedIndex]);
+  }, [goTo, selectedIndex, isActive, shareOpen]);
 
   if (total === 0) {
     return (
@@ -365,7 +379,27 @@ export function ReconstructionViewerTab({ keyframes, selectedIndex, onNavigate, 
           </Button>
         )}
 
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => setShareOpen(true)}
+          className="bg-black/50 hover:bg-black/70 text-white border-white/20 backdrop-blur-sm"
+          title="Download this panorama or send it to the DRZ system"
+        >
+          <Share2 className="w-4 h-4 mr-1" />
+          Share
+        </Button>
       </div>
+
+      <KeyframeSharePopup
+        open={shareOpen}
+        onOpenChange={setShareOpen}
+        reportId={reportId}
+        reportTitle={reportTitle}
+        index={selectedIndex}
+        keyframe={currentKeyframe}
+        keyframeGeo={keyframeGeo ?? {}}
+      />
     </div>
   );
 }

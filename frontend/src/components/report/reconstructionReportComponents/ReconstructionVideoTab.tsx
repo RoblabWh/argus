@@ -1,10 +1,14 @@
 import { useEffect, useRef, useState } from "react";
-import { Viewer } from "@photo-sphere-viewer/core";
+import { Viewer, events as CoreEvents } from "@photo-sphere-viewer/core";
 import "@photo-sphere-viewer/core/index.css";
 import { EquirectangularVideoAdapter } from "@photo-sphere-viewer/equirectangular-video-adapter";
 import { VideoPlugin, events as VideoEvents } from "@photo-sphere-viewer/video-plugin";
 import "@photo-sphere-viewer/video-plugin/index.css";
 import { Video, VideoOff } from "lucide-react";
+import { isTypingTarget } from "@/utils/keyboard";
+
+// KeypressEvent is only reachable through the events namespace, not the package root
+type KeypressEvent = InstanceType<typeof CoreEvents.KeypressEvent>;
 
 interface Orientation {
   yaw: number;
@@ -34,6 +38,18 @@ export function ReconstructionVideoTab({ videoUrl, seekTime, orientation, isActi
   seekTimeRef.current = seekTime;
   const orientationRef = useRef<Orientation | null>(null);
   orientationRef.current = orientation;
+  const isActiveRef = useRef(isActive);
+  isActiveRef.current = isActive;
+
+  // Replaces VideoPlugin's own Space binding — see where it is installed below.
+  const handleKeypress = (e: KeypressEvent) => {
+    if (!isActiveRef.current) return;                     // only while the Video tab shows
+    if (isTypingTarget(e.originalEvent?.target)) return;  // never while typing
+    if (e.key === " ") {
+      videoPluginRef.current?.playPause();
+      e.preventDefault();
+    }
+  };
 
   // Initialise PSV with EquirectangularVideoAdapter + VideoPlugin once on mount
   useEffect(() => {
@@ -64,6 +80,15 @@ export function ReconstructionVideoTab({ videoUrl, seekTime, orientation, isActi
 
         const plugin = videoPluginRef.current;
         if (!plugin) return;
+
+        // VideoPlugin binds Space -> playPause through a window-level keydown listener that
+        // PSV keeps alive for the whole life of the Viewer, and it never checks what has
+        // focus. Since this tab is forceMounted, that made Space toggle playback from
+        // anywhere in the report — including eating the space character while typing in the
+        // share dialog. Swap the plugin's own listener for one scoped to this tab.
+        // the plugin registers itself as the listener object, so it removes by reference
+        viewer!.removeEventListener(CoreEvents.KeypressEvent.type, plugin as unknown as EventListenerObject);
+        viewer!.addEventListener(CoreEvents.KeypressEvent.type, handleKeypress);
 
         // Start muted (drone video is usually just wind/motor noise)
         plugin.setMute(true);

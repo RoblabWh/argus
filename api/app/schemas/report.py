@@ -152,7 +152,16 @@ class ReconstructionReportOut(BaseModel):
     has_dense_pointcloud: bool = False
     flight_timestamp: Optional[datetime] = None
     camera_model: Optional[str] = None
+    keyframe_geo: Optional[dict] = None
     model_config = ConfigDict(from_attributes=True)
+
+
+class KeyframeShareRequest(BaseModel):
+    """Manually picked georeference for a single keyframe panorama."""
+    lat: float
+    lon: float
+    name: str
+    description: Optional[str] = None
 
 
 class ColmapResultsOut(BaseModel):

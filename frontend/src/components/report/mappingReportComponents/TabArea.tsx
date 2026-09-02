@@ -113,7 +113,7 @@ export function TabArea({ report, selectedImage, setSelectedImage, tab, setTab, 
       value={tab}
       className="w-full relative h-full "
     >
-      <div className="absolute left-[50%] -translate-x-[50%] top-2 z-10">
+      <div className="absolute left-[50%] -translate-x-[50%] top-2 z-100">
         <TabsList className="">
           <TabsTrigger className="cursor-pointer" value="map">Map</TabsTrigger>
           <TabsTrigger className="cursor-pointer" value="slideshow">Images</TabsTrigger>

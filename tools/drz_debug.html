@@ -1,0 +1,648 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DRZ Backend Inspector</title>
+<!-- The only external dependency on the page. Pinned, not floating, so the tool keeps
+     behaving the same. Plain blocking <script>, NOT defer: the page's own logic runs from
+     an inline script at the end of <body>, which executes before deferred scripts would. -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+  :root {
+    --bg:#0f1115; --panel:#171a21; --panel2:#1e222b; --line:#2b313d;
+    --fg:#e6e9ef; --muted:#98a2b3; --accent:#5b9dff; --ok:#3fb950; --warn:#d29922; --err:#f85149;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg);
+         font:14px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; }
+  header { padding:14px 20px; border-bottom:1px solid var(--line); background:var(--panel);
+           display:flex; align-items:baseline; gap:12px; flex-wrap:wrap; }
+  h1 { font-size:16px; margin:0; font-weight:600; }
+  .sub { color:var(--muted); font-size:12px; }
+  main { padding:20px; max-width:1400px; margin:0 auto; }
+  section { background:var(--panel); border:1px solid var(--line); border-radius:8px;
+            padding:16px; margin-bottom:16px; }
+  h2 { font-size:14px; margin:0 0 12px; font-weight:600; }
+  label { display:block; font-size:12px; color:var(--muted); margin-bottom:4px; }
+  input, select, button { font:inherit; }
+  input, select { background:var(--panel2); color:var(--fg); border:1px solid var(--line);
+                  border-radius:6px; padding:7px 9px; width:100%; }
+  input:focus, select:focus { outline:2px solid var(--accent); outline-offset:-1px; }
+  button { background:var(--panel2); color:var(--fg); border:1px solid var(--line);
+           border-radius:6px; padding:7px 13px; cursor:pointer; }
+  button:hover:not(:disabled) { border-color:var(--accent); }
+  button:disabled { opacity:.45; cursor:not-allowed; }
+  button.primary { background:var(--accent); border-color:var(--accent); color:#06101f; font-weight:600; }
+  button.danger { color:var(--err); }
+  button.danger:hover:not(:disabled) { border-color:var(--err); }
+  button.sm { padding:3px 8px; font-size:12px; }
+  .row { display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end; }
+  .row > div { flex:1 1 180px; min-width:0; }
+  .row > .fixed { flex:0 0 auto; }
+  .pill { display:inline-flex; align-items:center; gap:6px; padding:3px 9px; border-radius:999px;
+          font-size:12px; border:1px solid var(--line); background:var(--panel2); }
+  .pill.ok  { color:var(--ok);   border-color:#1e4620; }
+  .pill.err { color:var(--err);  border-color:#5c1f1b; }
+  .dot { width:7px; height:7px; border-radius:50%; background:currentColor; }
+  .toolbar { display:flex; gap:8px; align-items:center; margin-bottom:10px; flex-wrap:wrap; }
+  .toolbar .grow { flex:1 1 200px; }
+  .tablewrap { overflow:auto; max-height:52vh; border:1px solid var(--line); border-radius:6px; }
+  table { border-collapse:collapse; width:100%; font-size:12.5px; }
+  th, td { text-align:left; padding:6px 10px; border-bottom:1px solid var(--line);
+           white-space:nowrap; max-width:340px; overflow:hidden; text-overflow:ellipsis; }
+  th { position:sticky; top:0; background:var(--panel2); cursor:pointer; user-select:none;
+       font-weight:600; z-index:1; }
+  th:hover { color:var(--accent); }
+  th .arrow { color:var(--accent); }
+  tbody tr { cursor:pointer; }
+  tbody tr:hover { background:#1b2029; }
+  .empty { padding:18px; color:var(--muted); text-align:center; }
+  pre { background:var(--panel2); border:1px solid var(--line); border-radius:6px; padding:12px;
+        overflow:auto; font-family:var(--mono); font-size:12px; margin:0; white-space:pre-wrap;
+        word-break:break-word; }
+  /* slide-over detail panel */
+  #detail { position:fixed; top:0; right:0; height:100%; width:min(620px, 96vw); background:var(--panel);
+            border-left:1px solid var(--line); transform:translateX(102%); transition:transform .18s ease;
+            display:flex; flex-direction:column; z-index:10; box-shadow:-12px 0 32px rgba(0,0,0,.45); }
+  #detail.open { transform:none; }
+  #detail header { justify-content:space-between; }
+  #detailBody { padding:16px; overflow:auto; flex:1; }
+  #detailBody h3 { font-size:12px; text-transform:uppercase; letter-spacing:.05em;
+                   color:var(--muted); margin:16px 0 6px; }
+  #detailBody h3:first-child { margin-top:0; }
+  #detailBody img { max-width:100%; border-radius:6px; border:1px solid var(--line); display:block; }
+  .mapbox { height:260px; border-radius:6px; border:1px solid var(--line); }
+  /* Leaflet paints its own backdrop; without this an unloaded map flashes white. */
+  .leaflet-container { background:var(--panel2); }
+  .leaflet-control-layers, .leaflet-control-attribution { color:#111; }
+  .coords { font-family:var(--mono); font-size:12px; color:var(--muted); margin:6px 0 0;
+            user-select:all; }
+  .warn-text { color:var(--warn); font-size:12.5px; margin-top:8px; }
+  .log { font-family:var(--mono); font-size:11.5px; max-height:200px; overflow:auto; }
+  .log div { padding:2px 0; border-bottom:1px solid #232833; }
+  .log .s-ok { color:var(--ok); } .log .s-err { color:var(--err); } .log .s-warn { color:var(--warn); }
+  .note { color:var(--muted); font-size:12px; margin:8px 0 0; }
+  .err-text { color:var(--err); font-size:12.5px; margin-top:8px; word-break:break-word; }
+  details > summary { cursor:pointer; color:var(--muted); font-size:12px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>DRZ Backend Inspector</h1>
+  <span class="sub">standalone debug tool &mdash; not part of Argus</span>
+  <span style="flex:1"></span>
+  <span id="tokenPill" class="pill"><span class="dot"></span><span id="tokenText">not connected</span></span>
+</header>
+
+<main>
+
+<section>
+  <h2>Connection</h2>
+  <div class="row">
+    <div style="flex:2 1 320px">
+      <label for="baseUrl">Backend base URL</label>
+      <input id="baseUrl" placeholder="https://eve.iais.fraunhofer.de/">
+    </div>
+    <div><label for="username">Username</label><input id="username" autocomplete="username"></div>
+    <div><label for="password">Password</label><input id="password" type="password" autocomplete="current-password"></div>
+    <div class="fixed"><button id="connectBtn" class="primary">Connect</button></div>
+    <div class="fixed"><button id="disconnectBtn" disabled>Disconnect</button></div>
+  </div>
+  <p class="note">
+    Authenticates against <code>{base}registration/token</code> &mdash; the single token endpoint shared by
+    the <code>poi</code> and <code>photo</code> services. The URL and username are remembered locally;
+    the password never is.
+  </p>
+  <div id="authError" class="err-text" hidden></div>
+</section>
+
+<section id="poiSection">
+  <h2>POI &mdash; <code>/poi/</code></h2>
+  <div class="toolbar">
+    <button class="primary load" data-svc="poi" disabled>Load list</button>
+    <input class="grow filter" data-svc="poi" placeholder="Filter (matches any column)&hellip;">
+    <span class="sub count" data-svc="poi"></span>
+  </div>
+  <div class="tablewrap"><table data-svc="poi">
+    <thead><tr></tr></thead><tbody><tr><td class="empty">Not loaded.</td></tr></tbody>
+  </table></div>
+</section>
+
+<section id="photoSection">
+  <h2>Photo &mdash; <code>/photo/</code></h2>
+  <div class="toolbar">
+    <button class="primary load" data-svc="photo" disabled>Load list</button>
+    <input class="grow filter" data-svc="photo" placeholder="Filter (matches any column)&hellip;">
+    <span class="sub count" data-svc="photo"></span>
+  </div>
+  <div class="tablewrap"><table data-svc="photo">
+    <thead><tr></tr></thead><tbody><tr><td class="empty">Not loaded.</td></tr></tbody>
+  </table></div>
+</section>
+
+<section>
+  <h2>Request log</h2>
+  <div id="log" class="log"><div class="sub">No requests yet.</div></div>
+</section>
+
+</main>
+
+<aside id="detail">
+  <header><strong id="detailTitle">Details</strong><button id="detailClose" class="sm">Close</button></header>
+  <div id="detailBody"></div>
+</aside>
+
+<script>
+(() => {
+"use strict";
+
+// ---------------------------------------------------------------- persistence
+// file:// pages can have an opaque origin where localStorage throws outright.
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : v; } catch { return d; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch { /* ignore */ } },
+};
+
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+
+const els = {
+  baseUrl: $("#baseUrl"), username: $("#username"), password: $("#password"),
+  connect: $("#connectBtn"), disconnect: $("#disconnectBtn"),
+  tokenPill: $("#tokenPill"), tokenText: $("#tokenText"), authError: $("#authError"),
+  log: $("#log"), detail: $("#detail"), detailTitle: $("#detailTitle"), detailBody: $("#detailBody"),
+};
+
+els.baseUrl.value = store.get("drz.baseUrl", "https://eve.iais.fraunhofer.de/");
+els.username.value = store.get("drz.username", "");
+
+// ---------------------------------------------------------------- request log
+function log(method, url, status, ms, kind) {
+  if (els.log.firstElementChild?.classList.contains("sub")) els.log.textContent = "";
+  const cls = kind || (status >= 200 && status < 300 ? "s-ok" : "s-err");
+  const line = document.createElement("div");
+  line.innerHTML = `<span class="${cls}">${status}</span> ${method} ${url} ` +
+                   `<span class="sub">${Math.round(ms)}ms</span>`;
+  els.log.prepend(line);
+}
+function logNote(text, cls) {
+  const line = document.createElement("div");
+  line.className = cls || "s-warn";
+  line.textContent = text;
+  els.log.prepend(line);
+}
+
+// ---------------------------------------------------------------- auth
+const auth = { base: "", user: "", pass: "", token: null, expiresAt: 0 };
+const SKEW_MS = 60_000; // renew a minute before the server's own expiry
+
+const normBase = u => (u || "").trim().replace(/\/+$/, "") + "/";
+
+async function fetchToken() {
+  const url = auth.base + "registration/token";
+  const body = new URLSearchParams({ username: auth.user, password: auth.pass });
+  const t0 = performance.now();
+  let res;
+  try {
+    res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body,
+    });
+  } catch (e) {
+    // A browser will not tell the page whether this was DNS, TLS, or CORS.
+    log("POST", url, "ERR", performance.now() - t0, "s-err");
+    throw new Error(
+      "Network error or CORS blocked. The host may be unreachable, or may not send " +
+      "Access-Control-Allow-Origin for this page's origin. (" + e.message + ")"
+    );
+  }
+  log("POST", url, res.status, performance.now() - t0);
+  const text = await res.text();
+  if (!res.ok) {
+    // Bad credentials come back as HTTP 400 here, not 401.
+    throw new Error(`HTTP ${res.status} — ${text.slice(0, 300)}`);
+  }
+  let body2;
+  try { body2 = JSON.parse(text); } catch { throw new Error("Token response was not JSON: " + text.slice(0, 200)); }
+  if (!body2.access_token) throw new Error("Token response contained no access_token");
+  auth.token = body2.access_token;
+  // There is no refresh endpoint; renewal means re-posting these same credentials.
+  auth.expiresAt = Date.now() + (Number(body2.expires_in) || 3600) * 1000;
+  return auth.token;
+}
+
+async function validToken() {
+  if (!auth.token || Date.now() > auth.expiresAt - SKEW_MS) await fetchToken();
+  return auth.token;
+}
+
+// `raw:true` returns the Response untouched, for binary bodies.
+async function api(path, { method = "GET", raw = false, retry = true } = {}) {
+  const token = await validToken();
+  const url = auth.base + path.replace(/^\//, "");
+  const t0 = performance.now();
+  let res;
+  try {
+    res = await fetch(url, { method, headers: { Accept: "*/*", Authorization: "Bearer " + token } });
+  } catch (e) {
+    log(method, url, "ERR", performance.now() - t0, "s-err");
+    throw new Error("Network error or CORS blocked (" + e.message + ")");
+  }
+  log(method, url, res.status, performance.now() - t0);
+
+  if (res.status === 401 && retry) {
+    // Mirrors the API's own behaviour: the token was rejected, so re-auth once and replay.
+    logNote("401 — token rejected, re-authenticating and retrying once");
+    auth.token = null;
+    return api(path, { method, raw, retry: false });
+  }
+  if (!res.ok) throw new Error(`HTTP ${res.status} — ${(await res.text()).slice(0, 300)}`);
+  return raw ? res : res.json();
+}
+
+let countdownTimer = null;
+function renderToken() {
+  const connected = Boolean(auth.token);
+  els.tokenPill.className = "pill " + (connected ? "ok" : "");
+  els.disconnect.disabled = !connected;
+  $$(".load").forEach(b => (b.disabled = !connected));
+  if (!connected) { els.tokenText.textContent = "not connected"; return; }
+  const left = Math.max(0, auth.expiresAt - Date.now());
+  const h = Math.floor(left / 3.6e6), m = Math.floor(left % 3.6e6 / 6e4), s = Math.floor(left % 6e4 / 1000);
+  els.tokenText.textContent = `token valid — expires in ${h}h ${String(m).padStart(2,"0")}m ${String(s).padStart(2,"0")}s`;
+}
+
+els.connect.addEventListener("click", async () => {
+  els.authError.hidden = true;
+  auth.base = normBase(els.baseUrl.value);
+  auth.user = els.username.value.trim();
+  auth.pass = els.password.value;
+  if (!auth.base || auth.base === "/") { showAuthError("Enter a backend base URL."); return; }
+  els.connect.disabled = true;
+  els.connect.textContent = "Connecting…";
+  try {
+    await fetchToken();
+    store.set("drz.baseUrl", auth.base);
+    store.set("drz.username", auth.user);   // the password is deliberately not stored
+    renderToken();
+    clearInterval(countdownTimer);
+    countdownTimer = setInterval(renderToken, 1000);
+  } catch (e) {
+    auth.token = null;
+    renderToken();
+    showAuthError(e.message);
+  } finally {
+    els.connect.disabled = false;
+    els.connect.textContent = "Connect";
+  }
+});
+
+function showAuthError(msg) { els.authError.textContent = msg; els.authError.hidden = false; }
+
+els.disconnect.addEventListener("click", () => {
+  auth.token = null; auth.pass = ""; auth.expiresAt = 0;
+  els.password.value = "";
+  clearInterval(countdownTimer);
+  renderToken();
+});
+
+// ---------------------------------------------------------------- table model
+// Both services answer with a GeoJSON FeatureCollection whose properties are untyped in the
+// spec, so columns are discovered from the data instead of being hardcoded.
+const PREFERRED = ["id", "name", "type", "subtype", "datetime", "description",
+                   "detection", "danger_level", "message_id", "projection", "poi_id", "direction"];
+
+const svcs = {
+  poi:   { rows: [], cols: [], sort: { key: null, dir: 1 }, filter: "" },
+  photo: { rows: [], cols: [], sort: { key: null, dir: 1 }, filter: "" },
+};
+
+function flatten(collection) {
+  const features = Array.isArray(collection?.features) ? collection.features
+                 : Array.isArray(collection) ? collection : [];
+  return features.map(f => {
+    const row = { ...(f.properties || {}) };
+    const c = f.geometry?.coordinates;
+    if (Array.isArray(c)) { row.lon = c[0]; row.lat = c[1]; if (c.length > 2) row.alt = c[2]; }
+    Object.defineProperty(row, "_raw", { value: f, enumerable: false });
+    return row;
+  });
+}
+
+function columnsOf(rows) {
+  const seen = new Set();
+  rows.forEach(r => Object.keys(r).forEach(k => seen.add(k)));
+  const lead = PREFERRED.filter(k => seen.has(k));
+  const rest = [...seen].filter(k => !lead.includes(k)).sort();
+  return [...lead, ...rest];
+}
+
+const cellText = v =>
+  v === null || v === undefined ? "" :
+  typeof v === "object" ? JSON.stringify(v) : String(v);
+
+const ISO_LIKE = /^\d{4}-\d{2}-\d{2}[T ]/;
+const isBlank = v => v === null || v === undefined || v === "";
+
+function compare(a, b) {
+  if (a === b) return 0;
+  const na = Number(a), nb = Number(b);
+  if (!Number.isNaN(na) && !Number.isNaN(nb)) return na - nb;
+  if (ISO_LIKE.test(a) && ISO_LIKE.test(b)) return Date.parse(a) - Date.parse(b);
+  return String(a).localeCompare(String(b), undefined, { numeric: true, sensitivity: "base" });
+}
+
+// Blanks are ordered outside the direction multiplier so they stay at the bottom in both
+// directions — otherwise reversing the sort fills the first screen with empty cells.
+function rowComparator(key, dir) {
+  return (x, y) => {
+    const a = x[key], b = y[key];
+    if (isBlank(a) || isBlank(b)) return isBlank(a) && isBlank(b) ? 0 : isBlank(a) ? 1 : -1;
+    return dir * compare(a, b);
+  };
+}
+
+function visibleRows(svc) {
+  const st = svcs[svc];
+  let rows = st.rows;
+  const q = st.filter.trim().toLowerCase();
+  if (q) rows = rows.filter(r => st.cols.some(c => cellText(r[c]).toLowerCase().includes(q)));
+  if (st.sort.key) rows = [...rows].sort(rowComparator(st.sort.key, st.sort.dir));
+  return rows;
+}
+
+function render(svc) {
+  const st = svcs[svc];
+  const table = $(`table[data-svc="${svc}"]`);
+  const head = table.tHead.rows[0], body = table.tBodies[0];
+  const rows = visibleRows(svc);
+
+  head.textContent = "";
+  st.cols.forEach(c => {
+    const th = document.createElement("th");
+    const arrow = st.sort.key === c ? `<span class="arrow">${st.sort.dir > 0 ? "▲" : "▼"}</span>` : "";
+    th.innerHTML = `${c} ${arrow}`;
+    th.title = "Sort by " + c;
+    th.addEventListener("click", () => {
+      st.sort = st.sort.key === c ? { key: c, dir: -st.sort.dir } : { key: c, dir: 1 };
+      render(svc);
+    });
+    head.appendChild(th);
+  });
+  if (st.cols.length) head.appendChild(document.createElement("th"));
+
+  body.textContent = "";
+  $(`.count[data-svc="${svc}"]`).textContent =
+    st.rows.length ? `${rows.length} of ${st.rows.length} entries` : "";
+
+  if (!rows.length) {
+    const td = document.createElement("td");
+    td.className = "empty";
+    td.colSpan = Math.max(1, st.cols.length + 1);
+    td.textContent = st.rows.length ? "No entries match the filter." : "No entries.";
+    body.insertRow().appendChild(td);
+    return;
+  }
+
+  rows.forEach(r => {
+    const tr = body.insertRow();
+    st.cols.forEach(c => {
+      const td = tr.insertCell();
+      td.textContent = cellText(r[c]);
+      td.title = td.textContent;
+    });
+    const actions = tr.insertCell();
+    const del = document.createElement("button");
+    del.className = "sm danger";
+    del.textContent = "Delete";
+    del.addEventListener("click", e => { e.stopPropagation(); remove(svc, r); });
+    actions.appendChild(del);
+    tr.addEventListener("click", () => openDetail(svc, r));
+  });
+}
+
+async function load(svc) {
+  const btn = $(`.load[data-svc="${svc}"]`);
+  btn.disabled = true; btn.textContent = "Loading…";
+  try {
+    const data = await api(`${svc}/`);
+    const st = svcs[svc];
+    st.rows = flatten(data);
+    st.cols = columnsOf(st.rows);
+    if (!st.sort.key && st.cols.length) st.sort = { key: st.cols[0], dir: 1 };
+    render(svc);
+  } catch (e) {
+    logNote(`${svc} list failed: ${e.message}`, "s-err");
+    alert(`Could not load ${svc}:\n\n${e.message}`);
+  } finally {
+    btn.disabled = false; btn.textContent = "Load list";
+  }
+}
+
+async function remove(svc, row) {
+  const id = row.id;
+  if (!id) { alert("This entry has no id, so it cannot be deleted."); return; }
+  if (!confirm(`Delete ${svc} "${row.name ?? id}" (id ${id}) from the backend?\n\nThis cannot be undone.`)) return;
+  try {
+    await api(`${svc}/${encodeURIComponent(id)}`, { method: "DELETE" });
+    closeDetail();
+    await load(svc);
+  } catch (e) {
+    alert(`Delete failed:\n\n${e.message}`);
+  }
+}
+
+$$(".load").forEach(b => b.addEventListener("click", () => load(b.dataset.svc)));
+$$(".filter").forEach(i => i.addEventListener("input", () => {
+  svcs[i.dataset.svc].filter = i.value;
+  render(i.dataset.svc);
+}));
+
+// ---------------------------------------------------------------- detail panel
+let objectUrls = [];
+let liveMap = null;
+
+// Leaflet instances hold global listeners and in-flight tile requests, so the previous map
+// has to be torn down before another detail is opened — not just detached from the DOM.
+function releaseDetail() {
+  objectUrls.forEach(URL.revokeObjectURL);
+  objectUrls = [];
+  if (liveMap) { try { liveMap.remove(); } catch { /* already gone */ } liveMap = null; }
+}
+
+function section(title, node) {
+  const h = document.createElement("h3"); h.textContent = title;
+  els.detailBody.append(h, node);
+}
+function jsonBlock(value) {
+  const pre = document.createElement("pre");
+  pre.textContent = JSON.stringify(value, null, 2);
+  return pre;
+}
+function placeholder(text) { const p = document.createElement("p"); p.className = "note"; p.textContent = text; return p; }
+function note(text, cls) { const p = document.createElement("p"); p.className = cls; p.textContent = text; return p; }
+
+// The two token-free base layers from the Argus frontend (MapBaseLayers.tsx). Its two Mapbox
+// layers are skipped deliberately — they carry a hardcoded token that does not belong here.
+const BASE_LAYERS = [ 
+  ["Esri Street Map", "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
+   { maxZoom: 21, attribution: "Tiles &copy; Esri" }],
+  // Note the {z}/{y}/{x} order — Esri swaps y and x relative to OSM.
+  ["Esri Satellite", "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+   { maxZoom: 21, attribution: "Tiles &copy; Esri" }],
+];
+
+/**
+ * "Location" panel for one entry.
+ *
+ * `flatten()` splits geometry.coordinates ([lon, lat, alt] per the spec) into row.lon/row.lat,
+ * so this is also the check on whether that ordering survived the round trip: a swapped pair
+ * puts the pin in the wrong hemisphere, which is obvious on a map and invisible in a table.
+ */
+function locationSection(row) {
+  const wrap = document.createElement("div");
+  const lat = Number(row.lat), lon = Number(row.lon);
+
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+    wrap.append(placeholder("This entry has no usable coordinates."));
+    return wrap;
+  }
+
+  const coordText = `lat ${lat}, lon ${lon}` + (row.alt !== undefined ? `, alt ${row.alt}` : "");
+
+  // Longitude may legitimately exceed 90, latitude never can — so this is the one swap that
+  // can be identified with certainty rather than guessed at.
+  if (Math.abs(lat) > 90) {
+    wrap.append(note(`Latitude ${lat} is out of range (±90). The longitude and latitude are `
+                   + `probably swapped, so no map is shown.`, "err-text"),
+                note(coordText, "coords"));
+    return wrap;
+  }
+  if (Math.abs(lon) > 180) {
+    wrap.append(note(`Longitude ${lon} is out of range (±180), so no map is shown.`, "err-text"),
+                note(coordText, "coords"));
+    return wrap;
+  }
+
+  if (typeof L === "undefined") {
+    // A blocked or unreachable CDN must not take the whole detail panel down with it.
+    const link = document.createElement("a");
+    link.href = `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lon}#map=16/${lat}/${lon}`;
+    link.target = "_blank"; link.rel = "noreferrer";
+    link.textContent = "open in openstreetmap.org";
+    link.style.color = "var(--accent)";
+    const p = note("Map library could not be loaded (CDN unreachable or blocked) — ", "note");
+    p.append(link);
+    wrap.append(p, note(coordText, "coords"));
+    return wrap;
+  }
+
+  const el = document.createElement("div");
+  el.className = "mapbox";
+  wrap.append(el);
+
+  if (lat === 0 && lon === 0) {
+    wrap.append(note("Coordinate is exactly 0, 0 — usually the sign of a value that was never set.",
+                     "warn-text"));
+  }
+  wrap.append(note(coordText, "coords"));
+
+  // Built after the node is in the DOM so Leaflet can measure it.
+  queueMicrotask(() => {
+    const map = L.map(el).setView([lat, lon], 16);
+    liveMap = map;
+    const layers = {};
+    BASE_LAYERS.forEach(([name, url, opts], i) => {
+      const layer = L.tileLayer(url, opts);
+      layers[name] = layer;
+      if (i === 0) layer.addTo(map);
+    });
+    L.control.layers(layers).addTo(map);
+    L.circleMarker([lat, lon], {
+      radius: 8, color: "#ffffff", weight: 2, fillColor: "#5b9dff", fillOpacity: 0.9,
+    }).addTo(map).bindTooltip(String(row.name || row.id || "entry"));
+    // #detail slides in on a CSS transform (.18s). Measure now, then again once the
+    // transition has settled — a timeout rather than rAF, which does not fire while the
+    // panel is off-screen or the tab is in the background.
+    map.invalidateSize();
+    setTimeout(() => { if (liveMap === map) map.invalidateSize(); }, 220);
+  });
+
+  return wrap;
+}
+
+function closeDetail() { els.detail.classList.remove("open"); releaseDetail(); }
+$("#detailClose").addEventListener("click", closeDetail);
+document.addEventListener("keydown", e => { if (e.key === "Escape") closeDetail(); });
+
+async function openDetail(svc, row) {
+  releaseDetail();
+  els.detail.classList.add("open");
+  els.detailTitle.textContent = `${svc} — ${row.name ?? row.id ?? "entry"}`;
+  els.detailBody.textContent = "";
+  const id = row.id;
+
+  // First, because it is the fastest sanity check — and it must render for entries with no
+  // id too, which return early below.
+  section("Location", locationSection(row));
+  section("From the list response", jsonBlock(row._raw));
+
+  if (!id) { section("Lookup", placeholder("No id on this entry, so it cannot be fetched individually.")); return; }
+
+  if (svc === "photo") {
+    // Pixels are fetched only on demand — the panoramas are multi-megabyte JPEGs.
+    const wrap = document.createElement("div");
+    const btn = document.createElement("button");
+    btn.className = "primary";
+    btn.textContent = "Load image";
+    btn.addEventListener("click", async () => {
+      btn.disabled = true; btn.textContent = "Loading…";
+      try {
+        // An <img src> cannot carry the Authorization header, so fetch to a blob instead.
+        const res = await api(`photo/download/${encodeURIComponent(id)}`, { raw: true });
+        const url = URL.createObjectURL(await res.blob());
+        objectUrls.push(url);
+        const img = document.createElement("img");
+        img.src = url;
+        img.alt = String(row.name ?? id);
+        wrap.replaceChildren(img);
+      } catch (e) {
+        btn.disabled = false; btn.textContent = "Load image";
+        const err = document.createElement("p");
+        err.className = "err-text"; err.textContent = e.message;
+        wrap.append(err);
+      }
+    });
+    wrap.append(btn);
+    section("Image", wrap);
+  }
+
+  const lookups = svc === "poi"
+    ? [[`Full record and history — GET /poi/${id}`, `poi/${encodeURIComponent(id)}`]]
+    : [[`Full record — GET /photo/${id}`, `photo/${encodeURIComponent(id)}`],
+       [`History — GET /photo/history/${id}`, `photo/history/${encodeURIComponent(id)}`]];
+
+  for (const [title, path] of lookups) {
+    const holder = document.createElement("div");
+    holder.append(placeholder("Loading…"));
+    section(title, holder);
+    try {
+      holder.replaceChildren(jsonBlock(await api(path)));
+    } catch (e) {
+      const err = document.createElement("p");
+      err.className = "err-text"; err.textContent = e.message;
+      holder.replaceChildren(err);
+    }
+  }
+}
+
+renderToken();
+})();
+</script>
+</body>
+</html>

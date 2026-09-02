@@ -18,6 +18,16 @@ export interface Keyframe {
   qw?: number;
 }
 
+/** Manually picked georeference for one keyframe — SLAM poses carry no GPS. */
+export interface KeyframeGeo {
+  lat: number;
+  lon: number;
+  name?: string;
+  description?: string | null;
+  iais_photo_id?: string | null;
+  sent_at?: string;
+}
+
 export interface ReconstructionResults {
   report_id: number;
   keyframe_count: number;
@@ -25,6 +35,15 @@ export interface ReconstructionResults {
   has_dense_pointcloud: boolean;
   sparse_pointcloud_url: string | null;
   dense_pointcloud_url: string | null;
+  /** Keyed by keyframe index as a string. */
+  keyframe_geo: Record<string, KeyframeGeo>;
+}
+
+export interface KeyframeShareRequest {
+  lat: number;
+  lon: number;
+  name: string;
+  description?: string | null;
 }
 
 export interface VideoUploadResult {

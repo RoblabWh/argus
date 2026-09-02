@@ -93,7 +93,7 @@ export function ReconstructionReport({ report, onEditClicked }: Props) {
             className="w-full relative h-full"
           >
             {/* Tab switcher — centred like the mapping report */}
-            <div className="absolute left-1/2 -translate-x-1/2 top-2 z-10">
+            <div className="absolute left-1/2 -translate-x-1/2 top-2 z-100">
               <TabsList>
                 <TabsTrigger value="viewer">Viewer</TabsTrigger>
                 {videoUrl && <TabsTrigger value="video">Video</TabsTrigger>}
@@ -120,6 +120,10 @@ export function ReconstructionReport({ report, onEditClicked }: Props) {
                   onNavigate={setSelectedIndex}
                   onPlayFromHere={videoUrl ? handlePlayFromHere : undefined}
                   apiUrl={apiUrl}
+                  reportId={report.report_id}
+                  reportTitle={report.title}
+                  keyframeGeo={results?.keyframe_geo}
+                  isActive={tab === "viewer"}
                 />
               )}
             </TabsContent>

@@ -83,6 +83,9 @@ class ReconstructionReport(Base):
     has_dense_pointcloud = Column(Boolean, default=False)
     flight_timestamp = Column(DateTime, index=True, nullable=True)
     camera_model = Column(String, nullable=True)
+    # Manually picked georeference per keyframe, keyed by keyframe index as a string:
+    # {"12": {"lat": .., "lon": .., "name": .., "iais_photo_id": .., "sent_at": ..}}
+    keyframe_geo = Column(JSONB, nullable=True)
 
     # relationships
     report = relationship("Report", back_populates="reconstruction_report")

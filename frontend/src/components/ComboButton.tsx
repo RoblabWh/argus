@@ -46,7 +46,10 @@ export const ComboButton: React.FC<ComboButtonProps> = ({
       )}
     >
       {/* Main action button */}
+      {/* type="button" is required: shadcn's Button renders a bare <button>, which defaults
+          to type="submit" and would natively submit any <form> this lands in. */}
       <Button
+        type="button"
         variant="default"
         className="rounded-r-none"
         onClick={() => onAction(value)}

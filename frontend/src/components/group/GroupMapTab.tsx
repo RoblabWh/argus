@@ -1,7 +1,6 @@
 import { useState, useMemo, useRef, useEffect, use } from "react";
 import {
     MapContainer,
-    TileLayer,
     ImageOverlay,
     LayerGroup,
     LayersControl
@@ -9,6 +8,7 @@ import {
 import type { LatLngBoundsExpression, Map as LeafletMap } from 'leaflet';
 import { getApiUrl } from "@/api";
 import { useTheme } from "@/components/ui/theme-provider";
+import { MapBaseLayers } from "@/components/shared/MapBaseLayers";
 import { RotatedImageOverlay } from "@/components/report/mappingReportComponents/RotatedImageOverlay";
 import { Slider } from "@/components/ui/slider";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -25,7 +25,6 @@ import { Separator } from "@/components/ui/separator";
 
 
 
-const { BaseLayer } = LayersControl;
 
 export function GroupMapTab({
     summaryReports = []
@@ -212,40 +211,7 @@ export function GroupMapTab({
         <div style={{ position: "relative", height: "100%", width: "100%" }} >
             <MapContainer center={center} zoom={18} style={{ height: "100%", width: "100%" }} ref={setLeafletMap}>
                 <CustomLayerControl position="topright">
-                    <BaseLayer checked name="Mapbox Streets">
-                        <TileLayer
-                            id={current === "dark" ? 'mapbox/dark-v11' : 'mapbox/streets-v11'}
-                            attribution='&copy; Mapbox contributors'
-                            url="https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token=pk.eyJ1Ijoicm9ibGFidXNlcndocyIsImEiOiJja3VjaXF3d2MxMTN5Mm9tdmQzaGphdGU3In0.BhKF_054bVOPcviIq2yIKg"
-                            maxZoom={23}
-                        />
-                    </BaseLayer>
-
-                    <BaseLayer name="OpenStreetMap">
-                        <TileLayer
-                            attribution='&copy; OpenStreetMap contributors'
-                            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                            maxZoom={22}
-                        />
-                    </BaseLayer>
-
-
-                    <BaseLayer name="Esri Satellite">
-                        <TileLayer
-                            attribution='Tiles © Esri'
-                            url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-                            maxZoom={21}
-                        />
-                    </BaseLayer>
-
-                    <BaseLayer name="Mapbox Satellite">
-                        <TileLayer
-                            id='mapbox/satellite-v9'
-                            attribution='&copy; Mapbox contributors'
-                            url="https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token=pk.eyJ1Ijoicm9ibGFidXNlcndocyIsImEiOiJja3VjaXF3d2MxMTN5Mm9tdmQzaGphdGU3In0.BhKF_054bVOPcviIq2yIKg"
-                            maxZoom={23}
-                        />
-                    </BaseLayer>
+                    <MapBaseLayers />
                 </CustomLayerControl>
 
                 {summaryReports.map((report) =>

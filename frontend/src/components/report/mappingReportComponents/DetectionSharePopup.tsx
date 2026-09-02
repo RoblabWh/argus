@@ -16,7 +16,7 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from "@/components/ui/popover"
-import { Loader2, X, Info } from "lucide-react"
+import { Loader2, X, Info, Check } from "lucide-react"
 import { toast } from "sonner"
 import { ComboButton } from "@/components/ComboButton"
 import type { Geometry, Properties, Detection } from "@/types/detection"
@@ -31,7 +31,8 @@ type DetectionSharePopupProps = {
     onClose: () => void
     detection: Detection
     timestamp: string
-    drzBackendApi?: string
+    /** Whether a DRZ backend is configured in Settings; gates the "Send to DRZ System" option. */
+    drzConfigured?: boolean
 }
 
 function shareAsEmail(type: string, detail: string, subtype: string, name: string, description: string, coordinate: string, author: string, timestamp: string) {
@@ -60,7 +61,7 @@ export function DetectionSharePopup({
     onClose,
     detection,
     timestamp,
-    drzBackendApi,
+    drzConfigured = false,
 }: DetectionSharePopupProps) {
     const [sendOption, setSendOption] = useState<"email" | "gps" | "drz">("email")
     const { mutateAsync: sendToDrz, isPending: isSendingDrz } = useSendDetectionToDrz()
@@ -71,6 +72,8 @@ export function DetectionSharePopup({
     const [detail, setDetail] = useState<string>("")
     const [subtype, setSubtype] = useState<string>("")
     const [drzError, setDrzError] = useState<DrzError | null>(null)
+    // Brief post-success state: the button confirms in place before the dialog closes.
+    const [drzSent, setDrzSent] = useState(false)
 
     // Pre-fill coordinate & type detail based on class
     useEffect(() => {
@@ -126,8 +129,8 @@ export function DetectionSharePopup({
             return
         }
         // sendOption === "drz"
-        if (!drzBackendApi || !payload.coordinate) return
-        if (isSendingDrz) return
+        if (!drzConfigured || !payload.coordinate) return
+        if (isSendingDrz || drzSent) return
 
         setDrzError(null)
         const geometry: Geometry = {
@@ -153,7 +156,9 @@ export function DetectionSharePopup({
                 return
             }
             toast.success(resp.message || "Detection sent to DRZ.")
-            handleClose()
+            // Show the confirmation on the button itself for a moment, then close.
+            setDrzSent(true)
+            window.setTimeout(handleClose, 700)
         } catch (e) {
             setDrzError({
                 message: "Could not reach DRZ backend.",
@@ -170,6 +175,7 @@ export function DetectionSharePopup({
         setDetail("")
         setSubtype("")
         setDrzError(null)
+        setDrzSent(false)
         onClose()
     }
 
@@ -182,17 +188,19 @@ export function DetectionSharePopup({
     const dateString = new Date(timestamp).toLocaleString()
 
     return (
-        <Dialog open={open} onOpenChange={(o) => { if (!o && !isSendingDrz) handleClose() }}>
+        <Dialog open={open} onOpenChange={(o) => { if (!o && !isSendingDrz && !drzSent) handleClose() }}>
             <DialogContent
                 className="max-w-xl rounded-2xl p-6"
-                onPointerDownOutside={(e) => { if (isSendingDrz) e.preventDefault() }}
-                onEscapeKeyDown={(e) => { if (isSendingDrz) e.preventDefault() }}
+                onPointerDownOutside={(e) => { if (isSendingDrz || drzSent) e.preventDefault() }}
+                onEscapeKeyDown={(e) => { if (isSendingDrz || drzSent) e.preventDefault() }}
             >
                 <DialogHeader>
                     <DialogTitle>Share Object Detection</DialogTitle>
                 </DialogHeader>
 
-                <form className="space-y-4 mt-2">
+                {/* Without onSubmit the send button natively submits this form, which
+                    navigates the page and aborts the in-flight request. */}
+                <form className="space-y-4 mt-2" onSubmit={(e) => e.preventDefault()}>
                     <div className="flex items-center space-x-1 mb-2">
                         <div className="text-md font-semibold">
                             {detection.class_name.charAt(0).toUpperCase() + detection.class_name.slice(1)}
@@ -367,19 +375,20 @@ export function DetectionSharePopup({
                     )}
 
                     <DialogFooter className="pt-4 flex justify-between">
-                        <Button variant="outline" onClick={handleClose} disabled={isSendingDrz}>Cancel</Button>
+                        <Button type="button" variant="outline" onClick={handleClose} disabled={isSendingDrz}>Cancel</Button>
                         <ComboButton
                             value={sendOption}
                             options={[
                                 { key: "email", label: "Send via Email" },
                                 { key: "gps", label: "Download GPS POI" },
-                                ...(drzBackendApi ? [{ key: "drz", label: "Send to DRZ System" }] : []),
+                                ...(drzConfigured ? [{ key: "drz", label: drzSent ? "Sent" : "Send to DRZ System" }] : []),
                             ]}
                             onChange={(key) => setSendOption(key as typeof sendOption)}
                             onAction={handleSend}
-                            disabled={isSendingDrz}
+                            disabled={isSendingDrz || drzSent}
                         >
                             {isSendingDrz && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
+                            {drzSent && <Check className="ml-2 h-4 w-4" />}
                         </ComboButton>
                     </DialogFooter>
                 </form>

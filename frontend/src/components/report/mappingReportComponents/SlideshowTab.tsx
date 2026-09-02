@@ -15,6 +15,7 @@ import { useDetections } from "@/hooks/detectionHooks";
 import { useQueryClient } from "@tanstack/react-query";
 import { getDetectionColor } from "@/types/detection";
 import { useDetectionColorsVersion } from "@/hooks/useDetectionColors";
+import { useSettings } from "@/hooks/settingsHooks";
 import { DetectionSharePopup } from "./DetectionSharePopup";
 import { DetectionEditPopup } from "./DetectionEditPopup";
 import { PanoramaViewer } from "./PanoramaViewer";
@@ -46,6 +47,9 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
     // Re-render when the configured detection colors change (getDetectionColor
     // reads a module-level store, not props).
     useDetectionColorsVersion();
+    // Same source of truth as KeyframeSharePopup: only offer DRZ sharing when it is configured.
+    const { data: settings } = useSettings();
+    const drzConfigured = Boolean(settings?.DRZ_BACKEND_URL);
     const apiUrl = getApiUrl();
     const containerRef = useRef<HTMLDivElement>(null);
     const stageRef = useRef<any>(null);
@@ -718,7 +722,7 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
                                             onClose={() => setShareDetectionOpen(false)}
                                             detection={selectedDetection}
                                             timestamp={selectedImage?.created_at || ""}
-                                            drzBackendApi="https://lets.try.this"
+                                            drzConfigured={drzConfigured}
                                         />
                                         <DetectionEditPopup
                                             reportId={report_id}

@@ -15,7 +15,7 @@ import type {
   SettingsTestResult,
 } from "@/types/settings";
 import type { CameraConfigSummary, CameraConfig } from "@/types/cameraConfig";
-import type { ReconstructionSettings, ReconstructionResults } from "@/types/reconstruction";
+import type { ReconstructionSettings, ReconstructionResults, KeyframeShareRequest } from "@/types/reconstruction";
 
 import { data } from "react-router-dom";
 
@@ -210,6 +210,29 @@ export const getReconstructionResults = (
   report_id: number
 ): Promise<ReconstructionResults> =>
   fetchJson(`/reconstruction/${report_id}/results`);
+
+// Download URL for a single keyframe panorama (server sets a readable filename)
+export const getKeyframeDownloadUrl = (report_id: number, index: number): string =>
+  `${API_URL}/reconstruction/${report_id}/keyframes/${index}/download`;
+
+// Send one keyframe panorama to the DRZ/IAIS photo service with a manually picked coordinate
+export const sendKeyframeToDrz = (
+  report_id: number,
+  index: number,
+  body: KeyframeShareRequest
+): Promise<{ success: boolean; message: string; photo_id: string | null }> =>
+  postJson(`/reconstruction/${report_id}/keyframes/${index}/send_to_drz`, body);
+
+// --- Geocoding (server-side proxy; returns [] when the geocoder is unreachable) ---
+
+export interface GeocodeResult {
+  display_name: string;
+  lat: number;
+  lon: number;
+}
+
+export const geocodeSearch = (q: string, limit = 5): Promise<GeocodeResult[]> =>
+  fetchJson(`/geocode/search?q=${encodeURIComponent(q)}&limit=${limit}`);
 
 // --- COLMAP 3D reconstruction status ---
 
