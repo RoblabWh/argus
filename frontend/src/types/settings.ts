@@ -9,6 +9,8 @@ export interface SettingsData {
   DRZ_AUTHOR_NAME: string;
   DRZ_BACKEND_USERNAME: string;
   DRZ_BACKEND_PASSWORD: string;
+  /** GeoServer workspace orthophotos are published into. Defaults to "DRZ". */
+  DRZ_GEOSERVER_WORKSPACE: string;
   /** class_name → #rrggbb. Free-form: the user adds/removes classes in the
    * settings page, and any class absent here gets an automatic color. */
   DETECTION_COLORS: Record<string, string>;
@@ -34,6 +36,7 @@ export type DRZSettings = {
   AUTHOR_NAME: string;
   BACKEND_USERNAME: string;
   BACKEND_PASSWORD: string;
+  GEOSERVER_WORKSPACE: string;
 };
 
 export type SettingsTestResult = {

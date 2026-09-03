@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
 import type { Detection } from "@/types/detection"
+import { MANUAL_CLASS_OPTIONS } from "@/types/detection"
 import { useUpdateDetection } from "@/hooks/detectionHooks"
 
 type DetectionEditPopupProps = {
@@ -15,8 +16,6 @@ type DetectionEditPopupProps = {
     onSave: (updated: Detection) => void
     timestamp: string
 }
-
-const CLASS_OPTIONS = ["fire", "human", "vehicle"]
 
 export function DetectionEditPopup({ open, onClose, detection, onSave, timestamp, reportId }: DetectionEditPopupProps) {
     const [currentClass, setCurrentClass] = useState(detection.class_name)
@@ -78,7 +77,7 @@ export function DetectionEditPopup({ open, onClose, detection, onSave, timestamp
                                 <SelectValue placeholder="Select class" />
                             </SelectTrigger>
                             <SelectContent>
-                                {CLASS_OPTIONS.map((c) => (
+                                {MANUAL_CLASS_OPTIONS.map((c) => (
                                     <SelectItem key={c} value={c}>
                                         {c}
                                     </SelectItem>

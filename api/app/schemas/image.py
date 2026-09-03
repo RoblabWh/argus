@@ -172,6 +172,10 @@ class DetectionBase(BaseModel):
     score: float
     bbox: list  # JSONB as dict
     manually_verified: Optional[bool] = None
+    # Drawn by hand in the slideshow rather than produced by a detector. Marks
+    # provenance and protects the row from the delete-before-rerun; distinct
+    # from manually_verified, which means a person confirmed an AI box.
+    manually_created: bool = False
     coord: Optional[dict] = None  # JSONB as dict
     unique_object_id: Optional[int] = None  # per-report object cluster label (reID)
 
@@ -186,6 +190,7 @@ class DetectionUpdate(BaseModel):
     score: Optional[float] = None
     bbox: Optional[list] = None  # JSONB as dict
     manually_verified: Optional[bool] = None
+    manually_created: Optional[bool] = None
     coord: Optional[dict] = None  # JSONB as dict
     unique_object_id: Optional[int] = None  # explicit null clears the assignment
 
@@ -210,6 +215,38 @@ class DetectionUniqueObjectAssign(BaseModel):
 class DetectionObjectGroup(BaseModel):
     unique_object_id: Optional[int] = None  # None = ungrouped bucket
     detections: List[DetectionOut] = []
+
+
+##################
+## DRZ / IAIS sharing
+##################
+
+class DetectionShareRequest(BaseModel):
+    """Body of POST /detections/send_to_iais.
+
+    `geometry` and `properties` are passed through to the DRZ POI schema (GeoFeature).
+    Setting `attach_image` additionally uploads the detection's source frame to the DRZ
+    photo service and links it to the POI that was just created, which needs
+    `detection_id` to find the image.
+    """
+    geometry: dict
+    properties: dict
+    detection_id: Optional[int] = None
+    attach_image: bool = False
+
+
+class ImageShareRequest(BaseModel):
+    """Body of POST /images/{image_id}/send_to_drz.
+
+    Mirrors KeyframeShareRequest. Unlike a SLAM keyframe a mapping image usually has EXIF
+    GPS, so the client normally prefills lat/lon rather than asking the operator to pick.
+    """
+    lat: float
+    lon: float
+    name: str
+    description: Optional[str] = None
+    # Compass heading in degrees; the client prefills it from the camera yaw when known.
+    direction: Optional[int] = None
 
 
 ##################

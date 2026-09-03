@@ -11,6 +11,7 @@ from app.schemas.image import (
     ImageUploadResult,
     MappingDataCreate,
     ThermalDataCreate,
+    DetectionCreate,
     DetectionUpdate,
 )
 from app.services.cleanup import delete_image_file
@@ -296,6 +297,20 @@ def save_detections(db: Session, mapping_report_id: int, detections: dict):
     return {"status": "success", "message": "Detections saved successfully"}
 
 
+def create_detection(db: Session, data: DetectionCreate):
+    """Create a single detection row from a validated schema.
+
+    Deliberately not routed through save_detections: that one speaks the
+    worker's payload shape (``category_name``), forces manually_verified=False,
+    drops ``coord`` and returns no ids.
+    """
+    detection = models.Detection(**data.model_dump())
+    db.add(detection)
+    db.commit()
+    db.refresh(detection)
+    return detection
+
+
 def get_all_detections(db: Session):
     return db.query(models.Detection).all()
 
@@ -308,8 +323,11 @@ def delete_all_detections_by_mapping_report_id(db: Session, mapping_report_id: i
     image_ids = select(models.Image.id).where(
         models.Image.mapping_report_id == mapping_report_id
     )
+    # Hand-drawn detections are never wiped by a detection run — they are the
+    # operator's own record of something the detector missed.
     db.query(models.Detection).filter(
-        models.Detection.image_id.in_(image_ids)
+        models.Detection.image_id.in_(image_ids),
+        models.Detection.manually_created.is_(False),
     ).delete(synchronize_session=False)
     db.commit()
     return {"status": "success", "message": "All detections deleted successfully"}
@@ -324,6 +342,10 @@ def delete_detections_by_class_names(
     ``invert=True`` deletes everything else (NULL class names included). Lets
     the separately-dispatched fire and object detection runs replace only
     their own results.
+
+    Hand-drawn detections are excluded either way. The exclusion has to be its
+    own predicate rather than a class-name trick, because the ``invert`` branch
+    deliberately matches NULL class names too.
     """
     image_ids = select(models.Image.id).where(
         models.Image.mapping_report_id == mapping_report_id
@@ -333,6 +355,7 @@ def delete_detections_by_class_names(
         class_filter = models.Detection.class_name.is_(None) | ~models.Detection.class_name.in_(class_names)
     db.query(models.Detection).filter(
         models.Detection.image_id.in_(image_ids),
+        models.Detection.manually_created.is_(False),
         class_filter,
     ).delete(synchronize_session=False)
     db.commit()
@@ -500,6 +523,13 @@ def get_reid_input(db: Session, mapping_report_id: int):
             }
         )
         for det in image.detections:
+            # Hand-drawn detections are left out of reID entirely: the operator
+            # placed (and may have grouped) them deliberately, and
+            # assign_unique_object_clusters leaves their unique_object_id alone,
+            # so clustering them here would produce assignments that are never
+            # written back.
+            if det.manually_created:
+                continue
             detections.append(
                 {
                     "id": det.id,
@@ -585,14 +615,46 @@ def assign_unique_object_clusters(
 
     Clears any previous assignment for the report first, then writes each
     cluster's unique_object_id onto its detections. Returns the count updated.
+
+    Hand-drawn detections keep their grouping: the worker never sees them
+    (get_reid_input skips them), so a re-run has nothing to say about them. Any
+    of their ids that the incoming clusters would reuse are moved above the
+    incoming maximum first — otherwise a manual detection would silently join an
+    unrelated cluster and render as one object on the map.
     """
     image_ids = select(models.Image.id).where(
         models.Image.mapping_report_id == mapping_report_id
     )
-    # Reset previous assignments so re-runs are clean.
+    # Reset previous assignments so re-runs are clean — except on hand-drawn
+    # detections, see above.
     db.query(models.Detection).filter(
-        models.Detection.image_id.in_(image_ids)
+        models.Detection.image_id.in_(image_ids),
+        models.Detection.manually_created.is_(False),
     ).update({models.Detection.unique_object_id: None}, synchronize_session=False)
+
+    incoming_ids = {int(uid) for uid, det_ids in clusters.items() if det_ids}
+    if incoming_ids:
+        colliding = (
+            db.query(models.Detection.unique_object_id)
+            .filter(
+                models.Detection.image_id.in_(image_ids),
+                models.Detection.manually_created.is_(True),
+                models.Detection.unique_object_id.in_(incoming_ids),
+            )
+            .distinct()
+            .all()
+        )
+        next_free = max(incoming_ids) + 1
+        for (old_uid,) in colliding:
+            db.query(models.Detection).filter(
+                models.Detection.image_id.in_(image_ids),
+                models.Detection.manually_created.is_(True),
+                models.Detection.unique_object_id == old_uid,
+            ).update(
+                {models.Detection.unique_object_id: next_free},
+                synchronize_session=False,
+            )
+            next_free += 1
 
     updated_count = 0
     for unique_object_id, detection_ids in clusters.items():

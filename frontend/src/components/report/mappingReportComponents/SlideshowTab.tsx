@@ -9,7 +9,7 @@ import { useDeleteDetection } from "@/hooks/detectionHooks";
 import { getApiUrl } from "@/api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Edit, Trash, Share2, Scan } from "lucide-react";
+import { Edit, Trash, Share2, Scan, Check, X } from "lucide-react";
 import { useImages } from "@/hooks/imageHooks";
 import { useDetections } from "@/hooks/detectionHooks";
 import { useQueryClient } from "@tanstack/react-query";
@@ -18,6 +18,9 @@ import { useDetectionColorsVersion } from "@/hooks/useDetectionColors";
 import { useSettings } from "@/hooks/settingsHooks";
 import { DetectionSharePopup } from "./DetectionSharePopup";
 import { DetectionEditPopup } from "./DetectionEditPopup";
+import { DetectionCreatePopup } from "./DetectionCreatePopup";
+import { ImageSharePopup } from "./ImageSharePopup";
+import type { DraftBox } from "./DetectionCreatePopup";
 import { PanoramaViewer } from "./PanoramaViewer";
 import {
     TempMatrixOverlayImage,
@@ -34,6 +37,10 @@ interface SlideshowTabProps {
     thresholds: { [key: string]: number };
     visibleCategories: { [key: string]: boolean };
     report_id: number;
+    reportTitle?: string;
+    /** Registers a predicate the navigation guard calls before changing image or tab.
+     * Returning true means there is unsaved work and the guard should ask first. */
+    registerNavBlocker?: (blocker: (() => boolean) | null, discard: (() => void) | null) => void;
 }
 
 export const SlideshowTab: React.FC<SlideshowTabProps> = ({
@@ -43,6 +50,8 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
     thresholds,
     visibleCategories,
     report_id,
+    reportTitle,
+    registerNavBlocker,
 }) => {
     // Re-render when the configured detection colors change (getDetectionColor
     // reads a module-level store, not props).
@@ -97,6 +106,7 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
 
     const [selectedDetection, setSelectedDetection] = useState<any | null>(null);
     const [shareDetectionOpen, setShareDetectionOpen] = useState(false);
+    const [shareImageOpen, setShareImageOpen] = useState(false);
     const [editOpen, setEditOpen] = useState(false);
     const handleSave = (updated: Detection) => {
         console.log("Updated detection:", updated);
@@ -112,6 +122,18 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
 
     const { data: detections } = useDetections(report_id);
     const deleteDetectionMutation = useDeleteDetection(report_id);
+
+    // --- Manual detection drawing -------------------------------------------
+    // drawMode arms the stage for a drag; draftBox holds the box the user drew
+    // (image-pixel space, same as Detection.bbox) until they confirm or discard it.
+    const [drawMode, setDrawMode] = useState(false);
+    const [draftBox, setDraftBox] = useState<DraftBox | null>(null);
+    const [drawStart, setDrawStart] = useState<{ x: number; y: number } | null>(null);
+    const [createOpen, setCreateOpen] = useState(false);
+    // RGB only: a thermal frame is rendered at a different scale to its RGB
+    // counterpart and a panorama has no usable footprint, so a box drawn on
+    // either cannot be georeferenced with the same interpolation.
+    const canDraw = !!selectedImage && !selectedImage.thermal && !selectedImage.panoramic && !!image;
 
     const [detectionsOfImage, setDetectionsOfImage] = useState<any[]>([]);
     useEffect(() => {
@@ -423,7 +445,83 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
         setProbeResult(null);
     };
 
+    /** Stage pointer -> source-image pixels, clamped to the image. Mirrors the
+     * transform in handleMouseClick; the Stage carries the scale/offset, so
+     * detection bboxes elsewhere in this file need no conversion at all. */
+    const pointerToImagePx = () => {
+        const stage = stageRef.current;
+        if (!stage || !image) return null;
+        const pointer = stage.getPointerPosition();
+        if (!pointer) return null;
+        const stageScale = stage.scaleX();
+        return {
+            x: Math.min(Math.max((pointer.x - position.x) / stageScale, 0), image.width),
+            y: Math.min(Math.max((pointer.y - position.y) / stageScale, 0), image.height),
+        };
+    };
+
+    const handleDrawStart = (e: any) => {
+        if (!drawMode) return;
+        e.evt?.preventDefault?.();
+        const p = pointerToImagePx();
+        if (!p) return;
+        setSelectedDetection(null);
+        setDrawStart(p);
+        setDraftBox({ x: p.x, y: p.y, w: 0, h: 0 });
+    };
+
+    const handleDrawMove = (e: any) => {
+        if (!drawMode || !drawStart) return;
+        e.evt?.preventDefault?.();
+        const p = pointerToImagePx();
+        if (!p) return;
+        // Normalized so dragging up/left produces the same box as down/right.
+        setDraftBox({
+            x: Math.min(drawStart.x, p.x),
+            y: Math.min(drawStart.y, p.y),
+            w: Math.abs(p.x - drawStart.x),
+            h: Math.abs(p.y - drawStart.y),
+        });
+    };
+
+    const MIN_DRAFT_PX = 4;
+
+    const handleDrawEnd = () => {
+        if (!drawMode || !drawStart) return;
+        setDrawStart(null);
+        // A click without a drag is not a box — drop it rather than creating a
+        // zero-area detection the user would then have to delete.
+        setDraftBox((box) => (box && box.w >= MIN_DRAFT_PX && box.h >= MIN_DRAFT_PX ? box : null));
+    };
+
+    const discardDraft = () => {
+        setDraftBox(null);
+        setDrawStart(null);
+        setCreateOpen(false);
+    };
+
+    // Let the parent's navigation guard ask whether there is unsaved work before
+    // it changes the selected image or the tab.
+    useEffect(() => {
+        if (!registerNavBlocker) return;
+        registerNavBlocker(() => draftBox !== null, discardDraft);
+        return () => registerNavBlocker(null, null);
+    }, [registerNavBlocker, draftBox]);
+
+    // Leaving draw mode (or the image) abandons an unconfirmed box.
+    useEffect(() => {
+        if (!drawMode) discardDraft();
+    }, [drawMode]);
+
+    useEffect(() => {
+        setDrawMode(false);
+        discardDraft();
+    }, [selectedImage?.id]);
+
     const handleMouseClick = (e: any) => {
+        // A draw drag must not double as a click that clears the selection or
+        // fires a thermal probe.
+        if (drawMode) return;
         setSelectedDetection(null);
 
         const stage = e.currentTarget;
@@ -547,7 +645,7 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
             return det.score < threshold;
         });
         if (selection && selection.length > 0) return true;
-        const hidden = detections?.filter((det) => !visibleCategories[det.class_name]);
+        const hidden = detections?.filter((det) => visibleCategories[det.class_name] === false);
         if (hidden && hidden.length > 0) return true;
         return false;
     }
@@ -560,6 +658,18 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
 
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
+            // Don't steal the arrow keys from a focused field or an open dialog —
+            // this listener is on window, so without the guard typing in the
+            // create/edit popups would page through the images behind them.
+            const active = document.activeElement as HTMLElement | null;
+            if (active) {
+                const tag = active.tagName;
+                if (
+                    tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" ||
+                    active.isContentEditable ||
+                    active.closest('[role="dialog"]')
+                ) return;
+            }
             if (e.key === "ArrowRight") nextImage();
             if (e.key === "ArrowLeft") previousImage();
         };
@@ -589,13 +699,18 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
                                     x={position.x}
                                     y={position.y}
                                     onWheel={handleWheel}
-                                    draggable
+                                    draggable={!drawMode}
                                     onDragMove={handleDragMove}
-                                    onTouchMove={handleTouchMove}
-                                    onTouchEnd={handleTouchEnd}
-                                    onMouseUp={handleMouseClick}
+                                    onMouseDown={handleDrawStart}
+                                    onMouseMove={handleDrawMove}
+                                    onMouseLeave={handleDrawEnd}
+                                    onTouchStart={handleDrawStart}
+                                    onTouchMove={drawMode ? handleDrawMove : handleTouchMove}
+                                    onTouchEnd={drawMode ? handleDrawEnd : handleTouchEnd}
+                                    onMouseUp={(e: any) => { handleDrawEnd(); handleMouseClick(e); }}
                                     onTap={handleMouseClick}
                                     className="p-0 m-0"
+                                    style={drawMode ? { cursor: "crosshair" } : undefined}
                                 >
                                     <Layer>
                                         {/* Background RGB image (if exists) */}
@@ -637,7 +752,12 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
                                                 const threshold = thresholds?.[det.class_name] ?? 0;
                                                 return det.score >= threshold;
                                             }).map((det) => {
-                                                if (!visibleCategories[det.class_name]) return null;
+                                                // Only an explicit false hides a class. A class the visibility
+                                                // map has not seen yet — a manual detection introducing "other"
+                                                // to this report — is visible, matching the "default to visible"
+                                                // rule in initiateCategoryVisibility. Otherwise a freshly created
+                                                // detection is invisible until DetectionCard's effect catches up.
+                                                if (visibleCategories[det.class_name] === false) return null;
                                                 const [x, y, w, h] = det.bbox;
                                                 const color = getDetectionColor(det.class_name);
 
@@ -655,6 +775,9 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
                                                         height={h}
                                                         stroke={color}
                                                         strokeWidth={strokeWidth}
+                                                        // Hand-drawn boxes are dashed, so an operator can tell at a
+                                                        // glance which boxes are the model's and which are theirs.
+                                                        dash={det.manually_created ? [18, 12] : undefined}
                                                         onClick={(e) => {
                                                             const stage = stageRef.current;
                                                             const scale = stage.scaleX();
@@ -670,8 +793,44 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
                                                 );
                                             })
                                         }
+
+                                        {draftBox && (
+                                            <Rect
+                                                x={draftBox.x}
+                                                y={draftBox.y}
+                                                width={draftBox.w}
+                                                height={draftBox.h}
+                                                stroke="#ffffff"
+                                                strokeWidth={6}
+                                                dash={[18, 12]}
+                                                listening={false}
+                                            />
+                                        )}
                                     </Layer>
                                 </Stage>
+
+                                {draftBox && !drawStart && (
+                                    <div
+                                        className="absolute flex gap-2 p-2 bg-white shadow-md rounded-lg z-50 flex-col dark:bg-gray-800"
+                                        style={getDetectionPopupPosition(
+                                            {
+                                                screenX: draftBox.x * scale + position.x,
+                                                screenY: draftBox.y * scale + position.y,
+                                                bbox: [draftBox.x, draftBox.y, draftBox.w, draftBox.h],
+                                            },
+                                            stageRef,
+                                            50,
+                                            96,
+                                        )}
+                                    >
+                                        <Button size="icon" variant="default" onClick={() => setCreateOpen(true)}>
+                                            <Check />
+                                        </Button>
+                                        <Button size="icon" variant="outline" onClick={discardDraft}>
+                                            <X />
+                                        </Button>
+                                    </div>
+                                )}
 
                                 {displayHiddenDetectionsWarning(detectionsOfImage) && (
                                     <ThresholdWarning
@@ -684,7 +843,11 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
                                     <>
                                         <div className="absolute top-2 left-2 bg-black/50 text-white text-xs p-2 rounded-md z-50 w-33" style={getDetectionPopupPosition(selectedDetection, stageRef, 135, 50, "top")}>
                                             <div><span className="font-semibold">Class:</span> {selectedDetection.class_name}</div>
-                                            <div><span className="font-semibold">Confidence:</span> {(selectedDetection.score * 100).toFixed(1)}%</div>
+                                            {selectedDetection.manually_created ? (
+                                                <div><span className="font-semibold">Source:</span> Added manually</div>
+                                            ) : (
+                                                <div><span className="font-semibold">Confidence:</span> {(selectedDetection.score * 100).toFixed(1)}%</div>
+                                            )}
                                         </div>
                                         <div
                                             className="absolute flex gap-2 p-2 bg-white shadow-md rounded-lg z-50 flex-col dark:bg-gray-800"
@@ -733,6 +896,20 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
                                             onSave={handleSave}
                                         />
                                     </>
+                                )}
+
+                                {draftBox && selectedImage && (
+                                    <DetectionCreatePopup
+                                        reportId={report_id}
+                                        open={createOpen}
+                                        onClose={() => setCreateOpen(false)}
+                                        draft={draftBox}
+                                        image={selectedImage}
+                                        onCreated={() => {
+                                            discardDraft();
+                                            setDrawMode(false);
+                                        }}
+                                    />
                                 )}
 
                                 {selectedImage?.thermal && selectedImage.thermal_data?.counterpart_id && (
@@ -788,6 +965,19 @@ export const SlideshowTab: React.FC<SlideshowTabProps> = ({
                 hasDetections={!!detectionsOfImage?.length}
                 isHighlighting={highlightDetections}
                 isCompactView={isCompactView}
+                drawMode={drawMode}
+                onDrawModeToggle={() => setDrawMode((d) => !d)}
+                canDraw={canDraw}
+                onShareImage={() => setShareImageOpen(true)}
+                canShareImage={drzConfigured && !!selectedImage}
+            />
+
+            <ImageSharePopup
+                open={shareImageOpen}
+                onOpenChange={setShareImageOpen}
+                image={selectedImage}
+                reportTitle={reportTitle}
+                reportId={report_id}
             />
 
             <ThermalSettingsPopup

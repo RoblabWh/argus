@@ -1,7 +1,7 @@
 import { keepPreviousData, useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
-import { startDetection, getDetectionStatus, getDetections, getFireMap, updateDetection, deleteDetection, updateDetectionBatch, updateDetectionUniqueObject, getNewDetections } from "@/api";
+import { startDetection, getDetectionStatus, getDetections, getFireMap, createDetection, updateDetection, deleteDetection, updateDetectionBatch, updateDetectionUniqueObject, getNewDetections } from "@/api";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
-import type { Detection } from "@/types/detection";
+import type { Detection, DetectionCreate } from "@/types/detection";
 import type { Report } from "@/types/report";
 
 
@@ -83,6 +83,19 @@ export function useFetchNewDetections(reportId: number) {
 
             return merged;
         }
+    });
+}
+
+export function useCreateDetection(reportId: number) {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (data: DetectionCreate) => createDetection(data),
+        onSuccess: () => {
+            // Same invalidations as an edit: the gallery and map read the
+            // detections list, and a manually added fire changes the overlay.
+            queryClient.invalidateQueries({ queryKey: ["detections", reportId] });
+            queryClient.invalidateQueries({ queryKey: ["fireMap", reportId] });
+        },
     });
 }
 

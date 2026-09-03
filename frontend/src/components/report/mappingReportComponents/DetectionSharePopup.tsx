@@ -11,6 +11,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import {
     Popover,
     PopoverContent,
@@ -21,6 +23,13 @@ import { toast } from "sonner"
 import { ComboButton } from "@/components/ComboButton"
 import type { Geometry, Properties, Detection } from "@/types/detection"
 import { useSendDetectionToDrz } from "@/hooks/poiHook"
+import {
+    DRZ_SUBTYPE_GROUPS,
+    DRZ_MAIN_TYPES,
+    DRZ_DANGER_LEVELS,
+    drzDefaultsForClass,
+    drzGroupRules,
+} from "@/types/drz"
 
 type DrzError = { message: string; detail: string | null }
 
@@ -70,7 +79,10 @@ export function DetectionSharePopup({
     const [description, setDescription] = useState("")
     const [author, setAuthor] = useState("")
     const [detail, setDetail] = useState<string>("")
+    const [group, setGroup] = useState<string>("")
     const [subtype, setSubtype] = useState<string>("")
+    const [dangerLevel, setDangerLevel] = useState<string>("false")
+    const [attachImage, setAttachImage] = useState(false)
     const [drzError, setDrzError] = useState<DrzError | null>(null)
     // Brief post-success state: the button confirms in place before the dialog closes.
     const [drzSent, setDrzSent] = useState(false)
@@ -78,21 +90,22 @@ export function DetectionSharePopup({
     // Pre-fill coordinate & type detail based on class
     useEffect(() => {
         const cls = detection.class_name?.toLowerCase() ?? ""
-        if (cls.includes("human")) {
-            setDetail("-1")
-            setSubtype("Person")
-        } else if (cls.includes("vehicle")) {
-            setDetail("-1")
-            setSubtype("Land vehicle (car, truck, trailer)")
-        } else if (cls.includes("fire")) {
-            setDetail("7")
-            setSubtype("Fire (medium)")
-        }
+        // Category/subtype/affiliation come from one catalog now (types/drz.ts), transcribed
+        // from the DRZ OpenAPI spec. "other" prefills nothing but the affiliation — only the
+        // operator knows what they marked, and DRZ validates the subtype against its enum.
+        const defaults = drzDefaultsForClass(detection.class_name)
+        setDetail(defaults.mainType)
+        setGroup(defaults.group)
+        setSubtype(defaults.subtype)
         if (description === "") {
-            setDescription(`${cls.charAt(0).toUpperCase() + cls.slice(1)} detected by AI with score ${detection.score.toFixed(2)}`)
+            setDescription(
+                detection.manually_created
+                    ? `${cls.charAt(0).toUpperCase() + cls.slice(1)} marked manually in the image`
+                    : `${cls.charAt(0).toUpperCase() + cls.slice(1)} detected by AI with score ${detection.score.toFixed(2)}`
+            )
         }
         if (author === "") {
-            setAuthor("Argus AI Detection");
+            setAuthor(detection.manually_created ? "Argus Manual Detection" : "Argus AI Detection");
         }
     }, [detection])
 
@@ -130,6 +143,8 @@ export function DetectionSharePopup({
         }
         // sendOption === "drz"
         if (!drzConfigured || !payload.coordinate) return
+        // DRZ validates both against its enums; empty strings are rejected with a 422.
+        if (!payload.subtype || !payload.detail) return
         if (isSendingDrz || drzSent) return
 
         setDrzError(null)
@@ -140,14 +155,22 @@ export function DetectionSharePopup({
         const properties: Properties = {
             type: payload.detail,
             subtype: payload.subtype,
-            detection: 0,
+            // DRZ provenance enum: 0 AUTO, 1 MANUELL, 2 VERIFIED
+            // (see api/app/services/drz_backend_sharing.py).
+            detection: detection.manually_verified ? 2 : detection.manually_created ? 1 : 0,
+            danger_level: dangerLevel === "true",
             name: payload.name,
             description: payload.description,
             datetime: payload.timestamp,
         }
 
         try {
-            const resp = await sendToDrz({ geometry, properties })
+            const resp = await sendToDrz({
+                geometry,
+                properties,
+                detection_id: detection.id,
+                attach_image: attachImage,
+            })
             if (resp.error) {
                 setDrzError({
                     message: resp.message || "Failed to send to DRZ.",
@@ -155,7 +178,15 @@ export function DetectionSharePopup({
                 })
                 return
             }
-            toast.success(resp.message || "Detection sent to DRZ.")
+            if (resp.image_error) {
+                // The POI is already created remotely and cannot be rolled back, so this is a
+                // partial success: say so rather than inviting the operator to send it again.
+                toast.warning("POI sent, but the image could not be attached", {
+                    description: resp.image_error,
+                })
+            } else {
+                toast.success(resp.message || "Detection sent to DRZ.")
+            }
             // Show the confirmation on the button itself for a moment, then close.
             setDrzSent(true)
             window.setTimeout(handleClose, 700)
@@ -173,7 +204,10 @@ export function DetectionSharePopup({
         setDescription("")
         // setAuthor("")
         setDetail("")
+        setGroup("")
         setSubtype("")
+        setDangerLevel("false")
+        setAttachImage(false)
         setDrzError(null)
         setDrzSent(false)
         onClose()
@@ -182,10 +216,19 @@ export function DetectionSharePopup({
     // Dismiss a stale error whenever the user edits the form or switches send option.
     useEffect(() => {
         setDrzError(null)
-    }, [name, description, author, detail, subtype, sendOption])
+    }, [name, description, author, detail, group, subtype, dangerLevel, attachImage, sendOption])
 
-    const cls = detection.class_name?.toLowerCase() ?? ""
     const dateString = new Date(timestamp).toLocaleString()
+    const activeGroup = DRZ_SUBTYPE_GROUPS.find((g) => g.key === group)
+    const groupRules = drzGroupRules(group)
+    // Read-only provenance, mirroring the DRZ detection enum sent at handleSend.
+    const provenance = detection.manually_verified
+        ? "Verified on site"
+        : detection.manually_created
+            ? "Added manually"
+            : "Detected automatically"
+    // DRZ requires both, and an empty string is what made "other" detections unsendable.
+    const drzReady = Boolean(detection.coord && subtype && detail)
 
     return (
         <Dialog open={open} onOpenChange={(o) => { if (!o && !isSendingDrz && !drzSent) handleClose() }}>
@@ -220,112 +263,97 @@ export function DetectionSharePopup({
                         <p>
                             <span className="font-semibold">Timestamp:</span> {dateString}
                         </p>
+                        <p>
+                            <span className="font-semibold">Source:</span> {provenance}
+                        </p>
                     </div>
 
-                    {/* Dynamic details per class */}
-                    {cls.includes("human") && (
-                        <div className="space-y-4">
+                    {/* DRZ classification. One catalog (types/drz.ts) transcribed from the
+                        partner OpenAPI spec, rather than a hardcoded block per Argus class —
+                        which is what left "other" with no subtype to send at all. */}
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label>Category</Label>
+                            <Select
+                                value={group}
+                                onValueChange={(g) => {
+                                    setGroup(g)
+                                    setSubtype("")
+                                    // Keep the affiliation coherent with the new category —
+                                    // it is often hidden, so it cannot be corrected by hand.
+                                    setDetail(drzGroupRules(g).defaultMainType)
+                                }}
+                            >
+                                <SelectTrigger><SelectValue placeholder="Select a category" /></SelectTrigger>
+                                <SelectContent>
+                                    {DRZ_SUBTYPE_GROUPS.map((g) => (
+                                        <SelectItem key={g.key} value={g.key}>{g.label}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Subtype</Label>
+                            <Select value={subtype} onValueChange={setSubtype} disabled={!activeGroup}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder={activeGroup ? "Select a subtype" : "Pick a category first"} />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {activeGroup?.options.map((o) => (
+                                        <SelectItem key={o} value={o}>{o}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+
+                    {/* Affiliation is meaningless for a fire (it names an organisation, and a
+                        fire belongs to none); hazard level is meaningless for a person, vehicle
+                        or animal. Hidden fields keep their value and are still sent — DRZ
+                        requires both. The rule follows the chosen category, not the Argus class,
+                        so it stays right after a re-categorisation. */}
+                    {(!groupRules.hideMainType || !groupRules.hideDangerLevel) && (
+                        <div className="grid grid-cols-2 gap-4">
+                        {!groupRules.hideMainType && (
                             <div className="space-y-2">
-                                <Label>Organizational affiliation</Label>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Label className="cursor-help underline decoration-dotted underline-offset-4">
+                                            Organizational affiliation
+                                        </Label>
+                                    </TooltipTrigger>
+                                    <TooltipContent className="max-w-xs">
+                                        <p>
+                                            The organisation the object originates from — not what the object
+                                            is. &ldquo;Fire brigade&rdquo; means the fire service, not a fire;
+                                            an actual fire is filed under &ldquo;Action&rdquo; so the partner
+                                            software draws the right icon.
+                                        </p>
+                                    </TooltipContent>
+                                </Tooltip>
                                 <Select value={detail} onValueChange={setDetail}>
-                                    <SelectTrigger><SelectValue /></SelectTrigger>
+                                    <SelectTrigger><SelectValue placeholder="Select an affiliation" /></SelectTrigger>
                                     <SelectContent>
-                                        {[
-                                            ["1", "Fire department"],
-                                            ["2", "USAR"],
-                                            ["3", "EMS"],
-                                            ["4", "Police"],
-                                            ["5", "Army"],
-                                            ["6", "Other"],
-                                            ["9", "Command"],
-                                            ["10", "People"],
-                                            ["-1", "All/Unspecified"],
-                                        ].map(([v, l]) => (
+                                        {DRZ_MAIN_TYPES.map(([v, l]) => (
                                             <SelectItem key={v} value={v}>{l}</SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
                             </div>
+                        )}
+                        {!groupRules.hideDangerLevel && (
                             <div className="space-y-2">
-                                <Label>Subtype</Label>
-                                <Select value={subtype} onValueChange={setSubtype}>
+                                <Label>Hazard level</Label>
+                                <Select value={dangerLevel} onValueChange={setDangerLevel}>
                                     <SelectTrigger><SelectValue /></SelectTrigger>
                                     <SelectContent>
-                                        {[
-                                            "Person",
-                                            "Person in distress (trapped/buried)",
-                                            "Person injured",
-                                            "Person dead",
-                                            "Missing person",
-                                            "Buried person",
-                                            "Presumably buried person",
-                                        ].map((l) => (
-                                            <SelectItem key={l} value={l}>{l}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                        </div>
-                    )}
-
-                    {cls.includes("vehicle") && (
-                        <div className="space-y-4">
-                            <div className="space-y-2">
-                                <Label>Organizational affiliation</Label>
-                                <Select value={detail} onValueChange={setDetail}>
-                                    <SelectTrigger><SelectValue /></SelectTrigger>
-                                    <SelectContent>
-                                        {[
-                                            ["1", "Fire department"],
-                                            ["2", "USAR"],
-                                            ["3", "EMS"],
-                                            ["4", "Police"],
-                                            ["5", "Army"],
-                                            ["6", "Other"],
-                                            ["9", "Command"],
-                                            ["10", "People"],
-                                            ["-1", "All/Unspecified"],
-                                        ].map(([v, l]) => (
+                                        {DRZ_DANGER_LEVELS.map(([v, l]) => (
                                             <SelectItem key={v} value={v}>{l}</SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
                             </div>
-                            <div className="space-y-2">
-                                <Label>Subtype</Label>
-                                <Select value={subtype} onValueChange={setSubtype}>
-                                    <SelectTrigger><SelectValue /></SelectTrigger>
-                                    <SelectContent>
-                                        {[
-                                            "Land vehicle (car, truck, trailer)",
-                                            "Rail vehicle (locomotive, wagon)",
-                                            "Water vehicle (boat, ship)",
-                                            "Air vehicle (airplane, helicopter)",
-                                            "Helicopter",
-                                        ].map((l) => (
-                                            <SelectItem key={l} value={l}>{l}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                        </div>
-                    )}
-
-                    {cls.includes("fire") && (
-                        <div className="space-y-4">
-                            {/* hidden mainType = 7 */}
-                            <input type="hidden" value="7" />
-                            <div className="space-y-2">
-                                <Label>Subtype</Label>
-                                <Select value={subtype} onValueChange={setSubtype}>
-                                    <SelectTrigger><SelectValue /></SelectTrigger>
-                                    <SelectContent>
-                                        {["Fire (small)", "Fire (medium)", "Fire (large)"].map((l) => (
-                                            <SelectItem key={l} value={l}>{l}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
+                        )}
                         </div>
                     )}
 
@@ -342,6 +370,22 @@ export function DetectionSharePopup({
                             onChange={(e) => setDescription(e.target.value)}
                             required
                         />
+                    </div>
+
+                    <div className="flex items-start space-x-2">
+                        <Checkbox
+                            id="attach-image"
+                            checked={attachImage}
+                            onCheckedChange={(c) => setAttachImage(!!c)}
+                            className="mt-0.5"
+                        />
+                        <div className="space-y-0.5">
+                            <Label htmlFor="attach-image">Attach the source image</Label>
+                            <p className="text-xs text-muted-foreground">
+                                Uploads {detection.image?.filename ?? "the full frame"} to the DRZ photo
+                                service and links it to this POI. Off by default — a drone frame is several MB.
+                            </p>
+                        </div>
                     </div>
 
                     <div className="space-y-2">
@@ -385,7 +429,7 @@ export function DetectionSharePopup({
                             ]}
                             onChange={(key) => setSendOption(key as typeof sendOption)}
                             onAction={handleSend}
-                            disabled={isSendingDrz || drzSent}
+                            disabled={isSendingDrz || drzSent || (sendOption === "drz" && !drzReady)}
                         >
                             {isSendingDrz && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
                             {drzSent && <Check className="ml-2 h-4 w-4" />}

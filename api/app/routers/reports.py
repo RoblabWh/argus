@@ -489,8 +489,12 @@ def send_map(report_id: int, payload: MapSharingData, db:Session = Depends(get_d
     map_layer = payload.layer_name
     try: 
         map = crud.get_mapping_report_map(db, selected_map_id, report_id)
-        message = drz_service.send_map_to_iais(map, map_layer, report_id)
-        return {"sucess": True, "message": "successfully sent map to DRZ backend"}
+        # The service's own message carries anything GeoServer said (e.g. an unknown
+        # workspace); the key used to be misspelled "sucess", so the frontend read every
+        # success as a failure and never closed the dialog.
+        message = drz_service.send_map_to_iais(map, map_layer, report_id, payload.workspace)
+        return {"success": True, "message": message or "successfully sent map to DRZ backend"}
     except Exception as e:
+        logger.error(f"Error during upload: {e}")
         message = "Error during upload: " + str(e)
         return {"success": False, "message": message}

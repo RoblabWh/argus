@@ -211,6 +211,7 @@ def import_report(db: Session, zip_path: str, group_id: int):
                     score=det.get("score"),
                     bbox=det.get("bbox"),
                     manually_verified=det.get("manually_verified", False),
+                    manually_created=det.get("manually_created", False),
                     coord=det.get("coord"),
                 )
                 db.add(detection)
@@ -394,6 +395,7 @@ def _build_manifest(report, mr, pr, image_id_map, map_id_map):
                     "score": d.score,
                     "bbox": d.bbox,
                     "manually_verified": d.manually_verified,
+                    "manually_created": d.manually_created,
                     "coord": d.coord,
                 }
                 for d in (img.detections or [])

@@ -76,6 +76,9 @@ class MapElementOut(MapElementBase):
 class MapSharingData(BaseModel):
     map_id: int
     layer_name: str
+    # GeoServer workspace to publish into. None means "use the configured one"
+    # (DRZ_GEOSERVER_WORKSPACE in config.json), so older callers keep working.
+    workspace: Optional[str] = None
 
 
 ##################

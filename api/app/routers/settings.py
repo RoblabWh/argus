@@ -59,6 +59,7 @@ def get_all_settings():
         "DRZ_AUTHOR_NAME": local_vars.get("DRZ_AUTHOR_NAME", ""),
         "DRZ_BACKEND_USERNAME": local_vars.get("DRZ_BACKEND_USERNAME", ""),
         "DRZ_BACKEND_PASSWORD": local_vars.get("DRZ_BACKEND_PASSWORD", ""),
+        "DRZ_GEOSERVER_WORKSPACE": local_vars.get("DRZ_GEOSERVER_WORKSPACE", "DRZ"),
         "DETECTION_COLORS": local_vars.get("DETECTION_COLORS", {}),
     }
 
@@ -171,6 +172,7 @@ def update_drz(settings: DRZSettings):
                 "DRZ_AUTHOR_NAME": settings.AUTHOR_NAME,
                 "DRZ_BACKEND_USERNAME": settings.BACKEND_USERNAME,
                 "DRZ_BACKEND_PASSWORD": settings.BACKEND_PASSWORD,
+                "DRZ_GEOSERVER_WORKSPACE": settings.GEOSERVER_WORKSPACE,
             }
         )
         # The token cache is keyed by (base url, username); a credential change must not keep

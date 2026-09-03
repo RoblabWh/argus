@@ -186,6 +186,9 @@ class Config:
         self.DETECTION_COLORS = self._local_settings.get("DETECTION_COLORS", {})
         self.DRZ_BACKEND_USERNAME = self._local_settings.get("DRZ_BACKEND_USERNAME", "")
         self.DRZ_BACKEND_PASSWORD = self._local_settings.get("DRZ_BACKEND_PASSWORD", "")
+        # GeoServer workspace orthophotos are published into. Defaults to the value
+        # that used to be hardcoded, so a config.json predating this key is unchanged.
+        self.DRZ_GEOSERVER_WORKSPACE = self._local_settings.get("DRZ_GEOSERVER_WORKSPACE", "DRZ")
 
     def _get_env(self, key: str, default=None):
         """Lookup key in os.environ first, then .env file, then default."""

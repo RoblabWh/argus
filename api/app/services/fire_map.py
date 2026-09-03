@@ -27,6 +27,7 @@ import logging
 import cv2
 import numpy as np
 
+from app.services.detection_geo import interpolate_px_to_gps
 from app.services.raster_bands import get_transformers, smooth_mask, trace_band_features
 
 logger = logging.getLogger(__name__)
@@ -45,28 +46,6 @@ MAX_GRID_DIM = 1536
 EMPTY_RESULT = {"geojson": None, "regions": {}}
 
 
-def _interpolate_px_to_gps(px: float, py: float, width: int, height: int, corners_gps,
-                           src_px=None):
-    """Bilinearly interpolate an image pixel to GPS from the 4 image corners.
-
-    corners_gps: [TL, TR, BR, BL], each [lat, lon] (the MapElement convention,
-    same as reid/spatial.py in the YOLO worker).
-    src_px: [x0, y0, x1, y1] — the image region those corners were traced from.
-    Defaults to the full frame; the mapping pipeline uses the lower half for
-    steeply tilted footprints, and normalizing those against the full height
-    would misplace every pixel.
-    """
-    x0, y0, x1, y1 = src_px if src_px else (0.0, 0.0, width, height)
-    rx = (px - x0) / ((x1 - x0) or 1.0)
-    ry = (py - y0) / ((y1 - y0) or 1.0)
-    tl, tr, br, bl = corners_gps
-    top_lat = tl[0] + rx * (tr[0] - tl[0])
-    top_lon = tl[1] + rx * (tr[1] - tl[1])
-    bot_lat = bl[0] + rx * (br[0] - bl[0])
-    bot_lon = bl[1] + rx * (br[1] - bl[1])
-    return top_lat + ry * (bot_lat - top_lat), top_lon + ry * (bot_lon - top_lon)
-
-
 def _project_detection_quads(detections: list[dict], images_by_id: dict):
     """Project each detection bbox to a UTM quad.
 
@@ -83,8 +62,8 @@ def _project_detection_quads(detections: list[dict], images_by_id: dict):
         x, y, w, h = det["bbox"]
         corner_px = ((x, y), (x + w, y), (x + w, y + h), (x, y + h))
         gps = [
-            _interpolate_px_to_gps(cx, cy, img["width"], img["height"],
-                                   img["corners_gps"], img.get("corners_src_px"))
+            interpolate_px_to_gps(cx, cy, img["width"], img["height"],
+                                  img["corners_gps"], img.get("corners_src_px"))
             for cx, cy in corner_px
         ]
         if to_utm is None:

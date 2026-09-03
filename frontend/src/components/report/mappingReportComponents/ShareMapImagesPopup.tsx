@@ -9,6 +9,8 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 import { useMaps } from "@/hooks/useMaps"
 import { getExportReportUrl, getMapDownloadUrl, type MapDownloadFormat } from "@/api"
 import { useSendMapToDrz } from "@/hooks/useSendMapToDRZ";
+import { useSettings } from "@/hooks/settingsHooks"
+import { LockedField } from "@/components/shared/LockedField"
 import { Loader2, Download, FolderArchive, Send } from "lucide-react"
 
 
@@ -68,10 +70,16 @@ export function ExportPopup({
     const [downloadFormat, setDownloadFormat] = useState<MapDownloadFormat>("png")
     const [isDownloading, setIsDownloading] = useState(false)
     const [layerName, setLayerName] = useState<string>(`argus_report${reportId}`)
+    const [workspace, setWorkspace] = useState<string>("")
+    // Locked by default: the workspace comes from Settings and is the same for every
+    // upload, so changing it here has to be a deliberate act, not a stray keystroke.
+    const [workspaceLocked, setWorkspaceLocked] = useState(true)
     const [serverMessage, setServerMessage] = useState<string>("")
     const [exportError, setExportError] = useState<string>("")
 
     const { data: maps, isLoading: isLoadingMaps, isError: isErrorMaps } = useMaps(reportId)
+    const { data: settingsData } = useSettings()
+    const defaultWorkspace = settingsData?.DRZ_GEOSERVER_WORKSPACE || "DRZ"
     const { mutateAsync: sendToDrz, isPending: isSending } = useSendMapToDrz()
 
     const hasMaps = maps && maps.length > 0
@@ -109,6 +117,18 @@ export function ExportPopup({
         }
     }, [open])
 
+    // Every open starts locked, so an ad-hoc override never carries over into the next upload.
+    useEffect(() => {
+        if (open) setWorkspaceLocked(true)
+    }, [open])
+
+    // Seed from the saved setting. The settings query is async, so this cannot be a
+    // useState initialiser; skipping it while unlocked keeps a background refetch from
+    // wiping an override the operator is in the middle of typing.
+    useEffect(() => {
+        if (open && workspaceLocked) setWorkspace(defaultWorkspace)
+    }, [open, defaultWorkspace, workspaceLocked])
+
     // Lock to export tab while exporting
     useEffect(() => {
         if (isExporting) setActiveTab("export")
@@ -119,6 +139,8 @@ export function ExportPopup({
         setFilename("")
         setDownloadFormat("png")
         setLayerName(`argus_report${reportId}`)
+        setWorkspace(defaultWorkspace)
+        setWorkspaceLocked(true)
         setServerMessage("")
         setExportError("")
     }
@@ -216,6 +238,7 @@ export function ExportPopup({
                 reportId,
                 mapId: selectedMap.id,
                 layerName,
+                workspace: workspace.trim(),
             })
             if (resp.success) {
                 handleClose()
@@ -350,6 +373,23 @@ export function ExportPopup({
                                 isLoading={isLoadingMaps}
                                 isError={isErrorMaps}
                             />
+                            <LockedField
+                                id="drz-workspace"
+                                label="GeoServer Workspace"
+                                value={workspace}
+                                onChange={setWorkspace}
+                                locked={workspaceLocked}
+                                onToggleLock={() => {
+                                    // Re-locking restores the configured workspace, so the lock
+                                    // doubles as an undo for an accidental override.
+                                    if (!workspaceLocked) setWorkspace(defaultWorkspace)
+                                    setWorkspaceLocked((l) => !l)
+                                }}
+                            />
+                            <p className="text-xs text-muted-foreground -mt-2">
+                                Taken from Settings. Unlock to publish into a different workspace for
+                                this upload only.
+                            </p>
                             <div className="space-y-2">
                                 <Label>Layer Name</Label>
                                 <Input
@@ -361,7 +401,7 @@ export function ExportPopup({
                             {serverMessage && (
                                 <p className="text-xs text-red-600">{serverMessage}</p>
                             )}
-                            <Button onClick={handleSendToDrz} disabled={!hasMaps || isSending} className="w-full">
+                            <Button onClick={handleSendToDrz} disabled={!hasMaps || isSending || !workspace.trim()} className="w-full">
                                 {isSending ? (
                                     <><Loader2 className="h-4 w-4 animate-spin" /> Sending...</>
                                 ) : (

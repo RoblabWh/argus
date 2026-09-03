@@ -37,10 +37,16 @@ export type TempFilters = {
   /** Keep images whose observed MIN temp is <= this value */
   maxAtMost?: number;
 };
+/** Provenance filters over an image's detections.
+ * - "created": has at least one hand-drawn detection
+ * - "verified": has at least one detection someone confirmed on site */
+export type DetectionFlag = "created" | "verified";
+
 export type GalleryFilters = {
   types: FilterTag[];        // empty => no restriction
   temp: TempFilters;         // only applies to thermal images
   dets: string[];            // empty => no restriction
+  flags: DetectionFlag[];    // empty => no restriction; AND semantics
 };
 
 /** Build a map from image_id to its detections (for efficient lookup) */
@@ -75,7 +81,7 @@ function filterImages(
     filtered = filtered.filter((img) => restrictIds.has(img.id));
   }
 
-  const { types, temp, dets } = filters;
+  const { types, temp, dets, flags } = filters;
 
   // Prepare lowercase detection filter names
   const lowerDets = dets.length > 0 ? dets.map((d) => d.toLowerCase().trim()) : [];
@@ -134,6 +140,13 @@ function filterImages(
       });
 
       if (!hasAny) return false;
+    }
+
+    // 4) Detection provenance — AND semantics (each selected flag must be met)
+    if (flags.length > 0) {
+      const imageDets = detectionIndex.get(image.id) ?? [];
+      if (flags.includes("created") && !imageDets.some((det) => det.manually_created)) return false;
+      if (flags.includes("verified") && !imageDets.some((det) => det.manually_verified)) return false;
     }
 
     return true;
@@ -232,6 +245,14 @@ function FiltersPopover({ availableTypes, availableDetectionClasses, value, onCh
     setDetectionClasses(next.length === 0 ? [] : next);
   };
 
+  const toggleFlag = (flag: DetectionFlag) => {
+    const exists = value.flags.includes(flag);
+    onChange({
+      ...value,
+      flags: exists ? value.flags.filter((f) => f !== flag) : [...value.flags, flag],
+    });
+  };
+
   const activateAll = () => setTypes([]);
 
   const setMinAtLeast = (v?: number) => onChange({ ...value, temp: { ...value.temp, minAtLeast: v } });
@@ -310,6 +331,35 @@ function FiltersPopover({ availableTypes, availableDetectionClasses, value, onCh
                       ${activeDets ? "bg-primary text-primary-foreground border-primary" : "bg-muted text-muted-foreground border border-input hover:bg-accent hover:text-accent-foreground"}`}
                   >
                     {cls}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Detection provenance */}
+          <Separator />
+          <div>
+            <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground mb-2">
+              Detections
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {(
+                [
+                  ["created", "Manually added"],
+                  ["verified", "Manually verified"],
+                ] as [DetectionFlag, string][]
+              ).map(([flag, label]) => {
+                const activeFlag = value.flags.includes(flag);
+                return (
+                  <button
+                    key={flag}
+                    type="button"
+                    onClick={() => toggleFlag(flag)}
+                    className={`rounded-full text-xs px-2.5 py-1.5 border transition
+                      ${activeFlag ? "bg-primary text-primary-foreground border-primary" : "bg-muted text-muted-foreground border border-input hover:bg-accent hover:text-accent-foreground"}`}
+                  >
+                    {label}
                   </button>
                 );
               })}
@@ -545,7 +595,7 @@ export function GalleryCard({
     });
   };
 
-  const [filters, setFilters] = useState<GalleryFilters>({ types: [], temp: tempFilter, dets: detectionFilter });
+  const [filters, setFilters] = useState<GalleryFilters>({ types: [], temp: tempFilter, dets: detectionFilter, flags: [] });
 
   useEffect(() => {
     setFilters((prev) => ({ ...prev, dets: detectionFilter }));
@@ -570,7 +620,7 @@ export function GalleryCard({
 
   const clearSearchAndFilters = () => {
     setSearch("");
-    setFilters({ types: [], temp: {}, dets: [] });
+    setFilters({ types: [], temp: {}, dets: [], flags: [] });
     setDetectionFilter([]);
     setTempFilter({});
     setRegionImageIds(null);
@@ -580,6 +630,7 @@ export function GalleryCard({
     filters.temp.minAtLeast !== undefined ||
     filters.temp.maxAtMost !== undefined ||
     filters.dets.length > 0 ||
+    filters.flags.length > 0 ||
     regionImageIds != null;
 
   return (
@@ -729,6 +780,15 @@ export function GalleryCard({
                 </Badge>
               );
             })}
+
+            {filters.flags.map((f) => (
+              <Badge key={f} variant="secondary" className="px-2 py-1 text-xs">
+                {f === "created" ? "Manually added" : "Manually verified"}
+                <button className="ml-1" onClick={() => setFilters({ ...filters, flags: filters.flags.filter((x) => x !== f) })}>
+                  <X className="h-3 w-3" />
+                </button>
+              </Badge>
+            ))}
           </div>
         )}
       </div>

@@ -69,3 +69,13 @@ export interface Coord {
   utm?: UTMCoord;
   rel_alt?: number;
 };
+
+/** Body of POST /images/{id}/send_to_drz — mirrors KeyframeShareRequest. */
+export interface ImageShareRequest {
+  lat: number;
+  lon: number;
+  name: string;
+  description?: string | null;
+  /** Compass heading in degrees; prefilled from the camera yaw when known. */
+  direction?: number | null;
+}

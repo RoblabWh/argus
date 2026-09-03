@@ -3,8 +3,8 @@ import type { Group } from "@/types/group";
 import type { Report, ReportSummary } from "@/types/report";
 import type { Map } from "@/types/map";
 import type { ProcessingSettings } from "@/types/processing";
-import type { Image, ImageBasic } from "@/types/image";
-import type { Detection, FireMap, Geometry, Properties } from "./types/detection";
+import type { Image, ImageBasic, ImageShareRequest } from "@/types/image";
+import type { Detection, DetectionCreate, FireMap, Geometry, Properties } from "./types/detection";
 import type { ThermalMap } from "./types/thermalData";
 import type {
   SettingsData,
@@ -107,6 +107,7 @@ export const startDetection = (report_id: number, processing_mode: string) => po
 export const getDetectionStatus = (report_id: number) => fetchJson<{ report_id: number, status: string; progress: number; message?: string; error?: string }>(`/detections/r/${report_id}/status`);
 export const getDetections = (report_id: number) => fetchJson<Detection[]>(`/detections/r/${report_id}`);
 export const getNewDetections = (report_id: number, knownIds: number[]) => postJson<Detection[]>(`/detections/r/${report_id}/incremental`, { known_ids: knownIds });
+export const createDetection = (data: DetectionCreate) => postJson<Detection>("/detections/", data);
 export const updateDetection = (detection_id: number, data: Detection) => postJson<any>(`/detections/${detection_id}`, data, "PUT");
 export const deleteDetection = (detection_id: number) => deleteRequest(`/detections/${detection_id}`);
 export const updateDetectionBatch = (report_id: number, data: Detection[]) => postJson<any>(`/detections/r/${report_id}/batch_update`, data, "PUT");
@@ -130,13 +131,21 @@ export const getThermalMap = (report_id: number, t_min?: number, t_max?: number)
   const query = params.toString();
   return fetchJson<ThermalMap>(`/reports/${report_id}/thermal_map${query ? `?${query}` : ""}`);
 };
-export const sendDetectionToDrz = (geometry: Geometry, properties: Properties) =>
-  postJson<{ message: string; error?: string; iais_response?: unknown }>(
-    "/detections/send_to_iais",
-    { geometry, properties }
-  );
+export const sendDetectionToDrz = (
+  geometry: Geometry,
+  properties: Properties,
+  opts?: { detection_id?: number; attach_image?: boolean },
+) =>
+  postJson<{
+    message: string;
+    error?: string;
+    poi_id?: string | null;
+    photo_id?: string | null;
+    /** Set when the POI went through but its image could not be attached. */
+    image_error?: string;
+  }>("/detections/send_to_iais", { geometry, properties, ...opts });
 
-export const sendMapToDrz = (reportId: number, data: { map_id: number; layer_name: string } ) => postJson<{success: boolean; message:string}>(`/reports/${reportId}/send_map`, data);
+export const sendMapToDrz = (reportId: number, data: { map_id: number; layer_name: string; workspace: string } ) => postJson<{success: boolean; message:string}>(`/reports/${reportId}/send_map`, data);
 
 export const startAutoDescription = (report_id: number) => postJson<{ status: string }>(`/reports/${report_id}/auto_description`, {});
 export const getAutoDescription = (report_id: number) => fetchJson<{ report_id: number, status: string, progress: number, description: string }>(`/reports/${report_id}/auto_description`);
@@ -216,6 +225,12 @@ export const getKeyframeDownloadUrl = (report_id: number, index: number): string
   `${API_URL}/reconstruction/${report_id}/keyframes/${index}/download`;
 
 // Send one keyframe panorama to the DRZ/IAIS photo service with a manually picked coordinate
+export const sendImageToDrz = (
+  image_id: number,
+  body: ImageShareRequest
+): Promise<{ success: boolean; message: string; photo_id: string | null }> =>
+  postJson(`/images/${image_id}/send_to_drz`, body);
+
 export const sendKeyframeToDrz = (
   report_id: number,
   index: number,

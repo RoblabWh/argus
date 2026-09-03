@@ -7,6 +7,8 @@ import logging
 import app.crud.report as report_crud
 import app.crud.images as image_crud
 
+from app import models
+
 from app.database import get_db
 from app.schemas.image import (
     DetectionCreate,
@@ -20,10 +22,13 @@ from app.schemas.image import (
     ReidInput,
     DetectionUniqueObjectsBulk,
     FireMapOut,
+    DetectionShareRequest,
 )
 
 from app.services.celery_app import celery_app
-from app.services.drz_backend_sharing import send_geojson_poi_to_iais
+from app.services.detection_geo import estimate_detection_gps
+from app.services.image_processing import resolve_image_path
+from app.services.drz_backend_sharing import send_geojson_poi_to_iais, send_photo_to_iais
 from app.services.fire_map import build_fire_map
 import app.services.events as events_service
 
@@ -47,6 +52,44 @@ def get_all_detections(db: Session = Depends(get_db)):
     """
     detections = image_crud.get_all_detections(db)
     return detections
+
+
+@router.post("/", response_model=DetectionOut)
+def create_detection(detection: DetectionCreate, db: Session = Depends(get_db)):
+    """
+    Create a single detection by hand — an object a detector missed.
+
+    Always stored with manually_created=True, which keeps it out of the
+    delete-before-rerun in run_detections. RGB only: thermal frames are drawn at
+    a different scale to their RGB counterpart and panoramas have no usable
+    footprint, so a bbox on either cannot be georeferenced with the same math.
+    If the caller supplies no coord, one is estimated from the image's ground
+    footprint; images that were never mapped simply get coord=None.
+    """
+    image = image_crud.get_full_image(db, detection.image_id)
+    if not image:
+        raise HTTPException(status_code=404, detail="Image not found")
+    if image.thermal or image.panoramic:
+        raise HTTPException(
+            status_code=400,
+            detail="Manual detections can only be added to RGB images",
+        )
+
+    data = detection.model_copy(update={"manually_created": True})
+    if not data.coord:
+        data.coord = estimate_detection_gps(db, image, data.bbox)
+
+    created = image_crud.create_detection(db, data)
+
+    if image.mapping_report:
+        # Same announcement the worker callback makes, so other open tabs pull
+        # the new row over SSE instead of waiting for a refetch.
+        events_service.publish_event(
+            r, image.mapping_report.report_id, events_service.EVENT_DETECTIONS_ADDED,
+            data={"count": 1},
+        )
+
+    return created
 
 
 @router.post("/r/{report_id}", response_model=dict)
@@ -351,21 +394,91 @@ def get_detections_grouped_by_object(report_id: int, db: Session = Depends(get_d
     return image_crud.get_detections_grouped_by_object(db, mapping_report.id)
 
 @router.post("/send_to_iais", response_model=dict)
-def send_detection_to_iais(geometry: dict, properties: dict, db: Session = Depends(get_db)):
+def send_detection_to_iais(req: DetectionShareRequest, db: Session = Depends(get_db)):
     """
-    Send a detection to Iais system.
+    Send a detection to the Iais system as a POI, optionally with its source image.
+
+    The image is uploaded second, carrying the `poi_id` the POI service just handed back, so
+    the two end up linked. A failed image upload is reported in `image_error` and does NOT
+    fail the share: the POI already exists remotely and cannot be rolled back, so calling the
+    whole thing a failure would invite the operator to send a duplicate.
     """
-    logger.info(f"Sending detection to Iais with properties: {properties}")
-    #logger.info(f"Geometry: {geometry}")
+    logger.info(f"Sending detection to Iais with properties: {req.properties}")
     try:
-        success, message, detail = send_geojson_poi_to_iais(geometry, properties)
+        success, message, detail, poi_id = send_geojson_poi_to_iais(req.geometry, req.properties)
     except Exception as e:
         logger.error(f"Error sending detection to Iais: {e}")
         return {"message": "Error sending detection to Iais", "error": str(e)}
 
-    logger.info(f"Iais response: success={success}, message={message}, detail={detail}")
+    logger.info(f"Iais response: success={success}, message={message}, detail={detail}, poi_id={poi_id}")
     if not success:
         # HTTP 200 with an `error` key is the contract the share dialog reads; a failure here
         # is a remote-system problem, not a bad request to this API.
         return {"message": message, "error": detail or message}
-    return {"message": message}
+
+    result = {"message": message, "poi_id": poi_id}
+    if req.attach_image and req.detection_id is not None:
+        photo_id, image_error = _attach_detection_image(db, req.detection_id, poi_id, req.properties)
+        result["photo_id"] = photo_id
+        if image_error:
+            result["image_error"] = image_error
+    return result
+
+
+def _attach_detection_image(db: Session, detection_id: int, poi_id: str | None, properties: dict):
+    """Upload a detection's source frame to the DRZ photo service, linked to `poi_id`.
+
+    Returns (photo_id, error_message) — never raises, because the POI it belongs to has
+    already been created and the caller must still report that as a success.
+    """
+    detection = (
+        db.query(models.Detection).filter(models.Detection.id == detection_id).first()
+    )
+    if not detection or not detection.image:
+        return None, "Detection or its image was not found"
+
+    image = detection.image
+    path = resolve_image_path(image)
+    if not path:
+        return None, f"Image file is missing on the server: {image.filename}"
+
+    coord = _photo_coord(image, detection)
+    if not coord:
+        # Never fall back to (0, 0) — that is "null island", and the DRZ inspector flags it
+        # as a swapped/absent coordinate rather than showing an obviously wrong pin.
+        return None, "No coordinate available for the image"
+    lat, lon = coord
+
+    if not poi_id:
+        # The POI went through but IAIS did not tell us its id, so the photo can still be
+        # uploaded — it just won't show up under the POI.
+        logger.warning("No poi_id returned; uploading the photo unlinked")
+
+    # A mapping image knows which way the camera was pointing; pass it as the photo heading.
+    direction = None
+    if image.mapping_data and image.mapping_data.cam_yaw is not None:
+        direction = int(round(image.mapping_data.cam_yaw))
+
+    success, message, photo_id = send_photo_to_iais(
+        image_path=path,
+        name=properties.get("name") or image.filename,
+        lat=lat,
+        lon=lon,
+        projection="panorama_360_equirectangular" if image.panoramic else "normal",
+        description=properties.get("description"),
+        poi_id=poi_id,
+        direction=direction,
+    )
+    if not success:
+        logger.warning(f"Image for detection {detection_id} could not be attached: {message}")
+        return None, message
+    return photo_id, None
+
+
+def _photo_coord(image, detection) -> tuple[float, float] | None:
+    """(lat, lon) for the uploaded photo: the detection's own GPS, else the camera position."""
+    for source in (detection.coord, image.coord):
+        gps = (source or {}).get("gps") if source else None
+        if gps and gps.get("lat") is not None and gps.get("lon") is not None:
+            return float(gps["lat"]), float(gps["lon"])
+    return None

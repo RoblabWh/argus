@@ -18,6 +18,22 @@ import app.services.image_metadata_extraction as metadata_extraction
 
 logger = logging.getLogger(__name__)
 
+
+def resolve_image_path(image) -> str | None:
+    """Absolute on-disk path of an uploaded image, or None when the file is gone.
+
+    `Image.url` is stored relative to the API working directory (e.g.
+    "reports_data/123/<uuid>.jpg"), which is `/api` in the container — the same convention
+    `routers/export.py` and `services/image_describer.py` rely on. Resolving it here keeps
+    that assumption in the module that writes the files in the first place.
+    """
+    if not image or not image.url:
+        return None
+    path = Path(image.url)
+    if not path.is_absolute():
+        path = Path.cwd() / path
+    return str(path) if path.exists() else None
+
 router = APIRouter()
 UPLOAD_DIR.mkdir(exist_ok=True)
 ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png"} #maybe later add support for tiff, bmp, webp, etc.

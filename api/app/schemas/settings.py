@@ -26,6 +26,9 @@ class DRZSettings(BaseModel):
     AUTHOR_NAME: str
     BACKEND_USERNAME: str
     BACKEND_PASSWORD: str
+    # Defaulted so a frontend that predates this field still validates; /settings/drz/test
+    # ignores it entirely (it only checks URL + credentials).
+    GEOSERVER_WORKSPACE: str = "DRZ"
 
 
 _HEX_COLOR = re.compile(r"#[0-9a-fA-F]{6}")

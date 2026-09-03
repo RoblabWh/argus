@@ -21,6 +21,9 @@ interface Props {
     defaultCenter?: Coordinate;
     /** Re-runs Leaflet's size calculation — pass the dialog's open state. */
     visible?: boolean;
+    /** Read-only: the position is already known (e.g. from EXIF) and must not be changed by
+     * a stray click. Pan and zoom stay live so the position can still be inspected. */
+    locked?: boolean;
     className?: string;
 }
 
@@ -67,7 +70,7 @@ function FlyTo({ target }: { target: Coordinate | null }) {
  * Kept free of any report-specific knowledge so it can also serve mapping-report images
  * that have no EXIF GPS.
  */
-export function CoordinatePickerMap({ value, onChange, defaultCenter, visible, className }: Props) {
+export function CoordinatePickerMap({ value, onChange, defaultCenter, visible, locked = false, className }: Props) {
     const [term, setTerm] = useState("");
     const [flyTarget, setFlyTarget] = useState<Coordinate | null>(null);
     const [latText, setLatText] = useState(value ? String(value.lat) : "");
@@ -93,6 +96,9 @@ export function CoordinatePickerMap({ value, onChange, defaultCenter, visible, c
     }, [value]);
 
     const pick = (c: Coordinate, fly = false) => {
+        // Single choke point for every mutation path — click, drag, search, manual entry — so
+        // the lock cannot be bypassed by one of them being missed below.
+        if (locked) return;
         onChange(c);
         if (fly) setFlyTarget(c);
     };
@@ -120,11 +126,12 @@ export function CoordinatePickerMap({ value, onChange, defaultCenter, visible, c
                     onChange={(e) => setTerm(e.target.value)}
                     placeholder="Search for an address or place…"
                     className="pl-8"
+                    disabled={locked}
                 />
                 {isFetching && (
                     <Loader2 className="absolute right-2.5 top-1/2 -translate-y-1/2 size-4 animate-spin text-muted-foreground" />
                 )}
-                {term.trim().length >= 3 && results && (
+                {!locked && term.trim().length >= 3 && results && (
                     <div
                         // z-1100 keeps the results above Leaflet's own controls, which sit at 1000
                         className="absolute z-[1100] mt-1 w-full max-h-40 overflow-y-auto rounded-md border bg-popover shadow-md"
@@ -150,7 +157,7 @@ export function CoordinatePickerMap({ value, onChange, defaultCenter, visible, c
             </div>
 
             {/* Map */}
-            <div className="mt-2 h-64 w-full overflow-hidden rounded-md border">
+            <div className={`relative mt-2 h-64 w-full overflow-hidden rounded-md border ${locked ? "opacity-60" : ""}`}>
                 <MapContainer
                     center={[initial.lat, initial.lon]}
                     zoom={initialZoom}
@@ -160,13 +167,16 @@ export function CoordinatePickerMap({ value, onChange, defaultCenter, visible, c
                     <LayersControl position="topright">
                         <MapBaseLayers />
                     </LayersControl>
-                    <ClickHandler onChange={(c) => pick(c)} />
+                    {!locked && <ClickHandler onChange={(c) => pick(c)} />}
                     <InvalidateOnShow visible={visible} />
                     <FlyTo target={flyTarget} />
                     {value && (
                         <Marker
+                            // Leaflet reads `draggable` only when the marker is created, so the
+                            // key forces a remount when the lock is toggled.
+                            key={locked ? "locked" : "editable"}
                             position={[value.lat, value.lon]}
-                            draggable
+                            draggable={!locked}
                             eventHandlers={{
                                 dragend: (e) => {
                                     const { lat, lng } = e.target.getLatLng();
@@ -180,7 +190,9 @@ export function CoordinatePickerMap({ value, onChange, defaultCenter, visible, c
 
             <p className="mt-1.5 flex items-center gap-1 text-xs text-muted-foreground">
                 <MapPin className="size-3" />
-                Click the map or drag the marker to set the position.
+                {locked
+                    ? "Position locked — unlock it to change the marker."
+                    : "Click the map or drag the marker to set the position."}
             </p>
 
             {/* Manual entry */}
@@ -194,6 +206,7 @@ export function CoordinatePickerMap({ value, onChange, defaultCenter, visible, c
                         onKeyDown={(e) => e.key === "Enter" && commitManual()}
                         placeholder="51.518315"
                         inputMode="decimal"
+                        disabled={locked}
                     />
                 </div>
                 <div className="space-y-1">
@@ -205,6 +218,7 @@ export function CoordinatePickerMap({ value, onChange, defaultCenter, visible, c
                         onKeyDown={(e) => e.key === "Enter" && commitManual()}
                         placeholder="7.460135"
                         inputMode="decimal"
+                        disabled={locked}
                     />
                 </div>
             </div>

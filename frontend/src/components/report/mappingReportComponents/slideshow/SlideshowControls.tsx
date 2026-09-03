@@ -9,6 +9,8 @@ import {
     Settings,
     RotateCcw,
     Focus,
+    Plus,
+    Share2,
 } from "lucide-react";
 
 interface SlideshowControlsProps {
@@ -24,6 +26,14 @@ interface SlideshowControlsProps {
     hasDetections: boolean;
     isHighlighting: boolean;
     isCompactView: boolean;
+    /** Whether the draw-a-bounding-box mode is armed */
+    drawMode: boolean;
+    onDrawModeToggle: () => void;
+    /** False for panoramas, thermal frames and when no image is loaded */
+    canDraw: boolean;
+    onShareImage: () => void;
+    /** False when no DRZ backend is configured or no image is selected */
+    canShareImage: boolean;
 }
 
 export function SlideshowControls({
@@ -39,22 +49,47 @@ export function SlideshowControls({
     hasDetections,
     isHighlighting,
     isCompactView,
+    drawMode,
+    onDrawModeToggle,
+    canDraw,
+    onShareImage,
+    canShareImage,
 }: SlideshowControlsProps) {
     return (
         <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center mt-4 p-2 md:p-4 w-full bg-white dark:bg-gray-800 gap-2">
-            {/* Filename with tooltip */}
-            <Tooltip>
-                <TooltipTrigger asChild>
-                    <div className="min-w-0">
-                        <div className="text-sm text-muted-foreground truncate">
-                            {imageFilename}
+            {/* Filename, with the share action next to it */}
+            <div className="flex items-center gap-1 min-w-0">
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                        <div className="min-w-0">
+                            <div className="text-sm text-muted-foreground truncate">
+                                {imageFilename}
+                            </div>
                         </div>
-                    </div>
-                </TooltipTrigger>
-                <TooltipContent>
-                    <p>{imageFilename}</p>
-                </TooltipContent>
-            </Tooltip>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                        <p>{imageFilename}</p>
+                    </TooltipContent>
+                </Tooltip>
+
+                {canShareImage && (
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={onShareImage}
+                                className="size-7 shrink-0"
+                            >
+                                <Share2 className="w-4 h-4" />
+                            </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                            <p>Send this image to the DRZ system</p>
+                        </TooltipContent>
+                    </Tooltip>
+                )}
+            </div>
 
             {/* Navigation buttons */}
             <div className="flex items-center justify-center gap-2">
@@ -89,6 +124,29 @@ export function SlideshowControls({
                     </Button>
                     <Separator orientation="vertical" className="h-6" />
                 </div>
+
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                        {/* span keeps the tooltip reachable while the button is disabled */}
+                        <span>
+                            <Button
+                                variant={drawMode ? "default" : "outline"}
+                                onClick={onDrawModeToggle}
+                                disabled={!canDraw}
+                                className={!canDraw ? 'opacity-50' : ''}
+                            >
+                                <Plus className="w-4 h-4" />
+                            </Button>
+                        </span>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                        <p>
+                            {canDraw
+                                ? "Add a detection the AI missed by drawing a box on the image"
+                                : "Manual detections can only be added to RGB images"}
+                        </p>
+                    </TooltipContent>
+                </Tooltip>
 
                 <Tooltip>
                     <TooltipTrigger asChild>

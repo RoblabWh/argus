@@ -3,6 +3,7 @@ import { useBreadcrumbs } from '@/contexts/BreadcrumbContext';
 import { ModeToggle } from '@/components/ui/mode-toggle';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { LockedField } from '@/components/shared/LockedField';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -26,8 +27,6 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import {
-  Lock,
-  Unlock,
   Info,
   Camera,
   Check,
@@ -176,7 +175,8 @@ type LockKey =
   | 'DRZ_BACKEND_URL'
   | 'DRZ_AUTHOR_NAME'
   | 'DRZ_BACKEND_USERNAME'
-  | 'DRZ_BACKEND_PASSWORD';
+  | 'DRZ_BACKEND_PASSWORD'
+  | 'DRZ_GEOSERVER_WORKSPACE';
 
 const INITIAL_LOCKED: Record<LockKey, boolean> = {
   OPEN_WEATHER_API_KEY: true,
@@ -188,62 +188,8 @@ const INITIAL_LOCKED: Record<LockKey, boolean> = {
   DRZ_AUTHOR_NAME: true,
   DRZ_BACKEND_USERNAME: true,
   DRZ_BACKEND_PASSWORD: true,
+  DRZ_GEOSERVER_WORKSPACE: true,
 };
-
-function LockButton({
-  locked,
-  onToggle,
-}: {
-  locked: boolean;
-  onToggle: () => void;
-}) {
-  return (
-    <Button
-      variant="ghost"
-      size="icon"
-      type="button"
-      aria-label={locked ? 'Unlock field' : 'Lock field'}
-      onClick={onToggle}
-    >
-      {locked ? <Lock className="h-5 w-5" /> : <Unlock className="h-5 w-5" />}
-    </Button>
-  );
-}
-
-function LockedField({
-  id,
-  label,
-  type = 'text',
-  value,
-  onChange,
-  locked,
-  onToggleLock,
-}: {
-  id: string;
-  label: string;
-  type?: 'text' | 'password';
-  value: string;
-  onChange: (v: string) => void;
-  locked: boolean;
-  onToggleLock: () => void;
-}) {
-  return (
-    <div className="space-y-1.5">
-      <Label htmlFor={id}>{label}</Label>
-      <div className="flex items-center gap-2">
-        <Input
-          id={id}
-          type={type}
-          disabled={locked}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          className="flex-1"
-        />
-        <LockButton locked={locked} onToggle={onToggleLock} />
-      </div>
-    </div>
-  );
-}
 
 const WEBODM_FIELDS = [
   { key: 'WEBODM_URL', label: 'URL', type: 'text' as const },
@@ -256,6 +202,7 @@ const DRZ_FIELDS = [
   { key: 'DRZ_AUTHOR_NAME', label: 'Author Name', type: 'text' as const },
   { key: 'DRZ_BACKEND_USERNAME', label: 'Backend Username', type: 'text' as const },
   { key: 'DRZ_BACKEND_PASSWORD', label: 'Backend Password', type: 'password' as const },
+  { key: 'DRZ_GEOSERVER_WORKSPACE', label: 'GeoServer Workspace', type: 'text' as const },
 ] satisfies Array<{ key: LockKey; label: string; type: 'text' | 'password' }>;
 
 export default function Settings() {
@@ -282,6 +229,7 @@ export default function Settings() {
     DRZ_AUTHOR_NAME: '',
     DRZ_BACKEND_USERNAME: '',
     DRZ_BACKEND_PASSWORD: '',
+    DRZ_GEOSERVER_WORKSPACE: 'DRZ',
     DETECTION_COLORS: { ...DEFAULT_DETECTION_COLORS },
   });
 
@@ -313,6 +261,7 @@ export default function Settings() {
         DRZ_AUTHOR_NAME: settingsData.DRZ_AUTHOR_NAME || '',
         DRZ_BACKEND_USERNAME: settingsData.DRZ_BACKEND_USERNAME || '',
         DRZ_BACKEND_PASSWORD: settingsData.DRZ_BACKEND_PASSWORD || '',
+        DRZ_GEOSERVER_WORKSPACE: settingsData.DRZ_GEOSERVER_WORKSPACE || 'DRZ',
         // Whatever the backend has is authoritative, including which classes
         // exist. Only a never-configured backend ({}) falls back to the defaults.
         DETECTION_COLORS: Object.keys(settingsData.DETECTION_COLORS ?? {}).length
@@ -349,7 +298,12 @@ export default function Settings() {
   }
 
   function changeDrz<
-    K extends 'DRZ_BACKEND_URL' | 'DRZ_AUTHOR_NAME' | 'DRZ_BACKEND_USERNAME' | 'DRZ_BACKEND_PASSWORD',
+    K extends
+    | 'DRZ_BACKEND_URL'
+    | 'DRZ_AUTHOR_NAME'
+    | 'DRZ_BACKEND_USERNAME'
+    | 'DRZ_BACKEND_PASSWORD'
+    | 'DRZ_GEOSERVER_WORKSPACE',
   >(key: K, value: SettingsData[K]) {
     handleChange(key, value);
     setDrzResult(null);
@@ -446,6 +400,7 @@ export default function Settings() {
       AUTHOR_NAME: settings.DRZ_AUTHOR_NAME,
       BACKEND_USERNAME: settings.DRZ_BACKEND_USERNAME,
       BACKEND_PASSWORD: settings.DRZ_BACKEND_PASSWORD,
+      GEOSERVER_WORKSPACE: settings.DRZ_GEOSERVER_WORKSPACE,
     };
     setDrzResult(await runTest(testDrz.mutateAsync, body));
   }
@@ -455,6 +410,7 @@ export default function Settings() {
       AUTHOR_NAME: settings.DRZ_AUTHOR_NAME,
       BACKEND_USERNAME: settings.DRZ_BACKEND_USERNAME,
       BACKEND_PASSWORD: settings.DRZ_BACKEND_PASSWORD,
+      GEOSERVER_WORKSPACE: settings.DRZ_GEOSERVER_WORKSPACE,
     } as DRZSettings,
     test: testDrz.mutateAsync,
     persist: (b) => updateDrzSettings.mutate(b),

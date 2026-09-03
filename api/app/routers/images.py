@@ -10,12 +10,17 @@ import app.services.thermal.thermal_processing as thermal_processing
 from app.database import get_db
 
 # Import schemas
-from app.schemas.image import ImageOut, ImageCreate, ImageUpdate, ImageUploadResult, ThermalMatrixResponse, ImageBasicPlusOut
+from app.schemas.image import ImageOut, ImageCreate, ImageUpdate, ImageUploadResult, ThermalMatrixResponse, ImageBasicPlusOut, ImageShareRequest
 
 # Import CRUD logic
 import app.crud.images as crud_image
 
-from app.services.image_processing import process_image, check_mapping_report
+from app.services.image_processing import process_image, check_mapping_report, resolve_image_path
+from app.services.drz_backend_sharing import send_photo_to_iais
+from app.config import config
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/images", tags=["Images"])
 
@@ -116,3 +121,43 @@ def get_thermal_matrix(image_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Thermal data not available for this image")
 
     return ThermalMatrixResponse(image_id=image_id, matrix=thermal_matrix, min_temp=min_temp, max_temp=max_temp)
+
+
+@router.post("/{image_id}/send_to_drz", response_model=dict)
+def send_image_to_drz(image_id: int, body: ImageShareRequest, db: Session = Depends(get_db)):
+    """
+    Send one mapping image to the DRZ/IAIS photo service, standalone (no POI attached).
+
+    Mirrors the reconstruction keyframe route: a remote rejection comes back as HTTP 200
+    with success=false so the dialog can show the backend's own error text, which is the
+    main signal when debugging the integration.
+
+    Unlike a SLAM keyframe, a mapping image usually carries EXIF GPS, so the client normally
+    prefills the coordinate instead of asking the operator to pick one on the map.
+    """
+    image = crud_image.get_full_image(db, image_id)
+    if not image:
+        raise HTTPException(status_code=404, detail="Image not found")
+    if not config.DRZ_BACKEND_URL:
+        raise HTTPException(status_code=503, detail="DRZ backend is not configured")
+
+    path = resolve_image_path(image)
+    if not path:
+        raise HTTPException(status_code=404, detail="Image file not found on the server")
+
+    success, message, photo_id = send_photo_to_iais(
+        image_path=path,
+        name=body.name,
+        lat=body.lat,
+        lon=body.lon,
+        projection="panorama_360_equirectangular" if image.panoramic else "normal",
+        description=body.description,
+        direction=body.direction,
+    )
+
+    if not success:
+        logger.warning(f"Image {image_id} could not be sent to DRZ: {message}")
+        return {"success": False, "message": message, "photo_id": None}
+
+    logger.info(f"Sent image {image_id} ({image.filename}) to DRZ as photo {photo_id}")
+    return {"success": True, "message": message, "photo_id": photo_id}

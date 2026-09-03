@@ -6,12 +6,30 @@ export interface Detection {
   score: number;
   bbox: Record<string, unknown>;
   manually_verified?: boolean;
+  /** Drawn by hand in the slideshow rather than produced by a detector. Marks provenance
+   * and protects the row from the delete-before-rerun; distinct from manually_verified,
+   * which means a person confirmed an AI box. */
+  manually_created?: boolean;
   /** Re-identification cluster label grouping the same physical object across overlapping
    * images, scoped to one report. null/undefined = not yet assigned. */
   unique_object_id?: number | null;
   image?: Image;
   coord?: Coord;
 };
+
+/** Payload for POST /detections/ — the manual-detection create path. */
+export interface DetectionCreate {
+  image_id: number;
+  class_name: string;
+  score: number;
+  bbox: [number, number, number, number];
+  manually_verified?: boolean;
+}
+
+/** Classes offered when creating or editing a detection by hand. "other" is a literal
+ * class name like any other: it gets a configurable color, a threshold and a filter
+ * badge, and getDetectionColor falls back to its name-hash hue until one is configured. */
+export const MANUAL_CLASS_OPTIONS = ["fire", "human", "vehicle", "other"] as const;
 
 /**
  * How detections are reduced for display on the map and counted in the DetectionCard.
@@ -107,7 +125,7 @@ export function getDetectionColor(className: string, muted?: boolean): string {
   for (let i = 0; i < className.length; i++) {
     hash = className.charCodeAt(i) + ((hash << 5) - hash);
   }
-  const hue = Math.round((((hash / 2) % 360) + 360) % 360);
+  const hue = Math.round((((-hash % 360) / 2) % 360) + 360) % 360;
   if (muted) {
     return `hsl(${hue}, 0%, 42%)`;
   }
@@ -171,9 +189,13 @@ export interface Geometry {
 }
 
 export interface Properties {
+    /** DRZ `Main` enum as a string — the organisation the object originates from, see types/drz.ts */
     type: string
     subtype: string
+    /** DRZ DetectionEnum: 0 AUTO, 1 MANUELL, 2 VERIFIED */
     detection: number
+    /** DRZ DangerLevelEnum: false = SUSPECTED, true = ACUTE. Required by the POI schema. */
+    danger_level: boolean
     name: string
     description: string
     datetime: string

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import type { Report } from '@/types/report';
 import type { Image, ImageBasic } from '@/types/image';
 import { Button } from '../ui/button';
@@ -16,6 +16,7 @@ import { Toaster } from '@/components/ui/sonner';
 import { DetectionCard } from './mappingReportComponents/DetectionCard';
 import { ResponsiveResizableLayout } from "@/components/ResponsiveResizableLayout";
 import { Card, CardContent, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { useDetections, useIsDetectionRunning } from '@/hooks/detectionHooks';
 import { FilteredImagesProvider } from '@/contexts/FileteredImagesContext';
 import { useStopProcessing } from '@/hooks/useStartProcessing';
@@ -49,14 +50,38 @@ export function MappingReport({ report, onEditClicked, setReport }: Props) {
   const [tempFilter, setTempFilter] = useState<TempFilters>({});
   const stopProcessingMutation = useStopProcessing(report.report_id);
 
+  // --- Unsaved-draft navigation guard --------------------------------------
+  // The slideshow's manual-detection draft lives inside SlideshowTab, but the
+  // selected image and tab are owned here and changed from five places (the
+  // slideshow arrows, the arrow keys, a gallery thumbnail, a map marker, the tab
+  // bar). So the guard sits at the top and every one of those goes through it.
+  const navBlockerRef = useRef<(() => boolean) | null>(null);
+  const discardDraftRef = useRef<(() => void) | null>(null);
+  const [pendingNav, setPendingNav] = useState<{ run: () => void } | null>(null);
+
+  const registerNavBlocker = useCallback(
+    (blocker: (() => boolean) | null, discard: (() => void) | null) => {
+      navBlockerRef.current = blocker;
+      discardDraftRef.current = discard;
+    },
+    [],
+  );
+
+  const guardedNav = useCallback((action: () => void) => {
+    if (navBlockerRef.current?.()) setPendingNav({ run: action });
+    else action();
+  }, []);
+
   const handleStopProcessing = () => {
     stopProcessingMutation.mutate();
   };
 
 
   const selectImageFromGallery = (image: ImageBasic | null) => {
-    setSelectedImage(image);
-    setTab("slideshow");
+    guardedNav(() => {
+      setSelectedImage(image);
+      setTab("slideshow");
+    });
   };
 
 
@@ -85,9 +110,32 @@ export function MappingReport({ report, onEditClicked, setReport }: Props) {
             //     <p>Selected Image: {selectedImage ? selectedImage.id : "None"}</p>
             //   </CardContent>
             // </Card>
-            <TabArea report={report} selectedImage={selectedImage} setSelectedImage={setSelectedImage} tab={tab} setTab={setTab} thresholds={thresholds} visibleCategories={visibleCategories} detectionMode={detectionMode} setDetectionMode={setDetectionMode} selectedObjectId={selectedObjectId} setSelectedObjectId={setSelectedObjectId} highlightedDetectionId={highlightedDetectionId} setHighlightedDetectionId={setHighlightedDetectionId} setRegionImageIds={setRegionImageIds} tempFilter={tempFilter} />
+            <TabArea report={report} selectedImage={selectedImage} setSelectedImage={setSelectedImage} tab={tab} setTab={setTab} registerNavBlocker={registerNavBlocker} guardedNav={guardedNav} thresholds={thresholds} visibleCategories={visibleCategories} detectionMode={detectionMode} setDetectionMode={setDetectionMode} selectedObjectId={selectedObjectId} setSelectedObjectId={setSelectedObjectId} highlightedDetectionId={highlightedDetectionId} setHighlightedDetectionId={setHighlightedDetectionId} setRegionImageIds={setRegionImageIds} tempFilter={tempFilter} />
           }
         />
+
+        <Dialog open={!!pendingNav} onOpenChange={(next) => { if (!next) setPendingNav(null); }}>
+          <DialogContent className="max-w-md rounded-2xl p-6">
+            <DialogHeader>
+              <DialogTitle>Discard new detection?</DialogTitle>
+              <DialogDescription>
+                You are still placing a bounding box. Leaving this image will discard it.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="mt-4 flex justify-end space-x-2">
+              <Button variant="outline" onClick={() => setPendingNav(null)}>Stay</Button>
+              <Button
+                onClick={() => {
+                  discardDraftRef.current?.();
+                  pendingNav?.run();
+                  setPendingNav(null);
+                }}
+              >
+                Discard &amp; leave
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </FilteredImagesProvider>
     </>
   );

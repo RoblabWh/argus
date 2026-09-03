@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, Boolean, Float, ForeignKey
+from sqlalchemy import Column, Integer, String, DateTime, Boolean, Float, ForeignKey, false
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 from app.database import Base
@@ -91,6 +91,13 @@ class Detection(Base):
     score = Column(Float)
     bbox = Column(JSONB)
     manually_verified = Column(Boolean, default=False)
+    # True for detections a user drew by hand in the slideshow. Distinct from
+    # manually_verified ("someone on site confirmed this AI box"): this one records
+    # provenance, and it is what protects the row from the delete-before-rerun in
+    # routers/detection.py. NOT NULL with a server default on purpose — the delete
+    # predicates filter on it, and NULL would silently drop rows under SQL's
+    # three-valued logic.
+    manually_created = Column(Boolean, default=False, server_default=false(), nullable=False)
     coord = Column(JSONB, nullable=True)
     # Cluster label grouping detections of the same physical object within a single
     # report (set by the YOLO reID component). Not row-unique; nullable when unset.

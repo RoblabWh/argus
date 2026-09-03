@@ -37,9 +37,17 @@ interface Props {
   setHighlightedDetectionId: (id: number | null) => void;
   setRegionImageIds: (ids: number[] | null) => void;
   tempFilter: TempFilters;
+  /** Passed straight through to SlideshowTab so it can tell the parent's
+   * navigation guard when it holds an unconfirmed manual detection. */
+  registerNavBlocker?: (blocker: (() => boolean) | null, discard: (() => void) | null) => void;
+  /** Runs a navigation action, first asking the user if there is unsaved work.
+   * Every image/tab change below goes through it exactly once — wrapping the
+   * individual setters instead would prompt twice for the composite moves
+   * (map marker click = select image + switch tab). */
+  guardedNav?: (action: () => void) => void;
 }
 
-export function TabArea({ report, selectedImage, setSelectedImage, tab, setTab, thresholds, visibleCategories, detectionMode, setDetectionMode, selectedObjectId, setSelectedObjectId, highlightedDetectionId, setHighlightedDetectionId, setRegionImageIds, tempFilter }: Props) {
+export function TabArea({ report, selectedImage, setSelectedImage, tab, setTab, thresholds, visibleCategories, detectionMode, setDetectionMode, selectedObjectId, setSelectedObjectId, highlightedDetectionId, setHighlightedDetectionId, setRegionImageIds, tempFilter, registerNavBlocker, guardedNav }: Props) {
   const api_url = getApiUrl();
   const { data: images } = useImages(report.report_id);
   const [visibleMapOverlays, setVisibleMapOverlays] = useState<{ [mapId: number]: boolean }>({});
@@ -52,8 +60,13 @@ export function TabArea({ report, selectedImage, setSelectedImage, tab, setTab, 
   const hasColmap = !!colmapStatus?.has_reconstruction;
   const { data: colmapResults } = useColmapResults(report.report_id, hasColmap);
 
+  const navigate = useCallback(
+    (action: () => void) => (guardedNav ? guardedNav(action) : action()),
+    [guardedNav],
+  );
+
   const onTabChange = (value: string) => {
-    setTab(value);
+    navigate(() => setTab(value));
   }
 
 
@@ -62,17 +75,21 @@ export function TabArea({ report, selectedImage, setSelectedImage, tab, setTab, 
   //   setTab("slideshow");
   // }
   const selectImageOnMap = useCallback((image_id: number) => {
-    setSelectedImage(images?.find(img => img.id === image_id) || null);
-    setTab("slideshow");
-  }, [images, setSelectedImage, setTab]);
+    navigate(() => {
+      setSelectedImage(images?.find(img => img.id === image_id) || null);
+      setTab("slideshow");
+    });
+  }, [images, setSelectedImage, setTab, navigate]);
 
 
-  const changeImage = (direction: 'next' | 'previous') => {
-    if (!filteredImages || filteredImages.length === 0) return;
+  /** Resolve which image `direction` lands on, without changing any state, so
+   * the caller can put the single resulting move through the navigation guard. */
+  const resolveNextImage = (direction: 'next' | 'previous'): ImageBasic | null => {
+    if (!filteredImages || filteredImages.length === 0) return null;
     const currentIndex = filteredImages.findIndex(img => img.url === selectedImage?.url);
     if (currentIndex === -1) {
-      //try finding the closest image in the selection
-      // calc date time difference between selectedImage and each image in filteredImages
+      // The current image is not in the filtered set — fall back to the one
+      // closest to it in time.
       const closestImage = filteredImages.reduce((prev, curr) => {
         const prevDate = new Date(prev.created_at);
         const currDate = new Date(curr.created_at);
@@ -81,31 +98,34 @@ export function TabArea({ report, selectedImage, setSelectedImage, tab, setTab, 
         const currDiff = Math.abs(currDate.getTime() - selectedDate.getTime());
         return currDiff < prevDiff ? curr : prev;
       });
-      setSelectedImage(closestImage);
       if (!closestImage) {
-        setSelectedImage(filteredImages[0]);
         console.error("No closest image found");
-        return;
+        return filteredImages[0];
       }
-
-      return;
+      return closestImage;
     }
-    if (currentIndex === -1) return;
 
     const newIndex = direction === 'next' ? currentIndex + 1 : currentIndex - 1;
-    if (newIndex < 0)
-      setSelectedImage(filteredImages[filteredImages.length - 1]);
-    else if (newIndex >= filteredImages.length)
-      setSelectedImage(filteredImages[0]);
-    else
-      setSelectedImage(filteredImages[newIndex]);
+    if (newIndex < 0) return filteredImages[filteredImages.length - 1];
+    if (newIndex >= filteredImages.length) return filteredImages[0];
+    return filteredImages[newIndex];
+  }
+
+  const changeImage = (direction: 'next' | 'previous') => {
+    const next = resolveNextImage(direction);
+    if (!next) return;
+    navigate(() => setSelectedImage(next));
   }
 
   useEffect(() => {
+    // Only seed the initial selection. Without the guard, any refetch of the
+    // images query snaps back to the first image, discarding wherever the
+    // operator had navigated to — and any manual detection they were drawing.
+    if (selectedImage) return;
     if (images && images.length > 0) {
       setSelectedImage(images[0]);
     }
-  }, [images]);
+  }, [images, selectedImage]);
 
   return (
     <Tabs
@@ -113,7 +133,7 @@ export function TabArea({ report, selectedImage, setSelectedImage, tab, setTab, 
       value={tab}
       className="w-full relative h-full "
     >
-      <div className="absolute left-[50%] -translate-x-[50%] top-2 z-100">
+      <div className="absolute left-[50%] -translate-x-[50%] top-2 z-10">
         <TabsList className="">
           <TabsTrigger className="cursor-pointer" value="map">Map</TabsTrigger>
           <TabsTrigger className="cursor-pointer" value="slideshow">Images</TabsTrigger>
@@ -152,6 +172,8 @@ export function TabArea({ report, selectedImage, setSelectedImage, tab, setTab, 
           thresholds={thresholds}
           visibleCategories={visibleCategories}
           report_id={report.report_id}
+          reportTitle={report.title}
+          registerNavBlocker={registerNavBlocker}
         />
       </TabsContent>
       <TabsContent value="data">

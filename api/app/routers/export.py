@@ -57,6 +57,7 @@ def _build_coco(report, mapping_report) -> dict:
                 "iscrowd": 0,
                 "score": det.score,
                 "manually_verified": det.manually_verified,
+                "manually_created": det.manually_created,
             })
 
     categories = [
