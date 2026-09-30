@@ -392,11 +392,11 @@ export function DetectionCard({ report_id, setThresholds, thresholds, setFilter,
                                             <SelectValue placeholder="Analysis Mode" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="fast">Fast (Coarse)</SelectItem>
-                                            <SelectItem value="medium">Medium (Refined)</SelectItem>
-                                            <SelectItem value="detailed">Fine (Detailed)</SelectItem>
-                                            <SelectItem value="experimental">Experimental (YOLOv11)</SelectItem>
+                                            <SelectItem value="experimental">Detailed Fast (new)</SelectItem>
                                             <SelectItem value="fire">Fire (Experimental)</SelectItem>
+                                            <SelectItem value="fast">old Fast (Coarse)</SelectItem>
+                                            <SelectItem value="medium">old Medium (Refined)</SelectItem>
+                                            <SelectItem value="detailed">old Fine (Detailed)</SelectItem>
                                         </SelectContent>
                                     </Select>
 

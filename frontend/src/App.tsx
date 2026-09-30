@@ -22,7 +22,7 @@ function App() {
   return (
     <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
       <BreadcrumbProvider>
-        <div className="min-h-screen min-w-screen bg-gray-100 dark:bg-black ">
+        <div className="min-h-screen bg-gray-100 dark:bg-black ">
           <TopMenuBar />
 
           <Routes>

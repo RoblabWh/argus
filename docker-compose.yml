@@ -158,10 +158,15 @@ services:
       LOG_LEVEL: ${LOG_LEVEL}
 
   ollama:
-    image: ollama/ollama
+    image: ollama/ollama:0.35.0
     container_name: argusII_ollama
     volumes:
       - models:/root/.ollama:rw
+    environment:
+      OLLAMA_FLASH_ATTENTION: "1"
+      OLLAMA_KV_CACHE_TYPE: q8_0
+      OLLAMA_NUM_PARALLEL: "2"  # parallel image requests of services/situation_report.py
+      OLLAMA_MAX_LOADED_MODELS: "1"
     restart: unless-stopped
 
   argus_ollama_worker:

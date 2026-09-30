@@ -300,7 +300,7 @@ def write_metadata(filename, abstract, keywords, headline=None):
     return
 
 
-def start_description_process(report_id: int, db: Session):
+def start_description_process(report_id: int, db: Session, **_ignored):  # detail/language: situation_report only
     report = report_crud.get_basic_report(db, report_id)
     if not report:
         raise ValueError("Report not found")

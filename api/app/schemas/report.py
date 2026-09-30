@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Literal, Optional
 from .image import ImageOut
 from .map import MapOut, MapOutSlim
 from .weather import WeatherOut
@@ -193,6 +193,15 @@ class PanoReportOut(PanoReportBase):
     id: int
     model_config = ConfigDict(from_attributes=True)
 
+
+
+##################
+## AI situation report (auto description)
+##################
+
+class AutoDescriptionSettings(BaseModel):
+    detail: Literal["fast", "medium", "detailed"] = "fast"  # fast: 16 images, medium: every 2nd, detailed: all
+    language: Literal["en", "de"] = "en"
 
 
 ##################

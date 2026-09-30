@@ -3,13 +3,14 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { Progress } from '@/components/ui/progress';
 import { Button } from "@/components/ui/button";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { toast } from "sonner";
 import {
     Bot,
     ChevronDown,
     ChevronUp
 } from "lucide-react";
-import type { MappingReport } from "@/types/report";
+import type { AutoDescriptionDetail, AutoDescriptionLanguage } from "@/types/report";
 import {
     useStartAutoDescription,
     useAutoDescriptionPolling
@@ -22,10 +23,18 @@ type Props = {
     onGenerateDescription?: () => void;
 };
 
+const detailHint: Record<AutoDescriptionDetail, string> = {
+    fast: "Fast: 16 representative images (hotspots and detections first, spread over the area).",
+    medium: "Medium: every second image plus all hotspot/fire images. Slower, more complete.",
+    detailed: "Detailed: every image. Slowest, most complete coverage.",
+};
+
 export function AutoDescriptionCard({ reportID, description }: Props) {
     const [polling, setPolling] = useState(true);
     const [expanded, setExpanded] = useState(false);
     const [descriptionText, setDescriptionText] = React.useState(description || "");
+    const [detail, setDetail] = useState<AutoDescriptionDetail>("fast");
+    const [language, setLanguage] = useState<AutoDescriptionLanguage>("en");
 
     const sseActive = useSseActive();
     const wakeSse = useSseWake();
@@ -50,7 +59,7 @@ export function AutoDescriptionCard({ reportID, description }: Props) {
 
 
     const handleStart = () => {
-        start(undefined, {
+        start({ detail, language }, {
             onSuccess: () => {
                 setPolling(true);
                 wakeSse(); // the stream is released while a report is idle
@@ -76,7 +85,7 @@ export function AutoDescriptionCard({ reportID, description }: Props) {
                 </div>
 
                 <div
-                    className={`relative text-xs text-muted-foreground transition-all ${expanded ? "max-h-none" : "max-h-30 overflow-hidden"
+                    className={`relative whitespace-pre-line text-xs text-muted-foreground transition-all ${expanded ? "max-h-none" : "max-h-30 overflow-hidden"
                         }`}
                 >
                     {!expanded && (
@@ -105,15 +114,33 @@ export function AutoDescriptionCard({ reportID, description }: Props) {
                 {polling ? (
                     <Progress className="w-full mt-2" value={data?.progress || 0} />
                 ) : (
-                    <Button
-                        variant="outline"
-                        className="mt-2"
-                        onClick={() => {
-                            handleStart();
-                        }}
-                    >
-                        {descriptionText.length > 150 ? "Regenerate Description" : "Generate Description"}
-                    </Button>
+                    <div className="w-full flex flex-col mt-2">
+                        <div className="w-full flex flex-row flex-wrap items-center gap-2">
+                            <Select value={detail} onValueChange={(v) => setDetail(v as AutoDescriptionDetail)}>
+                                <SelectTrigger className="w-[130px]" size="sm">
+                                    <SelectValue placeholder="Detail" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="fast">Fast</SelectItem>
+                                    <SelectItem value="medium">Medium</SelectItem>
+                                    <SelectItem value="detailed">Detailed</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <Select value={language} onValueChange={(v) => setLanguage(v as AutoDescriptionLanguage)}>
+                                <SelectTrigger className="w-[110px]" size="sm">
+                                    <SelectValue placeholder="Language" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="en">English</SelectItem>
+                                    <SelectItem value="de">Deutsch</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <Button variant="outline" size="sm" onClick={handleStart}>
+                                {descriptionText.length > 150 ? "Regenerate" : "Generate"}
+                            </Button>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1 mb-0">{detailHint[detail]}</p>
+                    </div>
                 )}
             </CardContent>
         </Card>

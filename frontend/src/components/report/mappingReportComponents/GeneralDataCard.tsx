@@ -14,6 +14,8 @@ import type { Report } from '@/types/report';
 import { EditReportPopup } from "../EditReportPopup";
 import { ExportPopup } from './ShareMapImagesPopup';
 import { ColmapStatusIndicator } from './ColmapStatusIndicator';
+import { useMaps } from "@/hooks/useMaps";
+
 
 interface Props {
     report: Report;
@@ -37,6 +39,11 @@ export function GeneralDataCard({ report, onReprocessClicked, onStopProcessing, 
     const [editPopupOpen, setEditPopupOpen] = useState(false);
     const [exportPopupOpen, setExportPopupOpen] = useState(false);
     const [isExporting, setIsExporting] = useState(false);
+    // 360° reports have no maps at all — skip the request entirely there
+    const { data: maps } = useMaps(report.report_id, !disableExport);
+
+    const canReprocess = report.status === 'completed' || report.status === 'cancelled';
+    const canExport = !disableExport && (maps?.length ?? 0) > 0;
 
     const onEditDetailsClick = () => {
         setEditPopupOpen(true);
@@ -115,7 +122,7 @@ export function GeneralDataCard({ report, onReprocessClicked, onStopProcessing, 
                     </div>
 
                     {/* Menu Button */}
-                    {(report.status === 'completed' || report.status === 'cancelled') && (
+                    
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                                 <Button variant="ghost" size="icon" className="ml-2">
@@ -124,14 +131,12 @@ export function GeneralDataCard({ report, onReprocessClicked, onStopProcessing, 
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                                 <DropdownMenuItem onClick={onEditDetailsClick}> Edit details</DropdownMenuItem>
-                                <DropdownMenuItem onClick={onReprocessClicked}>Reprocess</DropdownMenuItem>
-                                {!disableExport && (
-                                    <DropdownMenuItem onClick={onExportClicked}>Export/Share</DropdownMenuItem>
-                                )}
+                                <DropdownMenuItem disabled={!canReprocess} onClick={onReprocessClicked}>Reprocess</DropdownMenuItem>
+                                <DropdownMenuItem disabled={!canExport} onClick={onExportClicked}>Export/Share</DropdownMenuItem>
                                 <DropdownMenuItem className="text-red-600">Delete</DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
-                    )}
+
                 </div>
 
                 {/* COLMAP 3D reconstruction status — separate, fire-and-forget job that runs

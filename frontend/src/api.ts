@@ -1,6 +1,6 @@
 // src/api/groups.ts
 import type { Group } from "@/types/group";
-import type { Report, ReportSummary } from "@/types/report";
+import type { AutoDescriptionSettings, Report, ReportSummary } from "@/types/report";
 import type { Map } from "@/types/map";
 import type { ProcessingSettings } from "@/types/processing";
 import type { Image, ImageBasic, ImageShareRequest } from "@/types/image";
@@ -147,7 +147,7 @@ export const sendDetectionToDrz = (
 
 export const sendMapToDrz = (reportId: number, data: { map_id: number; layer_name: string; workspace: string } ) => postJson<{success: boolean; message:string}>(`/reports/${reportId}/send_map`, data);
 
-export const startAutoDescription = (report_id: number) => postJson<{ status: string }>(`/reports/${report_id}/auto_description`, {});
+export const startAutoDescription = (report_id: number, settings: AutoDescriptionSettings) => postJson<{ status: string }>(`/reports/${report_id}/auto_description`, settings);
 export const getAutoDescription = (report_id: number) => fetchJson<{ report_id: number, status: string, progress: number, description: string }>(`/reports/${report_id}/auto_description`);
 
 export const getSettings = () => fetchJson<SettingsData>("/settings/");

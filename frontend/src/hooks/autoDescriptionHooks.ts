@@ -1,10 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { startAutoDescription, getAutoDescription } from "@/api";
+import type { AutoDescriptionSettings } from "@/types/report";
 
 
 export function useStartAutoDescription(reportId: number) {
     return useMutation({
-        mutationFn: () => startAutoDescription(reportId),
+        mutationFn: (settings: AutoDescriptionSettings) => startAutoDescription(reportId, settings),
     });
 }
 

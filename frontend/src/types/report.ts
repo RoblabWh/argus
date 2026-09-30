@@ -90,3 +90,10 @@ export interface ReportSummary {
   detection_count: number;
   maps: Map[];
 }
+// Options for the AI situation report (POST /reports/{id}/auto_description)
+export type AutoDescriptionDetail = "fast" | "medium" | "detailed";
+export type AutoDescriptionLanguage = "en" | "de";
+export type AutoDescriptionSettings = {
+  detail: AutoDescriptionDetail;
+  language: AutoDescriptionLanguage;
+};

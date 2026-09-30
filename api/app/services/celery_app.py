@@ -15,6 +15,7 @@ celery_app = Celery(
 
 celery_app.autodiscover_tasks(["app.services.mapping"])
 celery_app.autodiscover_tasks(["app.services.image_describer"])
+celery_app.autodiscover_tasks(["app.services.situation_report"])
 
 
 

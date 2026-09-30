@@ -6,7 +6,7 @@ from concurrent.futures import ThreadPoolExecutor
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
-from typing import List, Literal
+from typing import List, Literal, Optional
 import logging
 
 import app.crud.report as crud
@@ -27,6 +27,7 @@ from app.schemas.report import (
     MappingReportOut,
     ProcessingSettings,
     ColmapResultsOut,
+    AutoDescriptionSettings,
 )
 from app.schemas.image import UploadSummary, VideoUploadResult, ImageUploadResult
 from app.schemas.map import MapOut, MapSharingData, ThermalMapOut
@@ -36,7 +37,7 @@ from app.services.image_processing import process_image, check_mapping_report, U
 from app.services.camera_config_service import extract_video_metadata
 
 import app.services.mapping.processing_manager as process_report_service
-import app.services.image_describer as image_describer_service
+import app.services.situation_report as image_describer_service  # legacy: app.services.image_describer
 import app.services.drz_backend_sharing as drz_service
 import app.services.map_export as map_export_service
 import app.services.events as events_service
@@ -417,9 +418,12 @@ def get_process_status(report_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/{report_id}/auto_description", response_model=dict)
-def start_auto_description(report_id: int, db: Session = Depends(get_db)):
+def start_auto_description(report_id: int, settings: Optional[AutoDescriptionSettings] = None,
+                           db: Session = Depends(get_db)):
+    # The body is optional so clients that POST without one keep working (defaults: fast, en).
+    settings = settings or AutoDescriptionSettings()
     try:
-        image_describer_service.start_description_process(report_id, db)
+        image_describer_service.start_description_process(report_id, db, **settings.model_dump())
     except ValueError as e:
         return {"status": "error", "message": str(e)}
     return {"status": "started"}

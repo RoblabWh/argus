@@ -4,7 +4,7 @@
   "created_at": "EXIF:CreateDate",
   "width": "File:ImageWidth",
   "height": "File:ImageHeight",
-  "projection_type": "XMP:ProjectionType",
+  "projection_type": "EXIF:XPKeywords",
   "gps": {
     "lat": "Composite:GPSLatitude",
     "lon": "Composite:GPSLongitude",

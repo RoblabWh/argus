@@ -225,7 +225,7 @@ def _check_panoramic(metadata: dict, config: dict) -> bool:
         return False
     projection_type = metadata.get(config["projection_type"], None)
     if projection_type:
-        if projection_type.lower() in ["equirectangular", "spherical"]:
+        if projection_type.lower() in ["equirectangular", "spherical", "panoramic", "pano"]:
             return True
     return False
 
